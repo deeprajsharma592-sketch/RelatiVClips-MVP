@@ -1,6 +1,6 @@
 # RelatiV
 
-Quantum-precision AI video clipping engine. Privacy-first, locally processed extraction for short-form content.
+AI video clipping engine. Privacy-first, scaling your content to the world. 
 
 ## Architecture
 
