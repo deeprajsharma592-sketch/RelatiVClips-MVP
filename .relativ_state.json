@@ -1,0 +1,108 @@
+{
+  "project_name": "RelatiV",
+  "file_location": "/app/RelatiV",
+  "last_synchronized": "2026-06-09T21:00:00Z",
+  "current_phase": "MVP_Development",
+  "active_agent_handoff": {
+    "previous_agent": "OpenCode",
+    "next_agent": "OpenCode",
+    "task_status": "All 7 frontend phases complete. Backend tasks 2-5 complete: added /contact endpoint, fixed Docker port alignment (Caddy/backend/Dockerfile now all 9000), deleted dead surgical_extractor.py (1013 lines), added OLLAMA_BASE_URL to config/imports, wrote backend tests + frontend vitest test. Zero TS errors."
+  },
+  "subsystems": {
+    "backend": {
+      "file_location": "/app/RelatiV/backend",
+      "language": "Python",
+      "framework": "FastAPI (port 9000)",
+      "libraries": [
+        "FastAPI", "SQLAlchemy 2.0 (async)", "asyncpg",
+        "Librosa", "faster-whisper (GPU)", "Ultralytics YOLOv10",
+        "FFmpeg", "APScheduler", "httpx"
+      ],
+      "status": "Stable",
+      "database": {
+        "engine": "PostgreSQL 15 via asyncpg",
+        "orm": "SQLAlchemy 2.0 async with async_sessionmaker",
+        "models": ["TaskModel (tasks)", "ClipModel (clips)"],
+        "repositories": ["TaskRepository", "ClipRepository"],
+        "in_memory_fallback": true,
+        "latest_changes_summary": "Added event-loop bridge for sync-to-async DB persistence from worker threads. TaskStore now writes through to PostgreSQL on every state transition (create, update, promote, complete, fail, remove). Graceful fallback to memory-only when DB unavailable."
+      },
+      "pipelines": {
+        "youtube": {
+          "type": "YouTubeSurgicalFunnel (6 stages: Scout, Signal, Funnel, Strike, CV, Render)",
+          "status": "Active",
+          "note": "Dead surgical_extractor.py (1013 lines, 39KB) deleted — was never imported or called. Active pipeline lives entirely in youtube_router.py."
+        },
+        "local": {
+          "type": "6-stage async pipeline (load, audio analysis, transcription, clip selection, face detection, render)",
+          "status": "Active",
+          "note": "Frontend blocks file upload — only accessible via API directly"
+        },
+        "vision_clip_selector": {
+          "status": "Fixed",
+          "note": "Added OLLAMA_BASE_URL to utils/config.py with env var default (http://localhost:11434). Imported in vision_clip_selector.py."
+        }
+      },
+      "task_management": {
+        "store": "In-memory TaskStore with PostgreSQL persistence bridge",
+        "max_concurrent_tasks": 2,
+        "queue_promotion": "Automatic on slot free"
+      },
+      "latest_changes_summary": "Added POST /contact endpoint (accepts email, subject, message, logs to console). Fixed Docker port alignment — Dockerfile now EXPOSE 9000 / CMD --port 9000, Caddyfile proxies to backend:9000. Deleted dead surgical_extractor.py (1013 lines, 39KB, never imported). Added OLLAMA_BASE_URL to utils/config.py and imported in vision_clip_selector.py. Wrote tests: test_health.py, test_contact.py, test_task_store.py (10 test cases)."
+    },
+    "frontend": {
+      "file_location": "/app/RelatiV/frontend-next",
+      "framework": "Next.js 16 / React 19",
+      "styling": "Tailwind 4 + Framer Motion 12",
+      "status": "Complete — all 7 phases delivered, zero TS errors",
+      "pages": ["Home (input/processing/output)", "About", "Services", "Plans", "Contact"],
+      "components": [
+        "InputDropzone", "ProcessingPipeline", "ProcessingLogs",
+        "OutputCanvas", "ClipCard", "VideoPlayer", "VideoPlayerSkeleton",
+        "HeroBackground", "BentoCard", "PhysicsIcon",
+        "AnimatedCounter", "TestimonialCarousel", "CookieBanner",
+        "Header", "Footer"
+      ],
+      "api_client": "lib/api.ts - polls /status/{task_id} every 2s, base URL from NEXT_PUBLIC_API_URL",
+      "mock_api_route": "api/process/route.ts - dev artifact, disconnected from frontend",
+      "test_framework": "vitest (installed, test file at src/lib/api.test.ts)",
+      "latest_changes_summary": "Phase 1-7 complete. Contact form wired to POST /contact. Plans page buttons functional. InputDropzone shows file-upload-unavailable guidance. prefers-reduced-motion CSS, 404 page, skip-to-content, aria-current nav, cookie consent banner all in place. Zero TS errors."
+    },
+    "deployment": {
+      "file_location": "/app/RelatiV",
+      "environment": "Docker Compose (3 services)",
+      "services": {
+        "caddy": "Reverse proxy (port 80 -> backend:9000) — FIXED",
+        "backend": "FastAPI (port 9000, Dockerfile EXPOSE 9000) — FIXED",
+        "db": "PostgreSQL 15 Alpine"
+      },
+      "dockerized": true,
+      "known_issues": [
+        "Root Dockerfile exists but appears empty",
+        "No .gitignore or git history"
+      ],
+      "latest_changes_summary": "Port mismatch resolved. Dockerfile port updated to 9000. Caddyfile proxies to backend:9000. docker-compose.yml was already correct (9000:9000). Everything now aligned on port 9000."
+    },
+    "testing": {
+      "file_location": "/app/RelatiV/backend/tests",
+      "exists": true,
+      "frameworks": {
+        "backend": "pytest + pytest-asyncio + httpx (test files: test_health.py, test_contact.py, test_task_store.py)",
+        "frontend": "vitest (test file: src/lib/api.test.ts)"
+      },
+      "backend_test_count": 12,
+      "frontend_test_count": 3,
+      "note": "Tests cannot run in this environment — need pip install for backend, vitest run for frontend"
+    },
+    "knowledge_graph": {
+      "tool": "graphify",
+      "nodes": 454,
+      "edges": 750,
+      "communities": 26,
+      "last_updated": "2026-06-09T18:00:00Z"
+    }
+  },
+  "todo_remaining": [
+    "Initialize git repo + create .gitignore + README"
+  ]
+}

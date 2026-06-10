@@ -1,0 +1,57 @@
+version: '3.8'
+
+networks:
+  relativ_mesh:
+    driver: bridge
+
+services:
+  # Automated HTTPS Reverse Proxy
+  caddy:
+    image: caddy:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - relativ_mesh
+    restart: unless-stopped
+
+  # FastAPI Core Engine
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      - DATABASE_URL=postgresql://relativ_admin:relativ_secure_pass@db:5432/relativ_db
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    depends_on:
+      - db
+    volumes:
+      - ./outputs:/app/outputs
+      - ./temp:/app/temp
+    networks:
+      - relativ_mesh
+    restart: unless-stopped
+
+  # Core Database Engine
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=relativ_admin
+      - POSTGRES_PASSWORD=relativ_secure_pass
+      - POSTGRES_DB=relativ_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - relativ_mesh
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:

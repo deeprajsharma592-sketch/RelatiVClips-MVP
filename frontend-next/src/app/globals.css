@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg-base: #000000;
+  --color-surface: #0A0A0A;
+  --color-border: #1E1E1E;
+  --color-accent: #FF6B35;
+  --color-accent-secondary: #FFD166;
+  --color-text-primary: #FFFFFF;
+  --color-text-muted: #A1A1A1;
+  --color-success: #FFD166;
+  --color-error: #FF3B6F;
+  --color-warning: #FFB347;
+
+  --font-sans: "Inter", "system-ui", sans-serif;
+  --font-display: "Space Grotesk", "system-ui", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+
+  --grid-gutter: 24px;
+  --border-width: 1px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient-shift 6s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background: #000000;
+  color: #FFFFFF;
+  font-family: "Inter", "system-ui", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Physics variable styling */
+.physics-var {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  color: #FFD166;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.3);
+  font-weight: 500;
+}
+
+/* Custom scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #1E1E1E #0A0A0A;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E1E1E;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF6B35;
+}
+
+/* Selection */
+::selection {
+  background: rgba(255, 107, 53, 0.3);
+  color: #FFFFFF;
+}
+
+/* Aspect ratio utility */
+.aspect-9-16 {
+  aspect-ratio: 9 / 16;
+}
+
+/* Typography scale */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Space Grotesk", "system-ui", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Bento grid base */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+}
+
+/* Glow effects */
+.glow-accent {
+  box-shadow: 0 0 30px rgba(255, 107, 53, 0.12);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 30px rgba(255, 209, 102, 0.12);
+}
+
+/* Glassmorphism card base */
+.bento-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+
+.bento-card:hover {
+  border-color: rgba(255, 107, 53, 0.4);
+  background: rgba(255, 107, 53, 0.04);
+  box-shadow: 0 0 40px rgba(255, 107, 53, 0.08);
+}
+
+/* Solid card variant (for areas where glass doesn't work well) */
+.bento-card-solid {
+  background: #0A0A0A;
+  border: 1px solid #1E1E1E;
+  border-radius: 4px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.bento-card-solid:hover {
+  border-color: #FF6B35;
+  box-shadow: 0 0 30px rgba(255, 107, 53, 0.1);
+}
+
+/* Glowing input */
+.input-glow:focus {
+  border-color: #FF6B35 !important;
+  box-shadow: 0 0 15px rgba(255, 107, 53, 0.2) !important;
+  outline: none;
+}
+
+/* Dropzone */
+.dropzone-active {
+  border-color: #FF6B35 !important;
+  background: rgba(255, 107, 53, 0.05);
+}
+
+/* Edge fade mask for scrolling carousels */
+.mask-edges {
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}

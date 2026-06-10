@@ -1,0 +1,69 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+OUTPUTS_DIR = BASE_DIR / "outputs"
+TEMP_DIR = BASE_DIR / "temp"
+
+OUTPUTS_DIR.mkdir(exist_ok=True)
+TEMP_DIR.mkdir(exist_ok=True)
+
+MAX_VRAM_GB = 8
+VRAM_BUFFER_GB = 5
+VRAM_MODEL_LIMIT_GB = MAX_VRAM_GB - VRAM_BUFFER_GB
+
+MAX_CONCURRENT_TASKS = 1
+
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022")
+
+WHISPER_MODEL = "large-v3-turbo"
+WHISPER_COMPUTE_TYPE = "int8_float16"  # Force CPU with lower memory
+
+TARGET_SAMPLE_RATE = 16000
+CLIP_DURATION_MIN = 10
+CLIP_DURATION_MAX = 20
+NUM_CLIPS_LOCAL = 3
+NUM_CLIPS_YOUTUBE = 3
+
+# Never allow empty clip lists - this is a production rule
+MIN_CLIPS = 3
+
+PEAK_THRESHOLD_MULTIPLIER = 1.5
+
+CROP_WIDTH = 608
+CROP_HEIGHT = 1080
+
+FFMPEG_PRESET = "p5"
+FFMPEG_CQ = 28
+FFMPEG_AUDIO_BITRATE = "128k"
+
+FILE_RETENTION_HOURS = 24
+CLEANUP_INTERVAL_HOURS = 1
+
+YTDLP_FORMAT = "best[height>=720]/best"
+
+FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
+FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
+YTDLP_PATH = os.getenv("YTDLP_PATH", "yt-dlp")
+
+SURGICAL_DOWNLOAD_SECONDS = 90
+SPIKE_ANALYSIS_SECONDS = 30
+SURGICAL_TOP_N_CANDIDATES = 5
+MAX_DISK_USAGE_MB = 150
+AUDIO_ONLY_BITRATE = "128k"
+MAX_SURGICAL_SEGMENTS = 3
+AUDIO_FALLBACK_LIMIT_MB = 50
+SURGICAL_BUFFER_SECONDS = 10
+
+COOKIES_PATH = BASE_DIR / "cookies.txt"
+
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+VISION_ENABLED = os.getenv("VISION_ENABLED", "false").lower() == "true"
+
+NUM_SNAPSHOTS_PER_CLIP = 3
+SNAPSHOT_JPEG_QUALITY = 90
+SNAPSHOT_OUTPUT_SIZE = (720, 1280)
