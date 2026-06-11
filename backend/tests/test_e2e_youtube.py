@@ -33,6 +33,24 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _is_youtube_rate_limited(log_messages: list) -> bool:
+    """Detect YouTube's anti-bot response so the test can skip cleanly.
+
+    YouTube returns 200 with the actual error inside the log; the transcript
+    fetcher relays it. Common signatures:
+      - "Sign in to confirm you're not a bot"
+      - "HTTP Error 429"
+      - "blocked" / "forbidden"
+    When detected, the test should skip (not fail) because rate-limiting is
+    an environmental issue, not a code issue.
+    """
+    blob = " ".join(log_messages).lower()
+    return any(
+        marker in blob
+        for marker in ("sign in to confirm", "not a bot", "http error 429", "forbidden")
+    )
+
+
 class TestYouTubeEndToEnd:
     """Smoke tests for the URL → clips path with REAL YouTube calls."""
 
@@ -56,7 +74,10 @@ class TestYouTubeEndToEnd:
 
         # Should have segments (it's a 19s video with auto-captions)
         assert result is not None
-        assert result.get("segments"), f"No segments returned. Log: {log_messages}"
+        if not result.get("segments"):
+            if _is_youtube_rate_limited(log_messages):
+                pytest.skip(f"YouTube rate-limited this IP — {log_messages[-1][:100]}")
+            assert False, f"No segments returned. Log: {log_messages}"
         assert result["language"] == "en"
         # Source must be a yt-dlp caption source, NOT whisper
         assert result["source"] in ("ytdlp_vtt", "ytdlp_srt"), \
@@ -84,6 +105,7 @@ class TestYouTubeEndToEnd:
         import tempfile, os
 
         events = []
+        log_messages = []
         with tempfile.TemporaryDirectory() as tmp:
             # Stub heavy ops (face, render) and surgical download
             def stub_render(*a, **kw):
@@ -109,10 +131,13 @@ class TestYouTubeEndToEnd:
                 tr = fetch_transcript(
                     "https://www.youtube.com/watch?v=jNQXAC9IVRw",
                     task_id,
-                    log=lambda m: None,
+                    log=lambda m: log_messages.append(m),
                 )
                 precomputed = tr if tr and tr.get("segments") else None
-                assert precomputed, "Could not fetch real captions for test"
+                if not precomputed:
+                    if _is_youtube_rate_limited(log_messages):
+                        pytest.skip("YouTube rate-limited this IP — skipping orchestrator E2E")
+                    assert precomputed, "Could not fetch real captions for test"
 
                 # Build a fake segments list (since we're skipping stage 4)
                 # Each segment needs start, end, hook_score for the taste stage
