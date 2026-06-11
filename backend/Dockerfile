@@ -27,6 +27,10 @@ WORKDIR /app
 # packages need to build (e.g. asyncpg, psycopg2-binary, librosa, ctranslate2).
 # nodejs is the JS runtime yt-dlp needs to solve YouTube's 2025+ JS
 # challenges (otherwise "Sign in to confirm" even with a valid PO token).
+# NOTE: yt-dlp 2026+ ships an "EJS" external-JS system that only
+# supports Deno by default. Node 20 is detected as "unsupported" — so
+# we install Deno as the primary JS runtime and keep nodejs as a
+# fallback for non-yt-dlp tooling.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -34,6 +38,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# Deno — yt-dlp 2025+ EJS primary runtime. Installed to /usr/local/bin
+# so it's in PATH for the non-root `relativ` user.
+RUN curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh \
+    && chmod 755 /usr/local/bin/deno \
+    && deno --version
 
 # Create a non-root user for runtime. The image is built as root (needed
 # for apt-get + pip install), then we drop to `relativ` for the app.
