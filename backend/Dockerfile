@@ -48,6 +48,13 @@ RUN pip install --no-cache-dir \
 # Copy application code (owned by relativ so it can read/write at runtime)
 COPY --chown=relativ:relativ . .
 
+# YouTube anti-bot infrastructure: bgutil-ytdlp-pot-provider
+# The pip plugin (auto-discovered by yt-dlp) calls a local HTTP server
+# on :4416 for per-video PO tokens, bypassing YouTube's 2025+ bot
+# checks. We start the server as a sidecar via docker-compose.
+# See https://github.com/Brainicism/bgutil-ytdlp-pot-provider
+RUN pip install --no-cache-dir bgutil-ytdlp-pot-provider
+
 # Expose FastAPI's internal port
 EXPOSE 9000
 
