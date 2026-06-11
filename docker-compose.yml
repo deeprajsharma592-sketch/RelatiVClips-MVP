@@ -27,16 +27,36 @@ services:
     ports:
       - "9000:9000"
     environment:
-      - DATABASE_URL=postgresql://relativ_admin:relativ_secure_pass@db:5432/relativ_db
+      - DATABASE_URL=postgresql://relativ_admin:***@db:5432/relativ_db
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - BGUTIL_POT_BASE_URL=http://bgutil:4416
+      - YT_PROXY=${YT_PROXY:-}
     depends_on:
       - db
+      - bgutil
     volumes:
       - ./outputs:/app/outputs
       - ./temp:/app/temp
     networks:
       - relativ_mesh
     restart: unless-stopped
+
+  # YouTube PO-token provider. Tiny HTTP server on :4416 that
+  # yt-dlp's bgutil-ytdlp-pot-provider plugin calls per video to
+  # bypass the 2025+ "Sign in to confirm" anti-bot wall.
+  bgutil:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    init: true
+    ports:
+      - "4416:4416"
+    networks:
+      - relativ_mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4416/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Core Database Engine
   db:
