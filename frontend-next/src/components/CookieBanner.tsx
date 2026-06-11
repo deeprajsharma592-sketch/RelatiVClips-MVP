@@ -29,6 +29,7 @@ export default function CookieBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           className="fixed bottom-0 left-0 right-0 z-50 p-4"
+          suppressHydrationWarning
         >
           <div className="max-w-7xl mx-auto bg-[#0A0A0A] border border-border rounded-[4px] p-4 flex items-center justify-between gap-4 shadow-2xl">
             <p className="text-sm text-text-muted font-sans flex-1">
