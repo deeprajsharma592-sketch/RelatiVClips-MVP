@@ -210,6 +210,20 @@ curl -X POST https://api.relativ.app/api/v1/clip/from-url \
 # - Download the rendered clip from outputs/
 ```
 
+### Automated verification
+
+`scripts/verify-deploy.sh` runs the full end-to-end check suite
+(11 checks: backend health + OpenAPI, bgutil reachability, the new
+intake endpoints, frontend routes, CORS preflight). Run it after
+every deploy:
+
+```bash
+./scripts/verify-deploy.sh                                    # localhost
+./scripts/verify-deploy.sh https://api.relativ.app https://relativ.app   # prod
+```
+
+Exit 0 = all green, exit 1 = investigate the failing check.
+
 ---
 
 ## 7. Post-deploy monitoring
