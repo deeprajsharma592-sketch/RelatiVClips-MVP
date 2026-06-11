@@ -1,11 +1,23 @@
 import os
 import subprocess
+import threading
 from pathlib import Path
 from typing import Optional
 from ..utils.config import (
     TEMP_DIR, YTDLP_FORMAT, FFMPEG_PATH, FFPROBE_PATH, YTDLP_PATH,
     BGUTIL_POT_BASE_URL, YT_PROXY,
 )
+
+# Per-host concurrency cap for YouTube fetches. YouTube's anti-bot layer
+# flags IPs that open multiple connections in flight from the same /24.
+# A threading.Lock serializes all yt-dlp calls (including bgutil PO token
+# negotiation, audio download, and surgical segment download) so we
+# never have more than one in-flight YouTube request at a time per process.
+#
+# This is a process-local lock; with multiple uvicorn workers / gunicorn
+# instances, each gets its own lock. To go cross-process, swap for
+# `multiprocessing.Lock` keyed on a Redis/Postgres advisory lock.
+_yt_fetch_lock = threading.Lock()
 
 
 def extract_video_id(url: str) -> str:
@@ -59,6 +71,19 @@ def download_video(url: str, task_id: str, progress_callback: Optional[callable]
     if progress_callback:
         progress_callback(f"Starting download of video {video_id}...")
 
+    # Acquire the YouTube fetch lock — see module docstring.
+    # serializes all in-flight yt-dlp / bgutil calls per process so
+    # YouTube never sees us open 2+ connections from the same IP at once.
+    with _yt_fetch_lock:
+        return _download_video_locked(
+            url=url, task_id=task_id, video_id=video_id,
+            video_path=video_path, audio_path=audio_path,
+            progress_callback=progress_callback,
+        )
+
+
+def _download_video_locked(url, task_id, video_id, video_path, audio_path, progress_callback):
+    """Inner download — caller must hold `_yt_fetch_lock`."""
     ytdlp_cmd = [
         YTDLP_PATH,
         "-f", "best[height<=480]/best",
@@ -297,7 +322,17 @@ def download_audio_only(url: str, task_id: str, progress_callback: Optional[call
     
     if progress_callback:
         progress_callback(f"Downloading audio stream for {video_id}...")
-    
+
+    with _yt_fetch_lock:
+        return _download_audio_only_locked(
+            url=url, task_id=task_id, video_id=video_id,
+            audio_path=audio_path, max_size_mb=max_size_mb,
+            progress_callback=progress_callback,
+        )
+
+
+def _download_audio_only_locked(url, task_id, video_id, audio_path, max_size_mb, progress_callback):
+    """Inner audio-only download — caller must hold `_yt_fetch_lock`."""
     ytdlp_cmd = [
         YTDLP_PATH,
         "-f", "bestaudio/best",
@@ -308,8 +343,17 @@ def download_audio_only(url: str, task_id: str, progress_callback: Optional[call
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        url
+        # bgutil PO-token + JS runtime: same anti-bot stack as download_video.
+        # Without these, audio-only fetches get the "Sign in to confirm" wall
+        # on flagged cloud IPs even though we already have the video file.
+        "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
+        "--js-runtimes", "node",
+        "--sleep-interval", "5",
+        "--max-sleep-interval", "15",
     ]
+    if YT_PROXY:
+        ytdlp_cmd += ["--proxy", YT_PROXY]
+    ytdlp_cmd += [url]
     
     try:
         result = subprocess.run(
@@ -380,7 +424,22 @@ def surgical_segment_download(url: str, start_time: float, end_time: float, task
     
     if progress_callback:
         progress_callback(f"Downloading segment {segment_num}: {start_str}s-{end_str}s...")
-    
+
+    with _yt_fetch_lock:
+        return _surgical_segment_download_locked(
+            url=url, task_id=task_id, video_id=video_id,
+            segment_num=segment_num, start_time=start_time, end_time=end_time,
+            video_path=video_path, progress_callback=progress_callback,
+        )
+
+
+def _surgical_segment_download_locked(
+    url, task_id, video_id, segment_num, start_time, end_time, video_path, progress_callback
+):
+    """Inner surgical download — caller must hold `_yt_fetch_lock`."""
+    start_str = str(start_time)
+    end_str = str(end_time)
+
     ytdlp_cmd = [
         YTDLP_PATH,
         "--download-sections", f"*{start_str}-{end_str}",
@@ -393,6 +452,8 @@ def surgical_segment_download(url: str, start_time: float, end_time: float, task
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
         "--js-runtimes", "node",
+        "--sleep-interval", "3",
+        "--max-sleep-interval", "10",
     ]
     if YT_PROXY:
         ytdlp_cmd += ["--proxy", YT_PROXY]
