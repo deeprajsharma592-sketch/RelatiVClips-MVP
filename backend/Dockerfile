@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     nodejs \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Deno — yt-dlp 2025+ EJS primary runtime. Installed to /usr/local/bin
