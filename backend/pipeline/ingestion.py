@@ -2,7 +2,10 @@ import os
 import subprocess
 from pathlib import Path
 from typing import Optional
-from ..utils.config import TEMP_DIR, YTDLP_FORMAT, FFMPEG_PATH, FFPROBE_PATH, YTDLP_PATH
+from ..utils.config import (
+    TEMP_DIR, YTDLP_FORMAT, FFMPEG_PATH, FFPROBE_PATH, YTDLP_PATH,
+    BGUTIL_POT_BASE_URL, YT_PROXY,
+)
 
 
 def extract_video_id(url: str) -> str:
@@ -67,13 +70,24 @@ def download_video(url: str, task_id: str, progress_callback: Optional[callable]
         "--postprocessor-args", f"audio: -ar {16000} -ac 1",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-        "--extractor-args", "youtube:player_client=web,default_client=web",
+        # PO-token provider: tells yt-dlp to fetch a per-video token from the
+        # local bgutil container. Bypasses the 2025+ "Sign in to confirm"
+        # anti-bot wall that the old static `player_client=web` could not.
+        "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
+        # JS runtime for YouTube's 2025+ signature/challenge solving.
+        # Without this yt-dlp falls back to deprecated extraction and
+        # the PO token alone isn't enough.
+        "--js-runtimes", "node",
         "--no-warnings",
         "--sleep-interval", "5",
         "--max-sleep-interval", "15",
         "--wait-for-video", "10",
-        url
     ]
+    # Cloud-IP reputation workaround: optional SOCKS5 tunnel to a residential
+    # IP. Only appended when YT_PROXY is set (default empty, no proxy).
+    if YT_PROXY:
+        ytdlp_cmd += ["--proxy", YT_PROXY]
+    ytdlp_cmd += [url]
 
     try:
         result = subprocess.run(
@@ -377,8 +391,12 @@ def surgical_segment_download(url: str, start_time: float, end_time: float, task
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        url
+        "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
+        "--js-runtimes", "node",
     ]
+    if YT_PROXY:
+        ytdlp_cmd += ["--proxy", YT_PROXY]
+    ytdlp_cmd += [url]
     
     try:
         result = subprocess.run(

@@ -77,6 +77,17 @@ CLEANUP_INTERVAL_HOURS = 1
 
 YTDLP_FORMAT = "best[height>=720]/best"
 
+# ─── YouTube anti-bot infrastructure (bgutil PO-token provider) ───
+# Static client emulation no longer bypasses YouTube's bot checks (as of 2025+).
+# The bgutil container runs a local PO-token provider on :4416; yt-dlp's
+# `bgutil-ytdlp-pot-provider` plugin (pip-installed) calls it per video to
+# generate a fresh token that YouTube treats as a real web/mobile-web client.
+# See https://github.com/Brainicism/bgutil-ytdlp-pot-provider
+BGUTIL_POT_BASE_URL = os.getenv("BGUTIL_POT_BASE_URL", "http://127.0.0.1:4416")
+# Optional SOCKS5 proxy for cloud-IP reputation workarounds. Empty by default
+# (no proxy). Set to e.g. "socks5://user:pass@home-ip:1080" at deploy time.
+YT_PROXY = os.getenv("YT_PROXY", "")
+
 FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
 # Pin to venv-installed yt-dlp (2026+ has --js-runtimes, --remote-components
