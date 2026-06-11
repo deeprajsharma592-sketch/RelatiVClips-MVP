@@ -59,6 +59,6 @@ docker compose up --build
 ## Tech Stack
 
 - **Frontend:** Next.js 16, React 19, Tailwind 4, Framer Motion 12
-- **Backend:** Python 3.14, FastAPI, SQLAlchemy 2.0 (async), PostgreSQL
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0 (async), PostgreSQL
 - **AI/ML:** Librosa, faster-whisper, Ultralytics YOLOv10, Claude API
 - **Infra:** Docker Compose, Caddy reverse proxy
