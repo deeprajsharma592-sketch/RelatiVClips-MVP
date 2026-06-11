@@ -2,43 +2,48 @@
 RelatiV Backend - Main Entry Point
 Supports dual pipelines: Local Video and YouTube Surgical Funnel
 """
+import asyncio
 import sys
-import os
-from pathlib import Path
+import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Optional
 
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
+# Ensure project root is on path so `from backend.X import Y` works
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-
-from .models import StatusResponse, TaskQueueInfo, ContactMessage
-from .utils.task_store import task_store, set_event_loop
-from .utils.config import OUTPUTS_DIR
-
-# Import routers
+from .models import ContactMessage, StatusResponse, TaskQueueInfo, TranscriptResponse
+from .pipeline.transcript_fetcher import fetch_transcript
 from .routers import local_router, youtube_router
+from .utils.config import OUTPUTS_DIR, TEMP_DIR
+from .utils.task_store import set_event_loop, task_store
+
+# Upload directory — sibling to TEMP_DIR, holds raw uploads before pipeline run
+UPLOADS_DIR = TEMP_DIR / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import asyncio
-    from .pipeline.cleanup import start_cleanup_scheduler
+    # Lazy imports: heavy modules (DB driver, scheduler). A missing dep should
+    # log and degrade gracefully, not kill the app at module load.
+    from .database.session import close_db, init_db
+    from .pipeline.cleanup import start_cleanup_scheduler, stop_cleanup_scheduler
 
-    # Initialize database tables (non-fatal if DB unavailable)
-    from .database.session import init_db, close_db
     try:
         await init_db()
         print("[DB] Database tables initialized")
-        # Store event loop for sync-to-async DB bridge
+        # Store event loop for sync-to-async DB bridge from worker threads
         set_event_loop(asyncio.get_event_loop())
     except Exception as e:
         print(f"[DB] Database unavailable, running in memory-only mode: {e}")
 
     start_cleanup_scheduler()
     yield
-    from .pipeline.cleanup import stop_cleanup_scheduler
     stop_cleanup_scheduler()
     set_event_loop(None)
     try:
@@ -51,7 +56,7 @@ app = FastAPI(
     title="RelatiV API",
     description="Privacy-first video clipping SaaS for RTX 5050",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -78,20 +83,35 @@ async def contact(msg: ContactMessage):
     return {"status": "sent"}
 
 
+@app.get("/transcript", response_model=TranscriptResponse)
+async def get_transcript(url: str):
+    task_id = f"api_{uuid.uuid4().hex[:8]}"
+    result = fetch_transcript(url, task_id, log=lambda m: None)
+
+    if not result or not result.get("segments"):
+        return TranscriptResponse(segments=[], error="No transcript could be fetched")
+
+    return TranscriptResponse(
+        segments=result["segments"],
+        language=result.get("language", "en"),
+        source=result.get("source"),
+    )
+
+
 @app.get("/status/{task_id}", response_model=StatusResponse)
 async def get_status(task_id: str):
     status = task_store.get_task_status(task_id)
     if not status:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Task not found")
     return StatusResponse(**status)
 
 
 @app.get("/logs/{task_id}")
 async def get_logs(task_id: str):
+    # Lazy import: these are router-internal dicts, avoid loading at startup
     from .routers.local_router import progress_logs as local_logs
     from .routers.youtube_router import progress_logs as youtube_logs
-    
+
     combined = local_logs.get(task_id, []) + youtube_logs.get(task_id, [])
     return {"logs": combined, "count": len(combined)}
 
@@ -107,17 +127,72 @@ async def download_clip(clip_id: str):
         return FileResponse(
             path=file_path,
             filename=file_path.name,
-            media_type="video/mp4"
+            media_type="video/mp4",
         )
-    
-    from fastapi import HTTPException
     raise HTTPException(status_code=404, detail="Clip not found")
 
 
 @app.get("/vram")
 async def get_vram_status():
+    # Lazy import: VRAM probe requires CUDA libs; not needed at startup
     from .utils.vram_manager import get_vram_usage
     return get_vram_usage()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# File upload (powers /process/local — frontend drops a file, gets a path)
+# ─────────────────────────────────────────────────────────────────────────────
+
+ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv", ".wmv"}
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2GB hard cap
+
+
+@app.post("/upload")
+async def upload_video(
+    file: UploadFile = File(...),
+    task_id: Optional[str] = None,
+):
+    """Accept a multipart video upload, save to UPLOADS_DIR, return the saved path.
+
+    The frontend can then POST {file_path: "..."} to /process/local to run the
+    9-stage pipeline. (Two-step by design — keeps the upload separate from
+    pipeline kickoff so the UI can show upload progress independently.)
+    """
+    if hasattr(file, "filename"):
+        filename = file.filename or "video.mp4"
+        ext = Path(filename).suffix.lower()
+        if ext not in ALLOWED_VIDEO_EXTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported video format: {ext}. Allowed: {sorted(ALLOWED_VIDEO_EXTS)}",
+            )
+        save_id = task_id or f"upload_{uuid.uuid4().hex[:8]}"
+        save_path = UPLOADS_DIR / f"{save_id}{ext}"
+        bytes_written = 0
+        with open(save_path, "wb") as out:
+            while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                bytes_written += len(chunk)
+                if bytes_written > MAX_UPLOAD_BYTES:
+                    out.close()
+                    save_path.unlink(missing_ok=True)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+                    )
+                out.write(chunk)
+    else:
+        # Raw bytes fallback (clients that POST raw body without multipart)
+        ext = ".mp4"
+        save_id = task_id or f"upload_{uuid.uuid4().hex[:8]}"
+        save_path = UPLOADS_DIR / f"{save_id}{ext}"
+        data = await file.read() if hasattr(file, "read") else file
+        save_path.write_bytes(data)
+
+    return {
+        "file_path": str(save_path),
+        "task_id": save_id,
+        "size_mb": round(save_path.stat().st_size / (1024 * 1024), 2),
+    }
 
 
 if __name__ == "__main__":

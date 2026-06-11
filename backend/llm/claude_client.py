@@ -168,7 +168,7 @@ def _parse_claude_response(text: str) -> list:
 def _fallback_selection(transcript: dict, audio_analysis: dict) -> dict:
     clips = []
     peaks = audio_analysis.get("peaks", [])
-    video_duration = audio_analysis.get("_video_duration", 120)
+    video_duration = audio_analysis.get("duration_s", 120)
 
     if peaks:
         seen_starts = []

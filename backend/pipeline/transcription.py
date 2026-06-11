@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, List
-from faster_whisper import WhisperModel
+from typing import Dict, List, Optional
 from ..utils.config import (
     WHISPER_MODEL,
     WHISPER_COMPUTE_TYPE,
@@ -18,21 +17,10 @@ def transcribe_audio(
     """
     Transcribe audio to JSON with word-level timestamps.
 
-    WHY faster-whisper INSTEAD OF openai-whisper:
-    - openai-whisper uses PyTorch default FP32 = ~5.5GB VRAM
-    - faster-whisper uses CTranslate2 with int8_float16 = ~3GB VRAM
-    - 40% memory reduction with similar accuracy
-    - 2-3x faster inference speed
-
-    WHY word-level timestamps:
-    - Gemma needs precise clip boundaries (<100ms accuracy)
-    - Word-level enables "karaoke" highlighting in .ass subtitles
-    - Allows sharp cuts without "frozen frame" artifacts
-
-    WHY int8_float16:
-    - INT8 weights = 1 byte per parameter
-    - FP16 activations = 2 bytes when needed for precision
-    - Hybrid approach = best accuracy/memory tradeoff
+    WHY faster-whisper:
+    - CTranslate2 int8 quantization runs efficiently on CPU
+    - Word-level timestamps enable precise clip boundaries
+    - VAD filter silences improve segmentation accuracy
 
     Args:
         audio_path: Path to 16kHz WAV file
@@ -45,8 +33,11 @@ def transcribe_audio(
     if progress_callback:
         progress_callback("Loading faster-whisper model...")
 
-    # Try GPU first; CPU is too slow so fail fast if GPU unavailable
+    from faster_whisper import WhisperModel
+
     vram = get_vram_usage()
+    model = None
+
     if vram["cuda_available"]:
         try:
             model = WhisperModel(WHISPER_MODEL, device="cuda", compute_type=WHISPER_COMPUTE_TYPE)
@@ -54,20 +45,15 @@ def transcribe_audio(
                 progress_callback(f"Using GPU for Whisper (VRAM: {vram['allocated_mb']}MB)")
         except Exception as e:
             if progress_callback:
-                progress_callback(f"GPU load failed ({e}), not falling back to CPU (too slow)")
-            raise RuntimeError(f"GPU unavailable for Whisper: {e}")
-    else:
+                progress_callback(f"GPU load failed ({e}), falling back to CPU")
+
+    if model is None:
         if progress_callback:
-            progress_callback("No CUDA GPU available, skipping Whisper (CPU too slow)")
-        raise RuntimeError("No GPU for Whisper and CPU is too slow")
+            progress_callback("Loading Whisper on CPU (int8)...")
+        model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
     if progress_callback:
         progress_callback("Model loaded. Starting transcription...")
-        vram = get_vram_usage()
-        progress_callback(f"VRAM after load: {vram['allocated_mb']}MB")
-
-    if progress_callback:
-        progress_callback("Transcribing audio (this may take several minutes)...")
 
     segments, info = model.transcribe(
         audio_path,
@@ -112,9 +98,10 @@ def transcribe_audio(
 
     del model
 
-    clear_result = clear_gpu()
-    if progress_callback:
-        progress_callback(f"VRAM cleared. Released: {clear_result.get('released_mb', 0):.1f}MB")
+    if vram["cuda_available"]:
+        clear_result = clear_gpu()
+        if progress_callback:
+            progress_callback(f"VRAM cleared. Released: {clear_result.get('released_mb', 0):.1f}MB")
 
     return result
 

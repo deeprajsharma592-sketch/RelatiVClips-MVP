@@ -1,19 +1,7 @@
-from .transcription import transcribe_audio, load_transcript
-from .audio_analysis import analyze_audio_peaks, estimate_speech_segments
-from .clip_selector import select_clips_with_claude_wrapper as select_clips_with_claude
-from .face_detection import detect_face_adaptive, get_batch_face_data
-from .snapshot_capturer import (
-    extract_snapshots_at_timestamps,
-    extract_snapshots_for_clip,
-    batch_extract_snapshots_for_clips,
-    select_best_snapshot,
-    create_thumbnail,
-    cleanup_snapshots
-)
-
 __all__ = [
     "transcribe_audio",
     "load_transcript",
+    "fetch_transcript",
     "analyze_audio_peaks",
     "estimate_speech_segments",
     "select_clips_with_claude",
@@ -25,4 +13,11 @@ __all__ = [
     "select_best_snapshot",
     "create_thumbnail",
     "cleanup_snapshots",
+    # New pipeline (Day 1+): staged hooks + surgical download
+    "detect_hooks",
+    "surgical_download_youtube",
+    "surgical_extract_local",
+    "cleanup_segments",
+    # Orchestrator (Day 1+): runs all 9 stages
+    "run_new_pipeline",
 ]
