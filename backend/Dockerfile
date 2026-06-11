@@ -24,12 +24,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # System deps for audio/video processing + the C extensions some pip
-# packages need to build (e.g. asyncpg, psycopg2-binary, librosa, ctranslate2)
+# packages need to build (e.g. asyncpg, psycopg2-binary, librosa, ctranslate2).
+# nodejs is the JS runtime yt-dlp needs to solve YouTube's 2025+ JS
+# challenges (otherwise "Sign in to confirm" even with a valid PO token).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     ffmpeg \
     curl \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for runtime. The image is built as root (needed
