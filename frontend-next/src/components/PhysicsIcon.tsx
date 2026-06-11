@@ -17,7 +17,7 @@ export default function PhysicsIcon({
   className = "",
   color = "secondary",
 }: PhysicsIconProps) {
-  const accentColor = color === "secondary" ? "#FFD166" : "#FF6B35";
+  const accentColor = color === "secondary" ? "#FFD166" : "#D946EF";
 
   return (
     <motion.div

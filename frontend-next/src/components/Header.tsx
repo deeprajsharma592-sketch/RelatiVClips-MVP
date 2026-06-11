@@ -103,7 +103,7 @@ export default function Header() {
           >
             <motion.span
               className="block w-4 h-px"
-              style={{ backgroundColor: menuOpen ? "#FF6B35" : "#A1A1A1" }}
+              style={{ backgroundColor: menuOpen ? "#D946EF" : "#A1A1A1" }}
               animate={menuOpen ? { rotate: 45, y: 2.5 } : { rotate: 0, y: 0 }}
             />
             <motion.span
@@ -113,7 +113,7 @@ export default function Header() {
             />
             <motion.span
               className="block w-4 h-px"
-              style={{ backgroundColor: menuOpen ? "#FF6B35" : "#A1A1A1" }}
+              style={{ backgroundColor: menuOpen ? "#D946EF" : "#A1A1A1" }}
               animate={menuOpen ? { rotate: -45, y: -2.5 } : { rotate: 0, y: 0 }}
             />
           </button>

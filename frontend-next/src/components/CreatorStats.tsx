@@ -43,7 +43,7 @@ const HUE_TEXT: Record<Stat["hue"], string> = {
 
 // HUE_GLOW reserved for the next design pass — surfaces that pulse on stat hover
 // const HUE_GLOW: Record<Stat["hue"], string> = {
-//   coral: "bg-[color:var(--color-glow-coral)]",
+//   coral: "bg-[color:var(--color-glow-primary)]",
 //   gold: "bg-[color:var(--color-glow-gold)]",
 //   violet: "bg-[color:var(--color-glow-violet)]",
 //   teal: "bg-[color:var(--color-glow-teal)]",

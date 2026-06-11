@@ -9,7 +9,7 @@ import { submitYouTubeUrl, pollUntilComplete } from "@/lib/api";
 import type { ProcessState, Clip, StatusResponse } from "@/types";
 import LiveTicker from "@/components/LiveTicker";
 import CreatorStats from "@/components/CreatorStats";
-import ClipperSection from "@/components/ClipperSection";
+import ClipperSectionToggle from "@/components/ClipperSectionToggle";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA
@@ -96,24 +96,6 @@ const VERTICALS = [
   { tag: "04", title: "Live E-commerce", body: "Pin the moment of the product reveal, the demo, the discount drop. Conversion-ready reels on the fly." },
   { tag: "05", title: "Music & Artists", body: "Studio sessions, interviews, behind-the-scenes — distilled to the moments that drive catalog streams." },
   { tag: "06", title: "Brand & D2C", body: "Turn one brand film into 200 paid-media variations. Hook analysis built for premium organic reach." },
-];
-
-const TESTIMONIALS = [
-  {
-    quote: "Used to take us 3 days to clip a single podcast. Now I get 10 clips in 6 minutes. We publish 4x more.",
-    name: "Lewis Howes",
-    role: "The School of Greatness · 4.5M subs",
-  },
-  {
-    quote: "The only AI tool I use that actually delivers. It finds moments I'd have missed — and the captions land.",
-    name: "Jason Lemkin",
-    role: "SaaStr · 54K subs",
-  },
-  {
-    quote: "Our YouTube Shorts went from 60-200 views to 500-1K per clip in the first week. Same upload pipeline.",
-    name: "BurstonWithComedy",
-    role: "Comedy channel · 1.2M subs",
-  },
 ];
 
 const PRICING = [
@@ -756,48 +738,6 @@ function PricingSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TESTIMONIALS
-// ─────────────────────────────────────────────────────────────────────────────
-
-function TestimonialsSection() {
-  return (
-    <section className="relative py-32">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="mb-16 max-w-3xl">
-          <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05] text-white">
-            What creators say.
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <motion.figure
-              key={t.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 hover:border-accent/30 transition-colors"
-            >
-              <svg className="w-8 h-8 text-accent mb-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 7H5a2 2 0 00-2 2v4a2 2 0 002 2h2v2a2 2 0 002 2V9a2 2 0 00-2-2zm10 0h-4a2 2 0 00-2 2v4a2 2 0 002 2h2v2a2 2 0 002 2V9a2 2 0 00-2-2z" />
-              </svg>
-              <blockquote className="text-white/90 leading-relaxed mb-6">
-                &quot;{t.quote}&quot;
-              </blockquote>
-              <figcaption>
-                <p className="text-sm font-semibold text-white">{t.name}</p>
-                <p className="text-xs text-text-muted mt-1">{t.role}</p>
-              </figcaption>
-            </motion.figure>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // FINAL CTA
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -863,8 +803,7 @@ export default function Home() {
       <EngineSection />
       <VerticalsSection />
       <CreatorStats />
-      <ClipperSection />
-      <TestimonialsSection />
+      <ClipperSectionToggle />
       <PricingSection />
       <FinalCta />
     </div>

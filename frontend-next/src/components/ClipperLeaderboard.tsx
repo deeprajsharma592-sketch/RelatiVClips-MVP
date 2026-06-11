@@ -158,7 +158,7 @@ export default function ClipperLeaderboard() {
           </div>
 
           {/* Hover glow */}
-          <div className="pointer-events-none absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-[color:var(--color-glow-coral)] opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500" />
+          <div className="pointer-events-none absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-[color:var(--color-glow-primary)] opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500" />
         </motion.div>
       ))}
     </div>

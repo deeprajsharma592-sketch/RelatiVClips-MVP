@@ -61,7 +61,7 @@ const HUE_BADGE_BG: Record<AdSlot["badgeHue"], string> = {
 
 const CTA_CLASSES: Record<AdSlot["ctaStyle"], string> = {
   primary:
-    "bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] hover:bg-[color:var(--color-accent-hover)] shadow-[0_0_24px_var(--color-glow-coral)]",
+    "bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] hover:bg-[color:var(--color-accent-hover)] shadow-[0_0_24px_var(--color-glow-primary)]",
   secondary:
     "bg-[color:var(--color-surface-2)] text-text-primary border border-[color:var(--color-border-strong)] hover:border-[color:var(--color-accent)]",
   ghost:
@@ -73,7 +73,7 @@ export default function ClipperSection() {
     <section className="relative w-full py-24 px-6 bg-[color:var(--color-bg-base)] overflow-hidden">
       {/* Background glow */}
       <div className="pointer-events-none absolute -top-40 left-1/4 h-[500px] w-[500px] rounded-full bg-[color:var(--color-glow-violet)] opacity-30 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-40 right-1/4 h-[500px] w-[500px] rounded-full bg-[color:var(--color-glow-coral)] opacity-25 blur-[120px]" />
+      <div className="pointer-events-none absolute -bottom-40 right-1/4 h-[500px] w-[500px] rounded-full bg-[color:var(--color-glow-primary)] opacity-25 blur-[120px]" />
 
       <div className="relative max-w-7xl mx-auto">
         {/* Header */}
@@ -144,7 +144,7 @@ export default function ClipperSection() {
               </div>
 
               {/* Hover glow */}
-              <div className="pointer-events-none absolute -top-20 -right-20 h-40 w-40 rounded-full bg-[color:var(--color-glow-coral)] opacity-0 group-hover:opacity-30 blur-3xl transition-opacity duration-500" />
+              <div className="pointer-events-none absolute -top-20 -right-20 h-40 w-40 rounded-full bg-[color:var(--color-glow-primary)] opacity-0 group-hover:opacity-30 blur-3xl transition-opacity duration-500" />
             </motion.div>
           ))}
         </div>

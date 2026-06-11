@@ -4,15 +4,15 @@ import { useEffect, useMemo, useRef } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 const RINGS = [
-  { radius: 120, speed: 12, stroke: "#FF6B35", opacity: 0.25, dash: "4 10" },
+  { radius: 120, speed: 12, stroke: "#D946EF", opacity: 0.25, dash: "4 10" },
   { radius: 200, speed: 18, stroke: "#FFD166", opacity: 0.15, dash: "2 14" },
-  { radius: 280, speed: 25, stroke: "#FF6B35", opacity: 0.08, dash: "1 18" },
+  { radius: 280, speed: 25, stroke: "#D946EF", opacity: 0.08, dash: "1 18" },
 ];
 
 const ORBIT_NODES = [
-  { radius: 120, count: 6, speed: 12, size: 3, color: "#FF6B35" },
+  { radius: 120, count: 6, speed: 12, size: 3, color: "#D946EF" },
   { radius: 200, count: 8, speed: 18, size: 2.5, color: "#FFD166" },
-  { radius: 280, count: 10, speed: 25, size: 2, color: "#FF6B35" },
+  { radius: 280, count: 10, speed: 25, size: 2, color: "#D946EF" },
 ];
 
 // Deterministic pseudo-random — same seed produces the same sequence.
@@ -50,7 +50,7 @@ export default function HeroBackground() {
         size: 0.8 + rand() * 1.2,
         dur: 3 + rand() * 4,
         begin: rand() * 3,
-        color: i % 3 === 0 ? "#FF6B35" : "#FFD166",
+        color: i % 3 === 0 ? "#D946EF" : "#FFD166",
         opacity: 0.08 + rand() * 0.12,
       };
     });
@@ -107,9 +107,9 @@ export default function HeroBackground() {
             </feMerge>
           </filter>
           <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.5" />
+            <stop offset="0%" stopColor="#D946EF" stopOpacity="0.5" />
             <stop offset="50%" stopColor="#FFD166" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#FF6B35" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="#D946EF" stopOpacity="0.1" />
           </linearGradient>
         </defs>
 
@@ -125,7 +125,7 @@ export default function HeroBackground() {
                 y1={cy + yOff}
                 x2={cx + spread}
                 y2={cy + yOff}
-                stroke="#FF6B35"
+                stroke="#D946EF"
                 strokeWidth={0.5}
               />
             );
@@ -141,7 +141,7 @@ export default function HeroBackground() {
                 y1={cy + 80}
                 x2={cx + len * Math.cos(rad)}
                 y2={cy + 80 + len * Math.sin(rad)}
-                stroke="#FF6B35"
+                stroke="#D946EF"
                 strokeWidth={0.5}
               />
             );
@@ -239,13 +239,13 @@ export default function HeroBackground() {
             <polygon
               points={`${cx},${cy - 50} ${cx + 30},${cy} ${cx},${cy + 50} ${cx - 30},${cy}`}
               fill="none"
-              stroke="#FF6B35"
+              stroke="#D946EF"
               strokeWidth={1.2}
               opacity={0.25}
             />
             <polygon
               points={`${cx},${cy - 25} ${cx + 15},${cy} ${cx},${cy + 25} ${cx - 15},${cy}`}
-              fill="#FF6B35"
+              fill="#D946EF"
               opacity={0.12}
             />
           </g>

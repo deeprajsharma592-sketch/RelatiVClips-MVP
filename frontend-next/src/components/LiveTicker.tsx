@@ -37,7 +37,7 @@ const HUE_DOT: Record<ClipEvent["hue"], string> = {
 };
 
 const HUE_GLOW: Record<ClipEvent["hue"], string> = {
-  coral: "shadow-[0_0_12px_var(--color-glow-coral)]",
+  coral: "shadow-[0_0_12px_var(--color-glow-primary)]",
   gold: "shadow-[0_0_12px_var(--color-glow-gold)]",
   violet: "shadow-[0_0_12px_var(--color-glow-violet)]",
   teal: "shadow-[0_0_12px_var(--color-glow-teal)]",
