@@ -342,12 +342,23 @@ def run_new_pipeline(
                 video_meta["duration_s"] = video_duration_s
 
     # Stage 3: Hook detection
+    # Accepts peaks from stage 2 (preferred) OR a precomputed transcript
+    # (the YouTube-captions cost-saver path). When transcript is available,
+    # the hook detector will run a transcript-only scoring pass.
     hook_candidates: List[Dict] = []
+    effective_transcript = precomputed_transcript
     if 3 in run_set:
-        if peaks is None:
-            log.warning("Stage 3 needs peaks from stage 2; skipping")
+        if peaks is None and not effective_transcript:
+            log.warning("Stage 3 needs peaks or precomputed_transcript; skipping")
         else:
-            hook_result = _run_stage_3_hooks(peaks, transcript=None, progress=progress)
+            # If we have peaks from stage 2 but no transcript yet, that's
+            # the local-file path. The stage-5 transcription will supply
+            # the transcript for stage-6's taste select.
+            hook_result = _run_stage_3_hooks(
+                peaks or {"peaks": [], "duration": 0.0},
+                transcript=effective_transcript,
+                progress=progress,
+            )
             hook_candidates = hook_result["candidates"]
             result["hooks"] = hook_candidates
             result["stages_run"].append(3)

@@ -115,7 +115,6 @@ def _valley_lift_score(
     ]
     if not preceding:
         return 0.0
-
     valley_energy = sum(preceding) / len(preceding)
     # The current peak's energy comes from the caller (normalized).
     # We compare normalized current to normalized valley.
@@ -132,6 +131,77 @@ def _current_energy_at(ts: float, peaks_sorted_by_time: List[tuple]) -> float:
         if abs(t - ts) <= 1.0 and e > best:
             best = e
     return best
+
+
+def _hooks_from_transcript_only(
+    segments: List[Dict],
+    top_n: int = 10,
+    min_hook_score: float = 0.0,
+    pad_s: float = 1.0,
+) -> List[Dict]:
+    """Detect hook candidates from transcript alone (no audio peaks available).
+
+    This is the YouTube-with-captions path: stage 2 (energy) is skipped because
+    the YouTube auto-captions already gave us the text. Each transcript segment
+    is scored on lexical signals (questions, surprise words, emphasis). The
+    downstream LLM does the actual narrative selection.
+
+    Args:
+        segments: List of {start, end, text} from a transcript.
+        top_n: Return at most this many candidates.
+        min_hook_score: Drop candidates below this lexical score (0-1).
+        pad_s: Seconds of padding added to each segment's start/end so the
+            surgical download has a small safety margin.
+
+    Returns:
+        List of {start, end, hook_score, components, reason} candidates,
+        sorted by hook_score descending.
+    """
+    if not segments:
+        return []
+
+    candidates = []
+    for seg in segments:
+        try:
+            s = float(seg.get("start", 0))
+            e = float(seg.get("end", 0))
+        except (TypeError, ValueError):
+            continue
+        if e <= s:
+            continue
+        text = (seg.get("text") or "").strip()
+        if not text:
+            continue
+        # Use the segment's midpoint as the "around_ts" for lexical scoring,
+        # so the scorer samples the right window of the transcript.
+        mid = (s + e) / 2.0
+        lex = _lexical_hook_score(segments, around_ts=mid)
+        if lex < min_hook_score:
+            continue
+        candidates.append({
+            "start": round(max(0.0, s - pad_s), 3),
+            "end": round(e + pad_s, 3),
+            "hook_score": round(lex, 3),
+            "components": {
+                "energy": 0.0,         # not available
+                "lexical": round(lex, 3),
+                "valley_lift": 0.0,    # not available
+                "baseline": 0.0,
+            },
+            "reason": f"Transcript-only hook (lex={lex:.2f}): {text[:80]}",
+        })
+
+    # Sort by hook_score desc, dedupe within 4s windows, take top_n
+    seen_starts: List[float] = []
+    deduped: List[Dict] = []
+    for c in sorted(candidates, key=lambda c: c["hook_score"], reverse=True):
+        if any(abs(c["start"] - s) < 4.0 for s in seen_starts):
+            continue
+        seen_starts.append(c["start"])
+        deduped.append(c)
+        if len(deduped) >= top_n:
+            break
+    return deduped
 
 
 def detect_hooks(
@@ -162,6 +232,20 @@ def detect_hooks(
     peaks = audio_peaks.get("peaks", [])
     duration = audio_peaks.get("duration", 0.0)
     segments = (transcript or {}).get("segments", [])
+
+    # Transcript-only fallback: when no audio peaks are available (e.g. the
+    # YouTube-captions cost-saver path that skips stage 2), score hooks
+    # directly from transcript segments. The LLM still does the narrative
+    # pick in stage 6; this just gives it candidates to work with.
+    if not peaks and segments:
+        candidates = _hooks_from_transcript_only(segments, top_n=top_n)
+        if progress_callback:
+            progress_callback(f"Found {len(candidates)} transcript-only hook candidates")
+        return {
+            "candidates": candidates,
+            "source": "transcript",
+            "video_duration": duration,
+        }
 
     # Pre-compute the time-sorted energy curve for valley detection.
     energy_curve = _energy_curve(peaks, duration)

@@ -534,7 +534,12 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
         None,
         lambda: run_new_pipeline(
             source=url,
-            stages=[1, 4, 5, 6, 7, 8, 9],  # skip 2, 3 (no full audio)
+            # Stage 1 (analyze) + Stage 3 (hooks from transcript) + Stage 4
+            # (surgical) + downstream. Stage 2 (energy peaks) is skipped
+            # because we don't have full audio yet — captions came from
+            # YouTube directly. The hook detector falls back to a
+            # transcript-only scoring pass when no peaks are present.
+            stages=[1, 3, 4, 5, 6, 7, 8, 9],
             progress=_bridge,
             task_id=task_id,
             precomputed_transcript=precomputed_transcript,
