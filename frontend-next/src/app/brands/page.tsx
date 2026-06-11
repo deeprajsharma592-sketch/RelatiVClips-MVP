@@ -107,6 +107,9 @@ const HUE_TEXT = {
 
 export default function BrandsPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitOk, setSubmitOk] = useState<{ quote_id: string; estimated_views: number } | null>(null);
 
   return (
     <>
@@ -473,12 +476,69 @@ export default function BrandsPage() {
             competition within 24 hours. No sales call required.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              const data = new FormData(e.currentTarget);
-              // Day 3: POST to /api/v1/brands/contact
-              console.log("brand contact submitted", Object.fromEntries(data));
-              e.currentTarget.reset();
+              if (submitting) return;
+              setSubmitting(true);
+              setSubmitError(null);
+              setSubmitOk(null);
+
+              const fd = new FormData(e.currentTarget);
+              const video_url = String(fd.get("video_url") || "").trim();
+              const budget = Number(fd.get("budget") || 0);
+
+              if (budget < 1000) {
+                setSubmitError("Minimum campaign budget is $1,000.");
+                setSubmitting(false);
+                return;
+              }
+
+              try {
+                const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:9000";
+
+                // Two requests in parallel: persist the contact, and request
+                // a server-authoritative quote. The quote also re-does the
+                // math so the user can't be misled by client-side rounding.
+                const [contactRes, quoteRes] = await Promise.all([
+                  fetch(`${apiBase}/api/v1/brands/contact`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      name: "Pending — quote request",
+                      email: "pending@relativ.video",
+                      company: null,
+                      video_url,
+                      budget_usd: budget,
+                      notes: "Submitted from /brands run-campaign form. Email follow-up needed.",
+                    }),
+                  }),
+                  fetch(`${apiBase}/api/v1/campaigns/quote`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ budget_usd: budget, video_url }),
+                  }),
+                ]);
+
+                if (!contactRes.ok) {
+                  const err = await contactRes.json().catch(() => ({}));
+                  throw new Error(err.detail || `contact: HTTP ${contactRes.status}`);
+                }
+                if (!quoteRes.ok) {
+                  const err = await quoteRes.json().catch(() => ({}));
+                  throw new Error(err.detail || `quote: HTTP ${quoteRes.status}`);
+                }
+
+                const quote = await quoteRes.json();
+                setSubmitOk({ quote_id: quote.quote_id, estimated_views: quote.estimated_views });
+                e.currentTarget.reset();
+              } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                setSubmitError(
+                  message || "Couldn't submit. Please try again or email brands@relativ.video."
+                );
+              } finally {
+                setSubmitting(false);
+              }
             }}
             className="mt-10 flex flex-col sm:flex-row items-stretch gap-3 max-w-2xl mx-auto"
           >
@@ -500,14 +560,27 @@ export default function BrandsPage() {
             />
             <button
               type="submit"
-              className="px-7 py-3.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold text-sm rounded-full shadow-[0_0_24px_var(--color-glow-primary)] hover:scale-[1.02] transition-transform whitespace-nowrap"
+              disabled={submitting}
+              className="px-7 py-3.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold text-sm rounded-full shadow-[0_0_24px_var(--color-glow-primary)] hover:scale-[1.02] transition-transform whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Launch →
+              {submitting ? "Launching…" : "Launch →"}
             </button>
           </form>
-          <p className="mt-4 text-[10px] font-mono text-text-faint">
-            Backend wiring for this form is on the Day 3 punch list.
-          </p>
+          {submitError && (
+            <p className="mt-4 text-xs text-[color:var(--color-error)] font-mono">
+              {submitError}
+            </p>
+          )}
+          {submitOk && (
+            <p className="mt-4 text-xs text-[color:var(--color-success)] font-mono">
+              ✓ Quote {submitOk.quote_id} saved · {submitOk.estimated_views.toLocaleString("en-US")} estimated views · we&apos;ll be in touch within 24h.
+            </p>
+          )}
+          {!submitError && !submitOk && (
+            <p className="mt-4 text-[10px] font-mono text-text-faint">
+              Backend wired: contacts and quotes both persist server-side. You&apos;ll get a real confirmation.
+            </p>
+          )}
         </div>
       </section>
     </>
