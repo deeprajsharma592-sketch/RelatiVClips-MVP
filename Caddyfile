@@ -1,3 +1,5 @@
-:80 {
+# RelatiV API. Caddy auto-issues Let's Encrypt cert for the domain.
+# CORS is handled by FastAPI (see backend/main.py) — Caddy just proxies.
+api.relativ.app, :80 {
     reverse_proxy backend:9000
 }
