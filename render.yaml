@@ -1,0 +1,57 @@
+# Render Blueprint — alternative to Fly.io for the RelatiV backend
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Render is simpler than Fly for a "just give me a VM" deploy. Auto-HTTPS,
+# persistent disk, private networking, and the free tier of Postgres make it
+# the path of least resistance for early users. Fly is the better choice if
+# you need multi-region or want cheaper always-on machines.
+#
+# To deploy:
+#   1. Push this repo to GitHub
+#   2. Connect the repo in Render's dashboard
+#   3. Render reads render.yaml and provisions: web service + Postgres + disk
+#   4. Set ANTHROPIC_API_KEY + RUNPOD_API_KEY as secret env vars in the dashboard
+
+services:
+  - type: web
+    name: relativ-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: starter              # 2 vCPU / 4 GB — bump to standard (4/8) when traffic picks up
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: relativ-postgres
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://relativ.app,https://www.relativ.app,http://localhost:3000
+      - key: WHISPER_BACKEND
+        value: local
+      - key: YOUTUBE_COST_SAVER
+        value: "true"
+      - key: CLAUDE_MODEL
+        value: claude-haiku-4-5
+      - key: CLAUDE_MAX_TOKENS
+        value: "1024"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ANTHROPIC_API_KEY
+        sync: false            # set manually in Render dashboard, never commit
+      - key: RUNPOD_API_KEY
+        sync: false
+      - key: RUNPOD_WHISPER_URL
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    disk:                      # persistent volume for rendered clips
+      name: relativ-outputs
+      mountPath: /data/outputs
+      sizeGB: 20
+
+databases:
+  - name: relativ-postgres
+    plan: starter              # 1 GB / 256 MB RAM — free for 90 days, then $7/mo
+    postgresMajorVersion: "16"

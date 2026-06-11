@@ -1,0 +1,74 @@
+# Fly.io configuration for the RelatiV backend
+# This is a TEMPLATE — adjust `app`, `primary_region`, and env before deploying.
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "relativ-backend"
+primary_region = "fra"
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+  context = "backend"
+
+[env]
+  # Public base URL the frontend will use. Set via `fly secrets set` in real deploys.
+  PUBLIC_URL = "https://relativ-backend.fly.dev"
+  # CORS allowlist for the Vercel-hosted frontend
+  CORS_ORIGINS = "https://relativ.app,https://www.relativ.app,http://localhost:3000"
+  # Local faster-whisper is used by default. Set to a RunPod URL to offload.
+  WHISPER_BACKEND = "local"
+  # Toggle the YouTube cost-saver path (transcript-only hooks)
+  YOUTUBE_COST_SAVER = "true"
+  # Anthropic model + max tokens for taste stage
+  CLAUDE_MODEL = "claude-haiku-4-5"
+  CLAUDE_MAX_TOKENS = "1024"
+  LOG_LEVEL = "INFO"
+
+[experimental]
+  auto_rollback = true
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 9000
+  processes = ["app"]
+  auto_stop_machines = false       # ML models are heavy to cold-start; keep warm
+  auto_start_machines = true
+  min_machines_running = 1         # always-on so YouTube fetches don't queue
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 50
+    soft_limit = 25
+
+  [[services.tcp_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "60s"
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "get"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-4x"     # 4 vCPU / 8 GB — needed for torch + faster-whisper
+  memory = "8gb"
+  cpu_kind = "shared"
+  cpus = 4
+
+# Persistent volume for outputs (rendered clips land here, served via signed URL)
+[mounts]
+  source = "relativ_outputs"
+  destination = "/data/outputs"
