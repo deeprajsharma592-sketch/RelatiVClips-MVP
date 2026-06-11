@@ -1,12 +1,12 @@
 {
   "project_name": "RelatiV",
   "file_location": "/app/RelatiV",
-  "last_synchronized": "2026-06-09T21:00:00Z",
+  "last_synchronized": "2026-06-10T12:00:00Z",
   "current_phase": "MVP_Development",
   "active_agent_handoff": {
     "previous_agent": "OpenCode",
     "next_agent": "OpenCode",
-    "task_status": "All 7 frontend phases complete. Backend tasks 2-5 complete: added /contact endpoint, fixed Docker port alignment (Caddy/backend/Dockerfile now all 9000), deleted dead surgical_extractor.py (1013 lines), added OLLAMA_BASE_URL to config/imports, wrote backend tests + frontend vitest test. Zero TS errors."
+    "task_status": "Frontend: replaced TestimonialCarousel with Production Verticals grid (6 use-case cards: Streaming, Esports, D2C, E-Commerce, Artist, Oratory). Backend fixes: added faster-whisper to requirements.txt, fixed _video_duration key mismatch in claude_client.py fallback, wired x_offset from face detection into renderer crop, wired FFMPEG_PRESET/FFMPEG_CQ from config, switched Whisper to CPU-friendly model (base/int8) with automatic GPU fallback. All 23 backend tests passing."
   },
   "subsystems": {
     "backend": {
@@ -15,7 +15,7 @@
       "framework": "FastAPI (port 9000)",
       "libraries": [
         "FastAPI", "SQLAlchemy 2.0 (async)", "asyncpg",
-        "Librosa", "faster-whisper (GPU)", "Ultralytics YOLOv10",
+        "Librosa", "faster-whisper (CPU int8)", "Ultralytics YOLOv10",
         "FFmpeg", "APScheduler", "httpx"
       ],
       "status": "Stable",
@@ -36,7 +36,7 @@
         "local": {
           "type": "6-stage async pipeline (load, audio analysis, transcription, clip selection, face detection, render)",
           "status": "Active",
-          "note": "Frontend blocks file upload — only accessible via API directly"
+          "note": "Frontend blocks file upload — only accessible via API directly. Renderer now applies face-detection x_offset for landscape crop. Whisper runs on CPU (base/int8) with automatic GPU fallback."
         },
         "vision_clip_selector": {
           "status": "Fixed",
@@ -48,13 +48,13 @@
         "max_concurrent_tasks": 2,
         "queue_promotion": "Automatic on slot free"
       },
-      "latest_changes_summary": "Added POST /contact endpoint (accepts email, subject, message, logs to console). Fixed Docker port alignment — Dockerfile now EXPOSE 9000 / CMD --port 9000, Caddyfile proxies to backend:9000. Deleted dead surgical_extractor.py (1013 lines, 39KB, never imported). Added OLLAMA_BASE_URL to utils/config.py and imported in vision_clip_selector.py. Wrote tests: test_health.py, test_contact.py, test_task_store.py (10 test cases)."
+      "latest_changes_summary": "Whisper switched to CPU-friendly model (base/int8) with automatic GPU fallback. Added faster-whisper to requirements.txt. Fixed _video_duration key mismatch in claude_client.py fallback (was always defaulting to 120s). Wired face detection x_offset into renderer crop for landscape videos. Wired FFMPEG_PRESET, FFMPEG_CQ, FFMPEG_AUDIO_BITRATE from config instead of hardcoded values. All 23 backend tests passing."
     },
     "frontend": {
       "file_location": "/app/RelatiV/frontend-next",
       "framework": "Next.js 16 / React 19",
       "styling": "Tailwind 4 + Framer Motion 12",
-      "status": "Complete — all 7 phases delivered, zero TS errors",
+      "status": "Complete — all 7 phases delivered, zero TS errors, testimonials replaced with Production Verticals grid",
       "pages": ["Home (input/processing/output)", "About", "Services", "Plans", "Contact"],
       "components": [
         "InputDropzone", "ProcessingPipeline", "ProcessingLogs",
@@ -66,7 +66,7 @@
       "api_client": "lib/api.ts - polls /status/{task_id} every 2s, base URL from NEXT_PUBLIC_API_URL",
       "mock_api_route": "api/process/route.ts - dev artifact, disconnected from frontend",
       "test_framework": "vitest (installed, test file at src/lib/api.test.ts)",
-      "latest_changes_summary": "Phase 1-7 complete. Contact form wired to POST /contact. Plans page buttons functional. InputDropzone shows file-upload-unavailable guidance. prefers-reduced-motion CSS, 404 page, skip-to-content, aria-current nav, cookie consent banner all in place. Zero TS errors."
+      "latest_changes_summary": "Phase 1-7 complete. Contact form wired to POST /contact. Plans page buttons functional. InputDropzone shows file-upload-unavailable guidance. prefers-reduced-motion CSS, 404 page, skip-to-content, aria-current nav, cookie consent banner all in place. Replaced TestimonialCarousel with Production Verticals grid (6 use-case cards). Zero TS errors."
     },
     "deployment": {
       "file_location": "/app/RelatiV",
@@ -87,22 +87,23 @@
       "file_location": "/app/RelatiV/backend/tests",
       "exists": true,
       "frameworks": {
-        "backend": "pytest + pytest-asyncio + httpx (test files: test_health.py, test_contact.py, test_task_store.py)",
+        "backend": "pytest + pytest-asyncio + httpx (test files: test_health.py, test_contact.py, test_task_store.py, test_transcript_fetcher.py)",
         "frontend": "vitest (test file: src/lib/api.test.ts)"
       },
-      "backend_test_count": 12,
+      "backend_test_count": 23,
       "frontend_test_count": 3,
-      "note": "Tests cannot run in this environment — need pip install for backend, vitest run for frontend"
+      "note": "All 23 backend tests passing"
     },
     "knowledge_graph": {
       "tool": "graphify",
-      "nodes": 454,
-      "edges": 750,
-      "communities": 26,
-      "last_updated": "2026-06-09T18:00:00Z"
+      "nodes": 529,
+      "edges": 817,
+      "communities": 31,
+      "last_updated": "2026-06-10T12:00:00Z"
     }
   },
   "todo_remaining": [
-    "Initialize git repo + create .gitignore + README"
+    "Initialize git repo + create .gitignore + README",
+    "Fix frontend bugs (HeroBackground Math.random purity, CookieBanner setState-in-effect, unused imports)"
   ]
 }
