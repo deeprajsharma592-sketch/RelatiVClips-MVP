@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function CookieBanner() {
-  // Read consent lazily during initial render — avoids setState-in-effect cascading render.
-  // SSR-safe: window guard returns false on the server pass.
-  const [visible, setVisible] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !window.localStorage.getItem("cookie-consent");
-  });
+  // Hide on first paint (server + client first render), then check localStorage
+  // after mount. The lazy-initializer approach causes an SSR/CSR element-exists
+  // mismatch (server renders nothing, client renders a div) which
+  // suppressHydrationWarning can't suppress — it only mutes text/attr diffs.
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    setVisible(!window.localStorage.getItem("cookie-consent"));
+  }, []);
 
   const accept = () => {
     localStorage.setItem("cookie-consent", "accepted");
@@ -29,7 +31,6 @@ export default function CookieBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           className="fixed bottom-0 left-0 right-0 z-50 p-4"
-          suppressHydrationWarning
         >
           <div className="max-w-7xl mx-auto bg-[#0A0A0A] border border-border rounded-[4px] p-4 flex items-center justify-between gap-4 shadow-2xl">
             <p className="text-sm text-text-muted font-sans flex-1">

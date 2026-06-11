@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 const RINGS = [
@@ -56,6 +56,16 @@ export default function HeroBackground() {
     });
   }, []);
 
+  // The static decoration below uses Math.cos/sin for the grid + rings +
+  // orbit nodes. The values are deterministic constants, but V8 and x86-64
+  // IEEE 754 round 1 ULP differently in the last digit, which trips
+  // React 19 + Next 16's stricter hydration check. Gate on a mounted flag
+  // so the server renders nothing here and the client renders the full thing.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const rect = containerRef.current?.getBoundingClientRect();
@@ -80,7 +90,7 @@ export default function HeroBackground() {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 700px 500px at 50% 45%, rgba(255,107,53,0.07) 0%, rgba(255,209,102,0.03) 40%, transparent 70%)",
+            "radial-gradient(ellipse 700px 500px at 50% 45%, rgba(217,70,239,0.07) 0%, rgba(255,209,102,0.03) 40%, transparent 70%)",
         }}
       />
       {/* Vignette */}
@@ -114,6 +124,11 @@ export default function HeroBackground() {
           </linearGradient>
         </defs>
 
+        {/* Static decoration (perspective grid + rings + orbits + core) is
+            only rendered after mount to avoid SSR/CSR 1-ULP float diffs in
+            the trig results. Server renders an empty SVG; client fills it. */}
+        {mounted && (
+          <>
         {/* Perspective Grid Floor */}
         <g opacity={0.035}>
           {Array.from({ length: 14 }, (_, i) => {
@@ -279,6 +294,8 @@ export default function HeroBackground() {
             <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3s" repeatCount="indefinite" />
           </circle>
         </g>
+          </>
+        )}
 
         {/* Ambient particle scatter */}
         {particles.map((p, i) => (
