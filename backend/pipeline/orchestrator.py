@@ -235,14 +235,30 @@ def _run_stage_8_render(
     clips: List[Dict], source: str, video_id: str, task_id: str,
     progress: ProgressCallback,
 ) -> List[Dict]:
-    """Stage 8: render each final clip with ffmpeg."""
+    """Stage 8: render each final clip with ffmpeg.
+
+    The renderer used to take `source` (the YouTube URL) as video_path,
+    which FFmpeg can't open — YouTube URLs aren't valid FFmpeg inputs.
+    Fix: pass each clip's local `audio_path` (downloaded in stage 4
+    as a surgical audio segment) as the actual input. The renderer
+    can then either:
+      - emit an audio-only MP4 (current behavior, no video stream)
+      - or compose video from a still + the audio (future enhancement)
+    Either way, the audio_path is the right file to give FFmpeg.
+    """
     from datetime import datetime
     rendered = []
     for i, clip in enumerate(clips):
         _emit(progress, "render", f"Rendering clip {i+1}/{len(clips)}...")
+        # Use the segment's local audio file if available; fall back to source.
+        clip_input = (
+            clip.get("audio_path")
+            or clip.get("file_path")
+            or source
+        )
         try:
             out = renderer_module.render_clip(
-                video_path=source,
+                video_path=clip_input,
                 clip=clip,
                 clip_index=i + 1,
                 video_id=video_id or "local",
@@ -393,6 +409,22 @@ def run_new_pipeline(
             hook_candidates, result.get("transcript"),
             creator_id, video_meta, progress, llm_callable=llm_callable,
         )
+        # Enrich each taste pick with the audio_path from the matching
+        # surgical segment. The taste selector doesn't know about the
+        # local audio files; stage 8's renderer needs them.
+        for clip in final_clips:
+            if "audio_path" in clip:
+                continue
+            clip_start = float(clip.get("start", -1))
+            matching = next(
+                (s for s in segments
+                 if abs(float(s.get("source_start", -1)) - clip_start) < 0.5),
+                None,
+            )
+            if matching and matching.get("audio_path"):
+                clip["audio_path"] = matching["audio_path"]
+                clip["source_start"] = matching.get("source_start")
+                clip["source_end"] = matching.get("source_end")
         result["stages_run"].append(6)
 
     # Stage 7: Face detection
@@ -400,7 +432,12 @@ def run_new_pipeline(
         segments = _run_stage_7_face_data(source, segments, progress)
         result["stages_run"].append(7)
 
-    # Stage 8: Render
+    # Stage 8: Render — uses the LOCAL segment files downloaded in stage 4
+    # (their audio_path), not the source URL. FFmpeg can't open a YouTube
+    # URL as a video source; it needs a real local file. The segments
+    # carry the audio. When the renderer is enhanced to produce
+    # video+audio (e.g. with a still image), this becomes the audio
+    # input; for now it just verifies the audio path is reachable.
     rendered_clips: List[Dict] = []
     if 8 in run_set and final_clips:
         rendered_clips = _run_stage_8_render(
