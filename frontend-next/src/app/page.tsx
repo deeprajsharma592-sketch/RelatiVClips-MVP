@@ -7,6 +7,9 @@ import HeroBackground from "@/components/HeroBackground";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { submitYouTubeUrl, pollUntilComplete } from "@/lib/api";
 import type { ProcessState, Clip, StatusResponse } from "@/types";
+import LiveTicker from "@/components/LiveTicker";
+import CreatorStats from "@/components/CreatorStats";
+import ClipperSection from "@/components/ClipperSection";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA
@@ -849,14 +852,18 @@ export default function Home() {
     document.getElementById("try-it")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = StatsSection; // keep for future re-activation
   return (
     <div ref={demoRef} className="relative">
       <HeroSection onCtaClick={scrollToDemo} />
+      <LiveTicker />
       <TrustBar />
       <DemoSection />
       <EngineSection />
       <VerticalsSection />
-      <StatsSection />
+      <CreatorStats />
+      <ClipperSection />
       <TestimonialsSection />
       <PricingSection />
       <FinalCta />

@@ -7,10 +7,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_LINKS = [
   { href: "/", label: "Workspace" },
-  { href: "/about", label: "About" },
+  { href: "/clippers", label: "Clippers", highlight: true },
+  { href: "/brands", label: "Brands", highlight: true },
   { href: "/services", label: "Services" },
   { href: "/plans", label: "Plans" },
-  { href: "/contact", label: "Contact" },
 ];
 
 export default function Header() {
@@ -48,20 +48,28 @@ export default function Header() {
 
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={isActive(link.href) ? "page" : undefined}
-              className={`px-4 py-2 text-sm font-sans rounded-[2px] transition-colors ${
-                isActive(link.href)
-                  ? "text-white bg-white/5"
-                  : "text-text-muted hover:text-white hover:bg-white/5"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const active = isActive(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={`px-4 py-2 text-sm font-sans rounded-[var(--radius-md)] transition-colors flex items-center gap-1.5 ${
+                  active
+                    ? "text-text-primary bg-[color:var(--color-surface-2)]"
+                    : link.highlight
+                    ? "text-text-secondary hover:text-[color:var(--color-accent-tertiary)]"
+                    : "text-text-muted hover:text-text-primary hover:bg-[color:var(--color-surface-2)]"
+                }`}
+              >
+                {link.label}
+                {link.highlight && !active && (
+                  <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent-tertiary)]" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right section: status + CTA + hamburger */}

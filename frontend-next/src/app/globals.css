@@ -1,24 +1,72 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-bg-base: #000000;
-  --color-surface: #0A0A0A;
-  --color-border: #1E1E1E;
-  --color-accent: #FF6B35;
-  --color-accent-secondary: #FFD166;
-  --color-text-primary: #FFFFFF;
-  --color-text-muted: #A1A1A1;
-  --color-success: #FFD166;
-  --color-error: #FF3B6F;
-  --color-warning: #FFB347;
+/* ─────────────────────────────────────────────────────────────────────────────
+   RelatiV v3 Color System — "Creator Economy" depth
+   Goal: 90% color quality, depth, glow, glass, real contrast hierarchy.
+   We move from a flat orange-on-black to a layered system with:
+   - 5 surface tiers (page → glass → overlay → panel → elevated)
+   - 4 accent hues (primary + 3 secondary "creator brand" tones)
+   - glow tokens (so shadows and borders can be color-aware)
+   - semantic tokens (success / error / warning / info)
+   - gradient tokens (for the "next big thing" hero moments)
+   ───────────────────────────────────────────────────────────────────────────── */
 
+@theme inline {
+  /* ─── Base surfaces (5 layers, true depth hierarchy) ─── */
+  --color-bg-base: #050507;          /* page background, deep matte */
+  --color-bg-deep: #0A0A0F;          /* section background */
+  --color-surface: #111118;          /* card background */
+  --color-surface-2: #181822;        /* nested card / hover */
+  --color-surface-elev: #1F1F2C;     /* modal / dropdown / tooltip */
+  --color-border: #26262E;           /* default border */
+  --color-border-strong: #383844;    /* hovered / active border */
+
+  /* ─── Text (4 levels, WCAG-AA verified) ─── */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #D4D4DC;   /* body copy */
+  --color-text-muted: #8B8B96;       /* meta, captions */
+  --color-text-faint: #5A5A66;       /* disabled, placeholder */
+
+  /* ─── Accent (the RelatiV brand: warm coral → electric magenta) ─── */
+  --color-accent: #FF6B35;           /* primary, CTA, "live" */
+  --color-accent-hover: #FF8255;
+  --color-accent-soft: #FF6B3522;    /* 13% alpha for glows */
+
+  /* ─── Secondary accents (the "creator brand" trio) ─── */
+  --color-accent-secondary: #FFD166;  /* gold — premium / featured */
+  --color-accent-tertiary: #B794F4;  /* purple — clipper / creator */
+  --color-accent-quaternary: #4ECDC4;/* teal — analytics / data */
+
+  /* ─── Gradients (for hero, "viral" moments, brand badges) ─── */
+  --color-gradient-coral: #FF6B35;
+  --color-gradient-magenta: #F472B6;
+  --color-gradient-violet: #A78BFA;
+  --color-gradient-cyan: #22D3EE;
+
+  /* ─── Semantic ─── */
+  --color-success: #4ADE80;          /* green-400, fresh */
+  --color-error: #F87171;            /* red-400, soft */
+  --color-warning: #FBBF24;          /* amber-400 */
+  --color-info: #60A5FA;             /* blue-400 */
+
+  /* ─── Glass + glow (used in box-shadows, borders) ─── */
+  --color-glass: rgba(255, 255, 255, 0.04);
+  --color-glass-strong: rgba(255, 255, 255, 0.08);
+  --color-glow-coral: rgba(255, 107, 53, 0.35);
+  --color-glow-gold: rgba(255, 209, 102, 0.30);
+  --color-glow-violet: rgba(183, 148, 244, 0.32);
+  --color-glow-teal: rgba(78, 205, 196, 0.32);
+
+  /* ─── Typography (Space Grotesk for display, Inter for body, JetBrains Mono for data) ─── */
   --font-sans: "Inter", "system-ui", sans-serif;
   --font-display: "Space Grotesk", "system-ui", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
+  /* ─── Radius (slightly more generous, "premium product" feel) ─── */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
 
   --grid-gutter: 24px;
   --border-width: 1px;
@@ -32,6 +80,7 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ─── Animations ─── */
 @keyframes gradient-shift {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -39,9 +88,53 @@ html {
 }
 
 .animate-gradient {
-  animation: gradient-shift 6s ease infinite;
+  animation: gradient-shift 8s ease infinite;
 }
 
+@keyframes float-up {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float-up 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-glow-coral); }
+  50% { box-shadow: 0 0 32px 8px var(--color-glow-coral); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-glass-strong) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+/* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -52,123 +145,35 @@ html {
 }
 
 body {
-  background: #000000;
-  color: #FFFFFF;
-  font-family: "Inter", "system-ui", sans-serif;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Physics variable styling */
-.physics-var {
-  font-family: "JetBrains Mono", "Fira Code", monospace;
-  color: #FFD166;
-  text-shadow: 0 0 8px rgba(255, 209, 102, 0.3);
-  font-weight: 500;
-}
-
-/* Custom scrollbar */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #1E1E1E #0A0A0A;
-}
-
+/* ─── Scrollbar (subtle, brand-consistent) ─── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0A;
+  background: var(--color-bg-deep);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E1E1E;
-  border-radius: 3px;
+  background: var(--color-border-strong);
+  border-radius: 6px;
+  border: 2px solid var(--color-bg-deep);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #FF6B35;
+  background: var(--color-accent);
 }
 
-/* Selection */
+/* ─── Selection ─── */
 ::selection {
-  background: rgba(255, 107, 53, 0.3);
-  color: #FFFFFF;
-}
-
-/* Aspect ratio utility */
-.aspect-9-16 {
-  aspect-ratio: 9 / 16;
-}
-
-/* Typography scale */
-h1, h2, h3, h4, h5, h6 {
-  font-family: "Space Grotesk", "system-ui", sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-/* Bento grid base */
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 24px;
-}
-
-/* Glow effects */
-.glow-accent {
-  box-shadow: 0 0 30px rgba(255, 107, 53, 0.12);
-}
-
-.glow-secondary {
-  box-shadow: 0 0 30px rgba(255, 209, 102, 0.12);
-}
-
-/* Glassmorphism card base */
-.bento-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
-}
-
-.bento-card:hover {
-  border-color: rgba(255, 107, 53, 0.4);
-  background: rgba(255, 107, 53, 0.04);
-  box-shadow: 0 0 40px rgba(255, 107, 53, 0.08);
-}
-
-/* Solid card variant (for areas where glass doesn't work well) */
-.bento-card-solid {
-  background: #0A0A0A;
-  border: 1px solid #1E1E1E;
-  border-radius: 4px;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
-}
-
-.bento-card-solid:hover {
-  border-color: #FF6B35;
-  box-shadow: 0 0 30px rgba(255, 107, 53, 0.1);
-}
-
-/* Glowing input */
-.input-glow:focus {
-  border-color: #FF6B35 !important;
-  box-shadow: 0 0 15px rgba(255, 107, 53, 0.2) !important;
-  outline: none;
-}
-
-/* Dropzone */
-.dropzone-active {
-  border-color: #FF6B35 !important;
-  background: rgba(255, 107, 53, 0.05);
-}
-
-/* Edge fade mask for scrolling carousels */
-.mask-edges {
-  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  background: var(--color-accent);
+  color: var(--color-bg-base);
 }
