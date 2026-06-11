@@ -248,3 +248,73 @@ curl -X POST https://api.relativ.app/api/v1/clip/from-url \
 - **Multi-region** — single-region (fra1 / falkenstein) is fine until you have users in 2+ continents. Don't pre-optimize.
 
 These are Day 3+ concerns. Ship the MVP first.
+
+---
+
+## 10. YouTube anti-bot — bgutil infrastructure (added 2026-06-11)
+
+The pipeline uses `yt-dlp` to fetch YouTube audio. As of 2025+, YouTube
+binds PO (Proof of Origin) tokens to specific video IDs and applies IP
+reputation checks. The old `player_client=web` static approach returns
+"Sign in to confirm you're not a bot" on flagged IPs.
+
+**The fix (free, 100% open-source):**
+
+1. **`bgutil-ytdlp-pot-provider`** — a Docker image + pip plugin that
+   negotiates a real per-video PO token via Botguard/Innertube.
+2. **The `bgutil` container** runs locally on port 4416 and is wired
+   into the backend's yt-dlp calls via the env var
+   `BGUTIL_POT_BASE_URL`.
+3. **Optional SOCKS5 residential proxy** — set `YT_PROXY=socks5://...`
+   to tunnel through a residential IP if your server's IP is still
+   flagged after bgutil is running. Cost: $0 if you have a home
+   network machine to tunnel from.
+
+### Hetzner deploy (recommended)
+
+`docker-compose.yml` already has the `bgutil` service wired in. After
+`docker compose up -d --build`, the backend container will be able to
+reach bgutil on `http://bgutil:4416`. No extra config needed.
+
+```bash
+# Confirm both containers are up
+docker ps --filter "name=bgutil"   # expect: Up X minutes
+docker ps --filter "name=backend"  # expect: Up X minutes, healthy
+```
+
+### Bare-metal deploy (no Docker)
+
+```bash
+# Pull and run bgutil as a bare container alongside the systemd service
+docker run -d --init --name bgutil-provider --restart unless-stopped \
+  -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider
+
+# Add to backend's env
+echo "BGUTIL_POT_BASE_URL=http://127.0.0.1:4416" >> /etc/relativ.env
+systemctl restart relativ-backend
+```
+
+### If YouTube still blocks after bgutil
+
+YouTube's IP reputation system is a separate signal from PO tokens.
+If `curl https://api.relativ.app/api/v1/intake/counts` works but a
+real `POST /process/youtube` still returns "Sign in to confirm":
+
+1. Confirm bgutil is reachable: `curl http://127.0.0.1:4416/ping`
+2. Confirm the plugin is discovered: run
+   `cd /app/RelatiV/backend && .venv/bin/python -m pytest tests/test_youtube_bgutil.py`
+   — all 7 should pass.
+3. If they all pass but YouTube still blocks: your server IP is
+   flagged. Add `YT_PROXY=socks5://...` to your env. See SOCKS5 setup
+   notes in `OPERATIONS.md`.
+
+### Background: why this is the right answer
+
+- **bgutil** is the de-facto standard for the yt-dlp community in 2025+.
+  Brainicism is the maintainer, and the project has 1k+ GitHub stars
+  and active issues.
+- **SOCKS5 to a residential IP** is the cleanest cloud-IP workaround.
+  Commercial residential proxy pools cost $5–50/GB; a private tunnel
+  back to your home network costs $0 and gets a clean reputation score.
+- **PO tokens are per-video**, so a fresh container restart gives you
+  a fresh slate — bgutil re-negotiates on every request.
