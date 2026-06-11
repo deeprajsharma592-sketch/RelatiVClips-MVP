@@ -90,6 +90,7 @@ export default function HeroBackground() {
         viewBox="0 0 800 800"
         className="absolute inset-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-[1000px]"
         preserveAspectRatio="xMidYMid meet"
+        suppressHydrationWarning
       >
         <defs>
           <filter id="glow">
