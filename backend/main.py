@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from .models import ContactMessage, StatusResponse, TaskQueueInfo, TranscriptResponse
 from .pipeline.transcript_fetcher import fetch_transcript
-from .routers import local_router, youtube_router
+from .routers import local_router, youtube_router, intake_router
 from .utils.config import OUTPUTS_DIR, TEMP_DIR
 from .utils.task_store import set_event_loop, task_store
 
@@ -70,6 +70,7 @@ app.add_middleware(
 # Include routers
 app.include_router(local_router.router)
 app.include_router(youtube_router.router)
+app.include_router(intake_router.router)
 
 
 @app.get("/health")

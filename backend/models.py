@@ -143,3 +143,55 @@ class TranscriptResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Clipper-economy + brand-campaign intake models (Day 3 backend wiring)
+# These back the new /clippers/apply, /brands, and CPM-calculator forms.
+# Storage is in-memory via backend/store/intake.py until Postgres is online.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ClipperApplication(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    email: str = Field(..., min_length=3, max_length=200)
+    handle: str = Field(..., min_length=1, max_length=80, description="TikTok/IG/YT handle")
+    specialty: str = Field(..., min_length=1, max_length=80)
+    platforms: List[str] = Field(default_factory=list)
+    weekly_volume: Optional[int] = Field(None, ge=0, le=500)
+    portfolio_urls: List[str] = Field(default_factory=list, max_length=10)
+    submitted_at: Optional[str] = None
+    id: Optional[str] = None
+
+
+class BrandContact(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    email: str = Field(..., min_length=3, max_length=200)
+    company: Optional[str] = Field(None, max_length=200)
+    video_url: str = Field(..., min_length=4, max_length=500)
+    budget_usd: int = Field(..., ge=1000, le=10_000_000)
+    notes: Optional[str] = Field(None, max_length=1000)
+    submitted_at: Optional[str] = None
+    id: Optional[str] = None
+
+
+class CampaignQuoteRequest(BaseModel):
+    budget_usd: int = Field(..., ge=1000, le=10_000_000)
+    # Optional context the user might include; doesn't change the math
+    video_url: Optional[str] = Field(None, max_length=500)
+    target_platforms: Optional[List[str]] = None
+
+
+class CampaignQuoteResponse(BaseModel):
+    """The CPM calculator's POST output. Same shape the GET displays
+    statically on /brands, but server-authoritative so the quote
+    can be persisted alongside the contact form."""
+    budget_usd: int
+    cpm_usd: float
+    platform_margin: float
+    estimated_views: int
+    estimated_clips: int
+    clippers_assigned: int
+    platform_split: List[dict]  # [{name, share, impressions, clips}]
+    turnaround_hours: int
+    quote_id: str
+    expires_at: str
