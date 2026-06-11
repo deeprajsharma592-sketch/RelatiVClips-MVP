@@ -10,6 +10,7 @@ export default function CookieBanner() {
   // suppressHydrationWarning can't suppress — it only mutes text/attr diffs.
   const [visible, setVisible] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading localStorage is a legitimate external-system sync
     setVisible(!window.localStorage.getItem("cookie-consent"));
   }, []);
 
