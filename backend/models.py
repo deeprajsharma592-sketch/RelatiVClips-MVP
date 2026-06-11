@@ -109,7 +109,10 @@ class StatusResponse(BaseModel):
     step_name: Optional[str] = None
     time_elapsed_seconds: Optional[int] = None
     time_estimate_seconds: Optional[int] = None
-    clips: Optional[List[ClipMetadata]] = None
+    # The pipeline can produce two clip shapes depending on whether the
+    # renderer succeeded. Use a permissive type so /status never 500s —
+    # we already log the full clip dict in /logs if details are needed.
+    clips: Optional[List[dict]] = None
     error: Optional[str] = None
 
 
