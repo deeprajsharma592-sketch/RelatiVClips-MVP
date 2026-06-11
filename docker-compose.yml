@@ -27,7 +27,7 @@ services:
     ports:
       - "9000:9000"
     environment:
-      - DATABASE_URL=postgresql://relativ_admin:***@db:5432/relativ_db
+      - DATABASE_URL=${DATABASE_URL}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - BGUTIL_POT_BASE_URL=http://bgutil:4416
       - YT_PROXY=${YT_PROXY:-}
@@ -53,7 +53,9 @@ services:
       - relativ_mesh
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4416/ping"]
+      # The bgutil image is a minimal Node.js container — no curl/wget.
+      # Use node's http module for the ping check.
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4416/ping', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
