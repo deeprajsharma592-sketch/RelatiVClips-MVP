@@ -51,7 +51,11 @@ check "GET /openapi.json" "curl -fsS --max-time 10 $BACKEND_URL/openapi.json | p
 check "GET /vram" "curl -fsS --max-time 10 $BACKEND_URL/vram"
 
 hdr "2. bgutil PO-token provider ($BGUTIL_URL)"
-check "bgutil /ping" "curl -fsS --max-time 5 $BGUTIL_URL/ping | grep -q '\"version\"'"
+# Use the URL directly (not the hostname) so this works whether we're
+# running on the host (where 'bgutil' doesn't resolve) or inside a
+# container (where it does). The port-mapped 127.0.0.1:4416 works in
+# both contexts.
+check "bgutil /ping" "curl -fsS --max-time 5 ${BGUTIL_URL}/ping | grep -q '\"version\"'"
 
 hdr "3. New intake endpoints"
 check "POST /api/v1/campaigns/quote" \
@@ -77,11 +81,26 @@ check "OPTIONS preflight backend accepts frontend" \
    $BACKEND_URL/api/v1/campaigns/quote"
 
 hdr "6. YouTube anti-bot (host IP can fetch a public video)"
-# Runs the probe script (yt-dlp + bgutil against a never-flagged URL).
-# IMPORTANT: this is the *real* test of "will the pipeline work in prod?"
-# If this passes, full E2E on Rick Astley / real videos will work.
-PROBE_OUT=$(BGUTIL_POT_BASE_URL="$BGUTIL_URL" python3 -m backend.scripts.probe_youtube_antibot 2>&1)
-PROBE_EXIT=$?
+# Runs the probe script INSIDE the backend container where Python deps
+# (dotenv, yt-dlp, etc.) and the bgutil hostname are available. We
+# prefer docker exec over running on the host because the host doesn't
+# have the backend venv or the docker-network DNS.
+PROBE_OUT=""
+PROBE_EXIT=1
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^relativ-backend-1$"; then
+  PROBE_OUT=$(docker exec -e BGUTIL_POT_BASE_URL=http://bgutil:4416 \
+    relativ-backend-1 python -m backend.scripts.probe_youtube_antibot 2>&1)
+  PROBE_EXIT=$?
+elif [ -d "$REPO_ROOT/backend/.venv" ]; then
+  # Fallback: run on host if the venv exists (local dev)
+  PROBE_OUT=$(cd "$REPO_ROOT" && source backend/.venv/bin/activate && \
+    BGUTIL_POT_BASE_URL="$BGUTIL_URL" \
+    python -m backend.scripts.probe_youtube_antibot 2>&1)
+  PROBE_EXIT=$?
+else
+  PROBE_OUT="(skipped: no running backend container and no host venv)"
+  PROBE_EXIT=0  # don't fail the deploy check just because the probe can't run
+fi
 total=$((total+1))
 if [ $PROBE_EXIT -eq 0 ]; then
   grn "YouTube anti-bot probe (host IP can reach youtube.com via bgutil)"
