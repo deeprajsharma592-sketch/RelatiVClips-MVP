@@ -14,7 +14,11 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # /app is the WORKDIR; backend/ is the package root inside it.
+    # Setting PYTHONPATH lets `uvicorn backend.main:app` resolve the
+    # `backend` package correctly when files live at /app/backend/*.
+    PYTHONPATH=/app
 
 # Establish our working directory inside the container
 WORKDIR /app
@@ -45,8 +49,10 @@ RUN pip install --no-cache-dir \
         -r requirements.txt \
     && chown -R relativ:relativ /app
 
-# Copy application code (owned by relativ so it can read/write at runtime)
-COPY --chown=relativ:relativ . .
+# Copy application code into /app/backend/ so `from .X import Y` in
+# main.py resolves as `backend.X` (loaded as the `backend.main` module).
+# PYTHONPATH=/app (set below) makes the `backend` package importable.
+COPY --chown=relativ:relativ . ./backend/
 
 # YouTube anti-bot infrastructure: bgutil-ytdlp-pot-provider
 # The pip plugin (auto-discovered by yt-dlp) calls a local HTTP server
@@ -66,5 +72,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 USER relativ
 
 # Single-worker uvicorn is fine for MVP (1 task at a time, MAX_CONCURRENT_TASKS=1).
-# For multi-worker, swap to: gunicorn -k uvicorn.workers.UvicornWorker -w 2 main:app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
+# For multi-worker, swap to: gunicorn -k uvicorn.workers.UvicornWorker -w 2 backend.main:app
+#
+# IMPORTANT: must be `backend.main:app`, not `main:app`. main.py uses
+# `from .X import Y` relative imports which only resolve when loaded as
+# the `backend.main` package member. The PYTHONPATH=/app above makes
+# `backend` importable.
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "9000"]
