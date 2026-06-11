@@ -63,6 +63,7 @@ export default function HeroBackground() {
   // so the server renders nothing here and the client renders the full thing.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount detection for SSR safety
     setMounted(true);
   }, []);
 
