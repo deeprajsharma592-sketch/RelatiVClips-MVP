@@ -17,6 +17,10 @@ pytest>=8.0.0
 pytest-asyncio>=0.23.0
 anthropic==0.109.1
 python-multipart>=0.0.9
+# YouTube fetcher. The bgutil plugin (next line) is auto-discovered by
+# yt-dlp's plugin loader, but yt-dlp itself must be a direct dep so
+# the `yt-dlp` CLI binary is on PATH inside the container.
+yt-dlp>=2024.10.7
 # YouTube PO-token provider. The pip package auto-installs the yt-dlp
 # plugin into yt_dlp_plugins/; the HTTP server is a sidecar in
 # docker-compose.yml (see brainicism/bgutil-ytdlp-pot-provider).
