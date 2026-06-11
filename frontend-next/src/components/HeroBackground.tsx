@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 const RINGS = [
@@ -15,12 +15,46 @@ const ORBIT_NODES = [
   { radius: 280, count: 10, speed: 25, size: 2, color: "#FF6B35" },
 ];
 
+// Deterministic pseudo-random — same seed produces the same sequence.
+// Avoids Math.random() in useMemo factory (which re-rolls on every render
+// under React.StrictMode dev double-invocation, breaking HMR + lint).
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
 export default function HeroBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 40, damping: 15 });
   const springY = useSpring(mouseY, { stiffness: 40, damping: 15 });
+
+  const cx = 400;
+  const cy = 380;
+
+  // Pre-compute particle scatter from a deterministic seed so values are
+  // stable across renders and across React.StrictMode double-invocation.
+  const particles = useMemo(() => {
+    const rand = seededRandom(0xc0ffee);
+    return Array.from({ length: 40 }, (_, i) => {
+      const angle = rand() * 360;
+      const dist = 50 + rand() * 350;
+      const rad = (angle * Math.PI) / 180;
+      return {
+        x: cx + dist * Math.cos(rad),
+        y: cy + dist * Math.sin(rad),
+        size: 0.8 + rand() * 1.2,
+        dur: 3 + rand() * 4,
+        begin: rand() * 3,
+        color: i % 3 === 0 ? "#FF6B35" : "#FFD166",
+        opacity: 0.08 + rand() * 0.12,
+      };
+    });
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -34,9 +68,6 @@ export default function HeroBackground() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
-
-  const cx = 400;
-  const cy = 380;
 
   return (
     <motion.div
@@ -249,33 +280,24 @@ export default function HeroBackground() {
         </g>
 
         {/* Ambient particle scatter */}
-        {Array.from({ length: 40 }, (_, i) => {
-          const angle = Math.random() * 360;
-          const dist = 50 + Math.random() * 350;
-          const rad = (angle * Math.PI) / 180;
-          const px = cx + dist * Math.cos(rad);
-          const py = cy + dist * Math.sin(rad);
-          const size = 0.8 + Math.random() * 1.2;
-          const dur = 3 + Math.random() * 4;
-          return (
+        {particles.map((p, i) => (
             <circle
               key={`p-${i}`}
-              cx={px}
-              cy={py}
-              r={size}
-              fill={i % 3 === 0 ? "#FF6B35" : "#FFD166"}
-              opacity={0.08 + Math.random() * 0.12}
+              cx={p.x}
+              cy={p.y}
+              r={p.size}
+              fill={p.color}
+              opacity={p.opacity}
             >
               <animate
                 attributeName="opacity"
                 values={`${0.05};${0.2};${0.05}`}
-                dur={`${dur}s`}
-                begin={`${Math.random() * 3}s`}
+                dur={`${p.dur}s`}
+                begin={`${p.begin}s`}
                 repeatCount="indefinite"
               />
             </circle>
-          );
-        })}
+        ))}
       </svg>
 
       <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent" />

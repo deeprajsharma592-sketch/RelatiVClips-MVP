@@ -127,6 +127,19 @@ class TaskQueueInfo(BaseModel):
     max_concurrent: int
 
 
+class TranscriptSegmentSimple(BaseModel):
+    start: float
+    end: float
+    text: str
+
+
+class TranscriptResponse(BaseModel):
+    segments: List[TranscriptSegmentSimple]
+    language: str = "en"
+    source: Optional[str] = None
+    error: Optional[str] = None
+
+
 class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None

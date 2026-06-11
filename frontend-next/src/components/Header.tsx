@@ -64,15 +64,24 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Right section: status + hamburger */}
+        {/* Right section: status + CTA + hamburger */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+          <motion.a
+            href="#try-it"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-semibold rounded-full hover:bg-accent-secondary transition-colors"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            Try it free
+            <span className="text-xs">→</span>
+          </motion.a>
+          <div className="hidden md:flex items-center gap-2 pr-2">
             <motion.div
               className="w-2 h-2 rounded-full bg-accent-secondary"
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            <span className="text-xs font-mono text-text-muted hidden sm:inline">
+            <span className="text-xs font-mono text-text-muted">
               Online
             </span>
           </div>

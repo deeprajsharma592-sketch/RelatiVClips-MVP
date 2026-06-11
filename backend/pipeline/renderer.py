@@ -57,34 +57,29 @@ def build_ffmpeg_command(
     filters = []
     
     if is_vertical:
-        # Vertical video (9:16) - scale to 1080p
         filters.append("scale=1080:1920")
     else:
-        # Landscape video - convert to 9:16 vertical
-        # For 640x360: crop 360x360 from center and scale to 608x1080
-        # This gives a centered square crop scaled to vertical
-        
-        # Calculate crop for square-ish center (crop width = video height for square)
         crop_size = min(src_width, src_height)
         crop_w = crop_size
         crop_h = crop_size
-        
-        # Center the crop
-        crop_x = (src_width - crop_w) // 2
+
+        if x_offset and 0 < x_offset < src_width:
+            crop_x = x_offset - crop_w // 2
+            crop_x = max(0, min(crop_x, src_width - crop_w))
+        else:
+            crop_x = (src_width - crop_w) // 2
         crop_y = (src_height - crop_h) // 2
-        
-        # Ensure even dimensions for H.264
+
         crop_w = crop_w // 2 * 2
         crop_h = crop_h // 2 * 2
         crop_x = crop_x // 2 * 2
         crop_y = crop_y // 2 * 2
-        
+
         print(f"[Renderer] Cropping {crop_w}x{crop_h} at ({crop_x},{crop_y})")
         filters.append(f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y}")
-        
-        # Scale to 9:16 vertical format (608x1080)
-        target_w = 608
-        target_h = 1080
+
+        target_w = CROP_WIDTH
+        target_h = CROP_HEIGHT
         filters.append(f"scale={target_w}:{target_h}")
 
     # Add subtitle if available
@@ -99,18 +94,17 @@ def build_ffmpeg_command(
 
     cmd.extend(["-vf", ",".join(filters)])
 
-    # High quality encoding settings - use CPU encoder (libx264) for stability
     cmd.extend([
         "-movflags", "+faststart",
         "-c:v", "libx264",
-        "-preset", "medium",
-        "-crf", "23",
+        "-preset", FFMPEG_PRESET if FFMPEG_PRESET in ("ultrafast","superfast","veryfast","faster","fast","medium","slow","slower","veryslow") else "medium",
+        "-crf", str(FFMPEG_CQ),
         "-pix_fmt", "yuv420p",
     ])
 
     cmd.extend([
         "-c:a", "aac",
-        "-b:a", "128k",
+        "-b:a", FFMPEG_AUDIO_BITRATE,
         "-ar", "44100"
     ])
 

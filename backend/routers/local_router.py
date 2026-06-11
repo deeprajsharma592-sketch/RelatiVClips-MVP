@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from ..models import ProcessResponse, TaskStatus
 from ..utils.task_store import task_store
+from ..utils.config import PIPELINE_VERSION
 
 progress_logs = {}
 _active_tasks = {}
@@ -42,8 +43,64 @@ def create_progress_callback(task_id: str):
     return callback
 
 
+async def run_local_orchestrator(task_id: str, file_path: str, callback):
+    """New 9-stage pipeline path (PIPELINE_VERSION=2) for local uploads.
+
+    The orchestrator handles URL analysis (stage 1 detects local file),
+    energy peaks (2), hooks (3), surgical extract (4 — cuts segments from
+    the local file), per-segment transcription (5), taste/Claude (6),
+    face (7), render (8), and captions (9).
+    """
+    from ..pipeline.orchestrator import run_new_pipeline
+
+    def _bridge(stage: str, msg: str) -> None:
+        try:
+            step = int(stage) if str(stage).isdigit() else None
+        except Exception:
+            step = None
+        try:
+            callback(msg, step=step)
+        except Exception:
+            pass
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None,
+        lambda: run_new_pipeline(
+            source=file_path,  # orchestrator stage 1 detects "local" automatically
+            audio_path=file_path,  # full file is available for local
+            progress=_bridge,
+            task_id=task_id,
+        ),
+    )
+
+
 async def run_local_pipeline(task_id: str, file_path: str):
     callback = create_progress_callback(task_id)
+
+    if PIPELINE_VERSION == 2:
+        try:
+            result = await run_local_orchestrator(task_id, file_path, callback)
+            clips = result.get("clips", [])
+            task_store.update_task(
+                task_id,
+                status=TaskStatus.COMPLETE,
+                progress=100,
+                step_number=9,
+                step_name="Complete",
+                clips=clips,
+                current_step=f"Complete - {len(clips)} clips generated",
+            )
+            callback(f"SUCCESS: {len(clips)} clips generated!", step=9, progress=100)
+        except Exception as e:
+            task_store.update_task(
+                task_id, status=TaskStatus.FAILED, error=str(e),
+            )
+            callback(f"FAILED: {e}", step=9, progress=0)
+        finally:
+            _active_tasks.pop(task_id, None)
+            task_store.try_promote_queued()
+        return
 
     try:
         callback("Starting local pipeline...", step=1, progress=5)

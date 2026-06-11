@@ -22,8 +22,9 @@ from ..utils.config import (
     TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, FFPROBE_PATH,
     TARGET_SAMPLE_RATE, PEAK_THRESHOLD_MULTIPLIER,
     NUM_CLIPS_YOUTUBE, SURGICAL_DOWNLOAD_SECONDS,
-    MAX_SURGICAL_SEGMENTS, COOKIES_PATH, MIN_CLIPS
+    MAX_SURGICAL_SEGMENTS, COOKIES_PATH, MIN_CLIPS, PIPELINE_VERSION,
 )
+from ..pipeline.transcript_fetcher import _download_audio
 
 progress_logs = {}
 _active_tasks = {}
@@ -38,59 +39,11 @@ VIRAL_KEYWORDS = [
 ]
 
 try:
-    from youtube_transcript_api import YouTubeTranscriptApi
-    YOUTUBE_TRANSCRIPT_AVAILABLE = True
-except ImportError:
-    YOUTUBE_TRANSCRIPT_AVAILABLE = False
-
-try:
     import librosa
     import numpy as np
     LIBROSA_AVAILABLE = True
 except ImportError:
     LIBROSA_AVAILABLE = False
-
-
-def _repair_json(text: str) -> str:
-    import re
-    return re.sub(r',\s*([\]}])', r'\1', text)
-
-
-def _parse_vtt_subtitles(vtt_path: str) -> list:
-    import re
-    segments = []
-    try:
-        with open(vtt_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except Exception:
-        return []
-
-    blocks = re.split(r'\n\s*\n', content)
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if not lines:
-            continue
-        time_match = None
-        text_start = 0
-        for i, line in enumerate(lines):
-            m = re.match(
-                r'(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})',
-                line
-            )
-            if m:
-                time_match = m
-                text_start = i + 1
-                break
-        if not time_match:
-            continue
-        parts = [int(x) for x in time_match.groups()]
-        start = parts[0] * 3600 + parts[1] * 60 + parts[2] + parts[3] / 1000
-        end = parts[4] * 3600 + parts[5] * 60 + parts[6] + parts[7] / 1000
-        text = ' '.join(lines[text_start:]).strip()
-        text = re.sub(r'<[^>]+>', '', text).strip()
-        if text:
-            segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
-    return segments
 
 
 class YouTubeSurgicalFunnel:
@@ -213,189 +166,28 @@ class YouTubeSurgicalFunnel:
             return {"success": False, "error": str(e)}
 
     def _stage_scout(self) -> dict:
-        transcript = None
-        transcript_found = False
-        if YOUTUBE_TRANSCRIPT_AVAILABLE:
-            import requests
-            session = requests.Session()
-            session.headers.update({
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            })
+        from ..pipeline.transcript_fetcher import fetch_transcript
 
-            self.log("  Attempting YouTube Transcript API...")
+        self.log("[Stage 1/6] SCOUT - Fetching transcript...")
+        transcript = fetch_transcript(self.url, self.task_id, self.log)
 
-            transcript_data = None
-            transcript_source = None
+        if not transcript or not transcript.get("segments"):
+            return {"success": False, "error": "No transcript could be fetched"}
 
-            transcript_list = None
-            try:
-                api = YouTubeTranscriptApi()
-                api._session = session
-                transcript_list = api.list(self.video_id)
+        self.log(f"  Scout complete: {len(transcript['segments'])} segments from {transcript.get('source', 'unknown')}")
 
-                available = getattr(transcript_list, '_transcripts', {})
-                self.log(f"  Available transcripts: {len(available)} languages")
+        audio_path = None
+        if transcript.get("source") != "whisper":
+            self.log("  Transcript from captions — audio not needed for pipeline")
+            return {"success": True, "transcript": transcript, "audio_path": None}
 
-                for lang_code, t in sorted(available.items(), key=lambda kv: (0 if kv[1].is_generated else -1, kv[0] != 'en')):
-                    try:
-                        transcript_data = t.fetch()
-                        transcript_source = f"{'auto' if t.is_generated else 'manual'}_{lang_code}"
-                        self.log(f"  Found {lang_code} captions ({'auto' if t.is_generated else 'manual'})")
-                        break
-                    except:
-                        continue
-            except Exception as e:
-                transcript_list = None
-                error_str = str(e).replace('\n', ' ').replace('\r', '')[:80]
-                self.log(f"  Could not list transcripts: {error_str}")
-
-            if not transcript_data:
-                self.log("  YouTube Transcript API failed, trying yt-dlp subtitles...")
-                try:
-                    subs_path = TEMP_DIR / f"{self.task_id}_subs.en.vtt"
-                    sub_cmd = [
-                        YTDLP_PATH,
-                        "--write-auto-subs",
-                        "--sub-lang", "en",
-                        "--sub-format", "vtt",
-                        "--skip-download",
-                        "-o", str(subs_path.with_suffix('')),
-                        "--no-warnings",
-                        "--no-check-certificates",
-                        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        self.url
-                    ]
-
-                    self.log("  Downloading auto-generated subtitles via yt-dlp...")
-                    result = subprocess.run(sub_cmd, capture_output=True, text=True, timeout=60)
-
-                    if result.returncode == 0 and subs_path.exists():
-                        self.log(f"  Subtitles downloaded ({subs_path.stat().st_size} bytes)")
-                        parsed = _parse_vtt_subtitles(str(subs_path))
-                        if parsed:
-                            transcript_data = parsed
-                            transcript_source = "ytdlp_auto_subs"
-                            self.log(f"  Parsed {len(parsed)} subtitle cues")
-                        else:
-                            self.log("  Subtitle file was empty or unparseable")
-                    else:
-                        if result.returncode != 0:
-                            self.log(f"  yt-dlp subtitle download failed (returned {result.returncode})")
-                        if not subs_path.exists():
-                            self.log("  Subtitle file not created")
-                except Exception as e:
-                    self.log(f"  Subtitle download error: {str(e)[:50]}")
-
-                if not transcript_data:
-                    try:
-                        raw = YouTubeTranscriptApi.get_transcript(self.video_id, languages=['en'])
-                        if raw:
-                            transcript_data = raw
-                            transcript_source = "direct_en"
-                            self.log("  Direct fetch succeeded on retry")
-                    except:
-                        pass
-
-            if transcript_data:
-                segments = []
-                for item in transcript_data:
-                    if isinstance(item, dict):
-                        segments.append({
-                            "start": item.get('start', 0),
-                            "end": item.get('end', item.get('start', 0) + item.get('duration', 0)),
-                            "text": item.get('text', '').strip()
-                        })
-                    else:
-                        segments.append({
-                            "start": item.start,
-                            "end": item.end if hasattr(item, 'end') and item.end else item.start + item.duration,
-                            "text": item.text.strip()
-                        })
-                transcript = {"segments": segments, "language": transcript_source or "en", "source": "api"}
-                transcript_found = True
-                self.log(f"  Got {len(segments)} transcript segments")
-
-        self.log("  Downloading audio for transcription...")
+        # Whisper was used, so audio already exists on disk at the temp path
         audio_path = TEMP_DIR / f"{self.task_id}_audio.m4a"
+        if not audio_path.exists():
+            self.log("  Audio file not found on disk, re-downloading...")
+            audio_path = _download_audio(self.url, self.task_id, self.log)
 
-        if audio_path.exists():
-            try:
-                audio_path.unlink()
-            except:
-                pass
-
-        ytdlp_cmd = [
-            YTDLP_PATH,
-            "-f", "bestaudio/best",
-            "--extract-audio",
-            "--audio-format", "m4a",
-            "--audio-quality", "0",
-            "-o", str(audio_path),
-            "--no-warnings",
-            "--no-check-certificates",
-            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            self.url
-        ]
-
-        if COOKIES_PATH and COOKIES_PATH.exists():
-            ytdlp_cmd.extend(["--cookies", str(COOKIES_PATH)])
-
-        try:
-            self.log(f"  Running yt-dlp on: {self.url[:50]}...")
-            result = subprocess.run(ytdlp_cmd, capture_output=True, text=True, timeout=600)
-
-            if result.returncode != 0:
-                self.log(f"  First attempt failed: {result.stderr[:100]}")
-                fallback_cmd = ytdlp_cmd.copy()
-                fallback_cmd[5:7] = ["-f", "best"]
-                self.log("  Trying fallback format...")
-                result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=600)
-
-            if result.returncode == 0 and audio_path.exists():
-                self.log(f"  Audio downloaded: {audio_path.stat().st_size / 1024 / 1024:.1f}MB")
-            elif result.returncode != 0:
-                self.log(f"  ERROR: yt-dlp returned {result.returncode}")
-                self.log(f"  stderr: {result.stderr[:200]}")
-        except subprocess.TimeoutExpired:
-            self.log("  ERROR: Audio download timed out after 5 minutes")
-            return {"success": False, "error": "Audio download timed out"}
-        except Exception as e:
-            self.log(f"  ERROR: Audio download error: {str(e)}")
-            return {"success": False, "error": f"Audio download error: {str(e)}"}
-
-        if not transcript:
-            self.log("  Running Whisper on downloaded audio...")
-            try:
-                from faster_whisper import WhisperModel
-                from ..utils.config import WHISPER_MODEL, WHISPER_COMPUTE_TYPE
-
-                try:
-                    model = WhisperModel(WHISPER_MODEL, device="cuda", compute_type=WHISPER_COMPUTE_TYPE)
-                    self.log("  Using GPU for Whisper")
-                except Exception as gpu_err:
-                    self.log(f"  GPU unavailable ({gpu_err})")
-                    self.log("  CPU transcription is too slow, skipping")
-                    raise RuntimeError("GPU unavailable for Whisper and CPU is too slow")
-                segments, info = model.transcribe(str(audio_path), beam_size=5)
-
-                segment_list = []
-                for seg in segments:
-                    segment_list.append({
-                        "start": seg.start,
-                        "end": seg.end,
-                        "text": seg.text.strip()
-                    })
-
-                transcript = {
-                    "segments": segment_list,
-                    "language": info.language or "en",
-                    "source": "whisper"
-                }
-                self.log(f"  Whisper transcribed: {len(segment_list)} segments")
-            except Exception as e:
-                return {"success": False, "error": f"Transcription failed: {str(e)}"}
-
-        return {"success": True, "transcript": transcript, "audio_path": str(audio_path) if audio_path and audio_path.exists() else None}
+        return {"success": True, "transcript": transcript, "audio_path": str(audio_path) if audio_path and os.path.exists(str(audio_path)) else None}
 
     def _stage_signal(self, audio_path: str, transcript: dict) -> dict:
         peaks = []
@@ -695,7 +487,88 @@ def create_progress_callback(task_id: str):
     return callback
 
 
+async def run_youtube_orchestrator(task_id: str, url: str, callback):
+    """New 9-stage pipeline path (PIPELINE_VERSION=2).
+
+    The orchestrator downloads surgically via stage 4 and transcribes per-segment
+    via stage 5 — no full audio download. This is the strategic direction.
+
+    Cost-saver: tries yt-dlp captions first. If YouTube has auto-captions, we
+    skip the RunPod transcription call entirely. This is the difference between
+    $0 and $0.01+ per video.
+    """
+    from ..pipeline.orchestrator import run_new_pipeline
+
+    def _bridge(stage: str, msg: str) -> None:
+        # Map orchestrator progress (stage, msg) → legacy (msg, step, progress)
+        try:
+            step = int(stage) if str(stage).isdigit() else None
+        except Exception:
+            step = None
+        try:
+            callback(msg, step=step)
+        except Exception:
+            pass
+
+    # Try YouTube captions first (free, no RunPod cost).
+    precomputed_transcript = None
+    try:
+        from ..pipeline.transcript_fetcher import fetch_transcript
+        callback("Checking YouTube captions...", step=1)
+        log_messages = []
+        tr = fetch_transcript(url, task_id, log=lambda m: log_messages.append(m))
+        if tr and tr.get("segments") and tr.get("source") in ("ytdlp_vtt", "ytdlp_srt"):
+            precomputed_transcript = tr
+            callback(
+                f"Found {len(tr['segments'])} caption segments — skipping cloud transcription",
+                step=1,
+            )
+        else:
+            for m in log_messages:
+                callback(m, step=1)
+    except Exception as e:
+        callback(f"Caption fetch failed: {e} — will use cloud transcription", step=1)
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: run_new_pipeline(
+            source=url,
+            stages=[1, 4, 5, 6, 7, 8, 9],  # skip 2, 3 (no full audio)
+            progress=_bridge,
+            task_id=task_id,
+            precomputed_transcript=precomputed_transcript,
+        ),
+    )
+    return result
+
+
 async def run_youtube_pipeline_async(task_id: str, url: str, callback):
+    if PIPELINE_VERSION == 2:
+        # Delegate to the new orchestrator.
+        try:
+            result = await run_youtube_orchestrator(task_id, url, callback)
+            clips = result.get("clips", [])
+            task_store.update_task(
+                task_id,
+                status=TaskStatus.COMPLETE,
+                progress=100,
+                step_number=9,
+                step_name="Complete",
+                clips=clips,
+                current_step=f"Complete - {len(clips)} clips generated",
+            )
+            callback(f"SUCCESS: {len(clips)} clips generated!", step=9, progress=100)
+        except Exception as e:
+            task_store.update_task(
+                task_id, status=TaskStatus.FAILED, error=str(e),
+            )
+            callback(f"FAILED: {e}", step=9, progress=0)
+        _active_tasks.pop(task_id, None)
+        task_store.try_promote_queued()
+        return
+
+    # Legacy 6-stage path (PIPELINE_VERSION=1)
     funnel = YouTubeSurgicalFunnel(url, task_id, callback)
 
     loop = asyncio.get_event_loop()

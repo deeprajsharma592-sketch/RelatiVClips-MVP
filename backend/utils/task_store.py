@@ -30,9 +30,25 @@ def set_event_loop(loop: Optional[asyncio.AbstractEventLoop]):
     _event_loop = loop
 
 def _run_async(coro):
-    """Dispatch a coroutine to the app's event loop from a worker thread."""
+    """Dispatch a coroutine to the app's event loop from a worker thread.
+
+    If a running loop is bound, schedules the coroutine and block-waits for
+    its result (with a 5s timeout) so the DB write is observably complete
+    before we return. This is safe from a worker thread.
+
+    If no loop is bound (tests, or DB disabled), closes the coroutine to
+    suppress Python's `RuntimeWarning: coroutine was never awaited`. The
+    in-memory task store still works — only DB persistence is skipped.
+    """
     if _event_loop is not None and _event_loop.is_running():
-        return asyncio.run_coroutine_threadsafe(coro, _event_loop)
+        future = asyncio.run_coroutine_threadsafe(coro, _event_loop)
+        try:
+            return future.result(timeout=5.0)
+        except Exception as e:
+            print(f"[DB] async dispatch failed: {e}")
+            return None
+    # No loop — close coroutine to silence the 'never awaited' warning.
+    coro.close()
     return None
 
 
