@@ -14,7 +14,7 @@ export default function ClippersPage() {
         {/* Glow */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-violet)] opacity-40 blur-[120px]" />
-          <div className="absolute bottom-0 right-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-coral)] opacity-30 blur-[120px]" />
+          <div className="absolute bottom-0 right-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-primary)] opacity-30 blur-[120px]" />
         </div>
 
         <div className="relative z-10 w-full max-w-6xl mx-auto px-6 text-center">
@@ -121,7 +121,7 @@ export default function ClippersPage() {
           <div className="mt-16 text-center">
             <Link
               href="/clippers/apply"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold rounded-full shadow-[0_0_32px_var(--color-glow-coral)] hover:scale-[1.02] transition-transform"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold rounded-full shadow-[0_0_32px_var(--color-glow-primary)] hover:scale-[1.02] transition-transform"
             >
               Start your application
               <span>→</span>

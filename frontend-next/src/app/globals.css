@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   RelatiV v3 Color System — "Creator Economy" depth
-   Goal: 90% color quality, depth, glow, glass, real contrast hierarchy.
-   We move from a flat orange-on-black to a layered system with:
-   - 5 surface tiers (page → glass → overlay → panel → elevated)
-   - 4 accent hues (primary + 3 secondary "creator brand" tones)
-   - glow tokens (so shadows and borders can be color-aware)
-   - semantic tokens (success / error / warning / info)
-   - gradient tokens (for the "next big thing" hero moments)
+   RelatiV v4 Color System — "Fuchsia Era"
+
+   Orange is gone. Primary is electric fuchsia (magenta-500 / #D946EF).
+   Reasoning: distinctly NOT orange, "creator-economy" coded (Instagram,
+   TikTok-adjacent bold), pairs cleanly with the existing gold / violet /
+   teal secondaries, and the cyan+fuchsia gradient in the hero lands as the
+   new brand-defining moment.
+
+   Renames (semantic cleanup, no visual change):
+     --color-glow-primary     →  --color-glow-primary
+     --color-gradient-primary →  --color-gradient-primary
    ───────────────────────────────────────────────────────────────────────────── */
 
 @theme inline {
@@ -27,10 +30,10 @@
   --color-text-muted: #8B8B96;       /* meta, captions */
   --color-text-faint: #5A5A66;       /* disabled, placeholder */
 
-  /* ─── Accent (the RelatiV brand: warm coral → electric magenta) ─── */
-  --color-accent: #FF6B35;           /* primary, CTA, "live" */
-  --color-accent-hover: #FF8255;
-  --color-accent-soft: #FF6B3522;    /* 13% alpha for glows */
+  /* ─── Primary accent (the RelatiV brand: electric fuchsia) ─── */
+  --color-accent: #D946EF;           /* fuchsia-500, primary CTA / "live" */
+  --color-accent-hover: #E879F9;     /* fuchsia-400, hover state */
+  --color-accent-soft: #D946EF22;    /* 13% alpha for glows */
 
   /* ─── Secondary accents (the "creator brand" trio) ─── */
   --color-accent-secondary: #FFD166;  /* gold — premium / featured */
@@ -38,7 +41,7 @@
   --color-accent-quaternary: #4ECDC4;/* teal — analytics / data */
 
   /* ─── Gradients (for hero, "viral" moments, brand badges) ─── */
-  --color-gradient-coral: #FF6B35;
+  --color-gradient-primary: #D946EF; /* fuchsia (was: coral) */
   --color-gradient-magenta: #F472B6;
   --color-gradient-violet: #A78BFA;
   --color-gradient-cyan: #22D3EE;
@@ -52,7 +55,7 @@
   /* ─── Glass + glow (used in box-shadows, borders) ─── */
   --color-glass: rgba(255, 255, 255, 0.04);
   --color-glass-strong: rgba(255, 255, 255, 0.08);
-  --color-glow-coral: rgba(255, 107, 53, 0.35);
+  --color-glow-primary: rgba(217, 70, 239, 0.40);  /* fuchsia (was: coral) */
   --color-glow-gold: rgba(255, 209, 102, 0.30);
   --color-glow-violet: rgba(183, 148, 244, 0.32);
   --color-glow-teal: rgba(78, 205, 196, 0.32);
@@ -101,8 +104,8 @@ html {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 var(--color-glow-coral); }
-  50% { box-shadow: 0 0 32px 8px var(--color-glow-coral); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-glow-primary); }
+  50% { box-shadow: 0 0 32px 8px var(--color-glow-primary); }
 }
 
 .animate-pulse-glow {
