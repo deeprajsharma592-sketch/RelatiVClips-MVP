@@ -3,11 +3,13 @@
 // proper error handling, timeouts, and streaming.
 //
 // Path convention: /api/proxy/<original-path>  →  http://91.98.144.72:9000/<original-path>
+//
+// v2: Added detailed error logging so we can diagnose Vercel→Hetzner network issues.
 
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE = "http://91.98.144.72:9000";
-const REQUEST_TIMEOUT_MS = 25_000; // Vercel edge max is 25s on hobby, 60s on pro
+const BACKEND_BASE = process.env.BACKEND_BASE_URL || "http://91.98.144.72:9000";
+const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
@@ -20,12 +22,13 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
-  // Pass through client IP + forwarded chain (hashed by backend for GDPR)
   headers.set("x-forwarded-host", req.headers.get("host") || "relativclips.com");
   headers.set("x-forwarded-proto", "https");
+  headers.set("x-relativ-proxy", "vercel-edge-v2");
 
   const ac = new AbortController();
   const timeoutId = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
+  const startTime = Date.now();
 
   try {
     const body =
@@ -36,19 +39,19 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       headers,
       body,
       signal: ac.signal,
-      // Don't keepalive the upstream connection — Vercel edge prefers short-lived
       cache: "no-store",
+      // Disable keep-alive to avoid hanging sockets
+      keepalive: false,
     });
 
     clearTimeout(timeoutId);
+    const latency = Date.now() - startTime;
 
     // Stream the response back
     const responseHeaders = new Headers();
     responseHeaders.set("content-type", upstream.headers.get("content-type") || "application/json");
     responseHeaders.set("x-proxied-by", "vercel-edge-relativclips");
-    // CORS — we use the same-origin pattern (frontend hits /api/proxy/* on
-    // relativclips.com), so CORS isn't strictly needed, but we add it for
-    // safety and tooling access.
+    responseHeaders.set("x-proxy-latency-ms", String(latency));
     const origin = req.headers.get("origin") || "https://relativclips.com";
     responseHeaders.set("access-control-allow-origin", origin);
     responseHeaders.set("access-control-allow-credentials", "true");
@@ -61,16 +64,50 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     });
   } catch (err) {
     clearTimeout(timeoutId);
+    const latency = Date.now() - startTime;
     const isTimeout = err instanceof Error && err.name === "AbortError";
+
+    // Detailed error for diagnosis
+    let detail = (err as Error).message;
+    let code = "unknown";
+
+    if (isTimeout) {
+      detail = `Backend didn't respond within ${REQUEST_TIMEOUT_MS}ms`;
+      code = "ETIMEDOUT";
+    } else if (err instanceof Error) {
+      // Vercel/Node.js fetch errors include a .cause with the underlying error
+      const cause = (err as any).cause;
+      if (cause) {
+        code = cause.code || cause.name || "fetch_error";
+        detail = `${cause.code || cause.name}: ${cause.message || ""} (syscall=${cause.syscall || "n/a"})`;
+      }
+    }
+
+    // Log to Vercel's function logs (visible in dashboard)
+    console.error(`[proxy] FAILED ${req.method} ${targetUrl}`, {
+      code,
+      detail,
+      latency_ms: latency,
+      method: req.method,
+      target: targetUrl,
+      host: req.headers.get("host"),
+      user_agent: req.headers.get("user-agent")?.slice(0, 80),
+    });
+
     return NextResponse.json(
       {
-        error: isTimeout ? "upstream_timeout" : "upstream_unreachable",
-        detail: isTimeout
-          ? `Backend didn't respond within ${REQUEST_TIMEOUT_MS}ms`
-          : (err as Error).message,
+        error: code,
+        detail,
         target: targetUrl,
+        latency_ms: latency,
       },
-      { status: isTimeout ? 504 : 502 }
+      {
+        status: isTimeout ? 504 : 502,
+        headers: {
+          "x-proxy-error": code,
+          "x-proxy-latency-ms": String(latency),
+        },
+      }
     );
   }
 }
@@ -82,7 +119,6 @@ export const PATCH = proxy;
 export const DELETE = proxy;
 export const HEAD = proxy;
 
-// Preflight handler
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
