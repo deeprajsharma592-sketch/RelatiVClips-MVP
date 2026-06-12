@@ -11,13 +11,17 @@
 | 2 | [thread-shipping.md](02-thread-shipping.md) | 8-post X thread: "What we shipped in 7 hours" | X / Twitter thread |
 | 3 | [thread-youtube-antibot.md](03-thread-youtube-antibot.md) | 6-post X thread: "The YouTube anti-bot rabbit hole" | X / Twitter thread (dev audience) |
 | 4 | [thread-founder-infra.md](04-thread-founder-infra.md) | 7-post X thread: "Why founder-led infra decisions matter" | X / Twitter / LinkedIn (founder audience) |
-| 5 | [mentor-targets.md](05-mentor-targets.md) | 10 specific mentor/angel targets (in Block 3) | Cold outreach DMs |
-| 6 | [funding-list.md](06-funding-list.md) | 8 funding programs (in Block 3) | Applications |
-| 7 | [pitch-deck.md](07-pitch-deck.md) | 12-slide pitch (in Block 3) | Investor meetings |
-| 8 | [one-pager.md](08-one-pager.md) | 1-page distilled version (in Block 3) | Cold email attachment |
-| 9 | [pricing-page.md](09-pricing-page.md) | Pricing page content (in Block 2) | /plans route |
-| 10 | [faq.md](10-faq.md) | FAQ page content (in Block 2) | /faq route |
-| 11 | [privacy-tos.md](11-privacy-tos.md) | Privacy policy + ToS (in Block 2) | /privacy, /tos routes |
+| 5 | [mentor-targets.md](05-mentor-targets.md) | 10 specific mentor/angel targets with draft DMs | Cold outreach DMs |
+| 6 | [funding-list.md](06-funding-list.md) | 8 funding programs (YC, Pioneer, OnDeck, Afore, Antler, Surge, 100X, MS/Google) | Applications |
+| 7 | [pitch-deck.md](07-pitch-deck.md) | 12-slide pitch for investor meetings | Convert to PDF, send to investors |
+| 8 | [one-pager.md](08-one-pager.md) | 1-page distilled version | Cold email attachment |
+| 9 | [pricing-page.md](09-pricing-page.md) | Pricing page content | /plans route |
+| 10 | [faq.md](10-faq.md) | FAQ page content (8 categories) | /faq route |
+| 11a | [privacy.md](11a-privacy.md) | Privacy policy | /privacy route |
+| 11b | [tos.md](11b-tos.md) | Terms of service | /tos route |
+| 12 | [about.md](12-about.md) | About page content | /about route |
+| 13 | [services-setup.md](13-services-setup.md) | 30-min guide for UptimeRobot, Sentry, PostHog, MS, Google | Founder setup (5-10 min each) |
+| **00** | **[launch-summary.md](00-launch-summary.md)** | **Day 1 launch summary, cost breakdown, what's parked** | **Share with cofounders/investors** |
 
 ## Screenshots
 
