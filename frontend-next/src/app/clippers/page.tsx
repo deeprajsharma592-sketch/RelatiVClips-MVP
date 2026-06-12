@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 import LiveTicker from "@/components/LiveTicker";
 import CreatorStats from "@/components/CreatorStats";
 import ClipperSection from "@/components/ClipperSection";
@@ -10,42 +11,65 @@ export default function ClippersPage() {
   return (
     <>
       {/* Hero — clipper section landing */}
-      <section className="relative min-h-[60vh] flex items-center overflow-hidden pt-32 pb-16">
+      <section className="relative min-h-[70vh] flex items-center overflow-hidden pt-32 pb-16">
         {/* Glow */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-violet)] opacity-40 blur-[120px]" />
-          <div className="absolute bottom-0 right-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-primary)] opacity-30 blur-[120px]" />
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div
+            className="absolute top-0 left-1/3 h-[500px] w-[500px] rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(139, 92, 246, 0.20) 0%, transparent 70%)" }}
+          />
+          <div
+            className="absolute bottom-0 right-1/3 h-[400px] w-[400px] rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.18) 0%, transparent 70%)" }}
+          />
         </div>
 
         <div className="relative z-10 w-full max-w-6xl mx-auto px-6 text-center">
+          {/* Section marker */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>01</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>For clippers</span>
+          </div>
+
           <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted"
+            className="inline-flex items-center gap-2 mb-6 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
+            style={{
+              background: "rgba(255, 252, 242, 0.7)",
+              backdropFilter: "blur(12px) saturate(180%)",
+              border: "1px solid rgba(255, 255, 255, 0.7)",
+              color: "var(--color-text-secondary)",
+            }}
           >
-            <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent-tertiary)]" />
-            THE CLIPPER NETWORK · 18,421 ACTIVE
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: "#10B981" }} />
+            </span>
+            <span className="font-mono tabular-nums">18,421</span> clippers active
           </motion.span>
 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.05 }}
-            className="font-display font-bold tracking-tight text-[clamp(2.5rem,6vw,5rem)] leading-[1.0] max-w-4xl mx-auto"
+            className="font-display font-semibold tracking-tight max-w-5xl mx-auto"
+            style={{ fontSize: "clamp(2.75rem, 6vw, 5.5rem)", lineHeight: 0.98 }}
           >
-            <span className="block text-text-primary">Short-form is a </span>
-            <span className="block bg-gradient-to-r from-[color:var(--color-accent-tertiary)] via-[color:var(--color-gradient-magenta)] to-[color:var(--color-accent)] bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient">
-              creator economy.
-            </span>
-            <span className="block text-text-primary">Get paid to live in it.</span>
+            <span style={{ color: "var(--color-text-primary)" }}>Short-form is a </span>
+            <span className="hero-text text-gradient-sunset" style={{ fontSize: "1.1em" }}>creator economy.</span>
+            <br />
+            <span style={{ color: "var(--color-text-primary)" }}>Get paid to live in it.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15 }}
-            className="mt-8 text-lg md:text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed"
+            className="mt-8 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
+            style={{ color: "var(--color-text-secondary)" }}
           >
             RelatiV clippers earn a living cutting hooks from the world&apos;s best shows. Apply once.
             Get matched. Keep 70% of every clip that lands. Payouts every Monday.
@@ -59,13 +83,15 @@ export default function ClippersPage() {
           >
             <Link
               href="/clippers/apply"
-              className="group relative px-7 py-4 bg-[color:var(--color-accent-tertiary)] text-[color:var(--color-bg-base)] font-semibold rounded-full shadow-[0_0_32px_var(--color-glow-violet)] hover:scale-[1.02] transition-transform"
+              className="btn-primary btn-shine inline-flex items-center gap-2"
             >
-              Apply to clip · 5 min form
+              <Sparkles className="h-4 w-4" />
+              Apply to clip
+              <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="#how-it-works"
-              className="px-7 py-4 border border-[color:var(--color-border-strong)] text-text-primary font-semibold rounded-full hover:border-[color:var(--color-accent)] transition-colors"
+              className="btn-ghost inline-flex items-center gap-2"
             >
               How it works
             </Link>
