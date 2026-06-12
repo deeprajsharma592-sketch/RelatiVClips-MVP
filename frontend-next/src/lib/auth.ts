@@ -28,10 +28,10 @@ export interface AuthResponse {
 }
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://localhost:9000"
-    : "http://91.98.144.72:9000");
+    : ""); // In prod, NEXT_PUBLIC_API_URL MUST be set (Vercel env var)
 
 async function authFetch<T>(
   path: string,

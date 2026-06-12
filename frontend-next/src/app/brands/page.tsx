@@ -494,7 +494,7 @@ export default function BrandsPage() {
               }
 
               try {
-                const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:9000";
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
                 // Two requests in parallel: persist the contact, and request
                 // a server-authoritative quote. The quote also re-does the

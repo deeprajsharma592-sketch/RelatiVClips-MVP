@@ -132,7 +132,7 @@ export default function ClipperApplyPage() {
             };
 
             try {
-              const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:9000";
+              const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
               const r = await fetch(`${apiBase}/api/v1/clippers/apply`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
