@@ -1,0 +1,76 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+
+/**
+ * MathBackground — Floating mathematical notation behind everything.
+ * Greek letters, calculus symbols, set theory, probability, code snippets.
+ * Slow drift, very low opacity, creates the "scientific engine" feel.
+ */
+const NOTATIONS = [
+  "∇Φ", "Σᵢ", "P(h|x)", "∫₀^∞", "e⁻λt", "f(x) = wx + b",
+  "argmax", "log P(y|x)", "softmax", "L = -Σy log ŷ", "∂L/∂w",
+  "Θ(t)", "ℝⁿ", "δ → 0", "λ → ∞", "μ ± σ", "cov(X,Y)",
+  "T(n) = O(n²)", "∀x ∈ X", "∃ y", "x' = σ(Wx + b)",
+  "F = ma", "∇ × B", "Σ xᵢ²", "∫f(x)dx", "lim n→∞",
+  "ReLU", "dropout(0.3)", "Adam(lr=1e-4)", "epoch 47/100",
+  "Φ-score = 0.97", "k=0.4", "λ=0.618", "τ=12.5s",
+  "BCE(p,q)", "KL(p‖q)", "ED", "ΔE = 0.04",
+  "ψ(x) = 1/(1+e⁻ˣ)", "0.97", "−0.42", "+1.6σ",
+  "Σ wᵢxᵢ + b", "arg min L", "∂/∂θ",
+];
+
+export default function MathBackground() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  // Pre-compute positions deterministically (avoid SSR hydration mismatch)
+  const items = NOTATIONS.map((text, i) => {
+    const row = i % 6;
+    const col = Math.floor(i / 6);
+    const top = 8 + row * 15 + (i % 3) * 4;
+    const left = 4 + col * 19 + ((i * 7) % 9);
+    const delay = (i * 0.4) % 4;
+    const duration = 16 + (i % 4) * 4;
+    const size = i % 5 === 0 ? 32 : i % 3 === 0 ? 22 : 16;
+    return { text, top, left, delay, duration, size };
+  });
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+    >
+      {items.map((item, i) => (
+        <motion.span
+          key={i}
+          className="absolute font-serif italic select-none"
+          style={{
+            top: `${item.top}%`,
+            left: `${item.left}%`,
+            fontSize: `${item.size}px`,
+            color: "rgba(60, 50, 30, 0.10)",
+            fontStyle: item.text.includes("=") || item.text.includes("→") ? "italic" : "normal",
+            fontFamily: item.text.match(/[∇∫Σ∂∞ΘΦλπψσ]/) ? "serif" : "var(--font-mono)",
+            fontWeight: 300,
+            whiteSpace: "nowrap",
+          }}
+          animate={{
+            y: [0, -12, 0, 8, 0],
+            opacity: [0.10, 0.20, 0.10, 0.06, 0.10],
+          }}
+          transition={{
+            duration: item.duration,
+            delay: item.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          {item.text}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
