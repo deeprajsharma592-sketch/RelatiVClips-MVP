@@ -30,11 +30,11 @@ export default function MathBackground() {
   const items = NOTATIONS.map((text, i) => {
     const row = i % 6;
     const col = Math.floor(i / 6);
-    const top = 8 + row * 15 + (i % 3) * 4;
-    const left = 4 + col * 19 + ((i * 7) % 9);
+    const top = 5 + row * 14 + (i % 3) * 5;
+    const left = 2 + col * 17 + ((i * 7) % 11);
     const delay = (i * 0.4) % 4;
-    const duration = 16 + (i % 4) * 4;
-    const size = i % 5 === 0 ? 32 : i % 3 === 0 ? 22 : 16;
+    const duration = 18 + (i % 4) * 4;
+    const size = i % 5 === 0 ? 44 : i % 3 === 0 ? 28 : 20;
     return { text, top, left, delay, duration, size };
   });
 
@@ -46,20 +46,28 @@ export default function MathBackground() {
       {items.map((item, i) => (
         <motion.span
           key={i}
-          className="absolute font-serif italic select-none"
+          className="absolute select-none"
           style={{
             top: `${item.top}%`,
             left: `${item.left}%`,
             fontSize: `${item.size}px`,
-            color: "rgba(60, 50, 30, 0.10)",
-            fontStyle: item.text.includes("=") || item.text.includes("→") ? "italic" : "normal",
-            fontFamily: item.text.match(/[∇∫Σ∂∞ΘΦλπψσ]/) ? "serif" : "var(--font-mono)",
-            fontWeight: 300,
+            color: i % 4 === 0
+              ? "rgba(217, 70, 239, 0.18)"  // fuchsia pop
+              : i % 4 === 1
+              ? "rgba(139, 92, 246, 0.15)"   // violet
+              : i % 4 === 2
+              ? "rgba(20, 184, 166, 0.14)"   // teal
+              : "rgba(251, 113, 133, 0.16)", // coral
+            fontStyle: item.text.includes("=") || item.text.includes("→") || item.text.includes("ℝ") ? "italic" : "normal",
+            fontFamily: item.text.match(/[∇∫Σ∂∞ΘΦλπψσ∀∃∈]/) ? "var(--font-serif)" : "var(--font-mono)",
+            fontWeight: 400,
             whiteSpace: "nowrap",
+            letterSpacing: "-0.02em",
           }}
           animate={{
-            y: [0, -12, 0, 8, 0],
-            opacity: [0.10, 0.20, 0.10, 0.06, 0.10],
+            y: [0, -16, 0, 10, 0],
+            opacity: [0.6, 1, 0.7, 0.5, 0.6],
+            rotate: [0, i % 2 === 0 ? 4 : -4, 0],
           }}
           transition={{
             duration: item.duration,
