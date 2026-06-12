@@ -8,8 +8,6 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 import { submitYouTubeUrl, pollUntilComplete } from "@/lib/api";
 import type { ProcessState, Clip, StatusResponse } from "@/types";
 import LiveTicker from "@/components/LiveTicker";
-import CreatorStats from "@/components/CreatorStats";
-import ClipperSectionToggle from "@/components/ClipperSectionToggle";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA
@@ -39,20 +37,11 @@ const DEMO_CLIPS: Clip[] = [
   },
 ];
 
-const CREATORS = [
-  { name: "Mark Rober", subs: "65.9M" },
-  { name: "Dhar Mann", subs: "24.8M" },
-  { name: "Logan Paul", subs: "23.6M" },
-  { name: "MrBeast", subs: "320M" },
-  { name: "Tom Bilyeu", subs: "4.5M" },
-  { name: "Jubilee", subs: "9.79M" },
-  { name: "Linguamarina", subs: "8.52M" },
-  { name: "What If", subs: "7.9M" },
-  { name: "Valuetainment", subs: "5.3M" },
-  { name: "Jacksfilms", subs: "5.08M" },
-  { name: "Grant Cardone", subs: "4.7M" },
-  { name: "Jenny Hoyos", subs: "4M" },
-];
+const CREATORS: never[] = [];
+// (CREATORS array removed in the v1.0 launch cleanup — the previous
+// version showed fake "trusted by" creators like Mark Rober and
+// MrBeast who never used RelatiV. Replaced with an honest tech stack
+// strip in the new TrustBar below. — Hermes, 2026-06-12)
 
 const ENGINE_FEATURES = [
   {
@@ -216,10 +205,10 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
             <Check /> 7-day Pro trial · no card
           </span>
           <span className="flex items-center gap-2">
-            <Check /> Privacy-first · local processing
+            <Check /> Self-hostable · no vendor lock-in
           </span>
           <span className="flex items-center gap-2">
-            <Check /> 97% caption accuracy
+            <Check /> Engine accuracy audited in our open test set
           </span>
         </motion.div>
       </div>
@@ -240,30 +229,44 @@ function Check() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TrustBar() {
-  // duplicate the list for a seamless marquee
-  const items = [...CREATORS, ...CREATORS];
+  // HONEST tech-stack strip. No fake "trusted by" creators, no fake
+  // "teams at GitHub/NVIDIA/Visa" claims. Replaced with the actual
+  // engine that powers RelatiV — what the founder is shipping in
+  // public, what people can verify on GitHub.
+  const items = [
+    "Claude Haiku 4.5",
+    "faster-whisper",
+    "YOLO v8 face tracking",
+    "librosa energy peaks",
+    "ffmpeg render",
+    "bgutil PO tokens",
+    "Deno JS runtime",
+    "Docker compose",
+    "Hetzner VPS",
+    "self-hostable",
+  ];
+  // duplicate for seamless marquee
+  const loop = [...items, ...items];
   return (
-    <section className="relative border-y border-white/5 bg-black/40 py-10 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 mb-6">
+    <section className="relative border-y border-white/5 bg-black/40 py-8 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 mb-5">
         <p className="text-xs font-mono text-text-muted text-center">
-          Trusted by creators generating <span className="text-accent font-semibold">2B+ monthly views</span> · teams at <span className="text-accent-secondary font-semibold">GitHub · NVIDIA · Visa</span>
+          Built on <span className="text-accent font-semibold">open source</span> · no vendor lock-in · self-host in 5 min
         </p>
       </div>
       <div className="overflow-hidden mask-edges">
         <motion.div
-          className="flex gap-12 whitespace-nowrap"
+          className="flex gap-10 whitespace-nowrap"
           animate={{ x: ["0%", "-50%"] }}
-          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
         >
-          {items.map((c, i) => (
-            <div key={`${c.name}-${i}`} className="flex items-center gap-3 shrink-0">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent/30 to-accent-secondary/20 border border-white/10 flex items-center justify-center text-sm font-display font-bold text-white/80">
-                {c.name.charAt(0)}
-              </div>
-              <div>
-                <p className="text-sm font-sans text-white/90">{c.name}</p>
-                <p className="text-[10px] font-mono text-text-muted/60">{c.subs} subs</p>
-              </div>
+          {loop.map((label, i) => (
+            <div
+              key={`${label}-${i}`}
+              className="flex items-center gap-2 shrink-0 text-sm font-mono text-white/70"
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent/60" />
+              {label}
             </div>
           ))}
         </motion.div>
@@ -557,9 +560,9 @@ function EngineSection() {
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           {/* Big card */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 0 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={{ once: true, amount: 0.01 }}
             transition={{ duration: 0.5 }}
             className="md:col-span-3 md:row-span-2 group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-accent/10 via-black to-black p-8 hover:border-accent/40 transition-all"
           >
@@ -582,9 +585,9 @@ function EngineSection() {
           {ENGINE_FEATURES.filter((f) => f.id !== "claude").map((f, i) => (
             <motion.div
               key={f.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 1, y: 0 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.01 }}
               transition={{ duration: 0.5, delay: (i + 1) * 0.1 }}
               className="md:col-span-3 group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-black p-8 hover:border-accent/40 transition-all"
             >
@@ -624,9 +627,9 @@ function VerticalsSection() {
           {VERTICALS.map((v, i) => (
             <motion.div
               key={v.tag}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 1, y: 0 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.01 }}
               transition={{ duration: 0.4, delay: i * 0.05 }}
               className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 hover:border-accent/40 hover:bg-white/[0.04] transition-all"
             >
@@ -690,7 +693,7 @@ function PricingSection() {
           {PRICING.map((tier, i) => (
             <motion.div
               key={tier.tier}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 1, y: 0 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.1 }}
@@ -759,7 +762,7 @@ function FinalCta() {
           </span>
         </h2>
         <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto mb-10">
-          Join 16M+ creators turning long videos into 10 viral clips in under a minute. Free to start. No card required.
+          Paste a YouTube URL. Get 10 short-form clips. Free to start · no card required · self-host the engine if you want to own it.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <motion.a
@@ -802,8 +805,6 @@ export default function Home() {
       <DemoSection />
       <EngineSection />
       <VerticalsSection />
-      <CreatorStats />
-      <ClipperSectionToggle />
       <PricingSection />
       <FinalCta />
     </div>
