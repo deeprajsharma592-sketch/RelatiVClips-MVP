@@ -95,15 +95,16 @@ def create_access_token(
     """Issue a new JWT. Returns (token, jti, expires_at)."""
     secret = ensure_secret()
     jti = jti or secrets.token_urlsafe(24)
-    now = datetime.now(timezone.utc)
+    # Use offset-naive UTC — DB columns are TIMESTAMP WITHOUT TIME ZONE
+    now = datetime.utcnow()
     exp = now + timedelta(days=JWT_TTL_DAYS)
     payload = {
         "sub": user_id,
         "role": role,
         "email": email,
         "jti": jti,
-        "iat": int(now.timestamp()),
-        "exp": int(exp.timestamp()),
+        "iat": int(now.replace(tzinfo=timezone.utc).timestamp()),
+        "exp": int(exp.replace(tzinfo=timezone.utc).timestamp()),
     }
     token = jwt.encode(payload, secret, algorithm=JWT_ALGORITHM)
     return token, jti, exp
