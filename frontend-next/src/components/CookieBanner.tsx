@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Cookie, X } from "lucide-react";
 
 export default function CookieBanner() {
-  // Hide on first paint (server + client first render), then check localStorage
-  // after mount. The lazy-initializer approach causes an SSR/CSR element-exists
-  // mismatch (server renders nothing, client renders a div) which
-  // suppressHydrationWarning can't suppress — it only mutes text/attr diffs.
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reading localStorage is a legitimate external-system sync
@@ -19,8 +16,8 @@ export default function CookieBanner() {
     setVisible(false);
   };
 
-  const decline = () => {
-    localStorage.setItem("cookie-consent", "declined");
+  const dismiss = () => {
+    localStorage.setItem("cookie-consent", "dismissed");
     setVisible(false);
   };
 
@@ -28,29 +25,50 @@ export default function CookieBanner() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-0 left-0 right-0 z-50 p-4"
+          initial={{ y: 80, opacity: 0, scale: 0.96 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 80, opacity: 0, scale: 0.96 }}
+          transition={{ type: "spring", damping: 22, stiffness: 300 }}
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-xl w-[calc(100%-2rem)]"
         >
-          <div className="max-w-7xl mx-auto bg-[#0A0A0A] border border-border rounded-[4px] p-4 flex items-center justify-between gap-4 shadow-2xl">
-            <p className="text-sm text-text-muted font-sans flex-1">
-              This site uses local storage for functionality only. No third-party tracking cookies are used.
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={decline}
-                className="px-3 py-2 text-xs text-text-muted font-sans hover:text-white transition-colors"
-              >
-                Decline
-              </button>
-              <button
-                onClick={accept}
-                className="px-4 py-2 bg-accent text-white text-xs font-semibold rounded-[4px] font-sans"
-              >
-                Accept
-              </button>
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+            style={{
+              background: "rgba(255, 252, 242, 0.85)",
+              backdropFilter: "blur(24px) saturate(200%)",
+              WebkitBackdropFilter: "blur(24px) saturate(200%)",
+              border: "1px solid rgba(255, 255, 255, 0.7)",
+              boxShadow: "0 16px 48px rgba(140, 110, 60, 0.18), 0 1px 0 rgba(255, 255, 255, 0.6) inset",
+            }}
+          >
+            <div
+              className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: "var(--gradient-sunset)" }}
+            >
+              <Cookie className="h-4 w-4 text-white" />
             </div>
+            <p className="flex-1 text-[12px] leading-snug" style={{ color: "var(--color-text-secondary)" }}>
+              <span className="font-semibold" style={{ color: "var(--color-text-primary)" }}>Heads up:</span> we use local storage for auth + preferences. No tracking, no third-party cookies.
+            </p>
+            <button
+              onClick={accept}
+              className="shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold transition-transform hover:scale-105"
+              style={{
+                background: "var(--gradient-sunset)",
+                color: "#FFFFFF",
+                boxShadow: "0 2px 8px rgba(217, 70, 239, 0.25)",
+              }}
+            >
+              Got it
+            </button>
+            <button
+              onClick={dismiss}
+              aria-label="Dismiss"
+              className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+              style={{ color: "var(--color-text-muted)", background: "rgba(60, 50, 30, 0.04)" }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
         </motion.div>
       )}
