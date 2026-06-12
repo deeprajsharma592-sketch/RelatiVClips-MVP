@@ -8,7 +8,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE = process.env.BACKEND_BASE_URL || "http://91.98.144.72:9000";
+// Cloudflare Tunnel URL — Vercel can reach this even though it can't
+// reach the Hetzner IP directly (reputation block on 91.98.144.72).
+// Regenerate by running /root/.vercel-tmp/start-tunnel.sh on the Hetzner box
+// and updating this constant.
+const BACKEND_BASE = "https://scope-detective-worcester-scholarships.trycloudflare.com";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
