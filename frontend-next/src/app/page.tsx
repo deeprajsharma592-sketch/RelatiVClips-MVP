@@ -209,7 +209,7 @@ function AnnouncementBar() {
 
 function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
   return (
-    <section className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
+    <section id="section-0" className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
       <MathBackground />
       <ParticleField density={0.35} />
 
@@ -297,7 +297,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
         >
           <motion.button
             onClick={onCtaClick}
-            className="btn-primary inline-flex items-center gap-2"
+            className="btn-primary btn-shine inline-flex items-center gap-2"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -332,7 +332,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.55 + i * 0.08 }}
-              className="glass-card px-4 py-3"
+              className="glass-card px-4 py-3 hover-glow"
             >
               <div className="font-mono text-2xl font-semibold" style={{ color: "var(--color-text-primary)" }}>
                 {m.v}
@@ -356,6 +356,7 @@ function TrustStrip() {
   return (
     <section
       className="relative py-16 overflow-hidden"
+      id="section-1"
       style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)", borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}
     >
       <div className="max-w-7xl mx-auto px-6">
@@ -450,7 +451,7 @@ function DemoSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="try-it" className="relative py-32 overflow-hidden">
+    <section ref={sectionRef} id="section-2" className="relative py-32 overflow-hidden">
       <motion.div
         style={{
           y,
@@ -486,7 +487,7 @@ function DemoSection() {
           </p>
         </div>
 
-        <div className="glass-panel p-6 md:p-10">
+        <div className="glass-panel p-6 md:p-10 hover-glow">
           <div className="grid lg:grid-cols-12 gap-8">
             {/* Input column */}
             <div className="lg:col-span-5 space-y-6">
@@ -507,7 +508,7 @@ function DemoSection() {
                   <button
                     onClick={handleSubmit}
                     disabled={!url.trim() || state === "processing"}
-                    className="btn-primary whitespace-nowrap"
+                    className="btn-primary btn-shine whitespace-nowrap"
                   >
                     {state === "processing" ? "Working…" : "Generate"}
                   </button>
@@ -670,7 +671,7 @@ function DemoSection() {
 
 function EngineBento() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-3" className="relative py-32 overflow-hidden">
       <MathBackground />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
@@ -702,7 +703,7 @@ function EngineBento() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                className="glass-card p-6 md:p-7 group"
+                className="glass-card hover-glow p-6 md:p-7 group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -762,7 +763,7 @@ function EngineBento() {
 
 function HowItWorksSection() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-4" className="relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
           <div className="flex items-center gap-3 mb-6">
@@ -792,7 +793,7 @@ function HowItWorksSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.5 }}
-                className="glass-card p-7 relative overflow-hidden group"
+                className="glass-card hover-glow p-7 relative overflow-hidden group"
               >
                 {/* Large number background */}
                 <span
@@ -868,6 +869,7 @@ function HowItWorksSection() {
 function LiveProductPreview() {
   const [progress, setProgress] = useState(0);
   const [transcriptWord, setTranscriptWord] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
   const inView = useInView(sectionRef, { once: false, margin: "-100px" });
 
@@ -878,25 +880,68 @@ function LiveProductPreview() {
     "will", "look", "nothing", "like", "the", "last", "one", "."
   ];
 
+  const STAGES = [
+    { until: 30, label: "Transcribing", model: "Whisper large-v3" },
+    { until: 55, label: "Scoring moments", model: "Claude Haiku 4.5" },
+    { until: 80, label: "Detecting peaks", model: "librosa · 12 Hz" },
+    { until: 100, label: "Rendering clips", model: "YOLO v8 · ffmpeg" },
+  ];
+  const currentStage = STAGES.find((s) => progress < s.until) ?? STAGES[STAGES.length - 1];
+
   useEffect(() => {
     if (!inView) return;
     setProgress(0);
     setTranscriptWord(0);
-    const a = setInterval(() => setProgress((p) => Math.min(p + 0.5, 100)), 35);
-    const b = setInterval(() => setTranscriptWord((w) => (w + 1) % TRANSCRIPT_WORDS.length), 130);
-    return () => { clearInterval(a); clearInterval(b); };
+    setElapsed(0);
+
+    // Eased progress: fast start, gentle plateau, fast finish (cubic ease-in-out)
+    const start = performance.now();
+    const duration = 14000; // 14s for full pipeline (feels like real work without being boring)
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      // easeInOutCubic
+      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      setProgress(eased * 100);
+      setElapsed((now - start) / 1000);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    // Variable-speed transcript typing (slower at start, faster mid, taper at end)
+    let wordIdx = 0;
+    const typeNext = () => {
+      wordIdx = (wordIdx + 1) % TRANSCRIPT_WORDS.length;
+      setTranscriptWord(wordIdx);
+      const t = wordIdx / TRANSCRIPT_WORDS.length;
+      // Faster in the middle (90-150ms), slower at edges
+      const delay = 60 + Math.sin(t * Math.PI) * 80;
+      setTimeout(typeNext, delay);
+    };
+    const wordTimer = setTimeout(typeNext, 600);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(wordTimer);
+    };
   }, [inView]);
 
   const MOMENTS = [
-    { time: "12.3s", text: "AI alignment is fundamentally about interpretability", score: 0.94, picked: true },
-    { time: "45.1s", text: "The next decade of research will look nothing like the last", score: 0.91, picked: true },
-    { time: "88.7s", text: "We keep treating alignment like a scaling problem", score: 0.88, picked: true },
-    { time: "1:34", text: "RLHF is the training wheels, not the bike", score: 0.76, picked: false },
-    { time: "2:12", text: "The interpretability cliff is coming for everyone", score: 0.71, picked: false },
+    { time: "12.3s", text: "AI alignment is fundamentally about interpretability", score: 0.94, picked: true, appearAt: 5 },
+    { time: "45.1s", text: "The next decade of research will look nothing like the last", score: 0.91, picked: true, appearAt: 35 },
+    { time: "88.7s", text: "We keep treating alignment like a scaling problem", score: 0.88, picked: true, appearAt: 65 },
+    { time: "1:34", text: "RLHF is the training wheels, not the bike", score: 0.76, picked: false, appearAt: 82 },
+    { time: "2:12", text: "The interpretability cliff is coming for everyone", score: 0.71, picked: false, appearAt: 90 },
   ];
 
+  // Which moment is currently being scored (highlighted with glow)
+  const activeMomentIdx = MOMENTS.findIndex((m, i) => {
+    const next = MOMENTS[i + 1];
+    return progress >= m.appearAt && (!next || progress < next.appearAt);
+  });
+
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-5" className="relative py-32 overflow-hidden">
       <ParticleField density={0.15} />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -951,7 +996,7 @@ function LiveProductPreview() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="glass-panel overflow-hidden"
+            className="glass-panel overflow-hidden hover-glow"
             style={{ borderRadius: "var(--radius-xl)" }}
           >
             {/* Toolbar */}
@@ -980,21 +1025,56 @@ function LiveProductPreview() {
               </span>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress bar — with stage transition */}
             <div className="px-6 pt-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
-                  Transcribing · Whisper large-v3
-                </span>
-                <span className="text-[10px] font-mono" style={{ color: "var(--color-text-primary)" }}>
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={currentStage.label}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className="text-[10px] font-mono uppercase tracking-wider"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      <span style={{ color: "var(--color-accent)" }}>●</span>{" "}
+                      {currentStage.label} · {currentStage.model}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
+                <span className="text-[10px] font-mono tabular-nums" style={{ color: "var(--color-text-primary)" }}>
                   {Math.round(progress)}%
                 </span>
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(60, 50, 30, 0.08)" }}>
+              <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(60, 50, 30, 0.08)" }}>
                 <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: "var(--gradient-sunset)", width: `${progress}%` }}
+                  className="absolute inset-y-0 left-0 rounded-full"
+                  style={{
+                    background: "var(--gradient-sunset)",
+                    width: `${progress}%`,
+                    boxShadow: "0 0 12px rgba(217, 70, 239, 0.4)",
+                  }}
+                  transition={{ ease: [0.65, 0, 0.35, 1] }}
                 />
+                {/* Stage tick marks */}
+                {STAGES.slice(0, -1).map((s, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-0 bottom-0 w-px"
+                    style={{
+                      left: `${s.until}%`,
+                      background: "rgba(60, 50, 30, 0.15)",
+                    }}
+                  />
+                ))}
+              </div>
+              {/* Live counters strip */}
+              <div className="mt-2.5 flex items-center justify-between text-[10px] font-mono" style={{ color: "var(--color-text-faint)" }}>
+                <span className="tabular-nums">{Math.round(elapsed * 10) / 10}s elapsed</span>
+                <span className="tabular-nums">{(transcriptWord * 32).toLocaleString()} words</span>
+                <span className="tabular-nums">47.2 fps</span>
               </div>
             </div>
 
@@ -1009,52 +1089,82 @@ function LiveProductPreview() {
               >
                 <p className="text-[14px] leading-relaxed font-serif italic" style={{ color: "var(--color-text-secondary)" }}>
                   {TRANSCRIPT_WORDS.slice(0, transcriptWord).join(" ")}
-                  <span className="inline-block w-1.5 h-4 ml-0.5 align-middle" style={{ background: "var(--color-accent)" }} />
+                  <motion.span
+                    className="inline-block w-1.5 h-4 ml-0.5 align-middle"
+                    style={{ background: "var(--color-accent)" }}
+                    animate={{ opacity: [1, 0.2, 1] }}
+                    transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                  />
                 </p>
               </div>
             </div>
 
-            {/* Moments list */}
+            {/* Moments list — staggered reveal + active highlight */}
             <div className="px-6 pt-5 pb-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
                   Moments detected · Φ ≥ 0.70
                 </p>
-                <p className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+                <p className="text-[10px] font-mono tabular-nums" style={{ color: "var(--color-text-muted)" }}>
                   3 / 47 picked
                 </p>
               </div>
               <div className="space-y-1.5">
-                {MOMENTS.map((m, i) => (
-                  <motion.div
-                    key={m.time}
-                    initial={{ opacity: 0, x: -8 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2 + i * 0.08 }}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
-                    style={{
-                      background: m.picked ? "rgba(217, 70, 239, 0.05)" : "rgba(40, 30, 15, 0.02)",
-                      border: m.picked ? "1px solid rgba(217, 70, 239, 0.18)" : "1px solid rgba(60, 50, 30, 0.06)",
-                    }}
-                  >
-                    <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--color-text-muted)" }}>
-                      {m.time}
-                    </span>
-                    <span className="text-[12px] flex-1 truncate" style={{ color: m.picked ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
-                      {m.text}
-                    </span>
-                    <span
-                      className="text-[10px] font-mono font-semibold shrink-0"
-                      style={{ color: m.picked ? "var(--color-accent)" : "var(--color-text-faint)" }}
+                {MOMENTS.map((m, i) => {
+                  const visible = progress >= m.appearAt;
+                  const active = activeMomentIdx === i && progress < 100;
+                  return (
+                    <motion.div
+                      key={m.time}
+                      initial={false}
+                      animate={{
+                        opacity: visible ? 1 : 0.25,
+                        x: visible ? 0 : -8,
+                        scale: active ? 1.005 : 1,
+                      }}
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg relative overflow-hidden"
+                      style={{
+                        background: active
+                          ? "rgba(217, 70, 239, 0.10)"
+                          : m.picked
+                          ? "rgba(217, 70, 239, 0.05)"
+                          : "rgba(40, 30, 15, 0.02)",
+                        border: active
+                          ? "1px solid rgba(217, 70, 239, 0.45)"
+                          : m.picked
+                          ? "1px solid rgba(217, 70, 239, 0.18)"
+                          : "1px solid rgba(60, 50, 30, 0.06)",
+                        boxShadow: active ? "0 0 16px rgba(217, 70, 239, 0.15)" : "none",
+                      }}
                     >
-                      Φ {m.score.toFixed(2)}
-                    </span>
-                    {m.picked && (
-                      <Check className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-accent)" }} />
-                    )}
-                  </motion.div>
-                ))}
+                      {active && (
+                        <motion.div
+                          className="absolute inset-0"
+                          style={{ background: "linear-gradient(90deg, transparent, rgba(217, 70, 239, 0.08), transparent)" }}
+                          initial={{ x: "-100%" }}
+                          animate={{ x: "100%" }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                        />
+                      )}
+                      <span className="text-[10px] font-mono shrink-0 tabular-nums" style={{ color: "var(--color-text-muted)" }}>
+                        {m.time}
+                      </span>
+                      <span className="text-[12px] flex-1 truncate" style={{ color: m.picked ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
+                        {m.text}
+                      </span>
+                      <span
+                        className="text-[10px] font-mono font-semibold shrink-0 tabular-nums"
+                        style={{ color: m.picked ? "var(--color-accent)" : "var(--color-text-faint)" }}
+                      >
+                        Φ {m.score.toFixed(2)}
+                      </span>
+                      {m.picked && (
+                        <Check className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-accent)" }} />
+                      )}
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
@@ -1070,7 +1180,7 @@ function LiveProductPreview() {
 
 function HookCurveSection() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-6" className="relative py-32 overflow-hidden">
       <ParticleField density={0.2} />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -1098,7 +1208,7 @@ function HookCurveSection() {
                 { k: "Shareability", v: "0.18" },
                 { k: "Attention Δ", v: "0.09" },
               ].map((d) => (
-                <div key={d.k} className="glass-card px-4 py-3">
+                <div key={d.k} className="glass-card px-4 py-3 hover-glow">
                   <div className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
                     {d.k}
                   </div>
@@ -1127,7 +1237,7 @@ function HookCurveSection() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="glass-panel p-8"
+            className="glass-panel p-8 hover-glow"
           >
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -1163,7 +1273,7 @@ function HookCurveSection() {
 
 function VerticalsSection() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-7" className="relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
           <div className="flex items-center gap-3 mb-6">
@@ -1191,7 +1301,7 @@ function VerticalsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
-                className="glass-card p-6 group"
+                className="glass-card hover-glow p-6 group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -1230,10 +1340,10 @@ function VerticalsSection() {
 
 function ForBrandsSection() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-8" className="relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div
-          className="glass-panel relative overflow-hidden p-10 md:p-16"
+          className="glass-panel relative overflow-hidden p-10 md:p-16 hover-glow"
           style={{ borderRadius: "var(--radius-2xl)" }}
         >
           <div
@@ -1267,7 +1377,7 @@ function ForBrandsSection() {
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <Link href="/brands" className="btn-primary inline-flex items-center gap-2">
+                <Link href="/brands" className="btn-primary btn-shine inline-flex items-center gap-2">
                   Talk to the team
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -1290,7 +1400,7 @@ function ForBrandsSection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08 }}
-                  className="glass-card p-5"
+                  className="glass-card hover-glow p-5"
                 >
                   <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
                     {m.k}
@@ -1315,7 +1425,7 @@ function ForBrandsSection() {
 
 function PricingSection() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-9" className="relative py-32 overflow-hidden">
       <MathBackground />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 text-center max-w-2xl mx-auto">
@@ -1421,7 +1531,7 @@ function PricingSection() {
 function FaqSection() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-10" className="relative py-32 overflow-hidden">
       <div className="relative max-w-4xl mx-auto px-6">
         <div className="mb-16 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
@@ -1449,7 +1559,7 @@ function FaqSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.04 }}
-                className="glass-card overflow-hidden"
+                className="glass-card overflow-hidden hover-glow"
                 style={{ borderRadius: "var(--radius-lg)" }}
               >
                 <button
@@ -1511,13 +1621,13 @@ function FaqSection() {
 
 function CtaSection() {
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section id="section-11" className="relative py-32 overflow-hidden">
       <div className="relative max-w-5xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="glass-panel p-12 md:p-20 text-center relative overflow-hidden"
+          className="glass-panel p-12 md:p-20 text-center relative overflow-hidden hover-glow"
           style={{ borderRadius: "var(--radius-2xl)" }}
         >
           <div
@@ -1549,7 +1659,7 @@ function CtaSection() {
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/signup" className="btn-primary inline-flex items-center gap-2">
+              <Link href="/signup" className="btn-primary btn-shine inline-flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Get started free
                 <ArrowRight className="h-4 w-4" />
