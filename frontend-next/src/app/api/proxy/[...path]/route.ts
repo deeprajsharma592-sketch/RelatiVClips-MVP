@@ -62,6 +62,19 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     responseHeaders.set("access-control-allow-methods", "GET,POST,PUT,DELETE,OPTIONS");
     responseHeaders.set("access-control-allow-headers", "content-type,authorization");
 
+    // Forward important upstream response headers (cookies for auth!)
+    const headersToForward = [
+      "set-cookie",
+      "x-request-id",
+      "x-rate-limit-limit",
+      "x-rate-limit-remaining",
+      "x-rate-limit-reset",
+    ];
+    for (const h of headersToForward) {
+      const v = upstream.headers.get(h);
+      if (v) responseHeaders.set(h, v);
+    }
+
     return new NextResponse(upstream.body, {
       status: upstream.status,
       headers: responseHeaders,
