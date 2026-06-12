@@ -183,11 +183,7 @@ export default function PlansPage() {
 
       <div className="relative max-w-6xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
+        <div className="text-center mb-10">
           <span className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
             <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent)]" />
             PRICING
@@ -200,7 +196,7 @@ export default function PlansPage() {
             Whether you&apos;re a brand running campaigns, a clipper earning
             from them, or a creator hosting them — there&apos;s a tier for you.
           </p>
-        </motion.div>
+        </div>
 
         {/* Side toggle */}
         <div className="flex justify-center mb-10">
@@ -234,39 +230,28 @@ export default function PlansPage() {
         </div>
 
         {/* Tiers */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={side}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16"
-          >
-            {tiers.map((tier, i) => (
-              <motion.div
-                key={tier.name}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={`relative rounded-[var(--radius-lg)] border p-6 flex flex-col ${
-                  tier.highlight
-                    ? side === "brands"
-                      ? "border-[color:var(--color-accent)]/50 bg-gradient-to-b from-[color:var(--color-accent)]/8 to-[color:var(--color-surface)]"
-                      : "border-[color:var(--color-accent-tertiary)]/50 bg-gradient-to-b from-[color:var(--color-accent-tertiary)]/8 to-[color:var(--color-surface)]"
-                    : "border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
-                }`}
-                style={
-                  tier.highlight
-                    ? {
-                        boxShadow:
-                          side === "brands"
-                            ? "0 0 40px var(--color-glow-primary)"
-                            : "0 0 40px var(--color-glow-violet)",
-                      }
-                    : undefined
-                }
-              >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
+          {tiers.map((tier, i) => (
+            <div
+              key={tier.name}
+              className={`relative rounded-[var(--radius-lg)] border p-6 flex flex-col ${
+                tier.highlight
+                  ? side === "brands"
+                    ? "border-[color:var(--color-accent)]/50 bg-gradient-to-b from-[color:var(--color-accent)]/8 to-[color:var(--color-surface)]"
+                    : "border-[color:var(--color-accent-tertiary)]/50 bg-gradient-to-b from-[color:var(--color-accent-tertiary)]/8 to-[color:var(--color-surface)]"
+                  : "border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
+              }`}
+              style={
+                tier.highlight
+                  ? {
+                      boxShadow:
+                        side === "brands"
+                          ? "0 0 40px var(--color-glow-primary)"
+                          : "0 0 40px var(--color-glow-violet)",
+                    }
+                  : undefined
+              }
+            >
                 {tier.highlight && (
                   <div
                     className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-[10px] font-mono tracking-widest rounded-full ${
@@ -335,16 +320,13 @@ export default function PlansPage() {
                 >
                   {tier.cta} →
                 </Link>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
-        </AnimatePresence>
+          </div>
 
         {/* Special offer strip — Pilot credit for new brands */}
         {side === "brands" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+          <div
             className="mb-16 rounded-[var(--radius-lg)] border border-[color:var(--color-accent)]/30 bg-gradient-to-r from-[color:var(--color-accent)]/8 via-transparent to-[color:var(--color-accent)]/8 p-6 text-center"
           >
             <div className="text-[10px] font-mono tracking-widest text-[color:var(--color-accent)] mb-2">
@@ -357,7 +339,7 @@ export default function PlansPage() {
               Run your first campaign. If we don&apos;t deliver 50K verified
               views, we don&apos;t invoice you for the difference. No risk.
             </p>
-          </motion.div>
+          </div>
         )}
 
         {/* FAQ */}
