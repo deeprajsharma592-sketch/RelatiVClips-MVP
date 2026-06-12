@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform, useInView } from "framer-motion";
 import Link from "next/link";
 import {
   Sparkles,
@@ -19,12 +19,22 @@ import {
   GitBranch,
   Layers,
   BarChart3,
+  ChevronDown,
+  Video,
+  Users,
+  Clock,
+  Shield,
+  Mic,
 } from "lucide-react";
 import MathBackground from "@/components/MathBackground";
 import ParticleField from "@/components/ParticleField";
 import HookCurve from "@/components/HookCurve";
 import { submitYouTubeUrl, pollUntilComplete } from "@/lib/api";
-import type { ProcessState, Clip, StatusResponse } from "@/types";
+import type { ProcessState, Clip } from "@/types";
+
+// ════════════════════════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════════════════════════
 
 const DEMO_CLIPS: Clip[] = [
   {
@@ -50,18 +60,10 @@ const DEMO_CLIPS: Clip[] = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENGINE — code snippets + math
-// ─────────────────────────────────────────────────────────────────────────────
-
 const ENGINE = [
   {
-    id: "speech",
-    icon: Brain,
-    badge: "Φ-Speech",
-    title: "Transcribe, serverless",
-    metric: "4 min",
-    metricLabel: "for a 2-hour video",
+    id: "speech", icon: Brain, badge: "Φ-Speech", title: "Transcribe, serverless",
+    metric: "4 min", metricLabel: "for a 2-hour video",
     code: `// faster-whisper · RunPod
 const transcript = await transcribe(video, {
   model: "large-v3",
@@ -72,12 +74,8 @@ const transcript = await transcribe(video, {
     math: "log P(wₜ | w<t) → softmax",
   },
   {
-    id: "hook",
-    icon: Wand2,
-    badge: "Φ-Hook",
-    title: "Claude picks the 10 winners",
-    metric: "97%",
-    metricLabel: "caption accuracy",
+    id: "hook", icon: Wand2, badge: "Φ-Hook", title: "Claude picks the 10 winners",
+    metric: "97%", metricLabel: "caption accuracy",
     code: `// Claude Haiku 4.5
 const scores = await score(moments, {
   rubric: ["emotional_peak", "narrative_complete", "shareability"],
@@ -87,12 +85,8 @@ const scores = await score(moments, {
     math: "argmax Φ(x) · Φ ∈ ℝ⁺",
   },
   {
-    id: "frame",
-    icon: Cpu,
-    badge: "Φ-Frame",
-    title: "YOLO re-frames for 9:16",
-    metric: "<2px",
-    metricLabel: "centering error",
+    id: "frame", icon: Cpu, badge: "Φ-Frame", title: "YOLO re-frames for 9:16",
+    metric: "<2px", metricLabel: "centering error",
     code: `// YOLO v8 active-speaker
 const face_box = await detect_active(face, {
   smoothing: "kalman",
@@ -103,12 +97,8 @@ const face_box = await detect_active(face, {
     math: "x' = σ(Wx + b)",
   },
   {
-    id: "story",
-    icon: Sparkles,
-    badge: "Φ-Story",
-    title: "Captions, titles, hashtags",
-    metric: "5×",
-    metricLabel: "faster than manual",
+    id: "story", icon: Sparkles, badge: "Φ-Story", title: "Captions, titles, hashtags",
+    metric: "5×", metricLabel: "faster than manual",
     code: `// Anthropic + word-by-word
 const clip = await render(moment, {
   captions: "word-by-word",
@@ -131,53 +121,121 @@ const VERTICALS = [
 
 const PRICING = [
   {
-    tier: "Starter",
-    side: "creator",
-    price: "$0",
-    cadence: "free forever",
-    cta: "Start clipping",
+    tier: "Starter", side: "creator", price: "$0", cadence: "free forever", cta: "Start clipping",
     features: ["60 min / month", "10 clips", "9:16 export", "Community support"],
   },
   {
-    tier: "Pro",
-    side: "creator",
-    price: "$19",
-    cadence: "per month",
-    cta: "Try Pro free for 7 days",
+    tier: "Pro", side: "creator", price: "$19", cadence: "per month", cta: "Try Pro free for 7 days",
     highlight: true,
     features: ["600 min / month", "Unlimited clips", "All aspect ratios", "Claude hook calibration", "Priority queue"],
   },
   {
-    tier: "Elite",
-    side: "creator",
-    price: "$99",
-    cadence: "per month",
-    cta: "Go Elite",
+    tier: "Elite", side: "creator", price: "$99", cadence: "per month", cta: "Go Elite",
     features: ["Everything in Pro", "Brand templates", "API access", "Dedicated support"],
   },
 ];
 
-// Stub icon for verticals (no Mic in lucide-react; use Brain)
-function Mic(props: any) {
-  return <Brain {...props} />;
+const PLATFORMS = [
+  "YouTube", "Twitch", "Instagram", "TikTok", "X", "LinkedIn",
+  "Spotify", "Apple Podcasts", "Kick", "Rumble", "Substack", "Vimeo",
+];
+
+const HOW_STEPS = [
+  {
+    num: "01", icon: Video, title: "Paste a URL",
+    body: "Drop a YouTube link, podcast RSS, or upload a file. No editor, no timeline, no learning curve.",
+    artifact: { label: "input", value: "youtube.com/watch?v=…" },
+  },
+  {
+    num: "02", icon: Cpu, title: "Engine runs",
+    body: "Four models score every moment: speech, energy, hook, frame. Ten winners surface in 4 minutes.",
+    artifact: { label: "computed", value: "4,820 turns · 47 peaks · 10 picks" },
+  },
+  {
+    num: "03", icon: Sparkles, title: "Ship clips",
+    body: "Word-by-word captions, viral title, hashtags, 9:16 render. Download or post directly.",
+    artifact: { label: "output", value: "10 × .mp4 + .srt" },
+  },
+];
+
+const FAQ_ITEMS = [
+  { q: "How long does it take to generate clips?", a: "4 minutes for a 2-hour source. The bottleneck is transcription (Whisper large-v3 on RunPod). Once transcribed, scoring and rendering take 30 seconds." },
+  { q: "What aspect ratios are supported?", a: "9:16 (TikTok, Reels, Shorts), 1:1 (LinkedIn, X), 16:9 (YouTube). All three render from the same source. Output is H.264 MP4 at 1080×1920 / 1080×1080 / 1920×1080." },
+  { q: "Can I edit the auto-generated captions?", a: "Yes. Every clip ships with a .srt file and editable captions baked into the video. Pro and Elite plans also get word-by-word animated captions with custom fonts." },
+  { q: "Who owns the clips?", a: "You do. Always. We process your source on our GPU workers, render locally, and the files are yours to download, post, and monetize. We never train models on your content." },
+  { q: "Do you support languages other than English?", a: "Whisper auto-detects 99 languages. Claude scoring is currently English-only but works with multilingual transcripts. UI is English. We are adding Hindi, Spanish, and Portuguese in Q3." },
+  { q: "What's the difference between Pro and Elite?", a: "Pro is for solo creators (600 min/month, all aspect ratios, priority queue). Elite adds brand templates, API access, and a dedicated account manager — for teams and agencies running 50+ clips/month." },
+  { q: "Can I cancel anytime?", a: "Yes. Cancel from the dashboard in one click. Your clips stay yours forever. We do not delete them — you can re-download from the archive at any point." },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 01 — ANNOUNCEMENT BAR
+// ════════════════════════════════════════════════════════════════════════════
+
+function AnnouncementBar() {
+  return (
+    <div
+      className="relative z-40 w-full"
+      style={{
+        background: "rgba(26, 24, 20, 0.95)",
+        color: "#F6F1E7",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-6 h-9 flex items-center justify-center gap-3 text-[12px]">
+        <span className="flex items-center gap-2">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "#10B981" }} />
+          </span>
+          <span className="font-mono text-[11px] tracking-wider opacity-70">v2.0</span>
+        </span>
+        <span className="opacity-60">·</span>
+        <span>
+          The viral clip engine is live.
+        </span>
+        <Link href="/services" className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline" style={{ color: "#FB7185" }}>
+          Read the engine spec
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+    </div>
+  );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HERO
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 02 — HERO
+// ════════════════════════════════════════════════════════════════════════════
 
 function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
   return (
     <section className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
       <MathBackground />
-      <ParticleField density={0.4} />
+      <ParticleField density={0.35} />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
+        {/* Eyebrow — section marker */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 mb-8 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
+          className="flex items-center gap-3 mb-10"
+        >
+          <span className="text-[11px] font-mono tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+            01
+          </span>
+          <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+          <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+            Hero
+          </span>
+        </motion.div>
+
+        {/* Status pill */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="inline-flex items-center gap-2.5 mb-8 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
           style={{
             background: "rgba(255, 252, 242, 0.7)",
             backdropFilter: "blur(12px) saturate(180%)",
@@ -191,8 +249,8 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
             <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
             <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: "#10B981" }} />
           </span>
-          <span>v2.0 · live now</span>
-          <span className="text-text-faint">·</span>
+          <span>Now in private beta</span>
+          <span style={{ color: "var(--color-text-faint)" }}>·</span>
           <span className="font-mono">Φ = taste, not length</span>
         </motion.div>
 
@@ -200,7 +258,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.05 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
           className="font-display font-semibold tracking-tight max-w-5xl"
           style={{ fontSize: "clamp(2.75rem, 6.5vw, 5.5rem)", lineHeight: 0.98 }}
         >
@@ -220,7 +278,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
           className="mt-8 text-lg md:text-xl max-w-2xl leading-relaxed"
           style={{ color: "var(--color-text-secondary)" }}
         >
@@ -234,7 +292,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.25 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
           className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-4"
         >
           <motion.button
@@ -260,7 +318,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          transition={{ duration: 0.8, delay: 0.45 }}
           className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl"
         >
           {[
@@ -273,7 +331,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
               key={m.l}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + i * 0.08 }}
+              transition={{ delay: 0.55 + i * 0.08 }}
               className="glass-card px-4 py-3"
             >
               <div className="font-mono text-2xl font-semibold" style={{ color: "var(--color-text-primary)" }}>
@@ -290,16 +348,57 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERACTIVE DEMO
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 03 — TRUST STRIP (platform marquee)
+// ════════════════════════════════════════════════════════════════════════════
+
+function TrustStrip() {
+  return (
+    <section
+      className="relative py-16 overflow-hidden"
+      style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)", borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}
+    >
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex flex-col md:flex-row items-center gap-8">
+          <div className="shrink-0 flex items-center gap-3">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>02</span>
+            <span className="h-px w-8" style={{ background: "var(--color-border-strong)" }} />
+            <p
+              className="text-[11px] font-mono uppercase tracking-wider whitespace-nowrap"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              Built for creators on
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-hidden" style={{ maskImage: "linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)" }}>
+            <div className="flex items-center gap-12 animate-marquee whitespace-nowrap" style={{ width: "max-content" }}>
+              {[...PLATFORMS, ...PLATFORMS].map((p, i) => (
+                <span
+                  key={`${p}-${i}`}
+                  className="text-[15px] font-display font-medium tracking-tight"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 04 — INTERACTIVE DEMO
+// ════════════════════════════════════════════════════════════════════════════
 
 function DemoSection() {
   const [url, setUrl] = useState("");
   const [state, setState] = useState<ProcessState>("idle");
   const [clips, setClips] = useState<Clip[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [taskId, setTaskId] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start end", "end start"] });
@@ -331,7 +430,6 @@ function DemoSection() {
     setState("processing");
     try {
       const response = await submitYouTubeUrl(url.trim());
-      setTaskId(response.taskId);
       const completed = await pollUntilComplete(response.taskId);
       setClips(completed.clips ?? []);
       setActiveStep(0);
@@ -352,7 +450,7 @@ function DemoSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="try-it" className="relative py-28 overflow-hidden">
+    <section ref={sectionRef} id="try-it" className="relative py-32 overflow-hidden">
       <motion.div
         style={{
           y,
@@ -369,14 +467,16 @@ function DemoSection() {
       />
 
       <div className="relative max-w-7xl mx-auto px-6">
-        <div className="mb-14 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6"
-            style={{ background: "rgba(255, 252, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.7)", color: "var(--color-text-secondary)" }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--gradient-sunset)" }} />
-            <span className="font-mono">STEP 01 · 02 · 03 · 04</span>
+        <div className="mb-16 max-w-3xl">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-[11px] font-mono tracking-wider" style={{ color: "var(--color-text-muted)" }}>03</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Try it</span>
           </div>
-          <h2 className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}>
+          <h2
+            className="font-display font-semibold tracking-tight leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+          >
             <span style={{ color: "var(--color-text-primary)" }}>Paste a URL.</span>
             <br />
             <span className="text-gradient-sunset">Get ten clips.</span>
@@ -564,23 +664,25 @@ function DemoSection() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENGINE BENTO — code snippets + math
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 05 — ENGINE BENTO (4 stages)
+// ════════════════════════════════════════════════════════════════════════════
 
 function EngineBento() {
   return (
-    <section className="relative py-28 overflow-hidden">
+    <section className="relative py-32 overflow-hidden">
       <MathBackground />
       <div className="relative max-w-7xl mx-auto px-6">
-        <div className="mb-14 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6"
-            style={{ background: "rgba(255, 252, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.7)", color: "var(--color-text-secondary)" }}>
-            <Cpu className="h-3 w-3" />
-            <span>THE ENGINE · 4 STAGES</span>
+        <div className="mb-16 max-w-3xl">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>04</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>The engine</span>
           </div>
-          <h2 className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}>
+          <h2
+            className="font-display font-semibold tracking-tight leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+          >
             <span style={{ color: "var(--color-text-primary)" }}>Four models, one</span>{" "}
             <span className="hero-text text-gradient-ocean">decisive</span>{" "}
             <span style={{ color: "var(--color-text-primary)" }}>verdict.</span>
@@ -628,7 +730,6 @@ function EngineBento() {
                   </div>
                 </div>
 
-                {/* Code snippet */}
                 <pre
                   className="rounded-2xl p-4 text-[12px] font-mono overflow-x-auto leading-relaxed"
                   style={{
@@ -640,7 +741,6 @@ function EngineBento() {
                   {e.code}
                 </pre>
 
-                {/* Math expression */}
                 <div className="mt-3 flex items-center gap-2 text-[11px]">
                   <span className="font-mono" style={{ color: "var(--color-text-faint)" }}>math:</span>
                   <code className="font-serif italic text-gradient-sunset" style={{ fontSize: "13px" }}>
@@ -656,32 +756,340 @@ function EngineBento() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HOOK CURVE — the actual algorithm visualization
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 06 — HOW IT WORKS (3 steps)
+// ════════════════════════════════════════════════════════════════════════════
+
+function HowItWorksSection() {
+  return (
+    <section className="relative py-32 overflow-hidden">
+      <div className="relative max-w-7xl mx-auto px-6">
+        <div className="mb-16 max-w-3xl">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>05</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>How it works</span>
+          </div>
+          <h2
+            className="font-display font-semibold tracking-tight leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+          >
+            <span style={{ color: "var(--color-text-primary)" }}>Three steps. </span>
+            <span className="hero-text text-gradient-sunset">One URL.</span>
+          </h2>
+          <p className="mt-5 text-lg max-w-2xl" style={{ color: "var(--color-text-secondary)" }}>
+            No editor, no timeline, no learning curve. The product is the URL bar.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5">
+          {HOW_STEPS.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <motion.div
+                key={step.num}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className="glass-card p-7 relative overflow-hidden group"
+              >
+                {/* Large number background */}
+                <span
+                  className="absolute -top-4 -right-2 font-display font-semibold select-none pointer-events-none"
+                  style={{
+                    fontSize: "8rem",
+                    lineHeight: 1,
+                    color: "transparent",
+                    background: "linear-gradient(180deg, rgba(60, 50, 30, 0.08) 0%, rgba(60, 50, 30, 0.02) 100%)",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                  }}
+                >
+                  {step.num}
+                </span>
+
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-5">
+                    <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                      Step {step.num}
+                    </span>
+                  </div>
+
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+                    style={{
+                      background: "var(--gradient-sunset)",
+                      boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)",
+                    }}
+                  >
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+
+                  <h3
+                    className="font-display font-semibold text-xl mb-3"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    {step.title}
+                  </h3>
+                  <p className="text-[14px] leading-relaxed mb-5" style={{ color: "var(--color-text-secondary)" }}>
+                    {step.body}
+                  </p>
+
+                  {/* Mini artifact preview */}
+                  <div
+                    className="rounded-xl px-3.5 py-2.5 flex items-center gap-2.5"
+                    style={{
+                      background: "rgba(40, 30, 15, 0.04)",
+                      border: "1px solid rgba(60, 50, 30, 0.08)",
+                    }}
+                  >
+                    <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: "var(--color-text-muted)" }}>
+                      {step.artifact.label}
+                    </span>
+                    <code className="text-[11px] font-mono truncate" style={{ color: "var(--color-text-primary)" }}>
+                      {step.artifact.value}
+                    </code>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 07 — LIVE PRODUCT PREVIEW (animated dashboard mockup)
+// ════════════════════════════════════════════════════════════════════════════
+
+function LiveProductPreview() {
+  const [progress, setProgress] = useState(0);
+  const [transcriptWord, setTranscriptWord] = useState(0);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(sectionRef, { once: false, margin: "-100px" });
+
+  const TRANSCRIPT_WORDS = [
+    "The", "thing", "about", "AI", "alignment", "is", "that", "we", "keep", "treating", "it",
+    "like", "a", "scaling", "problem", "when", "it's", "actually", "an", "interpretability",
+    "problem", "—", "and", "that's", "why", "the", "next", "decade", "of", "research",
+    "will", "look", "nothing", "like", "the", "last", "one", "."
+  ];
+
+  useEffect(() => {
+    if (!inView) return;
+    setProgress(0);
+    setTranscriptWord(0);
+    const a = setInterval(() => setProgress((p) => Math.min(p + 0.5, 100)), 35);
+    const b = setInterval(() => setTranscriptWord((w) => (w + 1) % TRANSCRIPT_WORDS.length), 130);
+    return () => { clearInterval(a); clearInterval(b); };
+  }, [inView]);
+
+  const MOMENTS = [
+    { time: "12.3s", text: "AI alignment is fundamentally about interpretability", score: 0.94, picked: true },
+    { time: "45.1s", text: "The next decade of research will look nothing like the last", score: 0.91, picked: true },
+    { time: "88.7s", text: "We keep treating alignment like a scaling problem", score: 0.88, picked: true },
+    { time: "1:34", text: "RLHF is the training wheels, not the bike", score: 0.76, picked: false },
+    { time: "2:12", text: "The interpretability cliff is coming for everyone", score: 0.71, picked: false },
+  ];
+
+  return (
+    <section className="relative py-32 overflow-hidden">
+      <ParticleField density={0.15} />
+      <div className="relative max-w-7xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left: copy */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>06</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Live preview</span>
+            </div>
+            <h2
+              className="font-display font-semibold tracking-tight leading-[1.05]"
+              style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
+            >
+              <span style={{ color: "var(--color-text-primary)" }}>Watch it </span>
+              <span className="hero-text text-gradient-sunset">work</span>
+              <span style={{ color: "var(--color-text-primary)" }}>.</span>
+            </h2>
+            <p
+              className="mt-5 text-lg max-w-xl"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              The engine is not a black box. Every moment scored, every peak detected, every clip picked — visible in the dashboard as it happens.
+            </p>
+            <ul className="mt-8 space-y-3 max-w-md">
+              {[
+                "Word-by-word transcription synced to audio energy",
+                "Real-time Φ-score on every candidate moment",
+                "Side-by-side A/B/C/D title variants before you commit",
+                "Download .mp4 + .srt, or post directly to TikTok / Reels",
+              ].map((line, i) => (
+                <motion.li
+                  key={line}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  className="flex items-start gap-3 text-[14px]"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  <Check className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--color-success)" }} />
+                  <span>{line}</span>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Right: dashboard mockup */}
+          <motion.div
+            ref={sectionRef}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="glass-panel overflow-hidden"
+            style={{ borderRadius: "var(--radius-xl)" }}
+          >
+            {/* Toolbar */}
+            <div
+              className="px-5 py-3 flex items-center gap-3"
+              style={{ borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#FB7185" }} />
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#FBBF24" }} />
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#10B981" }} />
+              </div>
+              <div className="flex-1 flex items-center gap-2 px-3 py-1 rounded-md" style={{ background: "rgba(40, 30, 15, 0.05)" }}>
+                <span className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>app.relativ.com</span>
+                <span className="text-[10px] font-mono" style={{ color: "var(--color-text-faint)" }}>/jobs/j-8f4a2c</span>
+              </div>
+              <span
+                className="text-[10px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1.5"
+                style={{ background: "rgba(16, 185, 129, 0.10)", color: "var(--color-success)" }}
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "#10B981" }} />
+                </span>
+                live
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="px-6 pt-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                  Transcribing · Whisper large-v3
+                </span>
+                <span className="text-[10px] font-mono" style={{ color: "var(--color-text-primary)" }}>
+                  {Math.round(progress)}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(60, 50, 30, 0.08)" }}>
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: "var(--gradient-sunset)", width: `${progress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Live transcript stream */}
+            <div className="px-6 pt-5">
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>
+                Live transcript
+              </p>
+              <div
+                className="rounded-xl p-4 min-h-[68px]"
+                style={{ background: "rgba(40, 30, 15, 0.04)", border: "1px solid rgba(60, 50, 30, 0.06)" }}
+              >
+                <p className="text-[14px] leading-relaxed font-serif italic" style={{ color: "var(--color-text-secondary)" }}>
+                  {TRANSCRIPT_WORDS.slice(0, transcriptWord).join(" ")}
+                  <span className="inline-block w-1.5 h-4 ml-0.5 align-middle" style={{ background: "var(--color-accent)" }} />
+                </p>
+              </div>
+            </div>
+
+            {/* Moments list */}
+            <div className="px-6 pt-5 pb-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                  Moments detected · Φ ≥ 0.70
+                </p>
+                <p className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+                  3 / 47 picked
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {MOMENTS.map((m, i) => (
+                  <motion.div
+                    key={m.time}
+                    initial={{ opacity: 0, x: -8 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 + i * 0.08 }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                    style={{
+                      background: m.picked ? "rgba(217, 70, 239, 0.05)" : "rgba(40, 30, 15, 0.02)",
+                      border: m.picked ? "1px solid rgba(217, 70, 239, 0.18)" : "1px solid rgba(60, 50, 30, 0.06)",
+                    }}
+                  >
+                    <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--color-text-muted)" }}>
+                      {m.time}
+                    </span>
+                    <span className="text-[12px] flex-1 truncate" style={{ color: m.picked ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
+                      {m.text}
+                    </span>
+                    <span
+                      className="text-[10px] font-mono font-semibold shrink-0"
+                      style={{ color: m.picked ? "var(--color-accent)" : "var(--color-text-faint)" }}
+                    >
+                      Φ {m.score.toFixed(2)}
+                    </span>
+                    {m.picked && (
+                      <Check className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-accent)" }} />
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 08 — HOOK CURVE (the algorithm visualization)
+// ════════════════════════════════════════════════════════════════════════════
 
 function HookCurveSection() {
   return (
-    <section className="relative py-28 overflow-hidden">
+    <section className="relative py-32 overflow-hidden">
       <ParticleField density={0.2} />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6"
-              style={{ background: "rgba(255, 252, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.7)", color: "var(--color-text-secondary)" }}>
-              <Activity className="h-3 w-3" />
-              <span>HOOK DETECTION · LIVE</span>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>07</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Hook detection</span>
             </div>
-            <h2 className="font-display font-semibold tracking-tight leading-[1.05]"
-              style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}>
+            <h2
+              className="font-display font-semibold tracking-tight leading-[1.05]"
+              style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
+            >
               <span style={{ color: "var(--color-text-primary)" }}>We don't guess.</span>
               <br />
               <span className="hero-text text-gradient-sunset">We measure.</span>
             </h2>
             <p className="mt-5 text-lg" style={{ color: "var(--color-text-secondary)" }}>
-              Every 250 ms, the engine scores the moment against 4 axes:
-              emotional peak, narrative completeness, shareability, attention spike.
-              Only the top 10 cross the <code className="font-mono text-sm" style={{ color: "var(--color-accent)" }}>Φ = 0.70</code> threshold.
+              Every 250 ms, the engine scores the moment against 4 axes: emotional peak, narrative completeness, shareability, attention spike. Only the top 10 cross the <code className="font-mono text-sm" style={{ color: "var(--color-accent)" }}>Φ = 0.70</code> threshold.
             </p>
             <div className="mt-8 grid grid-cols-2 gap-3">
               {[
@@ -749,22 +1157,24 @@ function HookCurveSection() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VERTICALS
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 09 — VERTICALS / USE CASES
+// ════════════════════════════════════════════════════════════════════════════
 
 function VerticalsSection() {
   return (
-    <section className="relative py-28 overflow-hidden">
+    <section className="relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
-        <div className="mb-14 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6"
-            style={{ background: "rgba(255, 252, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.7)", color: "var(--color-text-secondary)" }}>
-            <Layers className="h-3 w-3" />
-            <span>USE CASES</span>
+        <div className="mb-16 max-w-3xl">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>08</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Use cases</span>
           </div>
-          <h2 className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}>
+          <h2
+            className="font-display font-semibold tracking-tight leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+          >
             <span style={{ color: "var(--color-text-primary)" }}>Built for people who</span>{" "}
             <span className="hero-text text-gradient-sunset">ship content</span>
             <span style={{ color: "var(--color-text-primary)" }}>.</span>
@@ -814,22 +1224,111 @@ function VerticalsSection() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PRICING
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 10 — FOR BRANDS
+// ════════════════════════════════════════════════════════════════════════════
+
+function ForBrandsSection() {
+  return (
+    <section className="relative py-32 overflow-hidden">
+      <div className="relative max-w-7xl mx-auto px-6">
+        <div
+          className="glass-panel relative overflow-hidden p-10 md:p-16"
+          style={{ borderRadius: "var(--radius-2xl)" }}
+        >
+          <div
+            className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(6, 182, 212, 0.20) 0%, transparent 70%)" }}
+          />
+          <div
+            className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.18) 0%, transparent 70%)" }}
+          />
+
+          <div className="relative grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>09</span>
+                <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+                <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>For brands</span>
+              </div>
+              <h2
+                className="font-display font-semibold tracking-tight leading-[1.05]"
+                style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
+              >
+                <span style={{ color: "var(--color-text-primary)" }}>One brand film.</span>{" "}
+                <span className="hero-text text-gradient-ocean">200 cuts.</span>
+              </h2>
+              <p
+                className="mt-5 text-lg max-w-xl"
+                style={{ color: "var(--color-text-secondary)" }}
+              >
+                Turn a single 60-second brand film into 200 paid-media variations — each tuned for a different hook, audience, and platform. Run A/B/C/D title tests before you commit budget.
+              </p>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <Link href="/brands" className="btn-primary inline-flex items-center gap-2">
+                  Talk to the team
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/campaigns" className="btn-glass inline-flex items-center gap-2">
+                  See campaigns
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { k: "Avg ROAS", v: "4.2×", l: "across 200 paid campaigns" },
+                { k: "Cost per clip", v: "$0.18", l: "vs $4.20 in-studio" },
+                { k: "Hook variants", v: "4", l: "A/B/C/D per moment" },
+                { k: "Render time", v: "47s", l: "for 9:16 + 1:1 + 16:9" },
+              ].map((m, i) => (
+                <motion.div
+                  key={m.k}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  className="glass-card p-5"
+                >
+                  <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                    {m.k}
+                  </p>
+                  <p className="font-display font-semibold text-3xl mt-2 text-gradient-ocean">{m.v}</p>
+                  <p className="text-[11px] mt-1" style={{ color: "var(--color-text-muted)" }}>
+                    {m.l}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 11 — PRICING
+// ════════════════════════════════════════════════════════════════════════════
 
 function PricingSection() {
   return (
-    <section className="relative py-28 overflow-hidden">
+    <section className="relative py-32 overflow-hidden">
       <MathBackground />
       <div className="relative max-w-7xl mx-auto px-6">
-        <div className="mb-14 text-center max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6"
-            style={{ background: "rgba(255, 252, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.7)", color: "var(--color-text-secondary)" }}>
-            <span className="font-mono">PRICING</span>
+        <div className="mb-16 text-center max-w-2xl mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>10</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Pricing</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
           </div>
-          <h2 className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}>
+          <h2
+            className="font-display font-semibold tracking-tight leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+          >
             <span style={{ color: "var(--color-text-primary)" }}>Pay per clip, not per seat.</span>
           </h2>
           <p className="mt-4 text-lg" style={{ color: "var(--color-text-secondary)" }}>
@@ -850,8 +1349,8 @@ function PricingSection() {
             >
               {tier.highlight && (
                 <div
-                  className="absolute -top-px left-0 right-0 h-1 animate-gradient"
-                  style={{ background: "var(--gradient-sunset)", backgroundSize: "200% 100%" }}
+                  className="absolute -top-px left-0 right-0 h-1"
+                  style={{ background: "var(--gradient-sunset)" }}
                 />
               )}
               {tier.highlight && (
@@ -873,7 +1372,10 @@ function PricingSection() {
                 {tier.tier}
               </p>
               <div className="mt-3 flex items-baseline gap-1.5">
-                <span className="font-display font-semibold" style={{ fontSize: "2.75rem)", lineHeight: 1, color: "var(--color-text-primary)" } as any}>
+                <span
+                  className="font-display font-semibold"
+                  style={{ fontSize: "2.75rem", lineHeight: 1, color: "var(--color-text-primary)" }}
+                >
                   {tier.price}
                 </span>
                 <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
@@ -902,50 +1404,151 @@ function PricingSection() {
         </div>
 
         <p className="mt-8 text-center text-[12px]" style={{ color: "var(--color-text-muted)" }}>
-          Need 10+ seats, an API, or a custom brand deal? <Link href="/plans" className="font-semibold" style={{ color: "var(--color-accent)" }}>See the full plans →</Link>
+          Need 10+ seats, an API, or a custom brand deal?{" "}
+          <Link href="/plans" className="font-semibold" style={{ color: "var(--color-accent)" }}>
+            See the full plans →
+          </Link>
         </p>
       </div>
     </section>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FINAL CTA
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 12 — FAQ (accordion)
+// ════════════════════════════════════════════════════════════════════════════
+
+function FaqSection() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <section className="relative py-32 overflow-hidden">
+      <div className="relative max-w-4xl mx-auto px-6">
+        <div className="mb-16 text-center">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>11</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>FAQ</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+          </div>
+          <h2
+            className="font-display font-semibold tracking-tight leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+          >
+            <span style={{ color: "var(--color-text-primary)" }}>Questions, </span>
+            <span className="hero-text text-gradient-sunset">answered.</span>
+          </h2>
+        </div>
+
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item, i) => {
+            const isOpen = open === i;
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.04 }}
+                className="glass-card overflow-hidden"
+                style={{ borderRadius: "var(--radius-lg)" }}
+              >
+                <button
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  className="w-full px-6 py-5 flex items-center justify-between gap-4 text-left"
+                  aria-expanded={isOpen}
+                >
+                  <span
+                    className="text-[15px] font-medium"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    {item.q}
+                  </span>
+                  <motion.span
+                    animate={{ rotate: isOpen ? 180 : 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="shrink-0"
+                  >
+                    <ChevronDown className="h-4 w-4" style={{ color: "var(--color-text-muted)" }} />
+                  </motion.span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div
+                        className="px-6 pb-5 text-[14px] leading-relaxed"
+                        style={{ color: "var(--color-text-secondary)" }}
+                      >
+                        {item.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <p className="mt-10 text-center text-[13px]" style={{ color: "var(--color-text-muted)" }}>
+          Still have questions?{" "}
+          <Link href="/contact" className="font-semibold" style={{ color: "var(--color-accent)" }}>
+            Talk to the team →
+          </Link>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 13 — FINAL CTA
+// ════════════════════════════════════════════════════════════════════════════
 
 function CtaSection() {
   return (
-    <section className="relative py-28 overflow-hidden">
-      <div className="relative max-w-4xl mx-auto px-6">
+    <section className="relative py-32 overflow-hidden">
+      <div className="relative max-w-5xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="glass-panel p-10 md:p-14 text-center relative overflow-hidden"
+          className="glass-panel p-12 md:p-20 text-center relative overflow-hidden"
+          style={{ borderRadius: "var(--radius-2xl)" }}
         >
-          <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl"
-            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.25) 0%, transparent 70%)" }} />
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full blur-3xl"
-            style={{ background: "radial-gradient(circle, rgba(6, 182, 212, 0.20) 0%, transparent 70%)" }} />
+          <div
+            className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.25) 0%, transparent 70%)" }}
+          />
+          <div
+            className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(6, 182, 212, 0.20) 0%, transparent 70%)" }}
+          />
 
           <div className="relative">
-            <p className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--color-text-muted)" }}>
-              ready when you are
-            </p>
-            <h2 className="font-display font-semibold tracking-tight leading-[1.05]"
-              style={{ fontSize: "clamp(2.25rem, 5vw, 3.5rem)" }}>
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>12</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Get started</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            </div>
+
+            <h2
+              className="font-display font-semibold tracking-tight leading-[1.02]"
+              style={{ fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)" }}
+            >
               <span style={{ color: "var(--color-text-primary)" }}>Stop clipping.</span>{" "}
               <span className="hero-text text-gradient-sunset">Start shipping.</span>
             </h2>
-            <p className="mt-5 text-lg max-w-xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
+            <p className="mt-6 text-lg max-w-xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
               Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes.
-              <br />
-              <span className="font-mono text-sm" style={{ color: "var(--color-text-muted)" }}>
-                No card. 7-day Pro trial. Cancel anytime.
-              </span>
             </p>
 
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href="/signup" className="btn-primary inline-flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Get started free
@@ -957,18 +1560,21 @@ function CtaSection() {
               </Link>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+            <div
+              className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-mono"
+              style={{ color: "var(--color-text-muted)" }}
+            >
               <span className="flex items-center gap-1.5">
                 <Check className="h-3 w-3" style={{ color: "var(--color-success)" }} />
                 7-day Pro trial
               </span>
               <span className="flex items-center gap-1.5">
                 <Check className="h-3 w-3" style={{ color: "var(--color-success)" }} />
-                Self-hostable
+                No credit card
               </span>
               <span className="flex items-center gap-1.5">
                 <Check className="h-3 w-3" style={{ color: "var(--color-success)" }} />
-                Open test set
+                Cancel anytime
               </span>
             </div>
           </div>
@@ -978,24 +1584,29 @@ function CtaSection() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
 // MAIN
-// ─────────────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
 
 export default function HomePage() {
-  const demoRef = useRef<HTMLDivElement>(null);
   const scrollToDemo = useCallback(() => {
     document.getElementById("try-it")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   return (
     <>
+      <AnnouncementBar />
       <HeroSection onCtaClick={scrollToDemo} />
+      <TrustStrip />
       <DemoSection />
       <EngineBento />
+      <HowItWorksSection />
+      <LiveProductPreview />
       <HookCurveSection />
       <VerticalsSection />
+      <ForBrandsSection />
       <PricingSection />
+      <FaqSection />
       <CtaSection />
     </>
   );
