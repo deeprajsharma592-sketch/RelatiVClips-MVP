@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/", label: "Workspace" },
   { href: "/clippers", label: "Clippers", highlight: true },
   { href: "/brands", label: "Brands", highlight: true },
+  { href: "/campaigns", label: "Campaigns", highlight: true },
   { href: "/services", label: "Services" },
   { href: "/plans", label: "Plans" },
 ];
