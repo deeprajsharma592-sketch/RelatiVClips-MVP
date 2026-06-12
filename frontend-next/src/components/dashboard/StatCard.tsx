@@ -62,10 +62,7 @@ export default function StatCard({
   caption,
 }: StatCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <div
       className={`relative overflow-hidden rounded-[var(--radius-lg)] border ${RING[variant]} bg-[color:var(--color-surface)] p-5 group`}
       style={{ boxShadow: variant !== "default" ? `0 0 32px ${GLOW[variant]}` : undefined }}
     >
@@ -125,6 +122,6 @@ export default function StatCard({
           })}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

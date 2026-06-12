@@ -260,11 +260,8 @@ export default function BrandDashboard() {
                 const pct = (c.spent / c.budget) * 100;
                 const status = STATUS_STYLES[c.status];
                 return (
-                  <motion.div
+                  <div
                     key={c.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
                     className={`rounded-[var(--radius-lg)] border ${status.ring} bg-[color:var(--color-surface)] p-5`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
@@ -328,7 +325,7 @@ export default function BrandDashboard() {
                     <div className="mt-3 text-[10px] font-mono text-text-faint">
                       {c.startDate} → {c.endDate}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -346,10 +343,8 @@ export default function BrandDashboard() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
               {PENDING_CLIPS.map((clip) => (
-                <motion.div
+                <div
                   key={clip.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
                   className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] overflow-hidden"
                 >
                   {/* Thumb placeholder */}
@@ -385,7 +380,7 @@ export default function BrandDashboard() {
                       </button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </section>

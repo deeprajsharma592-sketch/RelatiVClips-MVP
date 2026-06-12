@@ -168,19 +168,14 @@ export default function CampaignsPage() {
         </div>
 
         <div className="relative z-10 w-full max-w-6xl mx-auto px-6 text-center">
-          <motion.span
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+          <span
             className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted"
           >
             <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent)]" />
             OPEN CAMPAIGNS · 9 LIVE
-          </motion.span>
+          </span>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
+          <h1
             className="font-display font-bold tracking-tight text-[clamp(2.5rem,6vw,5rem)] leading-[1.0] max-w-4xl mx-auto"
           >
             <span className="block text-text-primary">Paid clipping </span>
@@ -188,17 +183,14 @@ export default function CampaignsPage() {
               campaigns.
             </span>
             <span className="block text-text-primary/90">Apply once. Get matched.</span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
+          <p
             className="mt-8 text-lg text-text-secondary max-w-2xl mx-auto"
           >
             {filtered.length} active campaigns. Pick your vertical, pick your CPM,
             and start clipping. Payouts every Monday.
-          </motion.p>
+          </p>
         </div>
       </section>
 
@@ -252,11 +244,8 @@ export default function CampaignsPage() {
           {filtered.map((c, i) => {
             const pct = (c.filled / c.slots) * 100;
             return (
-              <motion.div
+              <div
                 key={c.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
                 className={`rounded-[var(--radius-lg)] border ${
                   c.premium
                     ? "border-[color:var(--color-accent-secondary)]/40 bg-gradient-to-b from-[color:var(--color-accent-secondary)]/5 to-[color:var(--color-surface)]"
@@ -331,7 +320,7 @@ export default function CampaignsPage() {
                 >
                   Apply for this campaign
                 </Link>
-              </motion.div>
+              </div>
             );
           })}
         </div>
