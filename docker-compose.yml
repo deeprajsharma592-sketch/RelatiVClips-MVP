@@ -31,6 +31,9 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - BGUTIL_POT_BASE_URL=http://bgutil:4416
       - YT_PROXY=${YT_PROXY:-}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - IP_SALT=${IP_SALT:-relativ-default-salt}
     depends_on:
       - db
       - bgutil

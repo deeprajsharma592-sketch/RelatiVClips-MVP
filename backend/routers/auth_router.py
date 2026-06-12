@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -49,9 +49,11 @@ from ..database.models import (
     UserRole,
 )
 from ..database.session import get_session
-from ..utils.anonymized_logger import get_logger
+from ..services.anonymized_logger import hash_ip as _hash_ip_from_logger  # noqa: F401  (kept for consistency)
 
-log = get_logger("auth")
+import logging as _logging
+log = _logging.getLogger("relativ.auth")
+log.setLevel(_logging.INFO)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
@@ -202,7 +204,7 @@ async def signup(
         role=body.role,
         name=body.name,
         is_verified=False,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     session.add(user)
     await session.flush()  # populate user.id
@@ -241,11 +243,11 @@ async def signup(
         jwt_jti=jti,
         user_agent=user_agent,
         ip_hash=ip_h,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
         expires_at=expires,
     ))
 
-    user.last_login_at = datetime.now(timezone.utc)
+    user.last_login_at = datetime.utcnow()
     await session.commit()
 
     set_session_cookie(response, token)
@@ -281,10 +283,10 @@ async def login(
         jwt_jti=jti,
         user_agent=user_agent,
         ip_hash=ip_h,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
         expires_at=expires,
     ))
-    user.last_login_at = datetime.now(timezone.utc)
+    user.last_login_at = datetime.utcnow()
     await session.commit()
 
     set_session_cookie(response, token)
@@ -311,7 +313,7 @@ async def logout(
                     select(SessionModel).where(SessionModel.jwt_jti == jti)
                 )).scalar_one_or_none()
                 if sess and not sess.revoked_at:
-                    sess.revoked_at = datetime.now(timezone.utc)
+                    sess.revoked_at = datetime.utcnow()
                     await session.commit()
                     log.info("user.logout", extra={"user_id": sess.user_id})
         except HTTPException:
