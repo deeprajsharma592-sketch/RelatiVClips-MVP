@@ -134,18 +134,18 @@ function EarningsBars({ data }: { data: number[] }) {
           <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
             <div className="text-[10px] font-mono text-text-muted">${v}</div>
             <div className="w-full h-20 flex items-end">
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: `${h}%` }}
-                transition={{ duration: 0.5, delay: i * 0.05, ease: "easeOut" }}
+              <div
                 className="w-full rounded-t"
                 style={{
+                  height: `${h}%`,
+                  minHeight: "2px",
                   background:
                     i === data.length - 1
                       ? "linear-gradient(180deg, var(--color-accent), var(--color-gradient-magenta))"
                       : "var(--color-surface-2)",
                   boxShadow:
                     i === data.length - 1 ? "0 0 12px var(--color-glow-violet)" : undefined,
+                  transition: `height 0.5s ease-out ${i * 0.05}s`,
                 }}
               />
             </div>
@@ -249,11 +249,8 @@ export default function ClipperDashboard() {
                 {OPEN_CAMPAIGNS.map((c) => {
                   const pct = (c.filled / c.slots) * 100;
                   return (
-                    <motion.div
+                    <div
                       key={c.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3 }}
                       className={`rounded-[var(--radius-md)] border ${
                         c.premium
                           ? "border-[color:var(--color-accent-secondary)]/40 bg-[color:var(--color-accent-secondary)]/5"
@@ -303,7 +300,7 @@ export default function ClipperDashboard() {
                           Apply
                         </button>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -317,10 +314,8 @@ export default function ClipperDashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {RECENT_CLIPS.map((c) => (
-                <motion.div
+                <div
                   key={c.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
                   className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4"
                 >
                   <div className="text-[10px] font-mono tracking-widest text-text-faint mb-1">
@@ -344,7 +339,7 @@ export default function ClipperDashboard() {
                     </div>
                   </div>
                   <div className="text-[10px] font-mono text-text-faint">{c.postedAt}</div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </section>
@@ -356,11 +351,8 @@ export default function ClipperDashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {TIPS.map((t, i) => (
-                <motion.div
+                <div
                   key={t.title}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
                   className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4"
                 >
                   <div
@@ -373,7 +365,7 @@ export default function ClipperDashboard() {
                     {t.title}
                   </div>
                   <p className="text-xs text-text-secondary leading-relaxed">{t.body}</p>
-                </motion.div>
+                </div>
               ))}
             </div>
           </section>

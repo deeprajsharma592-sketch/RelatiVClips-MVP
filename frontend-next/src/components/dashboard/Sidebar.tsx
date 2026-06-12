@@ -158,20 +158,14 @@ export default function DashboardShell({
 
         {/* ─── Main content ─── */}
         <main className="min-w-0">
-          <motion.div
-            key={pageTitle}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mb-6"
-          >
+          <div className="mb-6">
             <h1 className="font-display font-bold text-3xl md:text-4xl text-text-primary tracking-tight">
               {pageTitle}
             </h1>
             {pageSubtitle && (
               <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
             )}
-          </motion.div>
+          </div>
           {children}
         </main>
       </div>
