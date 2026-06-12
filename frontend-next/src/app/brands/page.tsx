@@ -3,22 +3,24 @@
 /**
  * /brands — RelatiV's marketing landing for brands.
  *
- * Rebuilt around a single message: "Pay per impression. Not a flat fee."
+ * Re-skinned in v5.1 to match the cream-glass aesthetic of the homepage.
+ * Same business logic (CPM calculator, contact form, FAQ data) — new visual
+ * layer: numbered section markers, glass cards, motion classes, designer
+ * typography (display + serif italic accents).
  *
- * Sections (top to bottom):
- *  1. Hero — marketing pitch + dual CTA
- *  2. How it works — 3-step explainer (Brief → Clippers deliver → Pay per view)
- *  3. CPM calculator — interactive budget → impressions/clips estimator
- *  4. Scale — capacity/throughput messaging
- *  5. FAQ (collapsed, optional)
- *  6. Final CTA
- *
- * No fake testimonials, no fake case studies. Per founder request:
- * social proof deferred until real campaigns are run.
+ * Sections:
+ *  01 · Hero            — editorial pitch + dual CTA
+ *  02 · How it works    — 3 steps with big background numbers
+ *  03 · CPM calculator  — interactive budget → impressions estimator
+ *  04 · Scale           — capacity / throughput messaging
+ *  05 · Comparison      — agency model vs RelatiV model
+ *  06 · FAQ             — accordion
+ *  07 · Run a campaign  — contact form
  */
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRight, ChevronDown, Sparkles, Check } from "lucide-react";
 import CpmCalculator from "@/components/CpmCalculator";
 
 const HOW_IT_WORKS = [
@@ -26,46 +28,27 @@ const HOW_IT_WORKS = [
     step: "01",
     title: "Brief us in 5 minutes",
     body: "Drop your raw video and a short brief. We extract the 50 hookiest moments and lock the brand guidelines — fonts, colors, voice, do-not-use list — into the system.",
-    icon: "→",
-    hue: "primary",
+    artifact: "input · youtube.com/watch?v=…",
   },
   {
     step: "02",
     title: "Clippers deliver in 48 hours",
-    body: "Our 18,000+ clipper network competes for your slots. You get 30+ platform-ready clips, each with hook variants, on-brand captions, and hashtag stacks. Iterate via comments.",
-    icon: "♪",
-    hue: "violet",
+    body: "Our clipper network competes for your slots. You get 30+ platform-ready clips, each with hook variants, on-brand captions, and hashtag stacks. Iterate via comments.",
+    artifact: "compute · 30 clips · 4 hook variants each",
   },
   {
     step: "03",
     title: "You pay per view",
     body: "$7 CPM. Verified-view billing from each platform. We invoice the actual count — not an estimate. Scale up or down anytime. No spend cap.",
-    icon: "$",
-    hue: "gold",
+    artifact: "output · 30 × .mp4 + verified view count",
   },
 ];
 
 const SCALE = [
-  {
-    stat: "10",
-    unit: "clippers",
-    label: "working in parallel per campaign",
-  },
-  {
-    stat: "48h",
-    unit: "",
-    label: "first batch delivered",
-  },
-  {
-    stat: "50K → 5M",
-    unit: "",
-    label: "impressions per campaign tier",
-  },
-  {
-    stat: "3",
-    unit: "platforms",
-    label: "TikTok · Reels · Shorts in one brief",
-  },
+  { stat: "10", unit: "clippers", label: "working in parallel per campaign" },
+  { stat: "48h", unit: "", label: "first batch delivered" },
+  { stat: "50K → 5M", unit: "", label: "impressions per campaign tier" },
+  { stat: "3", unit: "platforms", label: "TikTok · Reels · Shorts in one brief" },
 ];
 
 const FAQ = [
@@ -91,19 +74,15 @@ const FAQ = [
   },
 ];
 
-const HUE = {
-  primary: "from-[color:var(--color-accent)]/15 to-transparent border-[color:var(--color-accent)]/30",
-  violet: "from-[color:var(--color-accent-tertiary)]/15 to-transparent border-[color:var(--color-accent-tertiary)]/30",
-  gold: "from-[color:var(--color-accent-secondary)]/15 to-transparent border-[color:var(--color-accent-secondary)]/30",
-  teal: "from-[color:var(--color-accent-quaternary)]/15 to-transparent border-[color:var(--color-accent-quaternary)]/30",
-};
-
-const HUE_TEXT = {
-  primary: "text-[color:var(--color-accent)]",
-  violet: "text-[color:var(--color-accent-tertiary)]",
-  gold: "text-[color:var(--color-accent-secondary)]",
-  teal: "text-[color:var(--color-accent-quaternary)]",
-};
+function SectionMarker({ num, label }: { num: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>{num}</span>
+      <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+      <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>{label}</span>
+    </div>
+  );
+}
 
 export default function BrandsPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -113,46 +92,63 @@ export default function BrandsPage() {
 
   return (
     <>
-      {/* ─── Hero ─── */}
+      {/* ════════════ 01 · HERO ════════════ */}
       <section className="relative min-h-[80vh] flex items-center overflow-hidden pt-32 pb-20">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute top-0 right-1/4 h-[500px] w-[500px] rounded-full bg-[color:var(--color-glow-primary)] opacity-40 blur-[140px]" />
-          <div className="absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-violet)] opacity-30 blur-[140px]" />
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div
+            className="absolute top-0 right-1/4 h-[500px] w-[500px] rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.18) 0%, transparent 70%)" }}
+          />
+          <div
+            className="absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(6, 182, 212, 0.14) 0%, transparent 70%)" }}
+          />
         </div>
 
         <div className="relative z-10 w-full max-w-6xl mx-auto px-6 text-center">
+          <SectionMarker num="01" label="For brands" />
+
           <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted"
+            className="inline-flex items-center gap-2 mb-6 px-3.5 py-1.5 rounded-full text-[11px] font-medium"
+            style={{
+              background: "rgba(255, 252, 242, 0.7)",
+              backdropFilter: "blur(12px) saturate(180%)",
+              border: "1px solid rgba(255, 255, 255, 0.7)",
+              color: "var(--color-text-secondary)",
+            }}
           >
-            <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent)]" />
-            FOR BRANDS · PAY-PER-IMPRESSION
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: "#10B981" }} />
+            </span>
+            Pay-per-impression · No retainers
           </motion.span>
 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.05 }}
-            className="font-display font-bold tracking-tight text-[clamp(2.5rem,6vw,5rem)] leading-[1.0] max-w-4xl mx-auto"
+            className="font-display font-semibold tracking-tight max-w-5xl mx-auto"
+            style={{ fontSize: "clamp(2.75rem, 6vw, 5.5rem)", lineHeight: 0.98 }}
           >
-            <span className="block text-text-primary">From us, for brands.</span>
-            <span className="block bg-gradient-to-r from-[color:var(--color-accent)] via-[color:var(--color-gradient-magenta)] to-[color:var(--color-gradient-cyan)] bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient">
-              Pay only for views.
-            </span>
-            <span className="block text-text-primary/90">Not a flat fee.</span>
+            <span style={{ color: "var(--color-text-primary)" }}>From us, for brands.</span>
+            <br />
+            <span className="hero-text text-gradient-sunset" style={{ fontSize: "1.1em" }}>Pay only for views.</span>
+            <br />
+            <span style={{ color: "var(--color-text-primary)" }}>Not a flat fee.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15 }}
-            className="mt-8 text-lg md:text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed"
+            className="mt-8 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
+            style={{ color: "var(--color-text-secondary)" }}
           >
-            Drop a video. Get 30+ platform-ready clips from our clipper network in
-            48 hours. We bill you $7 per 1,000 verified views — never a flat fee,
-            never a retainer. Scale up or down anytime.
+            Drop a video. Get 30+ platform-ready clips from our clipper network in 48 hours. We bill you $7 per 1,000 verified views — never a flat fee, never a retainer. Scale up or down anytime.
           </motion.p>
 
           <motion.div
@@ -161,71 +157,71 @@ export default function BrandsPage() {
             transition={{ duration: 0.7, delay: 0.25 }}
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <a
-              href="#run"
-              className="px-7 py-4 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold rounded-full shadow-[0_0_32px_var(--color-glow-primary)] hover:scale-[1.02] transition-transform"
-            >
+            <a href="#run" className="btn-primary btn-shine inline-flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
               Launch a campaign
+              <ArrowRight className="h-4 w-4" />
             </a>
-            <a
-              href="#math"
-              className="px-7 py-4 border border-[color:var(--color-border-strong)] text-text-primary font-semibold rounded-full hover:border-[color:var(--color-accent)] transition-colors"
-            >
+            <a href="#math" className="btn-ghost inline-flex items-center gap-2">
               See the math
             </a>
           </motion.div>
 
-          {/* Trust strip — 4 numbers, no fake logos */}
+          {/* Trust strip — 4 numbers */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.4 }}
-            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-px bg-[color:var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden border border-[color:var(--color-border)]"
+            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto"
           >
             {[
               { v: "18,421", l: "active clippers" },
               { v: "$7", l: "per 1K views" },
               { v: "48h", l: "first batch" },
               { v: "3", l: "platforms" },
-            ].map((s) => (
-              <div
+            ].map((s, i) => (
+              <motion.div
                 key={s.l}
-                className="bg-[color:var(--color-bg-base)] px-4 py-5 text-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.08 }}
+                className="glass-card hover-glow px-4 py-3"
               >
-                <div className="font-display font-bold text-2xl md:text-3xl text-text-primary">
+                <div className="font-mono text-2xl font-semibold tabular-nums" style={{ color: "var(--color-text-primary)" }}>
                   {s.v}
                 </div>
-                <div className="mt-1 text-[10px] font-mono tracking-widest text-text-muted">
-                  {s.l.toUpperCase()}
+                <div className="text-[11px] mt-0.5 font-mono" style={{ color: "var(--color-text-muted)" }}>
+                  {s.l}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* ─── How it works ─── */}
-      <section className="relative w-full py-24 px-6 bg-[color:var(--color-bg-deep)] border-y border-[color:var(--color-border)]">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <span className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-              THE MODEL
-            </span>
-            <h2 className="font-display font-bold text-4xl md:text-5xl text-text-primary tracking-tight max-w-3xl mx-auto">
-              Three steps. <span className="text-text-muted">No retainers.</span>
+      {/* ════════════ 02 · HOW IT WORKS ════════════ */}
+      <section className="relative py-32 overflow-hidden" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)", borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>02</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>The model</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            </div>
+            <h2
+              className="font-display font-semibold tracking-tight"
+              style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", lineHeight: 1.05 }}
+            >
+              <span style={{ color: "var(--color-text-primary)" }}>Three steps. </span>
+              <span className="hero-text text-gradient-sunset">No retainers.</span>
             </h2>
-            <p className="mt-4 text-text-secondary max-w-2xl mx-auto">
-              You bring the video. We bring the network, the AI pipeline, and the
-              verified-view billing. You pay for what works.
+            <p className="mt-5 text-lg" style={{ color: "var(--color-text-secondary)" }}>
+              You bring the video. We bring the network, the AI pipeline, and the verified-view billing. You pay for what works.
             </p>
-          </motion.div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {HOW_IT_WORKS.map((step, i) => (
               <motion.div
                 key={step.step}
@@ -233,80 +229,106 @@ export default function BrandsPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`relative overflow-hidden rounded-[var(--radius-lg)] border bg-gradient-to-b p-8 ${HUE[step.hue as keyof typeof HUE]}`}
+                className="glass-card hover-glow p-7 relative overflow-hidden"
               >
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="font-mono text-[10px] tracking-widest text-text-faint">
-                    STEP {step.step}
-                  </span>
-                </div>
-                <div
-                  className={`text-4xl mb-4 font-display font-bold ${HUE_TEXT[step.hue as keyof typeof HUE_TEXT]}`}
+                {/* Big background number */}
+                <span
+                  className="absolute -top-4 -right-2 font-display font-semibold select-none pointer-events-none"
+                  style={{
+                    fontSize: "8rem",
+                    lineHeight: 1,
+                    color: "transparent",
+                    background: "linear-gradient(180deg, rgba(60, 50, 30, 0.08) 0%, rgba(60, 50, 30, 0.02) 100%)",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                  }}
                 >
-                  {step.icon}
+                  {step.step}
+                </span>
+
+                <div className="relative">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+                    style={{ background: "var(--gradient-sunset)", boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)" }}
+                  >
+                    <span className="font-display font-bold text-white text-xl">{i + 1}</span>
+                  </div>
+                  <h3
+                    className="font-display font-semibold text-xl mb-3"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    {step.title}
+                  </h3>
+                  <p className="text-[14px] leading-relaxed mb-5" style={{ color: "var(--color-text-secondary)" }}>
+                    {step.body}
+                  </p>
+                  <div
+                    className="rounded-xl px-3.5 py-2.5 flex items-center gap-2.5"
+                    style={{ background: "rgba(40, 30, 15, 0.04)", border: "1px solid rgba(60, 50, 30, 0.08)" }}
+                  >
+                    <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: "var(--color-text-muted)" }}>
+                      {step.artifact.split("·")[0]?.trim()}
+                    </span>
+                    <code className="text-[11px] font-mono truncate" style={{ color: "var(--color-text-primary)" }}>
+                      {step.artifact.split("·").slice(1).join("·").trim()}
+                    </code>
+                  </div>
                 </div>
-                <h3 className="font-display font-bold text-xl text-text-primary mb-3 leading-snug">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  {step.body}
-                </p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── CPM Calculator ─── */}
-      <section
-        id="math"
-        className="relative w-full py-24 px-6 bg-[color:var(--color-bg-base)]"
-      >
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <span className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-              THE MATH
-            </span>
-            <h2 className="font-display font-bold text-4xl md:text-5xl text-text-primary tracking-tight max-w-3xl mx-auto">
-              Drag the budget. <span className="text-text-muted">See the views.</span>
+      {/* ════════════ 03 · CPM CALCULATOR ════════════ */}
+      <section id="math" className="relative py-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>03</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>The math</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            </div>
+            <h2
+              className="font-display font-semibold tracking-tight"
+              style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", lineHeight: 1.05 }}
+            >
+              <span style={{ color: "var(--color-text-primary)" }}>Drag the budget. </span>
+              <span className="hero-text text-gradient-ocean">See the views.</span>
             </h2>
-            <p className="mt-4 text-text-secondary max-w-2xl mx-auto">
-              $7 per 1,000 verified views. 12% platform margin (transparent,
-              not deducted invisibly). No platform fees, no agency cut.
+            <p className="mt-5 text-lg" style={{ color: "var(--color-text-secondary)" }}>
+              $7 per 1,000 verified views. 12% platform margin (transparent, not deducted invisibly). No platform fees, no agency cut.
             </p>
-          </motion.div>
+          </div>
 
           <CpmCalculator />
         </div>
       </section>
 
-      {/* ─── Scale ─── */}
-      <section className="relative w-full py-24 px-6 bg-[color:var(--color-bg-deep)] border-y border-[color:var(--color-border)]">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-14"
-          >
-            <span className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-              SCALE
-            </span>
-            <h2 className="font-display font-bold text-4xl md:text-5xl text-text-primary tracking-tight max-w-3xl mx-auto">
-              Built to scale with you.
+      {/* ════════════ 04 · SCALE ════════════ */}
+      <section className="relative py-32 overflow-hidden" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)", borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>04</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Scale</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            </div>
+            <h2
+              className="font-display font-semibold tracking-tight"
+              style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", lineHeight: 1.05 }}
+            >
+              <span style={{ color: "var(--color-text-primary)" }}>Built to scale </span>
+              <span className="hero-text text-gradient-sunset">with you.</span>
             </h2>
-            <p className="mt-4 text-text-secondary max-w-2xl mx-auto">
-              From a single 50K-view test to a 5M-view always-on — same dashboard,
-              same billing, same network.
+            <p className="mt-5 text-lg" style={{ color: "var(--color-text-secondary)" }}>
+              From a single 50K-view test to a 5M-view always-on — same dashboard, same billing, same network.
             </p>
-          </motion.div>
+          </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {SCALE.map((s, i) => (
               <motion.div
                 key={s.label}
@@ -314,89 +336,124 @@ export default function BrandsPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-6 text-center"
+                className="glass-card hover-glow p-6 text-center"
               >
-                <div className="font-display font-bold text-3xl md:text-4xl text-text-primary tracking-tight">
+                <div
+                  className="font-display font-semibold text-3xl md:text-4xl tracking-tight tabular-nums"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
                   {s.stat}
-                  <span className="text-base md:text-lg text-text-muted ml-1">
-                    {s.unit}
-                  </span>
+                  {s.unit && (
+                    <span className="text-base md:text-lg ml-1" style={{ color: "var(--color-text-muted)" }}>
+                      {s.unit}
+                    </span>
+                  )}
                 </div>
-                <div className="mt-2 text-xs text-text-muted font-sans leading-snug">
+                <div className="mt-2 text-xs leading-snug" style={{ color: "var(--color-text-muted)" }}>
                   {s.label}
                 </div>
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Comparison strip */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-6">
-              <div className="text-[10px] font-mono tracking-widest text-text-faint mb-3">
-                AGENCY MODEL
+      {/* ════════════ 05 · COMPARISON ════════════ */}
+      <section className="relative py-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>05</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Comparison</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            </div>
+            <h2
+              className="font-display font-semibold tracking-tight"
+              style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)", lineHeight: 1.05 }}
+            >
+              <span style={{ color: "var(--color-text-primary)" }}>Agency vs </span>
+              <span className="hero-text text-gradient-sunset">RelatiV</span>
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+            <div className="glass-card p-7">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                  Agency model
+                </span>
               </div>
-              <ul className="space-y-2 text-sm text-text-muted">
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-error)] mt-0.5">×</span>
-                  $8K–$25K monthly retainer
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-error)] mt-0.5">×</span>
-                  2–4 week turnaround per batch
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-error)] mt-0.5">×</span>
-                  You pay for the team&apos;s time, not the views
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-error)] mt-0.5">×</span>
-                  Clips locked to the agency&apos;s editor pool
-                </li>
+              <ul className="space-y-2.5">
+                {[
+                  "$8K–$25K monthly retainer",
+                  "2–4 week turnaround per batch",
+                  "You pay for the team's time, not the views",
+                  "Clips locked to the agency's editor pool",
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-[14px]" style={{ color: "var(--color-text-muted)" }}>
+                    <span className="mt-0.5 text-[var(--color-error)] font-mono text-base leading-none">×</span>
+                    <span>{line}</span>
+                  </li>
+                ))}
               </ul>
             </div>
-            <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-accent)]/30 bg-[color:var(--color-accent)]/5 p-6">
-              <div className="text-[10px] font-mono tracking-widest text-[color:var(--color-accent)] mb-3">
-                RELATIV MODEL
+            <div
+              className="p-7 rounded-[var(--radius-xl)]"
+              style={{
+                background: "rgba(217, 70, 239, 0.06)",
+                border: "1px solid rgba(217, 70, 239, 0.25)",
+                backdropFilter: "blur(20px) saturate(180%)",
+                boxShadow: "0 0 0 1px rgba(217, 70, 239, 0.08), 0 16px 48px rgba(140, 110, 60, 0.08)",
+              }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-[11px] font-mono uppercase tracking-wider font-semibold" style={{ color: "var(--color-accent)" }}>
+                  RelatiV model
+                </span>
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(217, 70, 239, 0.15)", color: "var(--color-accent)" }}
+                >
+                  recommended
+                </span>
               </div>
-              <ul className="space-y-2 text-sm text-text-secondary">
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-accent)] mt-0.5">✓</span>
-                  $7 CPM · pay only for views delivered
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-accent)] mt-0.5">✓</span>
-                  48-hour first batch, ongoing from there
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-accent)] mt-0.5">✓</span>
-                  You pay for the outcome, not the labor
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[color:var(--color-accent)] mt-0.5">✓</span>
-                  Compete among 18K+ clippers per slot
-                </li>
+              <ul className="space-y-2.5">
+                {[
+                  "$7 CPM · pay only for views delivered",
+                  "48-hour first batch, ongoing from there",
+                  "You pay for the outcome, not the labor",
+                  "Compete among 18K+ clippers per slot",
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-[14px]" style={{ color: "var(--color-text-primary)" }}>
+                    <Check className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--color-accent)" }} />
+                    <span>{line}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── FAQ ─── */}
-      <section className="relative w-full py-24 px-6 bg-[color:var(--color-bg-base)]">
-        <div className="max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <span className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-              FAQ
-            </span>
-            <h2 className="font-display font-bold text-4xl md:text-5xl text-text-primary tracking-tight">
-              Things brands ask first.
+      {/* ════════════ 06 · FAQ ════════════ */}
+      <section className="relative py-32 overflow-hidden" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}>
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>06</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+              <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>FAQ</span>
+              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            </div>
+            <h2
+              className="font-display font-semibold tracking-tight"
+              style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", lineHeight: 1.05 }}
+            >
+              <span style={{ color: "var(--color-text-primary)" }}>Things brands </span>
+              <span className="hero-text text-gradient-sunset">ask first.</span>
             </h2>
-          </motion.div>
+          </div>
 
           <div className="space-y-2">
             {FAQ.map((item, i) => {
@@ -408,23 +465,24 @@ export default function BrandsPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-20px" }}
                   transition={{ duration: 0.3, delay: i * 0.04 }}
-                  className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] overflow-hidden"
+                  className="glass-card overflow-hidden"
+                  style={{ borderRadius: "var(--radius-lg)" }}
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaq(open ? null : i)}
-                    className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-[color:var(--color-surface-2)] transition-colors"
+                    className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left transition-colors"
                     aria-expanded={open}
                   >
-                    <span className="font-display font-semibold text-text-primary text-base">
+                    <span className="text-[15px] font-medium" style={{ color: "var(--color-text-primary)" }}>
                       {item.q}
                     </span>
                     <motion.span
-                      animate={{ rotate: open ? 45 : 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="shrink-0 text-[color:var(--color-accent)] text-xl leading-none"
+                      animate={{ rotate: open ? 180 : 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="shrink-0"
                     >
-                      +
+                      <ChevronDown className="h-4 w-4" style={{ color: "var(--color-text-muted)" }} />
                     </motion.span>
                   </button>
                   <AnimatePresence initial={false}>
@@ -433,10 +491,13 @@ export default function BrandsPage() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
                         className="overflow-hidden"
                       >
-                        <div className="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+                        <div
+                          className="px-6 pb-5 text-[14px] leading-relaxed"
+                          style={{ color: "var(--color-text-secondary)" }}
+                        >
                           {item.a}
                         </div>
                       </motion.div>
@@ -449,32 +510,37 @@ export default function BrandsPage() {
         </div>
       </section>
 
-      {/* ─── Run a Campaign (form anchor) ─── */}
+      {/* ════════════ 07 · RUN A CAMPAIGN (form) ════════════ */}
       <section
         id="run"
-        className="relative py-24 overflow-hidden bg-[color:var(--color-bg-deep)] border-t border-[color:var(--color-border)]"
+        className="relative py-32 overflow-hidden"
+        style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}
       >
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 8, repeat: Infinity }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-[color:var(--color-glow-primary)] opacity-20 blur-3xl"
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-3xl pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.18) 0%, transparent 70%)" }}
         />
+
         <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <span className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-            <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent)]" />
-            RUN A CAMPAIGN
-          </span>
-          <h2 className="font-display font-bold text-4xl md:text-5xl text-text-primary tracking-tight">
-            Drop a video link.
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>07</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Run a campaign</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+          </div>
+
+          <h2
+            className="font-display font-semibold tracking-tight"
+            style={{ fontSize: "clamp(2.25rem, 5vw, 3.5rem)", lineHeight: 1.02 }}
+          >
+            <span style={{ color: "var(--color-text-primary)" }}>Drop a video link.</span>
             <br />
-            <span className="bg-gradient-to-r from-[color:var(--color-accent)] to-[color:var(--color-gradient-cyan)] bg-clip-text text-transparent">
-              Get clips in 48 hours.
-            </span>
+            <span className="hero-text text-gradient-sunset">Get clips in 48 hours.</span>
           </h2>
-          <p className="mt-4 text-lg text-text-secondary">
-            We&apos;ll review the brief, quote a CPM tier, and start the clipper
-            competition within 24 hours. No sales call required.
+          <p className="mt-5 text-lg" style={{ color: "var(--color-text-secondary)" }}>
+            We&apos;ll review the brief, quote a CPM tier, and start the clipper competition within 24 hours. No sales call required.
           </p>
+
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -496,9 +562,6 @@ export default function BrandsPage() {
               try {
                 const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
-                // Two requests in parallel: persist the contact, and request
-                // a server-authoritative quote. The quote also re-does the
-                // math so the user can't be misled by client-side rounding.
                 const [contactRes, quoteRes] = await Promise.all([
                   fetch(`${apiBase}/api/v1/brands/contact`, {
                     method: "POST",
@@ -547,7 +610,7 @@ export default function BrandsPage() {
               type="url"
               required
               placeholder="Paste your YouTube / Vimeo / MP4 link"
-              className="flex-1 bg-[color:var(--color-bg-base)] border border-[color:var(--color-border-strong)] rounded-full px-5 py-3.5 text-sm text-text-primary placeholder:text-text-faint focus:border-[color:var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]/30 transition-all"
+              className="input-glass flex-1"
             />
             <input
               name="budget"
@@ -556,28 +619,28 @@ export default function BrandsPage() {
               step={500}
               defaultValue={5000}
               placeholder="Budget (USD)"
-              className="sm:w-40 bg-[color:var(--color-bg-base)] border border-[color:var(--color-border-strong)] rounded-full px-5 py-3.5 text-sm text-text-primary placeholder:text-text-faint focus:border-[color:var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]/30 transition-all"
+              className="input-glass sm:w-40"
             />
             <button
               type="submit"
               disabled={submitting}
-              className="px-7 py-3.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold text-sm rounded-full shadow-[0_0_24px_var(--color-glow-primary)] hover:scale-[1.02] transition-transform whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="btn-primary btn-shine whitespace-nowrap disabled:opacity-50"
             >
               {submitting ? "Launching…" : "Launch →"}
             </button>
           </form>
           {submitError && (
-            <p className="mt-4 text-xs text-[color:var(--color-error)] font-mono">
+            <p className="mt-4 text-xs font-mono" style={{ color: "var(--color-error)" }}>
               {submitError}
             </p>
           )}
           {submitOk && (
-            <p className="mt-4 text-xs text-[color:var(--color-success)] font-mono">
+            <p className="mt-4 text-xs font-mono" style={{ color: "var(--color-success)" }}>
               ✓ Quote {submitOk.quote_id} saved · {submitOk.estimated_views.toLocaleString("en-US")} estimated views · we&apos;ll be in touch within 24h.
             </p>
           )}
           {!submitError && !submitOk && (
-            <p className="mt-4 text-[10px] font-mono text-text-faint">
+            <p className="mt-4 text-[10px] font-mono" style={{ color: "var(--color-text-faint)" }}>
               Backend wired: contacts and quotes both persist server-side. You&apos;ll get a real confirmation.
             </p>
           )}

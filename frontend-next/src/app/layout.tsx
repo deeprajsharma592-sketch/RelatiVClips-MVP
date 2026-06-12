@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono, Instrument_Serif } from "next/fon
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
+import ScrollProgress from "@/components/ScrollProgress";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
 
@@ -69,6 +70,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <AuthProvider>
+          <ScrollProgress />
           <Header />
           <main id="main-content" className="flex-1">{children}</main>
           <Footer />
