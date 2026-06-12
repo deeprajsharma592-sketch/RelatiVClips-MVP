@@ -59,12 +59,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS — tightened from wildcard. Origins come from env (CORS_ORIGINS)
+# with safe defaults for dev. In production, set to your real domains.
+# Format: comma-separated list, e.g. "https://relativ.app,https://www.relativ.app"
+import os
+_default_cors = ",".join([
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    # Pre-launch defaults (Hetzner IP + common Vercel previews)
+    "http://91.98.144.72:3000",
+    "https://relativ.app",
+    "https://www.relativ.app",
+])
+_cors_origins = [
+    o.strip() for o in os.getenv("CORS_ORIGINS", _default_cors).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    # Don't allow credentials across origins unless explicitly listed above
+    allow_origin_regex=r"^https?://localhost:\d+$|^https?://.*\.vercel\.app$",
 )
 
 # Include routers
