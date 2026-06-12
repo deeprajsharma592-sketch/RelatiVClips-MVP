@@ -16,10 +16,10 @@ const NAV_LINKS = [
   { href: "/plans", label: "Plans" },
 ];
 
-const ROLE_COLOR: Record<UserRole, string> = {
-  creator: "var(--color-accent)",
-  brand: "var(--color-accent)",
-  clipper: "var(--color-accent-tertiary)",
+const ROLE_GRADIENT: Record<UserRole, string> = {
+  creator: "linear-gradient(135deg, #FB7185 0%, #D946EF 100%)",
+  brand: "linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)",
+  clipper: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
 };
 
 const DASHBOARD_HREF: Record<UserRole, string> = {
@@ -44,27 +44,47 @@ export default function Header() {
   const handleLogout = async () => {
     closeUserMenu();
     await logout();
-    // logout() in AuthContext does window.location.href = "/"
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50">
+      <div
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "rgba(246, 241, 231, 0.70)",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          borderBottom: "1px solid rgba(60, 50, 30, 0.08)",
+        }}
+      />
+      <div className="max-w-7xl mx-auto px-6 h-[68px] flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group" onClick={closeMenu}>
+        <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMenu}>
           <motion.div
-            className="w-8 h-8 border border-accent rounded-[2px] flex items-center justify-center"
-            whileHover={{ rotate: 90 }}
-            transition={{ duration: 0.3 }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, #FB7185 0%, #D946EF 50%, #8B5CF6 100%)",
+              boxShadow: "0 4px 12px rgba(217, 70, 239, 0.30), 0 1px 0 rgba(255,255,255,0.4) inset",
+            }}
+            whileHover={{ scale: 1.05, rotate: -5 }}
+            transition={{ type: "spring", stiffness: 400 }}
           >
-            <span className="font-mono text-xs text-accent font-bold">R</span>
+            <span className="font-display text-base font-bold text-white">R</span>
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 60%)",
+                pointerEvents: "none",
+              }}
+            />
           </motion.div>
-          <div>
-            <span className="font-display text-lg font-bold text-white tracking-tight">
-              Relati<span className="text-accent">V</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-lg font-semibold tracking-tight" style={{ color: "var(--color-text-primary)" }}>
+              Relati<span className="text-gradient-sunset">V</span>
             </span>
             {pathname === "/" && (
-              <span className="ml-2 text-[10px] font-mono text-accent-secondary">
+              <span className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
                 [Φ]
               </span>
             )}
@@ -80,37 +100,65 @@ export default function Header() {
                 key={link.href}
                 href={link.href}
                 aria-current={active ? "page" : undefined}
-                className={`px-4 py-2 text-sm font-sans rounded-[var(--radius-md)] transition-colors flex items-center gap-1.5 ${
-                  active
-                    ? "text-text-primary bg-[color:var(--color-surface-2)]"
-                    : link.highlight
-                    ? "text-text-secondary hover:text-[color:var(--color-accent-tertiary)]"
-                    : "text-text-muted hover:text-text-primary hover:bg-[color:var(--color-surface-2)]"
-                }`}
+                className="relative px-3.5 py-2 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-1.5"
+                style={{
+                  color: active
+                    ? "var(--color-text-primary)"
+                    : "var(--color-text-secondary)",
+                  background: active
+                    ? "rgba(255, 252, 242, 0.8)"
+                    : "transparent",
+                  boxShadow: active
+                    ? "0 1px 3px rgba(140, 110, 60, 0.06), 0 1px 0 rgba(255,255,255,0.6) inset"
+                    : "none",
+                }}
               >
                 {link.label}
                 {link.highlight && !active && (
-                  <span className="h-1 w-1 rounded-full bg-[color:var(--color-accent-tertiary)]" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: "var(--gradient-sunset)" }}
+                  />
                 )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Right section: auth state + status + CTA + hamburger */}
-        <div className="flex items-center gap-3">
-          {/* Auth state: signed out → Sign in / Sign up. Signed in → avatar. */}
+        {/* Right section */}
+        <div className="flex items-center gap-2">
+          {/* Online indicator */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(255, 252, 242, 0.5)", border: "1px solid rgba(60, 50, 30, 0.06)" }}>
+            <motion.div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: "#10B981" }}
+              animate={{ opacity: [1, 0.4, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+              Online
+            </span>
+          </div>
+
+          {/* Auth state */}
           {!loading && !user && (
             <>
               <Link
                 href="/login"
-                className="hidden sm:inline-block text-sm font-medium text-text-muted hover:text-text-primary transition-colors"
+                className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-full transition-colors"
+                style={{ color: "var(--color-text-secondary)" }}
               >
                 Sign in
               </Link>
               <Link
                 href="/signup"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-semibold rounded-full hover:bg-accent-secondary transition-colors"
+                className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all"
+                style={{
+                  background: "var(--gradient-sunset)",
+                  color: "#FFFFFF",
+                  padding: "9px 18px",
+                  boxShadow: "0 4px 12px rgba(217, 70, 239, 0.25), 0 1px 0 rgba(255,255,255,0.4) inset",
+                }}
               >
                 Get started
                 <span className="text-xs">→</span>
@@ -121,21 +169,25 @@ export default function Header() {
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-[color:var(--color-surface-2)] transition-colors"
+                className="flex items-center gap-2 px-2 py-1 rounded-full transition-all"
+                style={{ background: "rgba(255, 252, 242, 0.6)", border: "1px solid rgba(60, 50, 30, 0.08)" }}
                 aria-label="User menu"
                 aria-expanded={userMenuOpen}
               >
                 <div
-                  className="h-8 w-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-[color:var(--color-bg-base)]"
-                  style={{ background: ROLE_COLOR[user.role] }}
+                  className="h-8 w-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-white"
+                  style={{ background: ROLE_GRADIENT[user.role] }}
                 >
                   {user.name.slice(0, 1).toUpperCase()}
                 </div>
-                <div className="hidden lg:block text-left">
-                  <div className="text-xs font-semibold text-text-primary leading-tight">{user.name}</div>
-                  <div className="text-[10px] font-mono text-text-muted">{ROLE_LABEL[user.role]}</div>
+                <div className="hidden lg:block text-left pr-2">
+                  <div className="text-xs font-semibold leading-tight" style={{ color: "var(--color-text-primary)" }}>
+                    {user.name}
+                  </div>
+                  <div className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+                    {ROLE_LABEL[user.role]}
+                  </div>
                 </div>
-                <span className="text-text-faint text-[10px]">▼</span>
               </button>
               <AnimatePresence>
                 {userMenuOpen && (
@@ -146,33 +198,48 @@ export default function Header() {
                       aria-hidden="true"
                     />
                     <motion.div
-                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute right-0 mt-2 w-56 rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-elev)] shadow-2xl py-1 z-40"
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-60 overflow-hidden z-40"
+                      style={{
+                        background: "rgba(255, 252, 242, 0.92)",
+                        backdropFilter: "blur(32px) saturate(200%)",
+                        WebkitBackdropFilter: "blur(32px) saturate(200%)",
+                        border: "1px solid rgba(255, 255, 255, 0.7)",
+                        borderRadius: "var(--radius-lg)",
+                        boxShadow: "var(--shadow-xl)",
+                      }}
                     >
-                      <div className="px-4 py-2 border-b border-[color:var(--color-border)]">
-                        <div className="text-sm font-semibold text-text-primary truncate">{user.name}</div>
-                        <div className="text-[10px] font-mono text-text-muted truncate">{user.email}</div>
+                      <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(60, 50, 30, 0.08)" }}>
+                        <div className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
+                          {user.name}
+                        </div>
+                        <div className="text-[10px] font-mono truncate" style={{ color: "var(--color-text-muted)" }}>
+                          {user.email}
+                        </div>
                       </div>
                       <Link
                         href="/account"
                         onClick={closeUserMenu}
-                        className="block px-4 py-2 text-sm text-text-secondary hover:bg-[color:var(--color-surface-2)] hover:text-text-primary"
+                        className="block px-4 py-2.5 text-sm transition-colors"
+                        style={{ color: "var(--color-text-secondary)" }}
                       >
                         Account
                       </Link>
                       <Link
                         href={DASHBOARD_HREF[user.role]}
                         onClick={closeUserMenu}
-                        className="block px-4 py-2 text-sm text-text-secondary hover:bg-[color:var(--color-surface-2)] hover:text-text-primary"
+                        className="block px-4 py-2.5 text-sm transition-colors"
+                        style={{ color: "var(--color-text-secondary)" }}
                       >
                         {ROLE_LABEL[user.role]} dashboard
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-text-secondary hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-error)]"
+                        className="block w-full text-left px-4 py-2.5 text-sm transition-colors border-t"
+                        style={{ color: "var(--color-error)", borderColor: "rgba(60, 50, 30, 0.08)" }}
                       >
                         Sign out
                       </button>
@@ -183,36 +250,28 @@ export default function Header() {
             </div>
           )}
 
-          <div className="hidden md:flex items-center gap-2 pr-2">
-            <motion.div
-              className="w-2 h-2 rounded-full bg-accent-secondary"
-              animate={{ opacity: [1, 0.4, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-            <span className="text-xs font-mono text-text-muted">Online</span>
-          </div>
-
           {/* Hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden flex flex-col items-center justify-center w-8 h-8 gap-1 border border-border rounded-[2px] hover:border-accent transition-colors"
+            className="md:hidden flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors"
+            style={{ background: "rgba(255, 252, 242, 0.6)", border: "1px solid rgba(60, 50, 30, 0.08)" }}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
           >
             <motion.span
               className="block w-4 h-px"
-              style={{ backgroundColor: menuOpen ? "#D946EF" : "#A1A1A1" }}
-              animate={menuOpen ? { rotate: 45, y: 2.5 } : { rotate: 0, y: 0 }}
+              style={{ backgroundColor: "var(--color-text-primary)" }}
+              animate={menuOpen ? { rotate: 45, y: 3 } : { rotate: 0, y: 0 }}
             />
             <motion.span
-              className="block w-4 h-px"
-              style={{ backgroundColor: "#A1A1A1" }}
+              className="block w-4 h-px my-0.5"
+              style={{ backgroundColor: "var(--color-text-primary)" }}
               animate={menuOpen ? { opacity: 0 } : { opacity: 1 }}
             />
             <motion.span
               className="block w-4 h-px"
-              style={{ backgroundColor: menuOpen ? "#D946EF" : "#A1A1A1" }}
-              animate={menuOpen ? { rotate: -45, y: -2.5 } : { rotate: 0, y: 0 }}
+              style={{ backgroundColor: "var(--color-text-primary)" }}
+              animate={menuOpen ? { rotate: -45, y: -3 } : { rotate: 0, y: 0 }}
             />
           </button>
         </div>
@@ -227,7 +286,8 @@ export default function Header() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 md:hidden"
+              style={{ background: "rgba(60, 50, 30, 0.30)", backdropFilter: "blur(8px)" }}
               onClick={closeMenu}
             />
             <motion.nav
@@ -235,7 +295,14 @@ export default function Header() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-16 right-0 bottom-0 w-64 bg-surface border-l border-border md:hidden p-6 flex flex-col gap-2 overflow-y-auto"
+              className="fixed top-[68px] right-0 bottom-0 w-72 overflow-y-auto p-6 flex flex-col gap-1 md:hidden"
+              style={{
+                background: "rgba(255, 252, 242, 0.92)",
+                backdropFilter: "blur(32px) saturate(200%)",
+                WebkitBackdropFilter: "blur(32px) saturate(200%)",
+                borderLeft: "1px solid rgba(60, 50, 30, 0.08)",
+                boxShadow: "var(--shadow-xl)",
+              }}
             >
               {NAV_LINKS.map((link, i) => (
                 <motion.div
@@ -248,46 +315,62 @@ export default function Header() {
                     href={link.href}
                     onClick={closeMenu}
                     aria-current={isActive(link.href) ? "page" : undefined}
-                    className={`block px-4 py-3 text-sm font-sans rounded-[2px] transition-colors ${
-                      isActive(link.href)
-                        ? "text-white bg-accent/10 border border-accent/20"
-                        : "text-text-muted hover:text-white hover:bg-white/5"
-                    }`}
+                    className="flex items-center justify-between px-4 py-3 text-sm font-medium rounded-2xl transition-colors"
+                    style={{
+                      color: isActive(link.href)
+                        ? "var(--color-text-primary)"
+                        : "var(--color-text-secondary)",
+                      background: isActive(link.href)
+                        ? "rgba(217, 70, 239, 0.08)"
+                        : "transparent",
+                    }}
                   >
                     {link.label}
+                    {link.highlight && !isActive(link.href) && (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: "var(--gradient-sunset)" }}
+                      />
+                    )}
                   </Link>
                 </motion.div>
               ))}
 
-              {/* Mobile auth section */}
-              <div className="mt-auto pt-6 border-t border-border space-y-2">
+              <div className="mt-auto pt-6 space-y-2" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}>
                 {!loading && !user && (
                   <>
                     <Link
                       href="/login"
                       onClick={closeMenu}
-                      className="block px-4 py-2 text-sm text-text-muted text-center hover:text-text-primary"
+                      className="block text-center py-3 text-sm font-medium rounded-full"
+                      style={{ color: "var(--color-text-secondary)" }}
                     >
                       Sign in
                     </Link>
                     <Link
                       href="/signup"
                       onClick={closeMenu}
-                      className="block px-4 py-2 text-sm text-text-center bg-accent text-black font-semibold rounded-md"
+                      className="block text-center py-3 text-sm font-semibold rounded-full"
+                      style={{
+                        background: "var(--gradient-sunset)",
+                        color: "#FFFFFF",
+                        boxShadow: "0 4px 12px rgba(217, 70, 239, 0.25)",
+                      }}
                     >
-                      Get started
+                      Get started →
                     </Link>
                   </>
                 )}
                 {!loading && user && (
                   <>
-                    <div className="px-4 py-2 text-xs text-text-muted">
-                      Signed in as <span className="text-text-primary">{user.name}</span>
+                    <div className="text-xs px-2" style={{ color: "var(--color-text-muted)" }}>
+                      Signed in as <span style={{ color: "var(--color-text-primary)" }}>{user.name}</span>
                     </div>
                     <Link
                       href="/account"
                       onClick={closeMenu}
-                      className="block px-4 py-2 text-sm text-text-muted hover:text-white"
+                      className="block px-4 py-2.5 text-sm rounded-xl"
+                      style={{ color: "var(--color-text-secondary)" }}
                     >
                       Account
                     </Link>
@@ -296,13 +379,14 @@ export default function Header() {
                         closeMenu();
                         handleLogout();
                       }}
-                      className="block w-full text-left px-4 py-2 text-sm text-text-muted hover:text-white"
+                      className="block w-full text-left px-4 py-2.5 text-sm rounded-xl"
+                      style={{ color: "var(--color-error)" }}
                     >
                       Sign out
                     </button>
                   </>
                 )}
-                <p className="text-[10px] font-mono text-text-muted/40 text-center pt-4">
+                <p className="text-[10px] font-mono text-center pt-4" style={{ color: "var(--color-text-faint)" }}>
                   Quantum Precision • Privacy-First AI
                 </p>
               </div>

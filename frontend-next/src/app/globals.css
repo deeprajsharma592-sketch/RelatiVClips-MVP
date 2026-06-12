@@ -1,75 +1,110 @@
 @import "tailwindcss";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   RelatiV v4 Color System — "Fuchsia Era"
+/* ════════════════════════════════════════════════════════════════════════════
+   RelatiV v5 — "Cream Glass" Design System
 
-   Orange is gone. Primary is electric fuchsia (magenta-500 / #D946EF).
-   Reasoning: distinctly NOT orange, "creator-economy" coded (Instagram,
-   TikTok-adjacent bold), pairs cleanly with the existing gold / violet /
-   teal secondaries, and the cyan+fuchsia gradient in the hero lands as the
-   new brand-defining moment.
+   Premium glassmorphism aesthetic. Very, very light yellowish-greyish glass
+   on a warm cream backdrop. Vibrant sunset accents that POP through the
+   frosted layer. Subtle, designer-quality shadows. Premium product feel.
 
-   Renames (semantic cleanup, no visual change):
-     --color-glow-primary     →  --color-glow-primary
-     --color-gradient-primary →  --color-gradient-primary
-   ───────────────────────────────────────────────────────────────────────────── */
+   Direction:
+     - Light, warm, sophisticated — think Aesop, Linear, Stripe, Apple
+     - Frosted glass with backdrop-blur and saturate
+     - Soft yellow-grey undertones (not blue-grey, not pure white)
+     - Accent gradients: sunset (coral → fuchsia → violet) + ocean (teal → blue)
+     - Typography: Instrument Serif (display) + Inter (body) + JetBrains Mono
+   ════════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
-  /* ─── Base surfaces (5 layers, true depth hierarchy) ─── */
-  --color-bg-base: #050507;          /* page background, deep matte */
-  --color-bg-deep: #0A0A0F;          /* section background */
-  --color-surface: #111118;          /* card background */
-  --color-surface-2: #181822;        /* nested card / hover */
-  --color-surface-elev: #1F1F2C;     /* modal / dropdown / tooltip */
-  --color-border: #26262E;           /* default border */
-  --color-border-strong: #383844;    /* hovered / active border */
+  /* ─── Base surfaces (warm cream layered) ─── */
+  --color-bg-base: #F6F1E7;            /* page background, warm cream */
+  --color-bg-deep: #EDE6D6;            /* section background, slightly deeper */
+  --color-bg-mist: #FBF7EE;            /* light mist, for top sections */
+  --color-surface: #FFFFFF;            /* card base */
+  --color-surface-2: #FAF6EC;          /* nested card / hover */
+  --color-surface-elev: #FFFFFF;       /* modal / dropdown */
+  --color-border: rgba(60, 50, 30, 0.10);          /* default border */
+  --color-border-strong: rgba(60, 50, 30, 0.18);   /* hovered border */
+  --color-border-glass: rgba(255, 255, 255, 0.65);/* glass panel border */
 
-  /* ─── Text (4 levels, WCAG-AA verified) ─── */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #D4D4DC;   /* body copy */
-  --color-text-muted: #8B8B96;       /* meta, captions */
-  --color-text-faint: #5A5A66;       /* disabled, placeholder */
+  /* ─── Text (warm, refined) ─── */
+  --color-text-primary: #1A1814;       /* near-black, warm */
+  --color-text-secondary: #4D4639;     /* body copy, warm dark */
+  --color-text-muted: #8B8472;         /* meta, captions */
+  --color-text-faint: #B8B2A0;         /* disabled, placeholder */
+  --color-text-on-glass: #1A1814;      /* text on glass surfaces */
 
-  /* ─── Primary accent (the RelatiV brand: electric fuchsia) ─── */
-  --color-accent: #D946EF;           /* fuchsia-500, primary CTA / "live" */
-  --color-accent-hover: #E879F9;     /* fuchsia-400, hover state */
-  --color-accent-soft: #D946EF22;    /* 13% alpha for glows */
+  /* ─── Vibrant accents (the "colours that pop" through the glass) ─── */
+  --color-accent: #D946EF;             /* fuchsia-500, primary */
+  --color-accent-hover: #C026D3;       /* fuchsia-600, hover */
+  --color-accent-soft: #D946EF18;      /* 9% alpha for glows */
 
-  /* ─── Secondary accents (the "creator brand" trio) ─── */
-  --color-accent-secondary: #FFD166;  /* gold — premium / featured */
-  --color-accent-tertiary: #B794F4;  /* purple — clipper / creator */
-  --color-accent-quaternary: #4ECDC4;/* teal — analytics / data */
+  /* Sunset trio (vibrant, used in gradient sweeps) */
+  --color-sunset-coral: #FB7185;       /* rose-400 */
+  --color-sunset-orange: #FB923C;      /* orange-400 */
+  --color-sunset-amber: #FBBF24;       /* amber-400 */
 
-  /* ─── Gradients (for hero, "viral" moments, brand badges) ─── */
-  --color-gradient-primary: #D946EF; /* fuchsia (was: coral) */
-  --color-gradient-magenta: #F472B6;
-  --color-gradient-violet: #A78BFA;
-  --color-gradient-cyan: #22D3EE;
+  /* Cool trio (data, analytics, "trust" signals) */
+  --color-cool-teal: #14B8A6;          /* teal-500 */
+  --color-cool-cyan: #06B6D4;          /* cyan-500 */
+  --color-cool-blue: #3B82F6;          /* blue-500 */
 
-  /* ─── Semantic ─── */
-  --color-success: #4ADE80;          /* green-400, fresh */
-  --color-error: #F87171;            /* red-400, soft */
-  --color-warning: #FBBF24;          /* amber-400 */
-  --color-info: #60A5FA;             /* blue-400 */
+  /* Premium accents (for designer moments) */
+  --color-premium-violet: #8B5CF6;     /* violet-500 */
+  --color-premium-magenta: #EC4899;    /* pink-500 */
+  --color-premium-gold: #D4A574;       /* warm gold (NOT bright yellow) */
 
-  /* ─── Glass + glow (used in box-shadows, borders) ─── */
-  --color-glass: rgba(255, 255, 255, 0.04);
-  --color-glass-strong: rgba(255, 255, 255, 0.08);
-  --color-glow-primary: rgba(217, 70, 239, 0.40);  /* fuchsia (was: coral) */
-  --color-glow-gold: rgba(255, 209, 102, 0.30);
-  --color-glow-violet: rgba(183, 148, 244, 0.32);
-  --color-glow-teal: rgba(78, 205, 196, 0.32);
+  /* ─── Gradients (the "wow" moments) ─── */
+  --gradient-sunset: linear-gradient(135deg, #FB7185 0%, #D946EF 50%, #8B5CF6 100%);
+  --gradient-sunset-soft: linear-gradient(135deg, rgba(251,113,133,0.85) 0%, rgba(217,70,239,0.85) 50%, rgba(139,92,246,0.85) 100%);
+  --gradient-ocean: linear-gradient(135deg, #14B8A6 0%, #06B6D4 50%, #3B82F6 100%);
+  --gradient-cream: linear-gradient(180deg, #FBF7EE 0%, #F6F1E7 50%, #EDE6D6 100%);
+  --gradient-glass-border: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.7) 100%);
 
-  /* ─── Typography (Space Grotesk for display, Inter for body, JetBrains Mono for data) ─── */
-  --font-sans: "Inter", "system-ui", sans-serif;
+  /* ─── Semantic (readable on light) ─── */
+  --color-success: #10B981;            /* emerald-500 */
+  --color-error: #EF4444;              /* red-500 */
+  --color-warning: #F59E0B;            /* amber-500 */
+  --color-info: #3B82F6;               /* blue-500 */
+
+  /* ─── Glass tokens (the heart of glassmorphism) ─── */
+  --glass-light: rgba(255, 252, 242, 0.55);    /* pale yellow-white, 55% */
+  --glass-light-strong: rgba(255, 252, 242, 0.78);
+  --glass-light-subtle: rgba(255, 252, 242, 0.35);
+  --glass-dark: rgba(40, 30, 15, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-border-warm: rgba(180, 160, 120, 0.25);
+
+  /* ─── Glow (used behind glass + on accents) ─── */
+  --glow-primary: rgba(217, 70, 239, 0.35);    /* fuchsia */
+  --glow-sunset: rgba(251, 113, 133, 0.32);     /* coral */
+  --glow-ocean: rgba(20, 184, 166, 0.30);       /* teal */
+  --glow-warm: rgba(212, 165, 116, 0.20);       /* warm gold */
+
+  /* ─── Shadows (warm-tinted, subtle, layered) ─── */
+  --shadow-xs: 0 1px 2px rgba(140, 110, 60, 0.04);
+  --shadow-sm: 0 2px 8px rgba(140, 110, 60, 0.06);
+  --shadow-md: 0 8px 24px rgba(140, 110, 60, 0.08), 0 2px 6px rgba(140, 110, 60, 0.04);
+  --shadow-lg: 0 16px 48px rgba(140, 110, 60, 0.10), 0 4px 12px rgba(140, 110, 60, 0.05);
+  --shadow-xl: 0 24px 64px rgba(140, 110, 60, 0.12), 0 8px 24px rgba(140, 110, 60, 0.06);
+  --shadow-glass: 0 8px 32px rgba(140, 110, 60, 0.06), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  --shadow-glow-primary: 0 0 32px rgba(217, 70, 239, 0.35);
+  --shadow-glow-sunset: 0 0 32px rgba(251, 113, 133, 0.30);
+  --shadow-glow-ocean: 0 0 32px rgba(20, 184, 166, 0.28);
+
+  /* ─── Typography ─── */
+  --font-sans: "Inter", "system-ui", -apple-system, sans-serif;
   --font-display: "Space Grotesk", "system-ui", sans-serif;
+  --font-serif: "Instrument Serif", "Georgia", serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* ─── Radius (slightly more generous, "premium product" feel) ─── */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  /* ─── Radius (generous, premium) ─── */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+  --radius-2xl: 42px;
+  --radius-full: 9999px;
 
   --grid-gutter: 24px;
   --border-width: 1px;
@@ -83,16 +118,344 @@ html {
   scroll-behavior: smooth;
 }
 
-/* ─── Animations ─── */
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* ════════════════════════════════════════════════════════════════════════════
+   Base
+   ════════════════════════════════════════════════════════════════════════════ */
+
+body {
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
 }
 
-.animate-gradient {
-  animation: gradient-shift 8s ease infinite;
+/* ════════════════════════════════════════════════════════════════════════════
+   THE GLASSMORPHISM BACKDROP
+   Animated, multi-color blobs behind everything. Slowly moving, very low
+   contrast. This is the "magic" that makes glass layers feel alive.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(251, 113, 133, 0.18) 0%, transparent 35%),
+    radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 50% 60%, rgba(20, 184, 166, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 80% 85%, rgba(217, 70, 239, 0.14) 0%, transparent 40%),
+    radial-gradient(circle at 25% 80%, rgba(251, 191, 36, 0.10) 0%, transparent 35%);
+  filter: blur(60px);
+  animation: backdrop-drift 32s ease-in-out infinite alternate;
+  pointer-events: none;
 }
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(140, 110, 60, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 110, 60, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 0%, transparent 80%);
+}
+
+@keyframes backdrop-drift {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  33% { transform: translate(2%, -1%) rotate(1deg) scale(1.05); }
+  66% { transform: translate(-1%, 2%) rotate(-1deg) scale(1.02); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   GLASS UTILITY CLASSES
+   The core of glassmorphism. Use these on cards, modals, navbars, etc.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.glass {
+  background: var(--glass-light);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+  position: relative;
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-glass-border);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.glass-strong {
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+.glass-subtle {
+  background: var(--glass-light-subtle);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: var(--shadow-sm);
+}
+
+.glass-card {
+  background: rgba(255, 252, 242, 0.65);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 252, 242, 0.85);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.glass-panel {
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--radius-xl);
+}
+
+.glass-modal {
+  background: rgba(255, 252, 242, 0.92);
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--radius-xl);
+}
+
+/* Dark glass (for use on light sections with dark gradient bg) */
+.glass-dark {
+  background: rgba(40, 30, 15, 0.50);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   GRADIENT TEXT
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.text-gradient-sunset {
+  background: var(--gradient-sunset);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-ocean {
+  background: var(--gradient-ocean);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #B8860B 0%, #D4A574 50%, #FBBF24 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.bg-gradient-sunset {
+  background: var(--gradient-sunset);
+}
+
+.bg-gradient-ocean {
+  background: var(--gradient-ocean);
+}
+
+.bg-gradient-cream {
+  background: var(--gradient-cream);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY UTILITIES
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.02em;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Hero text — designer serif moment */
+.hero-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+/* Display headings — geometric sans, tight */
+.display-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BUTTONS
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.btn-primary {
+  background: var(--gradient-sunset);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 12px rgba(217, 70, 239, 0.25),
+    0 1px 0 rgba(255, 255, 255, 0.4) inset;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 24px rgba(217, 70, 239, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.btn-glass {
+  background: rgba(255, 252, 242, 0.55);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-full);
+  padding: 13px 27px;
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-glass:hover {
+  background: rgba(255, 252, 242, 0.85);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  padding: 13px 27px;
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(60, 50, 30, 0.05);
+  border-color: var(--color-text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FORM INPUTS
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.input-glass {
+  background: rgba(255, 252, 242, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  font-size: 15px;
+  color: var(--color-text-primary);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.input-glass::placeholder {
+  color: var(--color-text-faint);
+}
+
+.input-glass:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: rgba(255, 252, 242, 0.95);
+  box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.12);
+}
+
+.input-glass:hover:not(:focus) {
+  border-color: var(--color-border-strong);
+  background: rgba(255, 252, 242, 0.85);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ════════════════════════════════════════════════════════════════════════════ */
 
 @keyframes float-up {
   0%, 100% { transform: translateY(0); }
@@ -104,8 +467,8 @@ html {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 var(--color-glow-primary); }
-  50% { box-shadow: 0 0 32px 8px var(--color-glow-primary); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--glow-primary); }
+  50% { box-shadow: 0 0 32px 8px var(--glow-primary); }
 }
 
 .animate-pulse-glow {
@@ -120,9 +483,9 @@ html {
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    var(--color-surface) 0%,
-    var(--color-glass-strong) 50%,
-    var(--color-surface) 100%
+    rgba(255, 252, 242, 0.4) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 252, 242, 0.4) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 2.4s linear infinite;
@@ -137,7 +500,80 @@ html {
   animation: marquee 40s linear infinite;
 }
 
-/* ─── Reduced motion ─── */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Soft entrance */
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.glow-primary { box-shadow: var(--shadow-glow-primary); }
+.glow-sunset { box-shadow: var(--shadow-glow-sunset); }
+.glow-ocean { box-shadow: var(--shadow-glow-ocean); }
+
+.shadow-glass { box-shadow: var(--shadow-glass); }
+.shadow-warm-sm { box-shadow: var(--shadow-sm); }
+.shadow-warm-md { box-shadow: var(--shadow-md); }
+.shadow-warm-lg { box-shadow: var(--shadow-lg); }
+.shadow-warm-xl { box-shadow: var(--shadow-xl); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ════════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 110, 60, 0.18);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  border: 2px solid transparent;
+}
+
+/* Selection */
+::selection {
+  background: var(--color-accent);
+  color: #FFFFFF;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ════════════════════════════════════════════════════════════════════════════ */
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -145,38 +581,5 @@ html {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-body {
-  background: var(--color-bg-base);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ─── Scrollbar (subtle, brand-consistent) ─── */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-bg-deep);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
-  border-radius: 6px;
-  border: 2px solid var(--color-bg-deep);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent);
-}
-
-/* ─── Selection ─── */
-::selection {
-  background: var(--color-accent);
-  color: var(--color-bg-base);
+  body::before { animation: none; }
 }

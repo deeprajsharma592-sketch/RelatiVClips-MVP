@@ -16,9 +16,9 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/v1/:path*", "destination": "http://91.98.144.72:9000/api/v1/:path*" },
-    { "source": "/process/:path*", "destination": "http://91.98.144.72:9000/process/:path*" },
-    { "source": "/status/:path*", "destination": "http://91.98.144.72:9000/status/:path*" },
-    { "source": "/contact", "destination": "http://91.98.144.72:9000/contact" }
+    { "source": "/api/v1/:path*", "destination": "/api/proxy/api/v1/:path*" },
+    { "source": "/process/:path*", "destination": "/api/proxy/process/:path*" },
+    { "source": "/status/:path*", "destination": "/api/proxy/status/:path*" },
+    { "source": "/contact", "destination": "/api/proxy/contact" }
   ]
 }
