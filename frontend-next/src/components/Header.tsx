@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
+import { ROLE_LABEL, type UserRole } from "@/lib/auth";
 
 const NAV_LINKS = [
   { href: "/", label: "Workspace" },
@@ -14,14 +16,36 @@ const NAV_LINKS = [
   { href: "/plans", label: "Plans" },
 ];
 
+const ROLE_COLOR: Record<UserRole, string> = {
+  creator: "var(--color-accent)",
+  brand: "var(--color-accent)",
+  clipper: "var(--color-accent-tertiary)",
+};
+
+const DASHBOARD_HREF: Record<UserRole, string> = {
+  creator: "/creators/dashboard",
+  brand: "/brands/dashboard",
+  clipper: "/clippers/dashboard",
+};
+
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, loading, logout } = useAuth();
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  const handleLogout = async () => {
+    closeUserMenu();
+    await logout();
+    // logout() in AuthContext does window.location.href = "/"
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/5">
@@ -41,7 +65,7 @@ export default function Header() {
             </span>
             {pathname === "/" && (
               <span className="ml-2 text-[10px] font-mono text-accent-secondary">
-                [\u03A6]
+                [Φ]
               </span>
             )}
           </div>
@@ -73,29 +97,102 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Right section: status + CTA + hamburger */}
+        {/* Right section: auth state + status + CTA + hamburger */}
         <div className="flex items-center gap-3">
-          <motion.a
-            href="#try-it"
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-semibold rounded-full hover:bg-accent-secondary transition-colors"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            Try it free
-            <span className="text-xs">→</span>
-          </motion.a>
+          {/* Auth state: signed out → Sign in / Sign up. Signed in → avatar. */}
+          {!loading && !user && (
+            <>
+              <Link
+                href="/login"
+                className="hidden sm:inline-block text-sm font-medium text-text-muted hover:text-text-primary transition-colors"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-semibold rounded-full hover:bg-accent-secondary transition-colors"
+              >
+                Get started
+                <span className="text-xs">→</span>
+              </Link>
+            </>
+          )}
+          {!loading && user && (
+            <div className="relative hidden sm:block">
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-[color:var(--color-surface-2)] transition-colors"
+                aria-label="User menu"
+                aria-expanded={userMenuOpen}
+              >
+                <div
+                  className="h-8 w-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-[color:var(--color-bg-base)]"
+                  style={{ background: ROLE_COLOR[user.role] }}
+                >
+                  {user.name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="hidden lg:block text-left">
+                  <div className="text-xs font-semibold text-text-primary leading-tight">{user.name}</div>
+                  <div className="text-[10px] font-mono text-text-muted">{ROLE_LABEL[user.role]}</div>
+                </div>
+                <span className="text-text-faint text-[10px]">▼</span>
+              </button>
+              <AnimatePresence>
+                {userMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={closeUserMenu}
+                      aria-hidden="true"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute right-0 mt-2 w-56 rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-elev)] shadow-2xl py-1 z-40"
+                    >
+                      <div className="px-4 py-2 border-b border-[color:var(--color-border)]">
+                        <div className="text-sm font-semibold text-text-primary truncate">{user.name}</div>
+                        <div className="text-[10px] font-mono text-text-muted truncate">{user.email}</div>
+                      </div>
+                      <Link
+                        href="/account"
+                        onClick={closeUserMenu}
+                        className="block px-4 py-2 text-sm text-text-secondary hover:bg-[color:var(--color-surface-2)] hover:text-text-primary"
+                      >
+                        Account
+                      </Link>
+                      <Link
+                        href={DASHBOARD_HREF[user.role]}
+                        onClick={closeUserMenu}
+                        className="block px-4 py-2 text-sm text-text-secondary hover:bg-[color:var(--color-surface-2)] hover:text-text-primary"
+                      >
+                        {ROLE_LABEL[user.role]} dashboard
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-text-secondary hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-error)]"
+                      >
+                        Sign out
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           <div className="hidden md:flex items-center gap-2 pr-2">
             <motion.div
               className="w-2 h-2 rounded-full bg-accent-secondary"
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            <span className="text-xs font-mono text-text-muted">
-              Online
-            </span>
+            <span className="text-xs font-mono text-text-muted">Online</span>
           </div>
 
-          {/* Hamburger button */}
+          {/* Hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden flex flex-col items-center justify-center w-8 h-8 gap-1 border border-border rounded-[2px] hover:border-accent transition-colors"
@@ -138,7 +235,7 @@ export default function Header() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-16 right-0 bottom-0 w-64 bg-surface border-l border-border md:hidden p-6 flex flex-col gap-2"
+              className="fixed top-16 right-0 bottom-0 w-64 bg-surface border-l border-border md:hidden p-6 flex flex-col gap-2 overflow-y-auto"
             >
               {NAV_LINKS.map((link, i) => (
                 <motion.div
@@ -162,9 +259,51 @@ export default function Header() {
                 </motion.div>
               ))}
 
-              <div className="mt-auto pt-6 border-t border-border">
-                <p className="text-[10px] font-mono text-text-muted/40 text-center">
-                  Quantum Precision \u2022 Privacy-First AI
+              {/* Mobile auth section */}
+              <div className="mt-auto pt-6 border-t border-border space-y-2">
+                {!loading && !user && (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={closeMenu}
+                      className="block px-4 py-2 text-sm text-text-muted text-center hover:text-text-primary"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={closeMenu}
+                      className="block px-4 py-2 text-sm text-text-center bg-accent text-black font-semibold rounded-md"
+                    >
+                      Get started
+                    </Link>
+                  </>
+                )}
+                {!loading && user && (
+                  <>
+                    <div className="px-4 py-2 text-xs text-text-muted">
+                      Signed in as <span className="text-text-primary">{user.name}</span>
+                    </div>
+                    <Link
+                      href="/account"
+                      onClick={closeMenu}
+                      className="block px-4 py-2 text-sm text-text-muted hover:text-white"
+                    >
+                      Account
+                    </Link>
+                    <button
+                      onClick={() => {
+                        closeMenu();
+                        handleLogout();
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-text-muted hover:text-white"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                )}
+                <p className="text-[10px] font-mono text-text-muted/40 text-center pt-4">
+                  Quantum Precision • Privacy-First AI
                 </p>
               </div>
             </motion.nav>
