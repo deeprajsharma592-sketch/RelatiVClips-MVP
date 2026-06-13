@@ -541,38 +541,98 @@ body::after {
   box-shadow: var(--shadow-sm);
 }
 
+/* ─── SOLID tiles in light mode (no transparency = no grid bleed-through) ───
+   Light mode gets a solid warm-white surface with subtle inner highlight
+   and soft shadow for depth. Dark mode keeps the glass effect. */
 .glass-card {
-  background: var(--glass-light);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-premium-card);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.60),
+    0 1px 2px rgba(40, 30, 20, 0.04),
+    0 8px 24px rgba(40, 30, 20, 0.08),
+    0 24px 48px rgba(40, 30, 20, 0.06);
   border-radius: var(--radius-lg);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.5s var(--ease-spring),
+    box-shadow 0.4s var(--ease-physical),
+    border-color 0.3s ease,
+    background 0.3s ease;
+  position: relative;
 }
 
 .glass-card:hover {
-  background: var(--glass-light-strong);
-  box-shadow: var(--shadow-premium);
-  transform: translateY(-2px);
+  background: var(--color-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.80),
+    0 2px 4px rgba(40, 30, 20, 0.05),
+    0 12px 32px rgba(40, 30, 20, 0.10),
+    0 32px 64px rgba(40, 30, 20, 0.08);
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
+}
+
+.dark .glass-card {
+  background: rgba(15, 15, 17, 0.78);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--color-border-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 220, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.30),
+    0 24px 48px rgba(0, 0, 0, 0.20);
+}
+
+.dark .glass-card:hover {
+  background: rgba(22, 22, 26, 0.85);
+  border-color: var(--color-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 220, 0.10),
+    0 12px 32px rgba(0, 0, 0, 0.40),
+    0 32px 64px rgba(0, 0, 0, 0.30);
 }
 
 .glass-panel {
-  background: var(--glass-light-strong);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.70),
+    0 2px 6px rgba(40, 30, 20, 0.05),
+    0 16px 48px rgba(40, 30, 20, 0.10),
+    0 32px 80px rgba(40, 30, 20, 0.08);
   border-radius: var(--radius-xl);
+  position: relative;
+}
+
+.dark .glass-panel {
+  background: rgba(15, 15, 17, 0.82);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--color-border-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 220, 0.06),
+    0 16px 48px rgba(0, 0, 0, 0.40),
+    0 32px 80px rgba(0, 0, 0, 0.30);
 }
 
 .glass-modal {
-  background: var(--glass-light-strong);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.80),
+    0 8px 24px rgba(40, 30, 20, 0.12),
+    0 32px 80px rgba(40, 30, 20, 0.16);
+  border-radius: var(--radius-xl);
+}
+
+.dark .glass-modal {
+  background: rgba(15, 15, 17, 0.92);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-xl);
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 220, 0.08),
+    0 32px 80px rgba(0, 0, 0, 0.60);
 }
 
 /* Dark glass (for use on light sections with dark gradient bg) */
@@ -583,6 +643,57 @@ body::after {
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #FFFFFF;
   box-shadow: var(--shadow-lg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   CIRCLE BLUR — animated radial gradient that follows the tile
+   Use on tile containers: <div class="tile-glow-wrap"> or add .tile-glow to self
+   ════════════════════════════════════════════════════════════════════════════ */
+.tile-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.tile-glow::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--glow-color, rgba(217, 70, 239, 0.22)) 0%,
+    transparent 55%
+  );
+  filter: blur(40px);
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-spring);
+  pointer-events: none;
+  animation: circle-pulse 6s var(--ease-physical) infinite;
+}
+
+.tile-glow:hover::before {
+  opacity: 1;
+}
+
+.tile-glow-gold::before {
+  --glow-color: rgba(245, 158, 11, 0.24);
+}
+.tile-glow-pink::before {
+  --glow-color: rgba(255, 119, 233, 0.22);
+}
+.tile-glow-cyan::before {
+  --glow-color: rgba(6, 182, 212, 0.22);
+}
+.tile-glow-mint::before {
+  --glow-color: rgba(16, 185, 129, 0.22);
+}
+.tile-glow-violet::before {
+  --glow-color: rgba(139, 92, 246, 0.22);
+}
+
+@keyframes circle-pulse {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0; }
+  50% { transform: scale(1.1) translate(1%, -1%); opacity: 1; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -1945,4 +2056,109 @@ pre *:focus-visible,
 }
 .fog-layer {
   animation: fog-drift 24s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MORE PHYSICS — magnetic hover, spring tilt, roll-in, orbital pulse
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Magnetic lift: shadow "pulls" down on hover (the tile is being lifted) ─── */
+.physics-magnetic {
+  transition:
+    transform 0.6s var(--ease-spring),
+    box-shadow 0.5s var(--ease-physical);
+  will-change: transform;
+}
+.physics-magnetic:hover {
+  transform: translateY(-6px) rotateX(1.5deg) rotateY(-1deg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 8px rgba(40, 30, 20, 0.06),
+    0 16px 32px rgba(40, 30, 20, 0.10),
+    0 40px 80px rgba(40, 30, 20, 0.10);
+}
+.physics-magnetic:active {
+  transform: translateY(-2px) rotateX(0deg);
+  transition-duration: 80ms;
+}
+.dark .physics-magnetic:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 220, 0.12),
+    0 16px 32px rgba(0, 0, 0, 0.40),
+    0 40px 80px rgba(0, 0, 0, 0.40);
+}
+
+/* ─── Roll-in from edge (left or right) with bounce-settle ─── */
+@keyframes roll-in-left {
+  0%   { transform: translateX(-40px) rotate(-3deg); opacity: 0; }
+  60%  { transform: translateX(4px) rotate(0.4deg); opacity: 1; }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+@keyframes roll-in-right {
+  0%   { transform: translateX(40px) rotate(3deg); opacity: 0; }
+  60%  { transform: translateX(-4px) rotate(-0.4deg); opacity: 1; }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+.animate-roll-left {
+  animation: roll-in-left var(--dur-fall) var(--ease-spring) both;
+}
+.animate-roll-right {
+  animation: roll-in-right var(--dur-fall) var(--ease-spring) both;
+}
+
+/* ─── Orbital pulse: gently scales up and down (alive feel) ─── */
+@keyframes orbital-pulse {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50%      { transform: scale(1.012) translateY(-2px); }
+}
+.animate-orbital {
+  animation: orbital-pulse 5s var(--ease-physical) infinite;
+}
+
+/* ─── Settle-in: fade-up with subtle bounce for content blocks ─── */
+@keyframes settle-in {
+  0%   { transform: translateY(20px) scale(0.98); opacity: 0; filter: blur(4px); }
+  50%  { transform: translateY(-2px) scale(1.005); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+}
+.animate-settle {
+  animation: settle-in 0.8s var(--ease-spring) both;
+}
+
+/* ─── Glow breathe: shadow pulses like a slow breath (for hero elements) ─── */
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 0 24px var(--glow-color, rgba(217, 70, 239, 0.20)), 0 8px 24px rgba(40, 30, 20, 0.10); }
+  50%      { box-shadow: 0 0 48px var(--glow-color, rgba(217, 70, 239, 0.36)), 0 12px 32px rgba(40, 30, 20, 0.14); }
+}
+.animate-breathe {
+  animation: glow-breathe 4s var(--ease-physical) infinite;
+}
+
+/* ─── Tilt: 3D rotate on hover, tracking mouse position (CSS only) ─── */
+.physics-tilt {
+  transition: transform 0.4s var(--ease-spring);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.physics-tilt:hover {
+  transform: perspective(1200px) rotateX(2deg) rotateY(-2deg) translateZ(8px);
+}
+
+/* ─── Spring icon: subtle bounce on parent hover (use on icons inside tiles) ─── */
+.physics-spring-icon {
+  transition: transform 0.5s var(--ease-spring);
+}
+.physics-spring-icon:hover,
+.tile-glow:hover .physics-spring-icon,
+.physics-magnetic:hover .physics-spring-icon {
+  transform: scale(1.18) rotate(-6deg);
+}
+
+/* ─── Pressed: tactile active state (tile "pushed down") ─── */
+.physics-press:active {
+  transform: translateY(1px) scale(0.995);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.10),
+    0 1px 2px rgba(40, 30, 20, 0.06) !important;
+  transition-duration: 60ms;
 }

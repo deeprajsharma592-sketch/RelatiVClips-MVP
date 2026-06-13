@@ -862,7 +862,7 @@ function EngineBento() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                className="glass-card hover-glow p-6 md:p-7 group"
+                className="glass-card physics-magnetic physics-press tile-glow tile-glow-gold p-6 md:p-7 group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -952,7 +952,7 @@ function HowItWorksSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.5 }}
-                className="glass-card hover-glow p-7 relative overflow-hidden group"
+                className="glass-card physics-magnetic physics-press tile-glow tile-glow-pink p-7 relative overflow-hidden group"
               >
                 {/* Large number background */}
                 <span
@@ -1460,7 +1460,7 @@ function VerticalsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
-                className="glass-card hover-glow p-6 group"
+                className="glass-card physics-magnetic physics-press tile-glow tile-glow-cyan p-6 group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
