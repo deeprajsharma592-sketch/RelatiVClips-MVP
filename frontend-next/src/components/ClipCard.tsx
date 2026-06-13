@@ -29,7 +29,7 @@ export default function ClipCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className={`p-4 rounded-[4px] border cursor-pointer transition-all duration-200 ${
+      className={`p-4 rounded-[4px] border transition-all duration-200 ${
         isSelected
           ? "border-accent bg-accent/5 glow-accent"
           : "border-border bg-surface hover:border-accent"

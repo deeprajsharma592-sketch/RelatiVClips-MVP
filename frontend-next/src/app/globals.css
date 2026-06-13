@@ -92,6 +92,27 @@
   --shadow-glow-sunset: 0 0 32px rgba(251, 113, 133, 0.30);
   --shadow-glow-ocean: 0 0 32px rgba(20, 184, 166, 0.28);
 
+  /* ─── Premium layered shadows (chromatic aberration style) ───
+     The -2px / +2px offsets simulate light split into RGB — Vercel/Linear aesthetic. */
+  --shadow-premium: 0 1px 0 rgba(255, 255, 255, 0.7) inset,
+                    0 -1px 0 rgba(60, 50, 30, 0.06) inset,
+                    0 8px 24px rgba(140, 110, 60, 0.10),
+                    0 24px 64px rgba(140, 110, 60, 0.06);
+  --shadow-premium-cta: 0 1px 0 rgba(255, 255, 255, 0.4) inset,
+                        -3px 0 12px rgba(251, 113, 133, 0.30),
+                        3px 0 12px rgba(139, 92, 246, 0.30),
+                        0 12px 32px rgba(217, 70, 239, 0.30);
+  --shadow-premium-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
+                         0 -1px 0 rgba(60, 50, 30, 0.05) inset,
+                         0 4px 16px rgba(140, 110, 60, 0.06),
+                         0 16px 48px rgba(140, 110, 60, 0.04);
+
+  /* ─── Deeper gradient systems (4-stop, more sophisticated) ─── */
+  --gradient-sunset-deep: linear-gradient(135deg, #FB7185 0%, #F472B6 25%, #D946EF 60%, #8B5CF6 100%);
+  --gradient-sunset-iridescent: linear-gradient(135deg, #FCD34D 0%, #FB7185 25%, #D946EF 50%, #8B5CF6 75%, #06B6D4 100%);
+  --gradient-noir: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #4C1D95 100%);
+  --gradient-aurora: linear-gradient(135deg, rgba(217,70,239,0.15) 0%, rgba(139,92,246,0.10) 33%, rgba(20,184,166,0.12) 66%, rgba(251,113,133,0.15) 100%);
+
   /* ─── Typography ─── */
   --font-sans: "Inter", "system-ui", -apple-system, sans-serif;
   --font-display: "Space Grotesk", "system-ui", sans-serif;
@@ -354,20 +375,19 @@ body::after {
   font-weight: 600;
   font-size: 15px;
   letter-spacing: -0.01em;
-  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 4px 12px rgba(217, 70, 239, 0.25),
-    0 1px 0 rgba(255, 255, 255, 0.4) inset;
+  background: var(--gradient-sunset-deep);
+  box-shadow: var(--shadow-premium-cta);
   position: relative;
   overflow: hidden;
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 8px 24px rgba(217, 70, 239, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset,
+              -4px 0 16px rgba(251, 113, 133, 0.40),
+              4px 0 16px rgba(139, 92, 246, 0.40),
+              0 16px 40px rgba(217, 70, 239, 0.40);
 }
 
 .btn-primary:active {
@@ -392,7 +412,6 @@ body::after {
   padding: 13px 27px;
   font-weight: 500;
   font-size: 15px;
-  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
 }
@@ -411,7 +430,6 @@ body::after {
   padding: 13px 27px;
   font-weight: 500;
   font-size: 15px;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
