@@ -121,7 +121,7 @@ export default function SignupPage() {
   };
 
   return (
-    <section className="relative min-h-[80vh] flex items-start justify-center overflow-hidden pt-32 pb-16 px-6">
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-32 pb-16 px-4 sm:px-6 animate-page-enter">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-primary)] opacity-30 blur-[120px]" />
         <div className="absolute bottom-0 right-1/3 h-[300px] w-[300px] rounded-full bg-[color:var(--color-glow-violet)] opacity-25 blur-[120px]" />
@@ -392,7 +392,8 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-7 py-3 bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)] font-semibold rounded-full shadow-[0_0_24px_var(--color-glow-primary)] hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="btn-primary btn-shine text-sm"
+                style={{ paddingTop: "12px", paddingBottom: "12px", paddingLeft: "28px", paddingRight: "28px" }}
               >
                 {submitting ? "Creating account…" : "Create account →"}
               </button>

@@ -12,6 +12,13 @@
  * This page is mock data only — no backend wiring in v1. When real
  * billing/queue lands, the data hook is a single function in /lib/brands.ts.
  *
+ * Re-skinned in v5.1 to the "cream glass" design system:
+ *  - StatCard + DashboardShell already on the new system
+ *  - Cards/tables/panels use .glass-card + .hover-glow
+ *  - Status badges use the new colour tokens
+ *  - Numeric values use tabular-nums
+ *  - Section headings carry a 01 / 02 / 03 marker
+ *
  * Sections:
  *  1. KPI strip (4 stat cards)
  *  2. Active campaigns (3 cards with progress)
@@ -150,29 +157,37 @@ const PENDING_CLIPS: PendingClip[] = [
   },
 ];
 
-const STATUS_STYLES: Record<CampaignStatus, { bg: string; text: string; ring: string; label: string }> = {
+/**
+ * Status palette — used both for the campaign-card ring and the badge.
+ * All values resolve to the cream-glass token set; keep them as raw CSS
+ * colour strings so they can be spread into inline `style` props.
+ */
+const STATUS_STYLES: Record<
+  CampaignStatus,
+  { bg: string; text: string; ring: string; label: string }
+> = {
   live: {
-    bg: "bg-[color:var(--color-success)]/15",
-    text: "text-[color:var(--color-success)]",
-    ring: "border-[color:var(--color-success)]/30",
+    bg: "rgba(16, 185, 129, 0.15)",
+    text: "var(--color-success)",
+    ring: "rgba(16, 185, 129, 0.35)",
     label: "LIVE",
   },
   review: {
-    bg: "bg-[color:var(--color-accent-secondary)]/15",
-    text: "text-[color:var(--color-accent-secondary)]",
-    ring: "border-[color:var(--color-accent-secondary)]/30",
+    bg: "rgba(139, 92, 246, 0.15)",
+    text: "#8B5CF6",
+    ring: "rgba(139, 92, 246, 0.35)",
     label: "IN REVIEW",
   },
   completed: {
-    bg: "bg-[color:var(--color-text-muted)]/15",
-    text: "text-text-muted",
-    ring: "border-[color:var(--color-border)]",
+    bg: "rgba(139, 132, 114, 0.15)",
+    text: "var(--color-text-muted)",
+    ring: "rgba(60, 50, 30, 0.12)",
     label: "DONE",
   },
   paused: {
-    bg: "bg-[color:var(--color-text-muted)]/10",
-    text: "text-text-faint",
-    ring: "border-[color:var(--color-border)]",
+    bg: "rgba(184, 178, 160, 0.15)",
+    text: "var(--color-text-faint)",
+    ring: "rgba(60, 50, 30, 0.10)",
     label: "PAUSED",
   },
 };
@@ -247,11 +262,31 @@ export default function BrandDashboard() {
 
           {/* Active campaigns */}
           <section className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-lg text-text-primary">
-                Active campaigns
-              </h2>
-              <button className="text-xs font-mono text-[color:var(--color-accent)] hover:text-[color:var(--color-accent-hover)] transition-colors">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <span
+                  className="text-[10px] font-mono tracking-widest tabular-nums"
+                  style={{ color: "var(--color-text-faint)" }}
+                >
+                  01
+                </span>
+                <h2
+                  className="font-display font-semibold text-lg"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  Active campaigns
+                </h2>
+              </div>
+              <button
+                className="text-xs font-mono transition-colors"
+                style={{ color: "var(--color-accent)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--color-accent-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--color-accent)";
+                }}
+              >
                 + New campaign
               </button>
             </div>
@@ -262,19 +297,31 @@ export default function BrandDashboard() {
                 return (
                   <div
                     key={c.id}
-                    className={`rounded-[var(--radius-lg)] border ${status.ring} bg-[color:var(--color-surface)] p-5`}
+                    className="glass-card hover-glow p-5"
+                    style={{ borderColor: status.ring }}
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="min-w-0">
-                        <div className="text-[10px] font-mono tracking-widest text-text-faint mb-1">
+                        <div
+                          className="text-[10px] font-mono tracking-widest mb-1"
+                          style={{ color: "var(--color-text-faint)" }}
+                        >
                           {c.vertical.toUpperCase()}
                         </div>
-                        <div className="font-display font-semibold text-text-primary truncate">
+                        <div
+                          className="font-display font-semibold truncate"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
                           {c.name}
                         </div>
                       </div>
                       <span
-                        className={`shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-full border ${status.bg} ${status.text} ${status.ring}`}
+                        className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-full border"
+                        style={{
+                          background: status.bg,
+                          color: status.text,
+                          borderColor: status.ring,
+                        }}
                       >
                         {status.label}
                       </span>
@@ -282,32 +329,64 @@ export default function BrandDashboard() {
 
                     <div className="grid grid-cols-3 gap-4 my-4">
                       <div>
-                        <div className="text-[10px] font-mono text-text-faint mb-0.5">BUDGET</div>
-                        <div className="font-display font-bold text-lg text-text-primary">
+                        <div
+                          className="text-[10px] font-mono mb-0.5"
+                          style={{ color: "var(--color-text-faint)" }}
+                        >
+                          BUDGET
+                        </div>
+                        <div
+                          className="font-display font-semibold text-lg tabular-nums"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
                           ${c.budget.toLocaleString()}
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] font-mono text-text-faint mb-0.5">VIEWS</div>
-                        <div className="font-display font-bold text-lg text-text-primary">
+                        <div
+                          className="text-[10px] font-mono mb-0.5"
+                          style={{ color: "var(--color-text-faint)" }}
+                        >
+                          VIEWS
+                        </div>
+                        <div
+                          className="font-display font-semibold text-lg tabular-nums"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
                           {(c.views / 1000).toFixed(0)}K
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] font-mono text-text-faint mb-0.5">CPM</div>
-                        <div className="font-display font-bold text-lg text-[color:var(--color-accent)]">
+                        <div
+                          className="text-[10px] font-mono mb-0.5"
+                          style={{ color: "var(--color-text-faint)" }}
+                        >
+                          CPM
+                        </div>
+                        <div
+                          className="font-display font-semibold text-lg tabular-nums"
+                          style={{ color: "var(--color-accent)" }}
+                        >
                           ${c.cpm}
                         </div>
                       </div>
                     </div>
 
                     <div className="mb-2 flex items-center justify-between text-xs">
-                      <span className="text-text-muted">
+                      <span style={{ color: "var(--color-text-muted)" }}>
                         ${c.spent.toLocaleString()} spent · {c.clips.approved}/{c.clips.total} clips approved
                       </span>
-                      <span className="font-mono text-text-secondary">{pct.toFixed(0)}%</span>
+                      <span
+                        className="font-mono tabular-nums"
+                        style={{ color: "var(--color-text-secondary)" }}
+                      >
+                        {pct.toFixed(0)}%
+                      </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-[color:var(--color-bg-base)] overflow-hidden">
+                    <div
+                      className="h-1.5 rounded-full overflow-hidden"
+                      style={{ background: "rgba(60, 50, 30, 0.08)" }}
+                    >
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(pct, 100)}%` }}
@@ -316,13 +395,16 @@ export default function BrandDashboard() {
                         style={{
                           background:
                             c.status === "live"
-                              ? "linear-gradient(90deg, var(--color-accent), var(--color-gradient-magenta))"
-                              : "var(--color-accent-secondary)",
+                              ? "linear-gradient(90deg, var(--color-accent), var(--color-premium-magenta))"
+                              : "linear-gradient(90deg, #8B5CF6, #C026D3)",
                           boxShadow: "0 0 8px var(--color-glow-primary)",
                         }}
                       />
                     </div>
-                    <div className="mt-3 text-[10px] font-mono text-text-faint">
+                    <div
+                      className="mt-3 text-[10px] font-mono"
+                      style={{ color: "var(--color-text-faint)" }}
+                    >
                       {c.startDate} → {c.endDate}
                     </div>
                   </div>
@@ -333,11 +415,25 @@ export default function BrandDashboard() {
 
           {/* Pending review */}
           <section className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-lg text-text-primary">
-                Clips pending your review
-              </h2>
-              <span className="text-xs font-mono text-[color:var(--color-accent)]">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <span
+                  className="text-[10px] font-mono tracking-widest tabular-nums"
+                  style={{ color: "var(--color-text-faint)" }}
+                >
+                  02
+                </span>
+                <h2
+                  className="font-display font-semibold text-lg"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  Clips pending your review
+                </h2>
+              </div>
+              <span
+                className="text-xs font-mono tabular-nums"
+                style={{ color: "var(--color-accent)" }}
+              >
                 {PENDING_CLIPS.length} new
               </span>
             </div>
@@ -345,37 +441,102 @@ export default function BrandDashboard() {
               {PENDING_CLIPS.map((clip) => (
                 <div
                   key={clip.id}
-                  className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] overflow-hidden"
+                  className="glass-card hover-glow overflow-hidden"
                 >
-                  {/* Thumb placeholder */}
-                  <div className="relative aspect-[9/16] max-h-44 bg-gradient-to-br from-[color:var(--color-bg-deep)] to-[color:var(--color-surface-2)] flex items-center justify-center">
-                    <div className="absolute inset-0 opacity-30" style={{
-                      background: "radial-gradient(circle at center, var(--color-accent) 0%, transparent 60%)",
-                    }} />
-                    <div className="relative text-4xl text-text-faint">{clip.thumb}</div>
-                    <div className="absolute bottom-2 right-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white">
+                  {/* Thumb placeholder — dark video frame so light text stays legible */}
+                  <div
+                    className="relative aspect-[9/16] max-h-44 flex items-center justify-center"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #1A1814 0%, #2A2620 60%, #3A3128 100%)",
+                    }}
+                  >
+                    <div
+                      className="absolute inset-0 opacity-40"
+                      style={{
+                        background:
+                          "radial-gradient(circle at center, var(--color-accent) 0%, transparent 60%)",
+                      }}
+                    />
+                    <div
+                      className="relative text-4xl"
+                      style={{ color: "rgba(255, 255, 255, 0.6)" }}
+                    >
+                      {clip.thumb}
+                    </div>
+                    <div
+                      className="absolute bottom-2 right-2 text-[10px] font-mono px-1.5 py-0.5 rounded tabular-nums"
+                      style={{
+                        background: "rgba(0, 0, 0, 0.65)",
+                        color: "#FFFFFF",
+                        backdropFilter: "blur(4px)",
+                        WebkitBackdropFilter: "blur(4px)",
+                      }}
+                    >
                       0:{clip.duration.toString().padStart(2, "0")}
                     </div>
-                    <div className="absolute top-2 left-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white">
+                    <div
+                      className="absolute top-2 left-2 text-[10px] font-mono px-1.5 py-0.5 rounded"
+                      style={{
+                        background: "rgba(0, 0, 0, 0.65)",
+                        color: "#FFFFFF",
+                        backdropFilter: "blur(4px)",
+                        WebkitBackdropFilter: "blur(4px)",
+                      }}
+                    >
                       {clip.clipper}
                     </div>
                   </div>
                   <div className="p-3">
-                    <div className="text-xs text-text-primary font-medium leading-snug line-clamp-2 mb-1">
+                    <div
+                      className="text-xs font-medium leading-snug line-clamp-2 mb-1"
+                      style={{ color: "var(--color-text-primary)" }}
+                    >
                       {clip.hook}
                     </div>
-                    <div className="text-[10px] font-mono text-text-faint mb-3">
+                    <div
+                      className="text-[10px] font-mono mb-3"
+                      style={{ color: "var(--color-text-faint)" }}
+                    >
                       {clip.campaign} · {clip.submittedAt}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleApprove(clip.id)}
                         disabled={approving === clip.id}
-                        className="flex-1 py-1.5 text-xs font-semibold rounded-md bg-[color:var(--color-success)]/15 text-[color:var(--color-success)] border border-[color:var(--color-success)]/30 hover:bg-[color:var(--color-success)]/25 transition-colors disabled:opacity-50"
+                        className="btn-shine flex-1 py-1.5 text-xs font-semibold rounded-full border transition-colors disabled:opacity-60"
+                        style={{
+                          background: "rgba(16, 185, 129, 0.18)",
+                          color: "var(--color-success)",
+                          borderColor: "rgba(16, 185, 129, 0.35)",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (approving !== clip.id) {
+                            e.currentTarget.style.background = "rgba(16, 185, 129, 0.28)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (approving !== clip.id) {
+                            e.currentTarget.style.background = "rgba(16, 185, 129, 0.18)";
+                          }
+                        }}
                       >
                         {approving === clip.id ? "✓ Approved" : "Approve"}
                       </button>
-                      <button className="px-3 py-1.5 text-xs rounded-md bg-[color:var(--color-error)]/10 text-[color:var(--color-error)] border border-[color:var(--color-error)]/20 hover:bg-[color:var(--color-error)]/20 transition-colors">
+                      <button
+                        className="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors"
+                        style={{
+                          background: "rgba(239, 68, 68, 0.10)",
+                          color: "var(--color-error)",
+                          borderColor: "rgba(239, 68, 68, 0.22)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.18)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.10)";
+                        }}
+                      >
                         Reject
                       </button>
                     </div>
@@ -387,11 +548,28 @@ export default function BrandDashboard() {
 
           {/* Top clips leaderboard */}
           <section>
-            <h2 className="font-display font-semibold text-lg text-text-primary mb-4">
-              Top performing clips · this week
-            </h2>
-            <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] overflow-hidden">
-              <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-faint">
+            <div className="flex items-center gap-3 mb-5">
+              <span
+                className="text-[10px] font-mono tracking-widest tabular-nums"
+                style={{ color: "var(--color-text-faint)" }}
+              >
+                03
+              </span>
+              <h2
+                className="font-display font-semibold text-lg"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                Top performing clips · this week
+              </h2>
+            </div>
+            <div className="glass-card hover-glow overflow-hidden">
+              <div
+                className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-mono tracking-widest"
+                style={{
+                  borderBottom: "1px solid rgba(60, 50, 30, 0.08)",
+                  color: "var(--color-text-faint)",
+                }}
+              >
                 <div className="col-span-1">#</div>
                 <div className="col-span-5">HOOK</div>
                 <div className="col-span-2">CLIPPER</div>
@@ -404,22 +582,51 @@ export default function BrandDashboard() {
                 { rank: 3, hook: "The sleep window that doubled my focus", clipper: "@deepfocus", views: "241K", earned: "$1,446" },
                 { rank: 4, hook: "From PM to founder in 18 months", clipper: "@editwizard", views: "188K", earned: "$1,316" },
                 { rank: 5, hook: "Why I deleted my LinkedIn (and what came back)", clipper: "@hookqueen", views: "147K", earned: "$1,029" },
-              ].map((row) => (
+              ].map((row, idx, arr) => (
                 <div
                   key={row.rank}
-                  className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-[color:var(--color-border)] last:border-0 hover:bg-[color:var(--color-surface-2)]/40 transition-colors items-center"
+                  className="grid grid-cols-12 gap-2 px-5 py-3 items-center transition-colors"
+                  style={{
+                    borderBottom:
+                      idx === arr.length - 1
+                        ? "none"
+                        : "1px solid rgba(60, 50, 30, 0.06)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255, 252, 242, 0.6)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
                 >
-                  <div className="col-span-1 font-mono text-sm text-text-muted">
+                  <div
+                    className="col-span-1 font-mono text-sm tabular-nums"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
                     {String(row.rank).padStart(2, "0")}
                   </div>
-                  <div className="col-span-5 text-sm text-text-primary font-medium truncate">
+                  <div
+                    className="col-span-5 text-sm font-medium truncate"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
                     {row.hook}
                   </div>
-                  <div className="col-span-2 text-xs text-text-secondary font-mono">{row.clipper}</div>
-                  <div className="col-span-2 text-right text-sm font-mono text-text-primary">
+                  <div
+                    className="col-span-2 text-xs font-mono"
+                    style={{ color: "var(--color-text-secondary)" }}
+                  >
+                    {row.clipper}
+                  </div>
+                  <div
+                    className="col-span-2 text-right text-sm font-mono tabular-nums"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
                     {row.views}
                   </div>
-                  <div className="col-span-2 text-right text-sm font-mono text-[color:var(--color-accent)]">
+                  <div
+                    className="col-span-2 text-right text-sm font-mono tabular-nums"
+                    style={{ color: "var(--color-accent)" }}
+                  >
                     {row.earned}
                   </div>
                 </div>
@@ -437,20 +644,33 @@ export default function BrandDashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-surface)]/40 p-12 text-center"
+            className="glass-card p-12 text-center"
+            style={{ borderStyle: "dashed" }}
           >
-            <div className="text-4xl mb-3 opacity-50">◇</div>
-            <h3 className="font-display font-semibold text-lg text-text-primary mb-2">
+            <div
+              className="text-4xl mb-3 opacity-50"
+              style={{ color: "var(--color-text-faint)" }}
+            >
+              ◇
+            </div>
+            <h3
+              className="font-display font-semibold text-lg mb-2"
+              style={{ color: "var(--color-text-primary)" }}
+            >
               {active.charAt(0).toUpperCase() + active.slice(1)} view — preview
             </h3>
-            <p className="text-sm text-text-muted max-w-md mx-auto">
+            <p
+              className="text-sm max-w-md mx-auto"
+              style={{ color: "var(--color-text-muted)" }}
+            >
               This panel is wired in our backend roadmap. The structure, sidebar,
               and design tokens are in place — we'll fill in real data once the
               first 3 design-partner campaigns land.
             </p>
             <button
               onClick={() => setActive("overview")}
-              className="mt-6 px-4 py-2 text-xs font-mono border border-[color:var(--color-border-strong)] rounded-full text-text-secondary hover:text-text-primary hover:border-[color:var(--color-accent)] transition-colors"
+              className="btn-shine btn-primary mt-6 text-xs font-mono"
+              style={{ padding: "10px 20px", fontSize: "12px" }}
             >
               ← Back to Overview
             </button>
