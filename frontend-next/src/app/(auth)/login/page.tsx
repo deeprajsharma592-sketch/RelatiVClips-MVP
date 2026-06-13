@@ -73,10 +73,7 @@ function LoginForm() {
   );
 
   return (
-    <section
-      className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-32 pb-16 px-4 sm:px-6"
-      style={{ contain: "layout paint" }}
-    >
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-32 pb-16 px-4 sm:px-6 animate-page-enter" style={{ contain: "layout paint" }}>
       {/* Soft floating glass orbs in the background */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div
@@ -263,7 +260,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="btn-primary w-full justify-center flex items-center gap-2"
+            className="btn-primary btn-shine w-full justify-center flex items-center gap-2"
             style={{ paddingTop: "15px", paddingBottom: "15px" }}
           >
             {submitting ? (

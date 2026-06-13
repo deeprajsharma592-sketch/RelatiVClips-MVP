@@ -210,10 +210,20 @@ function AnnouncementBar() {
 // ════════════════════════════════════════════════════════════════════════════
 
 function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  // Subtle parallax: background moves at 0.4x of scroll, particle field at 0.6x
+  const bgY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+  const particleY = useTransform(scrollYProgress, [0, 1], [0, 120]);
+
   return (
-    <section id="section-0" className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
-      <MathBackground />
-      <ParticleField density={0.35} />
+    <section ref={ref} id="section-0" className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
+      <motion.div style={{ y: bgY }}>
+        <MathBackground />
+      </motion.div>
+      <motion.div style={{ y: particleY }}>
+        <ParticleField density={0.35} />
+      </motion.div>
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
         {/* Eyebrow — section marker */}
