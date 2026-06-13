@@ -22,13 +22,28 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 # Override with CLAUDE_MODEL=claude-3-5-sonnet-20241022 etc. in .env if you want quality.
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 
-# --- LLM Provider priority ---
-# When multiple keys are set, the highest-priority available provider is used.
-# LLM_PROVIDER_PRIORITY = "claude,deepseek,minimax" (default)
+# --- DeepSeek API (cheaper alternative to Claude, ~30x cheaper) ---
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")  # also "deepseek-reasoner"
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+
+# --- LLM Provider selection ---
+# LLM_PROVIDER = "claude"   → force Claude (elite tier, $$$)
+# LLM_PROVIDER = "deepseek" → force DeepSeek (budget tier, ~30x cheaper)
+# LLM_PROVIDER = "both"     → try Claude first, fall back to DeepSeek on failure
+# LLM_PROVIDER = "auto"     → highest-priority available (claude > deepseek > minimax)
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower().strip()
+# Legacy alias; "LLM_PROVIDER_PRIORITY" still works for back-compat.
 LLM_PROVIDER_PRIORITY = [
     p.strip() for p in os.getenv("LLM_PROVIDER_PRIORITY", "claude,deepseek,minimax").split(",")
     if p.strip()
 ]
+
+# --- Circuit breaker for LLM calls ---
+# After this many consecutive failures, an LLM provider is marked "open" and
+# skipped for CIRCUIT_BREAKER_RESET_S seconds.
+LLM_CIRCUIT_BREAKER_THRESHOLD = int(os.getenv("LLM_CIRCUIT_BREAKER_THRESHOLD", "3"))
+LLM_CIRCUIT_BREAKER_RESET_S = int(os.getenv("LLM_CIRCUIT_BREAKER_RESET_S", "60"))
 
 # --- RunPod Serverless (cloud Whisper) ---
 # Provide EITHER the full endpoint URL OR the bare endpoint ID. The provider

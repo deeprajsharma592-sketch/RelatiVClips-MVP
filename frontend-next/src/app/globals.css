@@ -1194,10 +1194,12 @@ pre *:focus-visible,
   background: var(--color-bg-tint);
 }
 
-/* Dark glass — full inversion, high contrast section break */
+/* Dark glass — full inversion, high contrast section break.
+   Always dark, in BOTH modes — creates dramatic contrast moments. */
 .section-dark {
-  background: linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-deep) 50%, var(--color-bg-base) 100%);
+  background: var(--color-bg-deep);
   position: relative;
+  color: var(--color-text-primary);
 }
 
 .section-dark::before {
@@ -1209,6 +1211,22 @@ pre *:focus-visible,
     radial-gradient(ellipse 50% 30% at 80% 80%, var(--glow-rose) 0%, transparent 70%);
   pointer-events: none;
   opacity: 0.5;
+}
+
+/* Inverted in light mode — section-dark becomes a dramatic warm-charcoal break */
+:root .section-dark {
+  background: linear-gradient(180deg, #1A1814 0%, #100E0A 50%, #1A1814 100%);
+  color: #FAF7F0;
+}
+
+:root .section-dark h1, :root .section-dark h2, :root .section-dark h3,
+:root .section-dark p, :root .section-dark span:not([data-mono]) {
+  color: #FAF7F0;
+}
+
+/* In dark mode, section-dark goes even darker (true black) */
+.dark .section-dark {
+  background: linear-gradient(180deg, #050506 0%, #0A0A0B 50%, #050506 100%);
 }
 
 /* Gold accent — warm gradient with gold halo */

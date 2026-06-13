@@ -1340,7 +1340,7 @@ function LiveProductPreview() {
 
 function HookCurveSection() {
   return (
-    <section id="section-6" className="section-mint relative py-32 overflow-hidden">
+    <section id="section-6" className="section-dark relative py-32 overflow-hidden">
       <ParticleField density={0.2} />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -1785,7 +1785,7 @@ function FaqSection() {
 
 function CtaSection() {
   return (
-    <section id="section-11" className="section-aurora relative py-32 overflow-hidden">
+    <section id="section-11" className="section-dark relative py-32 overflow-hidden">
       <div className="relative max-w-5xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
