@@ -5,7 +5,25 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, Sparkles, Shield } from "lucide-react";
-import { login } from "@/lib/auth";
+import { login, type User } from "@/lib/auth";
+
+/**
+ * Where to send a freshly-authenticated user when no explicit `next` param
+ * is provided. The login response carries the role; the signup flow does
+ * the same but reads from the user object too.
+ */
+function roleDestination(user: User): string {
+  switch (user.role) {
+    case "brand":
+      return "/brands/dashboard";
+    case "clipper":
+      return "/clippers/dashboard";
+    case "creator":
+      return "/creators/dashboard";
+    default:
+      return "/account";
+  }
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -50,8 +68,10 @@ function LoginForm() {
       setSubmitting(true);
       setError(null);
       try {
-        await login({ email: email.trim().toLowerCase(), password });
-        router.push(nextPath);
+        const result = await login({ email: email.trim().toLowerCase(), password });
+        // Honour ?next= if it points to a real, safe path; otherwise route by role
+        const dest = nextPath && nextPath.startsWith("/") ? nextPath : roleDestination(result.user);
+        router.push(dest);
       } catch (err: any) {
         // Surface backend error verbatim if it's a string, otherwise generic
         const msg = err?.message || "Invalid email or password.";

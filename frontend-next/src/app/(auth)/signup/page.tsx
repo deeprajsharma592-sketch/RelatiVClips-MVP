@@ -19,7 +19,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { signup, ROLE_DESCRIPTION, type UserRole } from "@/lib/auth";
+import { signup, ROLE_DESCRIPTION, type UserRole, type User } from "@/lib/auth";
 
 type Step = "role" | "form" | "done";
 
@@ -109,10 +109,12 @@ export default function SignupPage() {
         payload.handle = form.handle || undefined;
         payload.specialty = form.specialty || undefined;
       }
-      await signup(payload);
+      const result = await signup(payload);
       setStep("done");
-      // Redirect to /account after a short delay
-      setTimeout(() => router.push("/account"), 1500);
+      // Role-based redirect: brand → /brands/dashboard, clipper → /clippers/dashboard,
+      // creator → /creators/dashboard, fallback → /account.
+      const dest = roleDestination(result.user);
+      setTimeout(() => router.push(dest), 1500);
     } catch (err: any) {
       setSubmitError(err?.message || "Sign up failed. Please try again.");
     } finally {
@@ -424,6 +426,24 @@ export default function SignupPage() {
 
 const inputClass =
   "w-full px-4 py-2.5 rounded-[var(--radius-md)] bg-[color:var(--color-bg-base)] border border-[color:var(--color-border)] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[color:var(--color-accent)]";
+
+/**
+ * Where to send a freshly-signed-up user based on the role their account was
+ * created with. We trust the role returned by the backend (which just issued
+ * the session) over the form state.
+ */
+function roleDestination(user: User): string {
+  switch (user.role) {
+    case "brand":
+      return "/brands/dashboard";
+    case "clipper":
+      return "/clippers/dashboard";
+    case "creator":
+      return "/creators/dashboard";
+    default:
+      return "/account";
+  }
+}
 
 function Field({
   label,
