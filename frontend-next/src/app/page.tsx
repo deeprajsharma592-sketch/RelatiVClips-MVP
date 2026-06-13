@@ -1606,10 +1606,14 @@ function PricingSection() {
             <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
           </div>
           <h2
-            className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+            className="font-display font-semibold leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", letterSpacing: "-0.04em" }}
           >
-            <span style={{ color: "var(--color-text-primary)" }}>Pay per clip, not per seat.</span>
+            <span style={{ color: "var(--color-text-primary)" }}>Pay per clip, not </span>
+            <span className="font-fraunces-italic" style={{ color: "var(--color-accent)", fontWeight: 400 }}>
+              per seat
+            </span>
+            <span style={{ color: "var(--color-text-primary)" }}>.</span>
           </h2>
           <p className="mt-4 text-lg" style={{ color: "var(--color-text-secondary)" }}>
             Start free. Upgrade when you ship. Cancel anytime — your clips stay yours.
@@ -1818,11 +1822,11 @@ function CtaSection() {
             </div>
 
             <h2
-              className="font-display font-semibold tracking-tight leading-[1.02]"
-              style={{ fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)" }}
+              className="font-display font-semibold leading-[1.02]"
+              style={{ fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)", letterSpacing: "-0.04em" }}
             >
               <span style={{ color: "var(--color-text-primary)" }}>Stop clipping.</span>{" "}
-              <span className="hero-text text-gradient-sunset">Start shipping.</span>
+              <span className="text-gradient-iridescent">Start shipping.</span>
             </h2>
             <p className="mt-6 text-lg max-w-xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
               Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes.
