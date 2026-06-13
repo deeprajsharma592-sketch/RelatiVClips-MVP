@@ -374,6 +374,18 @@ function ClipperClipsBody() {
     load();
   }, [authLoading, user, load]);
 
+  // ─── Group the clips (must be a hook, called before any early return) ──
+  const grouped = useMemo(() => {
+    const out: Record<GroupKey, Clip[]> = {
+      pending: [],
+      approved: [],
+      verified: [],
+      rejected: [],
+    };
+    for (const c of clips) out[groupForStatus(c.status)].push(c);
+    return out;
+  }, [clips]);
+
   // ─── Auth: still resolving ─────────────────────────────────────────────
   if (authLoading) {
     return (
@@ -458,17 +470,8 @@ function ClipperClipsBody() {
     );
   }
 
-  // ─── Group the clips ───────────────────────────────────────────────────
-  const grouped = useMemo(() => {
-    const out: Record<GroupKey, Clip[]> = {
-      pending: [],
-      approved: [],
-      verified: [],
-      rejected: [],
-    };
-    for (const c of clips) out[groupForStatus(c.status)].push(c);
-    return out;
-  }, [clips]);
+  // ─── Derived counts (pure, no hooks needed) ────────────────────────────
+  const grouped2 = grouped;
 
   const isFirstLoad = dataLoading && !clips.length && !dataError;
   const isError = !dataLoading && !!dataError && !clips.length;
