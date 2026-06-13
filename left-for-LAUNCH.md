@@ -394,3 +394,57 @@ cd /app/RelatiV && git log --oneline -5 && git status -s
 **Last updated: 2026-06-13 (post-v6-onboarding push)**
 **Status: real user onboarding shipped, middleware live in prod, 8/8 E2E auth checks pass, 4 test accounts seeded.**
 
+
+
+## Tier 1 (v7) — Real User Onboarding & Live Data (2026-06-13)
+
+**Goal**: Convert the 3 dashboards from mock data → real DB data, add forgot/reset/verify flows, and wire Stripe to /plans.
+
+### What shipped
+
+**Backend** (3 new routers + 3 new tables + 4 new user columns):
+- `routers/dashboard_router.py` — `GET /api/v1/dashboard/{brand,clipper,creator}` returns real KPIs, campaigns, clips, weekly chart
+- `routers/email_auth_router.py` — `/forgot-password`, `/reset-password`, `/verify-email`, `/resend-verification`
+- `routers/billing_router.py` — `/billing/config`, `/billing/create-checkout`, `/billing/webhook`
+- `services/email_backend.py` — multipart SMTP send with Resend/Postmark/SMTP/console fallback
+- `scripts/migrate_tier1.py` — adds 4 user columns + 3 marketplace tables + seeds 4 campaigns, 2 claims, 2 clips
+- `models.py` — `CampaignModel`, `CampaignClaimModel`, `CampaignClipModel`
+- `auth_router.py` — auto-generates email verification token on signup + sends welcome email
+- `stripe==9.12.0` installed
+
+**Frontend** (3 new auth pages + 3 dashboards wired):
+- `/forgot-password` — email input → "check your inbox"
+- `/reset-password` — token from URL → new password → success/expired
+- `/verify-email` — auto-verify on mount → 4 states (loading/success/error/no-token)
+- `/brands/dashboard` (994 lines) — wired to `getBrandDashboard` API, role-mismatch banner, 3 states
+- `/clippers/dashboard` (875 lines, violet accent) — wired to `fetchClipperDashboard`
+- `/creators/dashboard` — wired to `fetchCreatorDashboard`
+- `/account` — Resend verification email banner when `is_verified=false`
+- `/plans` — Stripe checkout wired (Pro $29, Elite $99), 4 banner states
+- `lib/api.ts` — 7 new API helpers + 4 TypeScript interfaces
+
+### Verified in production (https://relativclips.com)
+
+- 3 dashboard endpoints: 200 with rich real data
+  - brand: $15,880 spent, 2.01M views, 4 campaigns with per-campaign clip counts
+  - clipper: $1,323 pending, $4,207 lifetime, 1 open campaign (Huberman Lab, $6 CPM, 6/12 slots)
+  - creator: $280.70 this month, 5 auto-clips, 2 brand deals ($7,000 open)
+- Auth flows: signup → 200 (auto-token generated, is_verified=false), login → 200 + cookie
+- Password reset: 200, token consumed, new pass works (200), old fails (401), restored to testpass1234
+- Email verify (GET): 200, is_verified=true, token nulled, timestamp set
+- Middleware: anon→/signup?next=... (307), dashboards protected (307), auth pages open (200)
+- Billing config: 2 plans visible, stripe_enabled=false (awaiting keys)
+
+### Files
+
+- NEW: `backend/routers/dashboard_router.py`, `email_auth_router.py`, `billing_router.py`
+- NEW: `backend/services/email_backend.py`, `scripts/migrate_tier1.py`
+- NEW: `frontend-next/src/app/forgot-password/page.tsx`, `reset-password/page.tsx`, `verify-email/page.tsx`
+- MODIFIED: backend models, auth_router, main, frontend api.ts, 3 dashboards, /account, /plans
+- 16 screenshots in `.hermes/screenshots/v7/` (3 dashboards × 3 viewports + 7 page captures)
+
+### Pending for Tier 1 to be "done done"
+
+- Add `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_CLIPPER_PRO/ELITE` to `.env` to enable checkout
+- Optionally `RESEND_API_KEY` for transactional email
+- After that, Tier 2 (marketplace launch: campaigns CRUD, clip submission, view-verification bot)
