@@ -282,14 +282,14 @@ body::after {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-premium-card);
   border-radius: var(--radius-lg);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
   background: rgba(255, 252, 242, 0.85);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-premium);
   transform: translateY(-2px);
 }
 
@@ -326,11 +326,26 @@ body::after {
    ════════════════════════════════════════════════════════════════════════════ */
 
 .text-gradient-sunset {
-  background: var(--gradient-sunset);
+  background: var(--gradient-sunset-deep);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+
+.text-gradient-iridescent {
+  background: var(--gradient-sunset-iridescent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  background-size: 200% 200%;
+  animation: iridescent-shift 8s ease-in-out infinite;
+}
+
+@keyframes iridescent-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 .text-gradient-ocean {

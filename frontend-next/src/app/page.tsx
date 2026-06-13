@@ -221,6 +221,16 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
       <motion.div style={{ y: bgY }}>
         <MathBackground />
       </motion.div>
+      {/* Premium aurora layer — iridescent wash that makes the hero feel alive */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "var(--gradient-aurora)",
+          filter: "blur(80px)",
+          opacity: 0.5,
+          mixBlendMode: "multiply",
+        }}
+      />
       <motion.div style={{ y: particleY }}>
         <ParticleField density={0.35} />
       </motion.div>
