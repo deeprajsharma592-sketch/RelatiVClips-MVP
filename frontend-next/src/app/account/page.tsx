@@ -14,12 +14,14 @@
  * show private data — just what the user themselves can see.
  */
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, LogOut, Sparkles } from "lucide-react";
+import { ArrowRight, LogOut, Mail, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { ROLE_LABEL, type UserRole } from "@/lib/auth";
+import { resendVerification } from "@/lib/api";
 
 const ROLE_ACCENT: Record<UserRole, { color: string; bg: string; border: string; label: string; gradient: string }> = {
   creator: {
@@ -52,8 +54,24 @@ const DASHBOARD_LINKS: Record<UserRole, { href: string; label: string }> = {
 };
 
 export default function AccountPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, refresh } = useAuth();
   const router = useRouter();
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  const handleResendVerification = async () => {
+    setResendState("sending");
+    setResendError(null);
+    try {
+      await resendVerification();
+      setResendState("sent");
+      // Auto-revert after 5s
+      setTimeout(() => setResendState("idle"), 5000);
+    } catch (e: any) {
+      setResendError(e?.message || "Failed to send. Try again in a moment.");
+      setResendState("error");
+    }
+  };
 
   if (loading) {
     return (
@@ -189,6 +207,58 @@ export default function AccountPage() {
             </button>
           </div>
         </div>
+
+        {/* Unverified-email banner (v7 — tier 1.2) */}
+        {!user.is_verified && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-start gap-3 p-4 rounded-2xl border"
+            style={{
+              background: "rgba(217, 70, 239, 0.05)",
+              borderColor: "rgba(217, 70, 239, 0.20)",
+            }}
+          >
+            <Mail
+              className="h-5 w-5 mt-0.5 shrink-0"
+              style={{ color: "var(--color-accent)" }}
+            />
+            <div className="flex-1 text-[13px]">
+              <p className="font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                Your email isn&apos;t verified yet.
+              </p>
+              <p className="mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+                Some features are gated until you verify. We sent a link to{" "}
+                <span className="font-mono">{user.email}</span> when you signed up.
+              </p>
+              {resendState === "sent" && (
+                <p className="mt-1 text-[12px]" style={{ color: "var(--color-success)" }}>
+                  Verification email sent. Check your inbox (and spam folder).
+                </p>
+              )}
+              {resendState === "error" && resendError && (
+                <p className="mt-1 text-[12px]" style={{ color: "var(--color-error)" }}>
+                  {resendError}
+                </p>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resendState === "sending" || resendState === "sent"}
+                  className="text-[12px] font-semibold underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: "var(--color-accent)" }}
+                >
+                  {resendState === "sending"
+                    ? "Sending…"
+                    : resendState === "sent"
+                    ? "Sent ✓"
+                    : "Resend verification email →"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Two columns: profile + actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

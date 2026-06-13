@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth_utils import hash_ip  # noqa: F401  (placeholder for future rate limiting)
@@ -186,16 +186,20 @@ async def brand_dashboard(
     ]
 
     # Per-campaign clip counts
+    # Note: PostgreSQL doesn't have `iif()` (that's T-SQL). We use
+    # `CASE WHEN ... THEN 1 ELSE 0 END` instead, then SUM.
+    pending_count_expr = func.sum(
+        case((CampaignClipModel.status == CampaignClipStatus.SUBMITTED.value, 1), else_=0)
+    )
+    approved_count_expr = func.sum(
+        case((CampaignClipModel.status == CampaignClipStatus.APPROVED.value, 1), else_=0)
+    )
     campaign_clips_result = await session.execute(
         select(
             CampaignClipModel.campaign_id,
             func.count(CampaignClipModel.id).label("total"),
-            func.sum(
-                func.iif(CampaignClipModel.status == CampaignClipStatus.APPROVED.value, 1, 0)
-            ).label("approved"),
-            func.sum(
-                func.iif(CampaignClipModel.status == CampaignClipStatus.SUBMITTED.value, 1, 0)
-            ).label("pending"),
+            approved_count_expr.label("approved"),
+            pending_count_expr.label("pending"),
         )
         .group_by(CampaignClipModel.campaign_id)
     )

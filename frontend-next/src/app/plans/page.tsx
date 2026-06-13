@@ -8,12 +8,20 @@
  * - Clippers (3 tiers: Starter, Pro, Elite) — what to pay RelatiV
  * - Brands (3 tiers: Pilot, Run a Campaign, Scale) — what to pay RelatiV
  * - Creators (free, no tier) — earn from brands posting campaigns on their content
+ *
+ * Stripe wiring (v7 — tier 1.3):
+ *   When a clipper/creator user is signed in AND Stripe is configured on
+ *   the backend, the "Pro" and "Elite" tier CTAs trigger real Stripe
+ *   Checkout instead of linking to the apply page. The Stripe status
+ *   banner at the top of the clipper section explains when this is live.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Check, ChevronDown, ArrowRight, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ArrowRight, Sparkles, Loader2, CreditCard } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import { createCheckout, getBillingConfig, type BillingConfig } from "@/lib/api";
 
 type Side = "clippers" | "brands";
 
@@ -27,6 +35,10 @@ interface Tier {
   bestFor: string;
   features: string[];
   cpmHint?: string;
+  // When set, the CTA button triggers Stripe Checkout for this plan
+  // instead of navigating to the href. Only applies to signed-in
+  // clipper/creator accounts.
+  stripePlan?: "clipper_pro" | "clipper_elite";
 }
 
 const CLIPPER_TIERS: Tier[] = [
@@ -39,9 +51,10 @@ const CLIPPER_TIERS: Tier[] = [
     ],
   },
   {
-    name: "Pro", price: "$19", unit: "/month", cta: "Apply + subscribe",
+    name: "Pro", price: "$29", unit: "/month", cta: "Subscribe",
     href: "/clippers/apply", highlight: true, bestFor: "Active clippers, 5–15 clips/week",
-    cpmHint: "60% of revenue share",
+    cpmHint: "70% revenue share",
+    stripePlan: "clipper_pro",
     features: [
       "Priority campaign matching", "Up to $7 CPM (brand-set)",
       "AI clip suggestions from RelatiV", "70% revenue share",
@@ -49,9 +62,10 @@ const CLIPPER_TIERS: Tier[] = [
     ],
   },
   {
-    name: "Elite", price: "$99", unit: "/month", cta: "Apply + subscribe",
+    name: "Elite", price: "$99", unit: "/month", cta: "Subscribe",
     href: "/clippers/apply", bestFor: "Top 1%, 20+ clips/week",
-    cpmHint: "70% revenue share",
+    cpmHint: "80% revenue share",
+    stripePlan: "clipper_elite",
     features: [
       "Reserved brand partnerships", "Up to $12 CPM (premium brands)",
       "Brand-direct intros", "75% revenue share",
@@ -112,8 +126,57 @@ function SectionMarker({ num, label, centered = false }: { num: string; label: s
 }
 
 export default function PlansPage() {
+  const { user } = useAuth();
   const [side, setSide] = useState<Side>("brands");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  // Stripe config (fetched once on mount; public endpoint, no auth needed)
+  const [billing, setBilling] = useState<BillingConfig | null>(null);
+  useEffect(() => {
+    getBillingConfig().then(setBilling).catch(() => setBilling(null));
+  }, []);
+
+  // Per-plan loading state
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const handleSubscribe = async (tier: Tier) => {
+    if (!tier.stripePlan) return;
+    setCheckoutError(null);
+
+    // Not signed in → send to /signup first
+    if (!user) {
+      window.location.href = `/signup?next=${encodeURIComponent("/plans")}`;
+      return;
+    }
+    // Only clippers + creators can subscribe
+    if (user.role !== "clipper" && user.role !== "creator") {
+      setCheckoutError("Subscriptions are for clipper and creator accounts. Brand invoicing is coming soon.");
+      return;
+    }
+
+    setLoadingPlan(tier.stripePlan);
+    try {
+      const { checkout_url } = await createCheckout(tier.stripePlan);
+      window.location.href = checkout_url;
+    } catch (e: any) {
+      setCheckoutError(e?.message || "Checkout failed. Try again in a moment.");
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  // Should the CTA for this tier trigger Stripe checkout?
+  // Conditions: tier has stripePlan + user is clipper/creator + Stripe is
+  // configured + the plan is marked available in /config.
+  const canSubscribeViaStripe = (tier: Tier) => {
+    if (!tier.stripePlan) return false;
+    if (!user) return false;
+    if (user.role !== "clipper" && user.role !== "creator") return false;
+    if (!billing?.stripe_enabled) return false;
+    const plan = billing.plans.find((p) => p.key === tier.stripePlan);
+    return plan?.available === true;
+  };
 
   const tiers = side === "clippers" ? CLIPPER_TIERS : BRAND_TIERS;
 
@@ -197,10 +260,91 @@ export default function PlansPage() {
               key={side}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              exit={{ opacity: 1, y: -8 }}
               transition={{ duration: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-3 gap-5"
             >
+              {/* Stripe status banner (clipper side only, when in the clippers view) */}
+              {side === "clippers" && (
+                <div className="md:col-span-3">
+                  {billing === null ? (
+                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
+                      style={{
+                        background: "rgba(100, 116, 139, 0.06)",
+                        border: "1px solid rgba(100, 116, 139, 0.15)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Checking subscription status…
+                    </div>
+                  ) : !billing.stripe_enabled ? (
+                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
+                      style={{
+                        background: "rgba(251, 113, 133, 0.06)",
+                        border: "1px solid rgba(251, 113, 133, 0.20)",
+                        color: "#FB7185",
+                      }}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Subscriptions are coming soon.{" "}
+                      <span style={{ color: "var(--color-text-muted)" }}>
+                        Apply to the waitlist below to be notified when Stripe Checkout goes live.
+                      </span>
+                    </div>
+                  ) : user && (user.role === "clipper" || user.role === "creator") ? (
+                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
+                      style={{
+                        background: "rgba(16, 185, 129, 0.06)",
+                        border: "1px solid rgba(16, 185, 129, 0.20)",
+                        color: "var(--color-success)",
+                      }}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Subscriptions are live.{" "}
+                      <span style={{ color: "var(--color-text-muted)" }}>
+                        Click Subscribe to be redirected to Stripe Checkout. Cancel anytime.
+                      </span>
+                    </div>
+                  ) : user ? (
+                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
+                      style={{
+                        background: "rgba(100, 116, 139, 0.06)",
+                        border: "1px solid rgba(100, 116, 139, 0.15)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Subscriptions are for clipper and creator accounts.
+                    </div>
+                  ) : (
+                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
+                      style={{
+                        background: "rgba(100, 116, 139, 0.06)",
+                        border: "1px solid rgba(100, 116, 139, 0.15)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      <Link href="/signup?next=/plans" className="font-semibold underline">
+                        Sign up
+                      </Link>{" "}
+                      as a clipper or creator to subscribe.
+                    </div>
+                  )}
+                  {checkoutError && (
+                    <div className="mt-2 px-4 py-2.5 rounded-2xl text-[12px]"
+                      style={{
+                        background: "rgba(239, 68, 68, 0.08)",
+                        border: "1px solid rgba(239, 68, 68, 0.25)",
+                        color: "var(--color-error)",
+                      }}
+                    >
+                      {checkoutError}
+                    </div>
+                  )}
+                </div>
+              )}
               {tiers.map((tier, i) => {
                 const isHighlight = tier.highlight;
                 const gradient = side === "brands"
@@ -285,13 +429,34 @@ export default function PlansPage() {
                       ))}
                     </ul>
 
-                    <Link
-                      href={tier.href}
-                      className={isHighlight ? "btn-primary btn-shine w-full justify-center inline-flex" : "btn-glass w-full justify-center inline-flex"}
-                    >
-                      {tier.cta}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
+                    {canSubscribeViaStripe(tier) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSubscribe(tier)}
+                        disabled={loadingPlan === tier.stripePlan}
+                        className={isHighlight ? "btn-primary btn-shine w-full justify-center inline-flex" : "btn-glass w-full justify-center inline-flex"}
+                      >
+                        {loadingPlan === tier.stripePlan ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Opening Stripe…
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="h-3.5 w-3.5" />
+                            {tier.cta}
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <Link
+                        href={tier.href}
+                        className={isHighlight ? "btn-primary btn-shine w-full justify-center inline-flex" : "btn-glass w-full justify-center inline-flex"}
+                      >
+                        {tier.cta}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
                   </motion.div>
                 );
               })}

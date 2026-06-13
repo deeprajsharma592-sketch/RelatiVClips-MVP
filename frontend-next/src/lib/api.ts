@@ -125,6 +125,147 @@ export async function checkProcessingStatus(
   return res.json();
 }
 
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Email-auth (forgot-password, reset, verify)
+   ──────────────────────────────────────────────────────────────────────────
+   All endpoints go through the same-origin /api/proxy/api/v1/... path
+   so the Vercel edge forwards the HttpOnly cookie. For forgot-password
+   the cookie is irrelevant; for verify-email via GET, the token comes
+   from the URL; for resend-verification we DO need the cookie.
+*/
+
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  const res = await fetch("/api/proxy/api/v1/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Request failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const res = await fetch("/api/proxy/api/v1/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Reset failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  const res = await fetch(`/api/proxy/api/v1/auth/verify-email?token=${encodeURIComponent(token)}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Verification failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function resendVerification(): Promise<{ message: string }> {
+  const res = await fetch("/api/proxy/api/v1/auth/resend-verification", {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Resend failed (${res.status})`);
+  }
+  return res.json();
+}
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Billing (Stripe)
+   ──────────────────────────────────────────────────────────────────────────
+   All endpoints go through /api/proxy/api/v1/... (same-origin so cookies
+   are sent on the authed calls). The /config endpoint is public; the rest
+   require a session.
+*/
+
+export interface BillingPlan {
+  key: string;
+  label: string;
+  amount_cents: number;
+  tier: string;
+  description: string;
+  available: boolean;
+}
+
+export interface BillingConfig {
+  stripe_enabled: boolean;
+  publishable_key: string;
+  plans: BillingPlan[];
+}
+
+export interface SubscriptionInfo {
+  tier: string;
+  status: string;
+  renews_at: string | null;
+  cancel_at_period_end: boolean;
+  stripe_customer_id: string | null;
+  has_payment_method: boolean;
+}
+
+export async function getBillingConfig(): Promise<BillingConfig> {
+  const res = await fetch("/api/proxy/api/v1/billing/config");
+  if (!res.ok) {
+    throw new Error(`Billing config failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createCheckout(plan: string): Promise<{ checkout_url: string; plan: string; amount_cents: number; publishable_key: string }> {
+  const res = await fetch("/api/proxy/api/v1/billing/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan }),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Checkout failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createPortal(): Promise<{ portal_url: string }> {
+  const res = await fetch("/api/proxy/api/v1/billing/portal", {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Portal failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getSubscription(): Promise<SubscriptionInfo> {
+  const res = await fetch("/api/proxy/api/v1/billing/subscription", {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Subscription fetch failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function pollUntilComplete(
   taskId: string,
   onProgress?: (
