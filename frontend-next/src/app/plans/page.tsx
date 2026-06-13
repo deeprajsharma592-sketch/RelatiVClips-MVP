@@ -127,7 +127,7 @@ function SectionMarker({ num, label, centered = false }: { num: string; label: s
 
 export default function PlansPage() {
   const { user } = useAuth();
-  const [side, setSide] = useState<Side>("brands");
+  const [side, setSide] = useState<Side>("clippers");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Stripe config (fetched once on mount; public endpoint, no auth needed)
@@ -224,7 +224,7 @@ export default function PlansPage() {
               role="tablist"
               aria-label="Pricing audience"
             >
-              {(["brands", "clippers"] as const).map((s) => (
+              {(["clippers", "brands"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSide(s)}
@@ -233,8 +233,8 @@ export default function PlansPage() {
                   className="relative px-5 py-2 text-sm font-semibold rounded-full transition-colors"
                   style={{
                     color: side === s ? "var(--color-text-primary)" : "var(--color-text-muted)",
-                    background: side === s ? "rgba(255, 252, 242, 0.9)" : "transparent",
-                    boxShadow: side === s ? "0 1px 3px rgba(140, 110, 60, 0.08)" : "none",
+                    background: side === s ? "var(--color-surface)" : "transparent",
+                    boxShadow: side === s ? "0 1px 3px rgba(0, 0, 0, 0.10)" : "none",
                   }}
                 >
                   {side === s && (
@@ -242,13 +242,13 @@ export default function PlansPage() {
                       layoutId="side-pill"
                       className="absolute inset-0 rounded-full"
                       style={{
-                        background: s === "brands" ? "rgba(217, 70, 239, 0.10)" : "rgba(139, 92, 246, 0.10)",
-                        border: s === "brands" ? "1px solid rgba(217, 70, 239, 0.30)" : "1px solid rgba(139, 92, 246, 0.30)",
+                        background: s === "clippers" ? "rgba(252, 211, 77, 0.10)" : "rgba(139, 92, 246, 0.10)",
+                        border: s === "clippers" ? "1px solid rgba(252, 211, 77, 0.40)" : "1px solid rgba(139, 92, 246, 0.30)",
                       }}
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
-                  <span className="relative capitalize">For {s}</span>
+                  <span className="relative">{s === "clippers" ? "For clippers" : "For brands"}</span>
                 </button>
               ))}
             </div>

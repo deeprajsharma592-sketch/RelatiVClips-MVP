@@ -1610,70 +1610,116 @@ function PricingSection() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-          {PRICING.map((tier, i) => (
-            <motion.div
-              key={tier.tier}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-              className={tier.highlight ? "glass-physics-strong hover-physics p-7 relative overflow-hidden" : "glass-physics hover-physics p-7"}
-              style={tier.highlight ? { border: "2px solid rgba(252, 211, 77, 0.40)" } : undefined}
-            >
-              {tier.highlight && (
+          {PRICING.map((tier, i) => {
+            // Per-tier identity
+            const tierClass =
+              tier.tier === "Starter" ? "tier-starter"
+              : tier.tier === "Pro" ? "tier-pro"
+              : "tier-elite";
+            const tierColor = `var(--tier-${tier.tier.toLowerCase()})`;
+            const tierBg = `var(--tier-${tier.tier.toLowerCase()}-bg)`;
+            const tierBorder = `var(--tier-${tier.tier.toLowerCase()}-border)`;
+            return (
+              <motion.div
+                key={tier.tier}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className={`${tierClass} glass-physics hover-physics p-7 relative overflow-hidden`}
+                style={{
+                  background: tier.highlight
+                    ? `linear-gradient(135deg, ${tierBg} 0%, var(--color-surface) 50%, var(--color-surface) 100%)`
+                    : `linear-gradient(160deg, var(--color-surface) 0%, var(--color-surface) 100%)`,
+                  border: tier.highlight
+                    ? `2px solid ${tierBorder}`
+                    : `1px solid ${tierBorder}`,
+                  boxShadow: tier.highlight
+                    ? `0 0 0 1px ${tierBorder} inset, 0 16px 48px var(--tier-${tier.tier.toLowerCase()}-bg), 0 0 80px var(--tier-${tier.tier.toLowerCase()}-bg)`
+                    : `0 4px 16px var(--tier-${tier.tier.toLowerCase()}-bg), 0 0 0 1px ${tierBorder} inset`,
+                }}
+              >
+                {/* Tier accent stripe at top */}
                 <div
                   className="absolute -top-px left-0 right-0 h-1"
-                  style={{ background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)" }}
+                  style={{
+                    background: tier.highlight
+                      ? `linear-gradient(90deg, transparent 0%, ${tierColor} 50%, transparent 100%)`
+                      : `linear-gradient(90deg, transparent 0%, ${tierColor} 80%, transparent 100%)`,
+                  }}
                 />
-              )}
-              {tier.highlight && (
-                <div className="absolute top-4 right-4">
+                {/* Tier name + accent dot */}
+                <div className="flex items-center gap-2">
                   <span
-                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                    style={{
-                      background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)",
-                      color: "#1A1814",
-                      boxShadow: "0 2px 8px rgba(245, 158, 11, 0.40)",
-                    }}
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: tierColor, boxShadow: `0 0 8px ${tierColor}` }}
+                  />
+                  <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: tierColor }}>
+                    {tier.tier}
+                  </p>
+                </div>
+                {tier.highlight && (
+                  <div className="absolute top-4 right-4">
+                    <span
+                      className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
+                      style={{
+                        background: `linear-gradient(135deg, ${tierColor} 0%, var(--tier-${tier.tier.toLowerCase()}) 100%)`,
+                        color: tier.tier === "Starter" ? "#FFFFFF" : "#1A1814",
+                        boxShadow: `0 2px 8px var(--tier-${tier.tier.toLowerCase()}-glow, ${tierBg})`,
+                      }}
+                    >
+                      Most popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-baseline gap-1.5">
+                  <span
+                    className="font-display font-semibold"
+                    style={{ fontSize: "2.75rem", lineHeight: 1, color: "var(--color-text-primary)" }}
                   >
-                    Most popular
+                    {tier.price}
+                  </span>
+                  <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
+                    {tier.cadence}
                   </span>
                 </div>
-              )}
 
-              <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
-                {tier.tier}
-              </p>
-              <div className="mt-3 flex items-baseline gap-1.5">
-                <span
-                  className="font-display font-semibold"
-                  style={{ fontSize: "2.75rem", lineHeight: 1, color: "var(--color-text-primary)" }}
+                <Link
+                  href="/signup"
+                  className={tier.highlight ? "w-full justify-center mt-6 inline-flex" : "btn-glass w-full justify-center mt-6 inline-flex"}
+                  style={
+                    tier.highlight
+                      ? {
+                          background: `linear-gradient(135deg, ${tierColor} 0%, var(--tier-${tier.tier.toLowerCase()}) 100%)`,
+                          color: tier.tier === "Starter" ? "#FFFFFF" : "#1A1814",
+                          padding: "13px 27px",
+                          borderRadius: "var(--radius-full)",
+                          fontWeight: 600,
+                          fontSize: 15,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          boxShadow: `0 4px 16px var(--tier-${tier.tier.toLowerCase()}-glow, ${tierBg})`,
+                        }
+                      : undefined
+                  }
                 >
-                  {tier.price}
-                </span>
-                <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
-                  {tier.cadence}
-                </span>
-              </div>
-
-              <Link
-                href="/signup"
-                className={tier.highlight ? "btn-primary w-full justify-center mt-6 inline-flex" : "btn-glass w-full justify-center mt-6 inline-flex"}
-              >
-                {tier.cta}
+                  {tier.cta}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
 
               <ul className="mt-6 space-y-2.5">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
-                    <Check className="h-4 w-4 mt-0.5 shrink-0" style={{ color: tier.highlight ? "var(--color-accent)" : "var(--color-success)" }} />
+                    <Check className="h-4 w-4 mt-0.5 shrink-0" style={{ color: tierColor }} />
                     <span>{f}</span>
                   </li>
                 ))}
               </ul>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         <p className="mt-8 text-center text-[12px]" style={{ color: "var(--color-text-muted)" }}>

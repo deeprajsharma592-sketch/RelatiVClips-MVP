@@ -445,32 +445,29 @@ body::after {
   opacity: 0.7;
 }
 
-/* Dark mode: grid lines + dot pattern + stronger grain for "engineered dark" feel */
+/* Dark mode: SLEEK grid — actually visible. Major lines + dots + grain. */
 .dark body::after {
   background-image:
-    /* Major grid lines (80px) */
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    /* Minor dot grid (16px) */
-    radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1.5px),
-    /* Fine grain */
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.10 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
-  background-position: 0 0, 0 0, 0 0, 0 0;
-  opacity: 0.9;
+  background-position: -1px -1px, -1px -1px, 0 0, 0 0;
+  opacity: 0.95;
 }
 
-/* Light mode: subtle dot grid + warm grain for "premium print" feel */
+/* Light mode: warm hairline grid + dot intersections + grain */
 body::after {
   background-image:
-    linear-gradient(rgba(40, 30, 20, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(40, 30, 20, 0.025) 1px, transparent 1px),
-    radial-gradient(circle, rgba(40, 30, 20, 0.05) 1px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
-  background-size: 56px 56px, 56px 56px, 14px 14px, 200px 200px;
+    linear-gradient(rgba(40, 30, 20, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.08) 1px, transparent 1px),
+    radial-gradient(circle, rgba(40, 30, 20, 0.10) 1px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 0%, transparent 80%);
   mix-blend-mode: multiply;
-  opacity: 0.65;
+  opacity: 0.85;
   pointer-events: none;
 }
 
@@ -762,19 +759,84 @@ body::after {
   --tier-color-border: var(--tier-elite-border);
 }
 
-/* Subtle grid texture for dark mode (line grid + dot pattern) */
+/* ════════════════════════════════════════════════════════════════════════════
+   SLEEK GRID SYSTEM — Linear/Vercel/Stripe-grade backgrounds
+   The grid is the personality. Make it visible. Make it precise.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Sleek grid (light) — warm hairline lines + dot intersections */
+.bg-grid-sleek {
+  background-image:
+    /* major 80px lines */
+    linear-gradient(rgba(40, 30, 20, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.08) 1px, transparent 1px),
+    /* minor 16px dots */
+    radial-gradient(circle, rgba(40, 30, 20, 0.10) 1px, transparent 1.5px),
+    /* fine grain */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
+  background-position: -1px -1px, -1px -1px, 0 0, 0 0;
+}
+
+/* Sleek grid (dark) — cool hairline white lines + dot intersections + grain */
+.bg-grid-sleek {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.10) 1px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.10 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
+  background-position: -1px -1px, -1px -1px, 0 0, 0 0;
+}
+
+.dark .bg-grid-sleek {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.12 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
+}
+
+/* Engineered grid — major + minor + crosshairs at corners. Stripe-grade. */
+.bg-grid-engineered {
+  background-image:
+    linear-gradient(rgba(40, 30, 20, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.10) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgba(40, 30, 20, 0.20) 1.5px, transparent 2px);
+  background-size: 80px 80px, 80px 80px, 80px 80px;
+}
+.dark .bg-grid-engineered {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.25) 1.5px, transparent 2px);
+  background-size: 80px 80px, 80px 80px, 80px 80px;
+}
+
+/* Vignette — radial fade for grid (so it concentrates in the middle) */
+.grid-vignette {
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 0%, transparent 80%);
+}
+
+.grid-vignette-edges {
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 30%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 30%, transparent 90%);
+}
+
+/* Backward-compat: keep the older classes for any callers */
 .bg-grid-dark {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 64px 64px, 64px 64px, 32px 32px;
-  background-position: -1px -1px, -1px -1px, 0 0;
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1.5px);
+  background-size: 80px 80px, 80px 80px, 16px 16px;
 }
 
 .bg-dots-light {
-  background-image: radial-gradient(circle, rgba(40, 30, 20, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(circle, rgba(40, 30, 20, 0.10) 1px, transparent 1.5px);
+  background-size: 16px 16px;
 }
 
 .bg-noise {
@@ -1611,10 +1673,29 @@ pre *:focus-visible,
   color: #FAF7F0;
 }
 
-/* In dark mode, section-dark goes even darker (true black) */
+/* In dark mode, section-dark goes true black with grid texture visible */
 .dark .section-dark {
-  background: linear-gradient(180deg, #050506 0%, #0A0A0B 50%, #050506 100%);
+  background: #000000;
+  background-image:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255, 210, 74, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 30% 50%, rgba(255, 119, 233, 0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 30% at 70% 100%, rgba(255, 210, 74, 0.03) 0%, transparent 70%),
+    linear-gradient(180deg, #000000 0%, #000000 100%);
 }
+.dark .section-dark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.10) 1px, transparent 1.5px);
+  background-size: 80px 80px, 80px 80px, 16px 16px;
+  pointer-events: none;
+  opacity: 1;
+  z-index: 0;
+}
+.dark .section-dark > * { position: relative; z-index: 1; }
 
 /* Gold accent — warm gradient with gold halo */
 .section-gold {
