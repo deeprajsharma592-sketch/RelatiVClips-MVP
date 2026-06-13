@@ -510,3 +510,53 @@ cd /app/RelatiV && git log --oneline -5 && git status -s
 - Add a real view-verification polling job (currently invoked on-demand)
 - Brand campaign analytics: per-clip CPM actual vs target, drop-off scatterplot
 - Clip submission form: multi-platform URL detection, auto-fill title/hook from URL
+
+---
+
+## v9 — Tier 3: SEO + Content + Growth Infrastructure (2026-06-13)
+
+**Scope:** Ship the public-surface assets that turn a working product into a findable product. SEO infrastructure, /changelog with real entries, /blog with 2 launch posts, structured data for Google knowledge graph.
+
+### What shipped
+
+- `/sitemap.xml` — Next.js MetadataRoute.Sitemap with 14 public routes, real lastmod/priority
+- `/robots.txt` — disallows auth + dashboard + API routes, allows public marketing pages
+- JSON-LD structured data on every page:
+  - `Organization` schema (name, logo, founders, sameAs X + GitHub, contactPoint)
+  - `SoftwareApplication` schema (offers/price/featureList for Google rich results)
+- `/changelog` — 5 entries spanning the build (Day 1 MVP → Infra → Product redesign → Tier 1 → Tier 2)
+  - Timeline UI: numbered dots, color-coded by severity, stats grid per entry
+- `/blog` — 2 launch essays (Founder note + Product teardown), `/blog/[slug]` dynamic routes with prose styling
+- All new pages have full per-page metadata: OG, Twitter cards, canonical URL, description
+
+### Verified in production (https://relativclips.com)
+
+- /sitemap.xml → 200 with valid XML
+- /robots.txt → 200 with correct disallow rules + sitemap reference
+- /changelog → 200, 5 entries render with timeline + stats
+- /blog → 200, 2 posts listed
+- /blog/why-three-sided → 200, full essay renders with H2s, blockquote, prose
+- /blog/taste-not-length → 200, full essay renders
+
+### Bug fixed during build
+
+**`params` is a Promise in Next.js 15+.** The dynamic `/blog/[slug]` page was reading `params.slug` synchronously, which worked for SSG but caused runtime `notFound()` (404) for every post. Fix: `type Params = Promise<{slug: string}>` + `const {slug} = await params` in both `generateMetadata` and the page component. **Lesson: any dynamic route in Next 15+ must `await params`.**
+
+### Files
+
+- NEW: `frontend-next/src/app/sitemap.ts`, `robots.ts`
+- NEW: `frontend-next/src/app/changelog/page.tsx` + `data.ts`
+- NEW: `frontend-next/src/app/blog/page.tsx` + `data.tsx` + `[slug]/page.tsx`
+- MODIFIED: `frontend-next/src/app/layout.tsx` (added 2 JSON-LD blocks)
+- 34 routes total (was 32)
+
+### Next: Tier 4 polish + design overhaul
+
+- [ ] Cursor-pointer removal across all interactive elements
+- [ ] Real color palette refresh (deeper gradients, layered shadows)
+- [ ] Variable fonts + display serif upgrade
+- [ ] Spring physics + magnetic buttons + scroll-driven motion
+- [ ] Real product screenshots in hero (replace hand-drawn mocks)
+- [ ] 8px grid + tighter typography
+- [ ] First-paid-brand outreach: pitch + targeted D2C list
+- [ ] App store listing prep: 5 screenshot frames, 30s demo script, 4000-char description
