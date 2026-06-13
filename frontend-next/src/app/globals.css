@@ -16,28 +16,37 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
-  /* ─── Base surfaces (warm cream layered) ─── */
-  --color-bg-base: #F6F1E7;            /* page background, warm cream */
-  --color-bg-deep: #EDE6D6;            /* section background, slightly deeper */
-  --color-bg-mist: #FBF7EE;            /* light mist, for top sections */
-  --color-surface: #FFFFFF;            /* card base */
-  --color-surface-2: #FAF6EC;          /* nested card / hover */
-  --color-surface-elev: #FFFFFF;       /* modal / dropdown */
-  --color-border: rgba(60, 50, 30, 0.10);          /* default border */
-  --color-border-strong: rgba(60, 50, 30, 0.18);   /* hovered border */
-  --color-border-glass: rgba(255, 255, 255, 0.65);/* glass panel border */
+  /* ════════════════════════════════════════════════════════════════════════════
+     DUSK PALETTE — warm dark charcoal base, gold primary, sophisticated
+     ════════════════════════════════════════════════════════════════════════════ */
 
-  /* ─── Text (warm, refined) ─── */
-  --color-text-primary: #1A1814;       /* near-black, warm */
-  --color-text-secondary: #4D4639;     /* body copy, warm dark */
+  /* ─── Base surfaces (warm dusk, layered) ─── */
+  --color-bg-base: #181612;            /* page bg — warm dark charcoal, not pure black */
+  --color-bg-deep: #100E0A;            /* section bg deeper, near-black with warmth */
+  --color-bg-mist: #1F1D17;            /* lighter section, between base and deep */
+  --color-bg-tint: #25221C;            /* tinted section, slightly lifted */
+  --color-surface: #1F1D17;            /* card base — slightly lifted from page */
+  --color-surface-2: #25221C;          /* nested card / hover */
+  --color-surface-elev: #2D2A22;       /* modal / dropdown */
+  --color-border: rgba(255, 245, 220, 0.08);          /* default border — light, subtle */
+  --color-border-strong: rgba(255, 245, 220, 0.16);   /* hovered border */
+  --color-border-glass: rgba(255, 245, 220, 0.10);    /* glass panel border */
+
+  /* ─── Text (warm cream on dark — for readability + warmth) ─── */
+  --color-text-primary: #FAF7F0;       /* near-white, warm cream */
+  --color-text-secondary: #C7C0AE;     /* body copy, warm */
   --color-text-muted: #8B8472;         /* meta, captions */
-  --color-text-faint: #B8B2A0;         /* disabled, placeholder */
-  --color-text-on-glass: #1A1814;      /* text on glass surfaces */
+  --color-text-faint: #5A5546;         /* disabled, placeholder */
+  --color-text-on-glass: #FAF7F0;      /* text on glass surfaces */
 
-  /* ─── Vibrant accents (the "colours that pop" through the glass) ─── */
-  --color-accent: #D946EF;             /* fuchsia-500, primary */
-  --color-accent-hover: #C026D3;       /* fuchsia-600, hover */
-  --color-accent-soft: #D946EF18;      /* 9% alpha for glows */
+  /* ─── Vibrant accents (the "colours that pop" through the dark glass) ─── */
+  --color-accent: #FCD34D;             /* gold-300, primary — "luxury" anchor */
+  --color-accent-hover: #F59E0B;       /* gold-500, hover */
+  --color-accent-soft: rgba(252, 211, 77, 0.15);  /* 15% alpha for glows */
+
+  /* Secondary accent — fuchsia (kept for gradient pop, but secondary now) */
+  --color-accent-2: #E879F9;            /* fuchsia-400, soft secondary */
+  --color-accent-2-soft: rgba(232, 121, 249, 0.18);
 
   /* Sunset trio (vibrant, used in gradient sweeps) */
   --color-sunset-coral: #FB7185;       /* rose-400 */
@@ -93,11 +102,15 @@
   --color-pink-soft-glow: rgba(244, 114, 182, 0.25);
 
   /* ─── Gradients (the "wow" moments) ─── */
-  --gradient-sunset: linear-gradient(135deg, #FB7185 0%, #D946EF 50%, #8B5CF6 100%);
-  --gradient-sunset-soft: linear-gradient(135deg, rgba(251,113,133,0.85) 0%, rgba(217,70,239,0.85) 50%, rgba(139,92,246,0.85) 100%);
+  /* ─── Gradients (dusk — gold/cream/dusty-rose, no neon) ─── */
+  --gradient-sunset: linear-gradient(135deg, #FBBF24 0%, #F59E0B 50%, #D97706 100%);  /* gold-cascade */
+  --gradient-sunset-soft: linear-gradient(135deg, rgba(251,191,36,0.85) 0%, rgba(245,158,11,0.85) 50%, rgba(217,119,6,0.85) 100%);
   --gradient-ocean: linear-gradient(135deg, #14B8A6 0%, #06B6D4 50%, #3B82F6 100%);
-  --gradient-cream: linear-gradient(180deg, #FBF7EE 0%, #F6F1E7 50%, #EDE6D6 100%);
-  --gradient-glass-border: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.7) 100%);
+  --gradient-cream: linear-gradient(180deg, #1F1D17 0%, #181612 50%, #100E0A 100%);  /* dusk vertical */
+  --gradient-glass-border: linear-gradient(135deg, rgba(255,245,220,0.18) 0%, rgba(255,245,220,0.04) 50%, rgba(255,245,220,0.10) 100%);
+  --gradient-iridescent-gold: linear-gradient(135deg, #FCD34D 0%, #FBBF24 25%, #F59E0B 50%, #D97706 75%, #92400E 100%);  /* deep gold sweep */
+  --gradient-dusk: linear-gradient(180deg, #1F1D17 0%, #181612 100%);
+  --gradient-radial-gold: radial-gradient(circle at 30% 20%, rgba(252,211,77,0.10) 0%, transparent 60%);
 
   /* ─── Semantic (readable on light) ─── */
   --color-success: #10B981;            /* emerald-500 */
@@ -105,51 +118,55 @@
   --color-warning: #F59E0B;            /* amber-500 */
   --color-info: #3B82F6;               /* blue-500 */
 
-  /* ─── Glass tokens (the heart of glassmorphism) ─── */
-  --glass-light: rgba(255, 252, 242, 0.55);    /* pale yellow-white, 55% */
-  --glass-light-strong: rgba(255, 252, 242, 0.78);
-  --glass-light-subtle: rgba(255, 252, 242, 0.35);
-  --glass-dark: rgba(40, 30, 15, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.65);
-  --glass-border-warm: rgba(180, 160, 120, 0.25);
+  /* ─── Glass tokens (dusk — dark tint, warm highlights) ─── */
+  --glass-light: rgba(31, 29, 23, 0.55);              /* dark-tinted glass, 55% */
+  --glass-light-strong: rgba(31, 29, 23, 0.78);
+  --glass-light-subtle: rgba(31, 29, 23, 0.32);
+  --glass-dark: rgba(0, 0, 0, 0.20);
+  --glass-border: rgba(255, 245, 220, 0.12);         /* warm cream border */
+  --glass-border-warm: rgba(252, 211, 77, 0.18);     /* gold-tinted border */
+  --glass-frost: rgba(45, 42, 34, 0.40);             /* matte frosted */
 
-  /* ─── Glow (used behind glass + on accents) ─── */
-  --glow-primary: rgba(217, 70, 239, 0.35);    /* fuchsia */
-  --glow-sunset: rgba(251, 113, 133, 0.32);     /* coral */
-  --glow-ocean: rgba(20, 184, 166, 0.30);       /* teal */
-  --glow-warm: rgba(212, 165, 116, 0.20);       /* warm gold */
+  /* ─── Glow (used behind glass + on accents — warm gold dominant) ─── */
+  --glow-primary: rgba(252, 211, 77, 0.30);          /* GOLD primary glow */
+  --glow-sunset: rgba(245, 158, 11, 0.32);            /* gold-orange */
+  --glow-ocean: rgba(20, 184, 166, 0.22);             /* teal (subdued) */
+  --glow-warm: rgba(212, 165, 116, 0.20);             /* warm gold (legacy) */
+  --glow-rose: rgba(244, 114, 182, 0.18);             /* soft rose */
 
-  /* ─── Shadows (warm-tinted, subtle, layered) ─── */
-  --shadow-xs: 0 1px 2px rgba(140, 110, 60, 0.04);
-  --shadow-sm: 0 2px 8px rgba(140, 110, 60, 0.06);
-  --shadow-md: 0 8px 24px rgba(140, 110, 60, 0.08), 0 2px 6px rgba(140, 110, 60, 0.04);
-  --shadow-lg: 0 16px 48px rgba(140, 110, 60, 0.10), 0 4px 12px rgba(140, 110, 60, 0.05);
-  --shadow-xl: 0 24px 64px rgba(140, 110, 60, 0.12), 0 8px 24px rgba(140, 110, 60, 0.06);
-  --shadow-glass: 0 8px 32px rgba(140, 110, 60, 0.06), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  --shadow-glow-primary: 0 0 32px rgba(217, 70, 239, 0.35);
-  --shadow-glow-sunset: 0 0 32px rgba(251, 113, 133, 0.30);
-  --shadow-glow-ocean: 0 0 32px rgba(20, 184, 166, 0.28);
+  /* ─── Shadows (DARK-tinted, multi-layer depth — premium matte) ─── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.40), 0 2px 6px rgba(0, 0, 0, 0.20);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.50), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.55), 0 8px 24px rgba(0, 0, 0, 0.30);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 245, 220, 0.06) inset;
+  --shadow-glow-primary: 0 0 32px rgba(252, 211, 77, 0.35);     /* gold glow */
+  --shadow-glow-sunset: 0 0 32px rgba(245, 158, 11, 0.30);
+  --shadow-glow-ocean: 0 0 32px rgba(20, 184, 166, 0.22);
 
-  /* ─── Premium layered shadows (chromatic aberration style) ───
-     The -2px / +2px offsets simulate light split into RGB — Vercel/Linear aesthetic. */
-  --shadow-premium: 0 1px 0 rgba(255, 255, 255, 0.7) inset,
-                    0 -1px 0 rgba(60, 50, 30, 0.06) inset,
-                    0 8px 24px rgba(140, 110, 60, 0.10),
-                    0 24px 64px rgba(140, 110, 60, 0.06);
-  --shadow-premium-cta: 0 1px 0 rgba(255, 255, 255, 0.4) inset,
-                        -3px 0 12px rgba(251, 113, 133, 0.30),
-                        3px 0 12px rgba(139, 92, 246, 0.30),
-                        0 12px 32px rgba(217, 70, 239, 0.30);
-  --shadow-premium-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
-                         0 -1px 0 rgba(60, 50, 30, 0.05) inset,
-                         0 4px 16px rgba(140, 110, 60, 0.06),
-                         0 16px 48px rgba(140, 110, 60, 0.04);
+  /* ─── Premium layered shadows (chromatic aberration + matte depth) ───
+     Light-from-above: thin top inner highlight
+     Mid-air: subtle gold-tinted halo (the "premium" feel)
+     Atmospheric: deep black falloff for grounding */
+  --shadow-premium: 0 1px 0 rgba(255, 245, 220, 0.06) inset,
+                    0 -1px 0 rgba(0, 0, 0, 0.30) inset,
+                    0 2px 4px rgba(0, 0, 0, 0.30),
+                    0 12px 32px rgba(0, 0, 0, 0.40);
+  --shadow-premium-cta: 0 1px 0 rgba(255, 245, 220, 0.20) inset,
+                        -2px 0 16px rgba(252, 211, 77, 0.45),     /* gold left halo */
+                        2px 0 16px rgba(251, 191, 36, 0.35),       /* amber right halo */
+                        0 12px 36px rgba(245, 158, 11, 0.40);
+  --shadow-premium-card: 0 1px 0 rgba(255, 245, 220, 0.05) inset,
+                         0 -1px 0 rgba(0, 0, 0, 0.25) inset,
+                         0 4px 12px rgba(0, 0, 0, 0.40),
+                         0 16px 48px rgba(0, 0, 0, 0.25);
 
-  /* ─── Deeper gradient systems (4-stop, more sophisticated) ─── */
-  --gradient-sunset-deep: linear-gradient(135deg, #FB7185 0%, #F472B6 25%, #D946EF 60%, #8B5CF6 100%);
-  --gradient-sunset-iridescent: linear-gradient(135deg, #FCD34D 0%, #FB7185 25%, #D946EF 50%, #8B5CF6 75%, #06B6D4 100%);
-  --gradient-noir: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #4C1D95 100%);
-  --gradient-aurora: linear-gradient(135deg, rgba(217,70,239,0.15) 0%, rgba(139,92,246,0.10) 33%, rgba(20,184,166,0.12) 66%, rgba(251,113,133,0.15) 100%);
+  /* ─── Deeper gradient systems (gold-led for dark mode) ─── */
+  --gradient-sunset-deep: linear-gradient(135deg, #FCD34D 0%, #F59E0B 25%, #D946EF 60%, #8B5CF6 100%);
+  --gradient-sunset-iridescent: linear-gradient(135deg, #FCD34D 0%, #FBBF24 25%, #F59E0B 50%, #D97706 75%, #92400E 100%);
+  --gradient-noir: linear-gradient(135deg, #0F0E0A 0%, #181612 50%, #25221C 100%);
+  --gradient-aurora: linear-gradient(135deg, rgba(252,211,77,0.18) 0%, rgba(245,158,11,0.12) 33%, rgba(244,114,182,0.10) 66%, rgba(232,121,249,0.14) 100%);
 
   /* ─── Typography: Geist Sans (body) + Space Grotesk (display) + Fraunces (italic accents) + Geist Mono (code) ─── */
   --font-sans: "Geist", "system-ui", -apple-system, sans-serif;
@@ -305,8 +322,8 @@ body::after {
 
 .glass-strong {
   background: var(--glass-light-strong);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-lg);
   position: relative;
@@ -314,41 +331,41 @@ body::after {
 
 .glass-subtle {
   background: var(--glass-light-subtle);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 245, 220, 0.06);
   box-shadow: var(--shadow-sm);
 }
 
 .glass-card {
-  background: rgba(255, 252, 242, 0.65);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(31, 29, 23, 0.60);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 245, 220, 0.08);
   box-shadow: var(--shadow-premium-card);
   border-radius: var(--radius-lg);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  background: rgba(255, 252, 242, 0.85);
+  background: rgba(45, 42, 34, 0.75);
   box-shadow: var(--shadow-premium);
   transform: translateY(-2px);
 }
 
 .glass-panel {
   background: var(--glass-light-strong);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-xl);
   border-radius: var(--radius-xl);
 }
 
 .glass-modal {
-  background: rgba(255, 252, 242, 0.92);
-  backdrop-filter: blur(40px) saturate(220%);
-  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  background: rgba(37, 34, 28, 0.90);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-xl);
   border-radius: var(--radius-xl);
@@ -880,46 +897,72 @@ pre *:focus-visible,
   --dur-fall: 720ms;
 }
 
-/* ─── Multi-layer glass (3 layers: backdrop + tint + highlight) ─── */
+/* ─── Multi-layer glass (3 layers: backdrop + tint + highlight) — DUSK EDITION ─── */
 .glass-physics {
-  background: rgba(255, 252, 242, 0.62);
-  backdrop-filter: blur(28px) saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.05);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(31, 29, 23, 0.55);
+  backdrop-filter: blur(28px) saturate(160%) brightness(0.95);
+  -webkit-backdrop-filter: blur(28px) saturate(160%) brightness(0.95);
+  border: 1px solid rgba(255, 245, 220, 0.10);
   box-shadow:
-    /* inner top highlight (light from above) */
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    /* inner bottom shadow (slight depth) */
-    inset 0 -1px 0 rgba(60, 50, 30, 0.06),
+    /* inner top highlight (warm light from above) */
+    inset 0 1px 0 rgba(255, 245, 220, 0.08),
+    /* inner bottom shadow (subtle depth, deeper) */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
     /* ambient layer (close, soft) */
-    0 2px 6px rgba(140, 110, 60, 0.04),
+    0 2px 6px rgba(0, 0, 0, 0.30),
     /* soft layer (medium distance) */
-    0 8px 24px rgba(140, 110, 60, 0.06),
-    /* far layer (atmospheric) */
-    0 24px 56px rgba(140, 110, 60, 0.08);
+    0 8px 24px rgba(0, 0, 0, 0.40),
+    /* far layer (atmospheric, deep grounding) */
+    0 24px 56px rgba(0, 0, 0, 0.50);
 }
 
 .glass-physics-soft {
-  background: rgba(255, 252, 242, 0.42);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.40);
+  background: rgba(31, 29, 23, 0.35);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 245, 220, 0.06);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -1px 0 rgba(60, 50, 30, 0.04),
-    0 4px 16px rgba(140, 110, 60, 0.05);
+    inset 0 1px 0 rgba(255, 245, 220, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.20),
+    0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .glass-physics-strong {
-  background: rgba(255, 252, 242, 0.82);
-  backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
-  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
-  border: 1px solid rgba(255, 255, 255, 0.70);
+  background: rgba(45, 42, 34, 0.75);
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.05);
+  border: 1px solid rgba(255, 245, 220, 0.14);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(60, 50, 30, 0.08),
-    0 4px 12px rgba(140, 110, 60, 0.06),
-    0 16px 48px rgba(140, 110, 60, 0.10);
+    inset 0 1px 0 rgba(255, 245, 220, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+/* NEW: Matte frosted glass — translucent, no inner highlight, soft falloff */
+.glass-matte {
+  background: rgba(37, 34, 28, 0.40);
+  backdrop-filter: blur(36px) saturate(120%);
+  -webkit-backdrop-filter: blur(36px) saturate(120%);
+  border: 1px solid rgba(255, 245, 220, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.15),
+    0 6px 18px rgba(0, 0, 0, 0.40),
+    0 18px 40px rgba(0, 0, 0, 0.30);
+}
+
+/* NEW: Gold-tinted glass — for "premium tier" moments */
+.glass-gold {
+  background: linear-gradient(135deg, rgba(252, 211, 77, 0.08) 0%, rgba(245, 158, 11, 0.04) 100%);
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.02);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.02);
+  border: 1px solid rgba(252, 211, 77, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(252, 211, 77, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.20),
+    0 0 24px rgba(252, 211, 77, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.40),
+    0 24px 56px rgba(0, 0, 0, 0.50);
 }
 
 /* ─── Drop-into-place animation: elements settle with gravity ─── */
