@@ -152,7 +152,7 @@ export default function Header() {
               </Link>
               <Link
                 href="/signup"
-                className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all"
+                className="hidden md:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all"
                 style={{
                   background: "var(--gradient-sunset)",
                   color: "#FFFFFF",
