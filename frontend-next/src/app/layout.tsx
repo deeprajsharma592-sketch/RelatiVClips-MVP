@@ -43,7 +43,6 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    type: "website",
     locale: "en_US",
     url: "https://relativclips.com",
     siteName: "RelatiV",
@@ -82,7 +81,15 @@ export const metadata: Metadata = {
   applicationName: "RelatiV",
   authors: [{ name: "RelatiV Labs" }],
   generator: "Next.js",
-  keywords: ["relativ", "video clipping", "AI clips", "creator economy", "podcast clips", "YouTube clips", "short form", "viral", "AI", "Whisper", "Claude"],
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
