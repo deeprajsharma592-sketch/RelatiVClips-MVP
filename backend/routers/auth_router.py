@@ -174,6 +174,19 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> UserModel | None:
+    """Optional version of get_current_user — returns None if no valid session
+    cookie. Use on endpoints that work for both signed-in and anonymous users
+    (e.g. the public campaign marketplace, public transcripts)."""
+    try:
+        return await get_current_user(request, session)
+    except HTTPException:
+        return None
+
+
 # ─── Endpoints ─────────────────────────────────────────────────────────────
 
 

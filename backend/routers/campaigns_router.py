@@ -40,7 +40,7 @@ from ..database.models import (
     ClaimStatus,
 )
 from ..database.session import get_session
-from .auth_router import get_current_user
+from ..routers.auth_router import get_current_user, get_optional_user
 
 log = logging.getLogger("relativ.campaigns")
 router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
@@ -125,20 +125,27 @@ async def list_campaigns(
     q: Optional[str] = Query(None, description="Search by name or brief"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    user: UserModel = Depends(get_current_user),
+    user: UserModel | None = Depends(get_optional_user),
     session: AsyncSession = Depends(get_session),
 ):
+    """List campaigns. Public for unauthenticated visitors (live campaigns
+    only). Signed-in users see role-scoped views: clippers see live+open
+    slots, brands see their own by default (or use ?mine=true)."""
     stmt = select(CampaignModel)
 
-    # Role-based visibility
-    if user.role == UserRole.CLIPPER.value:
-        # Clippers see live campaigns with open slots
+    if user is None:
+        # Anonymous visitor — public marketplace view: only live campaigns
         stmt = stmt.where(CampaignModel.status == CampaignStatus.LIVE.value)
-        stmt = stmt.where(CampaignModel.slots_filled < CampaignModel.slots_total)
-    elif mine or user.role == UserRole.BRAND.value:
-        # Brands see their own by default
-        stmt = stmt.where(CampaignModel.brand_user_id == user.id)
-    # else: creator/admin — see all
+    else:
+        # Role-based visibility for signed-in users
+        if user.role == UserRole.CLIPPER.value:
+            # Clippers see live campaigns with open slots
+            stmt = stmt.where(CampaignModel.status == CampaignStatus.LIVE.value)
+            stmt = stmt.where(CampaignModel.slots_filled < CampaignModel.slots_total)
+        elif mine or user.role == UserRole.BRAND.value:
+            # Brands see their own by default
+            stmt = stmt.where(CampaignModel.brand_user_id == user.id)
+        # else: creator/admin — see all
 
     if status_filter:
         stmt = stmt.where(CampaignModel.status == status_filter)
