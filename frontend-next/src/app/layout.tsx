@@ -177,7 +177,7 @@ export default function RootLayout({
             <ScrollProgress />
             <Header />
             <ValuePropBar />
-            <main id="main-content" className="flex-1">{children}</main>
+            <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
             <Footer />
             <CookieBanner />
             <script

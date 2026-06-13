@@ -457,6 +457,8 @@ body::after {
   mask-image: radial-gradient(ellipse 60% 45% at 50% 50%, black 0%, rgba(0,0,0,0.5) 60%, transparent 90%);
   -webkit-mask-image: radial-gradient(ellipse 60% 45% at 50% 50%, black 0%, rgba(0,0,0,0.5) 60%, transparent 90%);
   opacity: 1;
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Light mode: VISIBLE grid + warm grain + edge-softened */
@@ -472,6 +474,7 @@ body::after {
   mix-blend-mode: multiply;
   opacity: 1;
   pointer-events: none;
+  z-index: 0;
 }
 
 /* Dark mode: backdrop blobs — gold + soft pink + cyan, more contrast */
