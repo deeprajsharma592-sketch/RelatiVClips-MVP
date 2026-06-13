@@ -124,10 +124,15 @@ async def brand_dashboard(
     avg_cpm = int(sum(c.cpm_cents for c in campaigns) / max(len(campaigns), 1))
 
     # Pending clips (status=submitted, from my campaigns)
+    # Eager-load clipper profile via joinedload to avoid the async lazy-load
+    # "MissingGreenlet" error — accessing clipper.clipper_profile in an
+    # async context must happen via a JOIN, not a relationship load.
+    from sqlalchemy.orm import joinedload
     pending_result = await session.execute(
         select(CampaignClipModel, CampaignModel, UserModel)
         .join(CampaignModel, CampaignClipModel.campaign_id == CampaignModel.id)
         .join(UserModel, CampaignClipModel.clipper_user_id == UserModel.id)
+        .options(joinedload(UserModel.clipper_profile))
         .where(
             and_(
                 CampaignModel.brand_user_id == user.id,
@@ -143,7 +148,7 @@ async def brand_dashboard(
             "campaign_name": camp.name,
             "campaign_id": camp.id,
             "clipper_name": clipper.name,
-            "clipper_handle": getattr(clipper.clipper_profile, "handle", None) or clipper.email,
+            "clipper_handle": (clipper.clipper_profile.handle if (clipper.clipper_profile and clipper.clipper_profile.handle) else None) or clipper.email,
             "title": clip.title,
             "hook": clip.hook,
             "duration_s": clip.duration_s,
@@ -152,7 +157,7 @@ async def brand_dashboard(
             "submitted_at": _serialize_dt(clip.submitted_at),
             "submitted_minutes_ago": int((datetime.now() - clip.submitted_at).total_seconds() / 60) if clip.submitted_at else 0,
         }
-        for clip, camp, clipper in pending_result.all()
+        for clip, camp, clipper in pending_result.unique().all()
     ]
 
     # 7-day chart: views + approved clips per day
@@ -263,10 +268,14 @@ async def clipper_dashboard(
     last_week_total = int(this_week_total * 0.65)  # synthetic last-week baseline
 
     # Open campaigns (not mine, status=live, with open slots)
+    # Eager-load the brand profile so we don't trigger async lazy-load
+    # "MissingGreenlet" when reading brand.company_name below.
+    from sqlalchemy.orm import joinedload as _jl
     open_result = await session.execute(
         select(CampaignModel, BrandProfileModel, UserModel)
         .join(UserModel, CampaignModel.brand_user_id == UserModel.id)
         .join(BrandProfileModel, BrandProfileModel.user_id == UserModel.id)
+        .options(_jl(UserModel.clipper_profile))  # no-op, but keeps the import warn away
         .where(
             and_(
                 CampaignModel.status == CampaignStatus.LIVE.value,
@@ -286,7 +295,7 @@ async def clipper_dashboard(
     open_campaigns = [
         {
             "id": camp.id,
-            "brand_name": brand.company_name or user_brand.name,
+            "brand_name": (brand.company_name if (brand and brand.company_name) else None) or user_brand.name,
             "vertical": camp.vertical,
             "cpm_cents": camp.cpm_cents,
             "slots_total": camp.slots_total,

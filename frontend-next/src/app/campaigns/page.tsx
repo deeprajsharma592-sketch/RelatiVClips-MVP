@@ -5,12 +5,17 @@
  *
  * Clippers land here to see what's open. Brands can also link to it.
  * Re-skinned in v5.1 to match the cream-glass aesthetic.
+ *
+ * Data: real campaigns from the backend (GET /api/v1/campaigns).
+ * Falls back to a small "coming soon" empty state if no live campaigns
+ * exist (the founder is still seeding the marketplace — no fakes here).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Filter, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Filter, Sparkles, Zap, Loader2 } from "lucide-react";
+import { apiPath } from "@/lib/apiBase";
 
 interface Campaign {
   id: string;
@@ -26,62 +31,48 @@ interface Campaign {
   urgent?: boolean;
 }
 
-const CAMPAIGNS: Campaign[] = [
-  {
-    id: "c1", brand: "All-In Summit", vertical: "Podcasts · Business",
-    brief: "Best 90-second moments from the All-In Summit. Tech, geopolitics, deals. Clean hooks + neutral framing.",
-    cpm: 9, slots: 8, filled: 5, deadline: "Jun 18",
-    platforms: ["TikTok", "Reels", "Shorts"], premium: true,
-  },
-  {
-    id: "c2", brand: "Huberman Lab", vertical: "Podcasts · Health",
-    brief: "Sleep series highlights. 30-60s clips with strong actionable hooks. Not motivation — mechanism.",
-    cpm: 6, slots: 12, filled: 4, deadline: "Jun 22",
-    platforms: ["TikTok", "Reels", "Shorts"],
-  },
-  {
-    id: "c3", brand: "Acme Co. · Founder Mode", vertical: "Podcasts · Tech",
-    brief: "Founder interviews. Tactical content (cold email, pricing, hiring). Bonus for founder-emotional stories.",
-    cpm: 7, slots: 6, filled: 2, deadline: "Jun 25",
-    platforms: ["TikTok", "Reels", "Shorts", "LinkedIn"], urgent: true,
-  },
-  {
-    id: "c4", brand: "Athletic Greens", vertical: "D2C · Wellness",
-    brief: "Founder + customer story snippets. 15-30s, hook-first, mention product 1x max. FTC-compliant.",
-    cpm: 5, slots: 20, filled: 14, deadline: "Jul 2",
-    platforms: ["TikTok", "Reels"],
-  },
-  {
-    id: "c5", brand: "Defender Media", vertical: "Podcasts · News",
-    brief: "Daily news roundup highlights. Must be balanced, sourced, and slow-pace. No sensationalism.",
-    cpm: 8, slots: 10, filled: 3, deadline: "Jun 20",
-    platforms: ["TikTok", "Reels", "Shorts", "X"],
-  },
-  {
-    id: "c6", brand: "Keto-Mojo", vertical: "D2C · Health",
-    brief: "User testimonials + educational content. Visual: food shots, before/after, lab results.",
-    cpm: 4, slots: 15, filled: 9, deadline: "Jul 5",
-    platforms: ["Reels", "Shorts"],
-  },
-  {
-    id: "c7", brand: "Sora 2 · OpenAI", vertical: "Education · AI",
-    brief: "AI-generated video tool highlights. Tutorial-style, clean, no hype. 60-90s.",
-    cpm: 12, slots: 5, filled: 4, deadline: "Jun 16",
-    platforms: ["TikTok", "Reels", "Shorts", "LinkedIn", "X"], premium: true, urgent: true,
-  },
-  {
-    id: "c8", brand: "Indie Hackers", vertical: "Podcasts · Tech",
-    brief: "Revenue stories from indie founders. Authentic, not broetry. Numbers-first.",
-    cpm: 6, slots: 8, filled: 6, deadline: "Jun 28",
-    platforms: ["TikTok", "Reels", "Shorts"],
-  },
-  {
-    id: "c9", brand: "Celsius", vertical: "D2C · Beverage",
-    brief: "Fitness + lifestyle. 15-30s, gym/workout context. Product placement 1x.",
-    cpm: 5, slots: 25, filled: 18, deadline: "Jul 10",
-    platforms: ["TikTok", "Reels", "Shorts"],
-  },
-];
+interface ApiCampaign {
+  id: string;
+  name: string;
+  brief: string;
+  vertical: string | null;
+  cpm_cents: number;
+  budget_cents: number;
+  spent_cents: number;
+  slots_total: number;
+  slots_filled: number;
+  slots_remaining: number;
+  status: string;
+  ends_at: string | null;
+}
+
+function formatDeadline(endsAt: string | null): string {
+  if (!endsAt) return "Open";
+  const end = new Date(endsAt);
+  const now = new Date();
+  const days = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (days < 0) return "Closed";
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days < 7) return `${days} days`;
+  return end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function derivePlatforms(vertical: string | null): string[] {
+  if (!vertical) return ["TikTok", "Reels"];
+  if (vertical.toLowerCase().includes("podcast")) return ["TikTok", "Reels", "Shorts"];
+  if (vertical.toLowerCase().includes("d2c")) return ["TikTok", "Reels"];
+  if (vertical.toLowerCase().includes("ai")) return ["TikTok", "Reels", "Shorts", "LinkedIn"];
+  return ["TikTok", "Reels", "Shorts"];
+}
+
+function deriveBrandName(name: string): string {
+  // Strip common suffixes for cleaner display
+  return name
+    .replace(/\s*[-·|]\s*(PROD|TEST|pilot|launch|q[1-4]).*$/i, "")
+    .replace(/\s*\(.*?\)\s*$/, "")
+    .trim() || name;
+}
 
 const VERTICALS = ["All", "Podcasts · Tech", "Podcasts · Business", "Podcasts · Health", "D2C · Wellness", "Education · AI", "Podcasts · News"];
 const PLATFORMS = ["TikTok", "Reels", "Shorts", "LinkedIn", "X"];
@@ -111,9 +102,50 @@ function SectionMarker({ num, label, centered = false }: { num: string; label: s
 export default function CampaignsPage() {
   const [vertical, setVertical] = useState("All");
   const [cpmRange, setCpmRange] = useState(0);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const range = CPM_RANGES[cpmRange];
 
-  const filtered = CAMPAIGNS.filter((c) => {
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(apiPath("/api/v1/campaigns"), { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (cancelled) return;
+        const items: ApiCampaign[] = data.items || [];
+        // Only show live campaigns publicly
+        const live = items.filter((c) => c.status === "live");
+        const mapped: Campaign[] = live.map((c) => ({
+          id: c.id,
+          brand: deriveBrandName(c.name),
+          vertical: c.vertical || "Other",
+          brief: c.brief,
+          cpm: c.cpm_cents / 100,
+          slots: c.slots_total,
+          filled: c.slots_filled,
+          deadline: formatDeadline(c.ends_at),
+          platforms: derivePlatforms(c.vertical),
+          premium: c.cpm_cents >= 900,
+          urgent: c.slots_remaining > 0 && c.slots_remaining <= 2,
+        }));
+        setCampaigns(mapped);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e?.message || "Failed to load campaigns");
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = campaigns.filter((c) => {
     if (vertical !== "All" && c.vertical !== vertical) return false;
     if (c.cpm < range.min || c.cpm > range.max) return false;
     return true;
@@ -372,7 +404,49 @@ export default function CampaignsPage() {
             </AnimatePresence>
           </motion.div>
 
-          {filtered.length === 0 && (
+          {loading && (
+            <div className="text-center py-16 glass-card">
+              <Loader2 className="h-6 w-6 mx-auto mb-3 animate-spin" style={{ color: "var(--color-text-muted)" }} />
+              <p className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
+                Loading live campaigns…
+              </p>
+            </div>
+          )}
+
+          {error && !loading && (
+            <div className="text-center py-16 glass-card">
+              <p className="text-[14px] mb-3" style={{ color: "var(--color-text-primary)" }}>
+                Couldn't load campaigns right now.
+              </p>
+              <p className="text-[12px] font-mono mb-4" style={{ color: "var(--color-text-muted)" }}>
+                {error}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-glass inline-flex items-center gap-2"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && filtered.length === 0 && campaigns.length === 0 && (
+            <div className="text-center py-20 glass-card max-w-2xl mx-auto">
+              <Sparkles className="h-7 w-7 mx-auto mb-4" style={{ color: "var(--color-text-muted)" }} />
+              <h3 className="font-display font-semibold text-xl mb-2" style={{ color: "var(--color-text-primary)" }}>
+                Marketplace is opening soon.
+              </h3>
+              <p className="text-[14px] max-w-md mx-auto" style={{ color: "var(--color-text-secondary)" }}>
+                Brands are still seeding campaigns. The clipper network is invite-only for now —
+                <Link href="/clippers/apply" className="ml-1 underline" style={{ color: "var(--color-accent)" }}>
+                  apply to be matched
+                </Link>{" "}
+                when the first batch opens.
+              </p>
+            </div>
+          )}
+
+          {!loading && !error && filtered.length === 0 && campaigns.length > 0 && (
             <div className="text-center py-16 glass-card">
               <p className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
                 No campaigns match these filters. Try a broader vertical or CPM range.
