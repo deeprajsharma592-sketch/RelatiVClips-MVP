@@ -341,3 +341,56 @@ cd /app/RelatiV && git log --oneline -5 && git status -s
 **Last updated: 2026-06-12 (post-v5.1-premium push)**
 **Status: 12/12 verify green, premium v5.1 shipped, supermemory bridge staged (needs key).**
 
+---
+
+## v6 Real User Onboarding & Live Data — Shipped 2026-06-13 (early)
+
+**Session arc:** user said "start the pending tasks now, keep supermemory for later." I picked the real-user onboarding block as highest leverage.
+
+### What shipped
+- **Server-side route protection** (`frontend-next/src/middleware.ts`):
+  - Anonymous users hitting `/account`, `/brands/*`, `/clippers/*`, `/creators/*` -> 307 to `/signup?next=...`
+  - Authed users on `/login` or `/signup` -> 307 to `/account`
+  - 3 cookie names supported (`relativ_session`, `relativ_access_token`, `session`) for resilience
+  - Skip `_next/static`, `_next/image`, favicon, robots, sitemap, manifest, all image assets
+- **Role-based post-auth redirect**:
+  - `signup/page.tsx`: reads `result.user.role` from signup response, redirects creator->`/creators/dashboard`, brand->`/brands/dashboard`, clipper->`/clippers/dashboard`, fallback->`/account`
+  - `login/page.tsx`: same logic but honours `?next=` if it points to a real, safe path
+  - New helper `roleDestination(user)` in both files
+- **Dashboards wire to real user via `useAuth()`**:
+  - `/brands/dashboard` + `/clippers/dashboard`: loading skeleton (4 pulse cards), no-user safety net, real `user.name` + `user.email` in sidebar (was hard-coded "Acme Co." / "Maya Chen"), role-mismatch banner with deep-link to correct dashboard
+  - Banner styled per role: coral/pink for brand, violet for clipper
+- **E2E auth verified**: 8/8 checks pass - signup 201, dup 409, login 200, /me 200, bad role enum 400, wrong password 401, logout 204, brand DB row created with all 8 fields (company_name, industry, website, payment_terms=net15 default)
+- **Test users updated**: `clipper@test.com` was missing from DB despite docs claiming 3 - created via signup with handle=@hookqueen, specialty=Podcasts Tech. Now 4 accounts in DB.
+- **GitHub**: merged wip/pipeline-v2 (10 commits behind) -> main rebased, pushed. Auto-deploy did not fire (CDN cache held old build). `bash /root/.vercel-tmp/deploy.sh` deployed in 45s, build clean (24 routes including f Proxy Middleware).
+- **Production middleware verified**: 5/5 redirect tests pass via `curl -I`. /account -> 307 /signup?next=%2Faccount, /brands/dashboard -> 307 /signup?next=%2Fbrands%2Fdashboard, /clippers/dashboard -> 307, /creators/dashboard -> 307, /signup with cookie -> 307 /account.
+
+### Discovered quirks
+- Vercel token is in `/root/.vercel-tmp/token` (60 chars). Use `bash /root/.vercel-tmp/deploy.sh` - the script does link+env+deploy in one go.
+- Vercel CDN cache held the OLD build for 64min even after a push (`age:` header revealed it). `git push` alone did not trigger a fresh deploy this time. `vercel deploy` worked.
+- Next.js 16 deprecates `middleware` filename in favor of `proxy`. Warning, not error.
+- Cookie name is `relativ_session` (not the legacy `relativ_access_token`).
+
+### Files added
+- `frontend-next/src/middleware.ts` (NEW, 90 lines, 3KB)
+
+### Files modified
+- `frontend-next/src/app/(auth)/signup/page.tsx` (smart redirect + roleDestination helper)
+- `frontend-next/src/app/(auth)/login/page.tsx` (same)
+- `frontend-next/src/app/brands/dashboard/page.tsx` (+useAuth, +loading, +role-mismatch, real user in sidebar)
+- `frontend-next/src/app/clippers/dashboard/page.tsx` (same)
+
+### Screenshots saved (v6-onboarding/)
+- `01-signup-role-1440x900.png` - signup wizard step 1
+- `02-login-1440x900.png` - login form
+- `03-signup-role-mobile-390x844.png` - signup on mobile
+- `04-middleware-redirect-1440x900.png` - anon user bounced from /account to /signup
+- `05-brand-dash-with-clipper-cookie-1440x900.png` - clipper user on /brands/dashboard with role-mismatch banner
+- `06-brand-dash-with-brand-cookie-1440x900.png` - brand user on /brands/dashboard, no banner, real name Acme Co
+- `07-signup-role-mobile-390x844.png` - signup on mobile (alt crop)
+
+---
+
+**Last updated: 2026-06-13 (post-v6-onboarding push)**
+**Status: real user onboarding shipped, middleware live in prod, 8/8 E2E auth checks pass, 4 test accounts seeded.**
+
