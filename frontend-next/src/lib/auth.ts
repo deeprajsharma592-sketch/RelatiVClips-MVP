@@ -8,7 +8,13 @@
  *
  * Tokens are HttpOnly so JS can't read them — XSS-resistant by design.
  * The browser sends the cookie automatically on every fetch.
+ *
+ * All paths go through apiPath() which routes to /api/proxy/* in
+ * production (same-origin, cookie sent, no CORS) and to localhost:9000
+ * in dev.
  */
+
+import { apiPath } from "./apiBase";
 
 export type UserRole = "creator" | "brand" | "clipper";
 
@@ -27,17 +33,11 @@ export interface AuthResponse {
   user: User;
 }
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:9000"
-    : ""); // In prod, NEXT_PUBLIC_API_URL MUST be set (Vercel env var)
-
 async function authFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, {
+  const r = await fetch(apiPath(path), {
     ...init,
     credentials: "include", // send the HttpOnly cookie
     headers: {

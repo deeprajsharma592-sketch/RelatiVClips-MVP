@@ -22,6 +22,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronDown, Sparkles, Check } from "lucide-react";
 import CpmCalculator from "@/components/CpmCalculator";
+import { apiPath } from "@/lib/apiBase";
 
 const HOW_IT_WORKS = [
   {
@@ -560,10 +561,8 @@ export default function BrandsPage() {
               }
 
               try {
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
-
                 const [contactRes, quoteRes] = await Promise.all([
-                  fetch(`${apiBase}/api/v1/brands/contact`, {
+                  fetch(apiPath("/api/v1/brands/contact"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -575,7 +574,7 @@ export default function BrandsPage() {
                       notes: "Submitted from /brands run-campaign form. Email follow-up needed.",
                     }),
                   }),
-                  fetch(`${apiBase}/api/v1/campaigns/quote`, {
+                  fetch(apiPath("/api/v1/campaigns/quote"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ budget_usd: budget, video_url }),

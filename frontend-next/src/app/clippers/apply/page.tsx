@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
+import { apiPath } from "@/lib/apiBase";
 
 const SPECIALTIES = [
   "Podcasts · Tech",
@@ -132,8 +133,7 @@ export default function ClipperApplyPage() {
             };
 
             try {
-              const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
-              const r = await fetch(`${apiBase}/api/v1/clippers/apply`, {
+              const r = await fetch(apiPath("/api/v1/clippers/apply"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),

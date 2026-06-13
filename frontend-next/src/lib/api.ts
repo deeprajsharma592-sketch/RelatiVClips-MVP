@@ -1,10 +1,48 @@
 import type { ProcessInitResponse, StatusResponse, Clip as PipelineClip } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
+import { apiPath } from "./apiBase";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export async function submitYouTubeUrl(
+  url: string
+): Promise<ProcessInitResponse> {
+  const res = await fetch(apiPath("/api/v1/process/youtube"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Request failed with status ${res.status}`);
+  }
+
+  const data = await res.json();
+  return {
+    taskId: data.task_id,
+    status: data.status,
+    position: data.position,
+  };
+}
+
+export async function checkProcessingStatus(
+  taskId: string
+): Promise<StatusResponse> {
+  const res = await fetch(apiPath(`/api/v1/status/${taskId}`));
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("Task not found. It may have expired.");
+    }
+    throw new Error(`Status check failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 
 /* ──────────────────────────────────────────────────────────────────────────
    Creator dashboard types + fetcher
@@ -85,43 +123,6 @@ export async function fetchCreatorDashboard(): Promise<CreatorDashboardData> {
     }
     throw new Error(detail);
   }
-  return res.json();
-}
-
-export async function submitYouTubeUrl(
-  url: string
-): Promise<ProcessInitResponse> {
-  const res = await fetch(`${API_BASE}/process/youtube`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Request failed with status ${res.status}`);
-  }
-
-  const data = await res.json();
-  return {
-    taskId: data.task_id,
-    status: data.status,
-    position: data.position,
-  };
-}
-
-export async function checkProcessingStatus(
-  taskId: string
-): Promise<StatusResponse> {
-  const res = await fetch(`${API_BASE}/status/${taskId}`);
-
-  if (!res.ok) {
-    if (res.status === 404) {
-      throw new Error("Task not found. It may have expired.");
-    }
-    throw new Error(`Status check failed: ${res.status}`);
-  }
-
   return res.json();
 }
 
@@ -305,7 +306,7 @@ export async function pollUntilComplete(
 }
 
 export function getDownloadUrl(clipId: string): string {
-  return `${API_BASE}/download/${clipId}`;
+  return apiPath(`/api/v1/download/${clipId}`);
 }
 
 // ─── Clipper dashboard (live data) ──────────────────────────────────────

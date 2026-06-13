@@ -4,8 +4,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import BentoCard from "@/components/BentoCard";
 import PhysicsIcon from "@/components/PhysicsIcon";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
+import { apiPath } from "@/lib/apiBase";
 
 export default function ContactPage() {
   const [email, setEmail] = useState("");
@@ -28,7 +27,7 @@ export default function ContactPage() {
     setError(null);
     setSending(true);
     try {
-      const res = await fetch(`${API_BASE}/contact`, {
+      const res = await fetch(apiPath("/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, subject, message }),
