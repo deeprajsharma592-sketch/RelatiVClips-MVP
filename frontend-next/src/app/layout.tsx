@@ -38,19 +38,51 @@ export const metadata: Metadata = {
   title: "RelatiV — Viral clips, picked by AI, finished in minutes",
   description:
     "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship.",
-  keywords: ["video clipping", "AI", "YouTube", "content creation", "podcast clips", "creator economy"],
+  metadataBase: new URL("https://relativclips.com"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "RelatiV — Viral clips, picked by AI",
-    description: "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes.",
+    type: "website",
+    locale: "en_US",
     url: "https://relativclips.com",
     siteName: "RelatiV",
-    type: "website",
+    title: "RelatiV — Turn one video into ten viral clips in 60 seconds",
+    description:
+      "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "RelatiV — viral clip engine. Turn one video into ten viral clips in 60 seconds.",
+        type: "image/png",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RelatiV — Viral clips, picked by AI",
-    description: "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes.",
+    title: "RelatiV — Turn one video into ten viral clips in 60 seconds",
+    description:
+      "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors.",
+    images: ["/twitter-card.png"],
+    creator: "@relativclips",
+    site: "@relativclips",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  applicationName: "RelatiV",
+  authors: [{ name: "RelatiV Labs" }],
+  generator: "Next.js",
+  keywords: ["relativ", "video clipping", "AI clips", "creator economy", "podcast clips", "YouTube clips", "short form", "viral", "AI", "Whisper", "Claude"],
 };
 
 export default function RootLayout({

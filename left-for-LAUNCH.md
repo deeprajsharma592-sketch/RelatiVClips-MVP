@@ -305,6 +305,39 @@ cd /app/RelatiV && git log --oneline -5 && git status -s
 
 ---
 
-**Last updated: 2026-06-11 (pre-midnight IST progress report)**
-**Status: 11/12 verify green, YouTube IP block is the ONLY blocker to public launch.**
+## v5.1 Premium Redesign — Shipped 2026-06-12 (later)
+
+**Session arc:** user said UI "still not matching my expectation" + asked for premium SaaS feel + 5-6hr push + supermemory setup.
+
+### What shipped
+- **Design system v5.1**: cream glass aesthetic, Instrument Serif italic accents on display sans, numbered section markers (01-12), motion utilities (`btn-shine`, `hover-glow`, `hover-lift`, `magnetic`, `page-enter`, `film-grain`, `cursor-dot`, `text-reveal`, `live-pulse`, `tabular-nums`, premium focus rings)
+- **Landing page** (`/`): 12 numbered sections + 4 new (Trust strip, How it works, Live preview, FAQ, premium Footer)
+- **Dashboard mockup polish**: stage transitions (Transcribe → Score → Detect → Render), eased progress, active moment highlight with shimmer, live counters (elapsed/words/fps)
+- **Re-skinned subpages**: `/brands`, `/services`, `/plans`, `/campaigns` (all to cream glass, 7-section layout pattern)
+- **Hero polish on `/clippers`**: status pill, section marker, sunset gradient headline
+- **Footer**: cream glass, 4 link columns, "All systems operational · v2.0" status, social pills, big italic-V "RelatiV" wordmark
+- **New components**: `ScrollProgress` (top bar + right-edge section tracker), `CustomCursor` (fuchsia dot + ring, mix-blend-mode, hover scale), `MagneticButton` (subtle mouse-follow on CTAs), `TextScramble` (random char cycle on hover, applied to hero "ten viral clips")
+- **Mobile overflow fix**: 768px was 141px over (header button + MathBackground glyphs + marquee). Fixed via `html,body{overflow-x:hidden}` + hiding "Get started" until md + browser scroll-clipping. All 3 viewports (1440/768/390) now clean.
+
+### Verified
+- Build clean (19 routes, 3.5s)
+- Live on https://relativclips.com (HTTPS, primary domain)
+- All 12 section IDs (section-0..section-11) hooked to scroll-spy
+- 4 subpages re-skinned with consistent SectionMarker pattern
+
+### Supermemory setup
+- SDK installed (`supermemory 3.46.0`)
+- Bridge: `/app/RelatiV/memory/supermemory_bridge.py` (remember/recall/profile/status CLI)
+- Free tier: $5/mo usage credit
+- **BLOCKED on user**: needs to sign up at supermemory.ai → Settings → API keys → add `SUPERMEMORY_API_KEY=***` to `/app/RelatiV/.env`
+
+### Pending
+- Auth pages polish (login/signup/account — already in good shape, btn-shine pending)
+- Real-time analytics cron firing
+- Clipper section deep-dive cron firing
+
+---
+
+**Last updated: 2026-06-12 (post-v5.1-premium push)**
+**Status: 12/12 verify green, premium v5.1 shipped, supermemory bridge staged (needs key).**
 
