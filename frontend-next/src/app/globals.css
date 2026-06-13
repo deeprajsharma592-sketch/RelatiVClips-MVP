@@ -448,27 +448,27 @@ body::after {
 /* Dark mode: SLEEK grid — center-concentrated, edges fade. Text pops. */
 .dark body::after {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.12) 1.2px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.10) 1.2px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
   background-position: -1px -1px, -1px -1px, 0 0, 0 0;
-  mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 0%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 0%, transparent 80%);
+  mask-image: radial-gradient(ellipse 60% 45% at 50% 50%, black 0%, rgba(0,0,0,0.5) 60%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 45% at 50% 50%, black 0%, rgba(0,0,0,0.5) 60%, transparent 90%);
   opacity: 1;
 }
 
-/* Light mode: VISIBLE grid + warm grain + center-concentrated */
+/* Light mode: VISIBLE grid + warm grain + edge-softened */
 body::after {
   background-image:
-    linear-gradient(rgba(40, 30, 20, 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(40, 30, 20, 0.14) 1px, transparent 1px),
-    radial-gradient(circle, rgba(40, 30, 20, 0.18) 1.2px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(40, 30, 20, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.22) 1px, transparent 1px),
+    radial-gradient(circle, rgba(40, 30, 20, 0.28) 1.2px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.10 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
-  mask-image: radial-gradient(ellipse 80% 65% at 50% 50%, black 0%, transparent 85%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 65% at 50% 50%, black 0%, transparent 85%);
+  mask-image: radial-gradient(ellipse 110% 100% at 50% 50%, black 0%, rgba(0,0,0,0.7) 70%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 110% 100% at 50% 50%, black 0%, rgba(0,0,0,0.7) 70%, transparent 100%);
   mix-blend-mode: multiply;
   opacity: 1;
   pointer-events: none;
