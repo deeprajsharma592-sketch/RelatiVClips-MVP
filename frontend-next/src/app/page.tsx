@@ -645,12 +645,12 @@ function DemoSection() {
             <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Try it</span>
           </div>
           <h2
-            className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+            className="font-display font-semibold leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", letterSpacing: "-0.04em" }}
           >
             <span style={{ color: "var(--color-text-primary)" }}>Paste a URL.</span>
             <br />
-            <span className="text-gradient-sunset">Get ten clips.</span>
+            <span className="font-fraunces-italic" style={{ color: "var(--color-accent)", fontWeight: 400 }}>Get ten clips.</span>
           </h2>
           <p className="mt-5 text-lg max-w-2xl" style={{ color: "var(--color-text-secondary)" }}>
             No upload, no editor, no waiting for an export queue. Drop a YouTube link, watch the engine work, download ready-to-publish clips.
@@ -851,11 +851,11 @@ function EngineBento() {
             <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>The engine</span>
           </div>
           <h2
-            className="font-display font-semibold tracking-tight leading-[1.05]"
-            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)" }}
+            className="font-display font-semibold leading-[1.05]"
+            style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", letterSpacing: "-0.04em" }}
           >
             <span style={{ color: "var(--color-text-primary)" }}>Four models, one</span>{" "}
-            <span className="hero-text text-gradient-ocean">decisive</span>{" "}
+            <span className="font-fraunces-italic text-gradient-ocean" style={{ fontWeight: 400 }}>decisive</span>{" "}
             <span style={{ color: "var(--color-text-primary)" }}>verdict.</span>
           </h2>
           <p className="mt-5 text-lg max-w-2xl" style={{ color: "var(--color-text-secondary)" }}>
