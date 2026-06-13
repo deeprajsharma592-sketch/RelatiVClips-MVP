@@ -445,29 +445,32 @@ body::after {
   opacity: 0.7;
 }
 
-/* Dark mode: SLEEK grid — major lines + dots + grain. Bold enough to read. */
+/* Dark mode: SLEEK grid — center-concentrated, edges fade. Text pops. */
 .dark body::after {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.20) 1.2px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.14 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.12) 1.2px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
   background-position: -1px -1px, -1px -1px, 0 0, 0 0;
+  mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 0%, transparent 80%);
   opacity: 1;
 }
 
-/* Light mode: warm hairline grid + dot intersections + grain. Tactile. */
+/* Light mode: VISIBLE grid + warm grain + center-concentrated */
 body::after {
   background-image:
-    linear-gradient(rgba(40, 30, 20, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(40, 30, 20, 0.12) 1px, transparent 1px),
-    radial-gradient(circle, rgba(40, 30, 20, 0.16) 1.2px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.10 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(40, 30, 20, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.14) 1px, transparent 1px),
+    radial-gradient(circle, rgba(40, 30, 20, 0.18) 1.2px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 0%, transparent 80%);
+  mask-image: radial-gradient(ellipse 80% 65% at 50% 50%, black 0%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 65% at 50% 50%, black 0%, transparent 85%);
   mix-blend-mode: multiply;
-  opacity: 0.95;
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -1679,7 +1682,7 @@ pre *:focus-visible,
   color: #FAF7F0;
 }
 
-/* In dark mode, section-dark goes true black with HIGHLY visible grid */
+/* In dark mode, section-dark goes true black with CIRCLE-FADED grid */
 .dark .section-dark {
   background: #000000;
   background-image:
@@ -1693,26 +1696,30 @@ pre *:focus-visible,
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.2px, transparent 1.5px);
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.10) 1.2px, transparent 1.5px);
   background-size: 80px 80px, 80px 80px, 16px 16px;
+  mask-image: radial-gradient(ellipse 75% 55% at 50% 50%, black 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 55% at 50% 50%, black 0%, transparent 80%);
   pointer-events: none;
   opacity: 1;
   z-index: 0;
 }
 .dark .section-dark > * { position: relative; z-index: 1; }
 
-/* Light mode section-dark: warm cream with grid showing */
+/* Light mode section-dark: warm cream with center-faded grid */
 :root .section-dark::after {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 245, 220, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 245, 220, 0.06) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 245, 220, 0.10) 1.2px, transparent 1.5px);
+    linear-gradient(rgba(255, 245, 220, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 245, 220, 0.08) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 245, 220, 0.12) 1.2px, transparent 1.5px);
   background-size: 80px 80px, 80px 80px, 16px 16px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 80%);
   pointer-events: none;
   opacity: 1;
   z-index: 0;
@@ -1787,10 +1794,12 @@ pre *:focus-visible,
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.2px, transparent 1.5px);
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.10) 1.2px, transparent 1.5px);
   background-size: 80px 80px, 80px 80px, 16px 16px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 80%);
   pointer-events: none;
   z-index: 0;
 }
