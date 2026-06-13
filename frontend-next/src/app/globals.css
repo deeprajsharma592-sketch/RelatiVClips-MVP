@@ -543,7 +543,8 @@ body::after {
 
 /* ─── SOLID tiles in light mode (no transparency = no grid bleed-through) ───
    Light mode gets a solid warm-white surface with subtle inner highlight
-   and soft shadow for depth. Dark mode keeps the glass effect. */
+   and soft shadow for depth. Dark mode keeps the glass effect.
+   z-index 60 keeps tiles above the body grid (z-50). */
 .glass-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -559,6 +560,7 @@ body::after {
     border-color 0.3s ease,
     background 0.3s ease;
   position: relative;
+  z-index: 60;
 }
 
 .glass-card:hover {
@@ -602,6 +604,7 @@ body::after {
     0 32px 80px rgba(40, 30, 20, 0.08);
   border-radius: var(--radius-xl);
   position: relative;
+  z-index: 60;
 }
 
 .dark .glass-panel {
@@ -623,6 +626,8 @@ body::after {
     0 8px 24px rgba(40, 30, 20, 0.12),
     0 32px 80px rgba(40, 30, 20, 0.16);
   border-radius: var(--radius-xl);
+  position: relative;
+  z-index: 60;
 }
 
 .dark .glass-modal {
