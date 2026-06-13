@@ -663,17 +663,17 @@ function DemoSection() {
                         background: isActive
                           ? `linear-gradient(135deg, ${podGlow} 0%, transparent 100%), var(--color-surface)`
                           : isDone
-                          ? `linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, transparent 100%), var(--color-surface)`
+                          ? `linear-gradient(135deg, ${podGlow} 0%, transparent 100%), var(--color-surface)`
                           : "var(--color-surface)",
                         border: isActive
                           ? `1px solid var(--pod-${step.pod.replace("pod-", "")}-border)`
                           : isDone
-                          ? "1px solid rgba(16, 185, 129, 0.20)"
+                          ? `1px solid var(--pod-${step.pod.replace("pod-", "")}-border)`
                           : "1px solid var(--color-border)",
                         boxShadow: isActive
                           ? `0 4px 16px ${podGlow}, 0 0 0 1px var(--pod-${step.pod.replace("pod-", "")}-border) inset`
                           : isDone
-                          ? "0 2px 8px rgba(16, 185, 129, 0.10)"
+                          ? `0 4px 16px ${podGlow}`
                           : "0 1px 2px rgba(0, 0, 0, 0.04)",
                         transform: isActive ? "translateX(2px)" : "translateX(0)",
                       }}
@@ -687,7 +687,7 @@ function DemoSection() {
                           className="absolute left-0 top-0 bottom-0 w-[3px]"
                           style={{
                             background: isDone
-                              ? "linear-gradient(180deg, #10B981 0%, transparent 100%)"
+                              ? `linear-gradient(180deg, ${podColor} 0%, transparent 100%)`
                               : `linear-gradient(180deg, ${podColor} 0%, transparent 100%)`,
                           }}
                         />
@@ -696,15 +696,13 @@ function DemoSection() {
                         className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-mono font-semibold"
                         style={{
                           background: isDone
-                            ? "linear-gradient(135deg, #10B981 0%, #059669 100%)"
+                            ? `linear-gradient(135deg, ${podColor} 0%, ${podColor} 100%)`
                             : isActive
                             ? `linear-gradient(135deg, ${podColor} 0%, ${podColor} 100%)`
                             : "var(--color-surface-2)",
                           color: isDone || isActive ? "#FFFFFF" : "var(--color-text-muted)",
-                          boxShadow: isActive
+                          boxShadow: isActive || isDone
                             ? `0 4px 12px ${podGlow}, 0 1px 0 rgba(255,255,255,0.20) inset`
-                            : isDone
-                            ? "0 4px 12px rgba(16, 185, 129, 0.25), 0 1px 0 rgba(255,255,255,0.20) inset"
                             : "none",
                         }}
                       >
