@@ -169,12 +169,20 @@ export default function Footer() {
 
         {/* Bottom — copyright + socials */}
         <div className="pt-8 flex flex-col-reverse md:flex-row items-center justify-between gap-6">
-          <p
-            className="text-[12px]"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            © {new Date().getFullYear()} RelatiV Labs · Built in Bengaluru, deployed globally
-          </p>
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p
+              className="text-[12px]"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              ©RelatiV | 80 Galaxy Media
+            </p>
+            <p
+              className="text-[11px]"
+              style={{ color: "var(--color-text-muted)", opacity: 0.7 }}
+            >
+              Built in Assam, India · deployed globally
+            </p>
+          </div>
 
           <div className="flex items-center gap-3">
             {SOCIAL.map((s) => (

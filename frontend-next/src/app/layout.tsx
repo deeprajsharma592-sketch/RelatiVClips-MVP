@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     },
   },
   applicationName: "RelatiV",
-  authors: [{ name: "RelatiV Labs" }],
+  authors: [{ name: "80 Galaxy Media" }],
   generator: "Next.js",
   icons: {
     icon: [
@@ -99,7 +99,7 @@ const ORG_JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "RelatiV",
-  legalName: "RelatiV Labs",
+  legalName: "80 Galaxy Media",
   url: "https://relativclips.com",
   logo: "https://relativclips.com/icon.svg",
   description:
