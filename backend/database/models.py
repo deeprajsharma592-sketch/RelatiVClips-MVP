@@ -99,10 +99,25 @@ class UserModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Email verification (added in tier 1.2)
+    # The token is a random URL-safe string; null after successful verify.
+    email_verification_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Password reset (added in tier 1.2)
+    # Token + expiry; nulled out after use or expiry.
+    password_reset_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    password_reset_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     # 1:1 profile per role. Nullable because each user has only one.
     creator_profile = relationship("CreatorProfileModel", back_populates="user", uselist=False, cascade="all, delete-orphan")
     brand_profile = relationship("BrandProfileModel", back_populates="user", uselist=False, cascade="all, delete-orphan")
     clipper_profile = relationship("ClipperProfileModel", back_populates="user", uselist=False, cascade="all, delete-orphan")
+
+    # Marketplace relations (added in tier 1.1)
+    campaigns_as_brand = relationship("CampaignModel", back_populates="brand", cascade="all, delete-orphan", foreign_keys="CampaignModel.brand_user_id")
+    claims_as_clipper = relationship("CampaignClaimModel", back_populates="clipper", cascade="all, delete-orphan", foreign_keys="CampaignClaimModel.clipper_user_id")
+    clips_as_clipper = relationship("CampaignClipModel", back_populates="clipper", cascade="all, delete-orphan", foreign_keys="CampaignClipModel.clipper_user_id")
 
 
 class CreatorProfileModel(Base):
@@ -189,3 +204,150 @@ class SessionModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Marketplace models (added in tier 1.1)
+# The 3-sided economy: brands post campaigns, clippers claim slots, clippers
+# submit clips for brand approval, payouts run weekly. These tables back the
+# /api/v1/dashboard/{brand,clipper,creator} endpoints that the dashboards read.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class CampaignStatus(str, enum.Enum):
+    DRAFT = "draft"
+    LIVE = "live"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+
+
+class ClaimStatus(str, enum.Enum):
+    CLAIMED = "claimed"      # slot reserved, not yet submitted
+    SUBMITTED = "submitted"  # clip submitted, awaiting brand review
+    APPROVED = "approved"    # brand approved, clip is live
+    REJECTED = "rejected"    # brand rejected
+    EXPIRED = "expired"      # claim expired without submission
+
+
+class CampaignClipStatus(str, enum.Enum):
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    LIVE = "live"
+    REJECTED = "rejected"
+    VERIFIED = "verified"    # view-count bot confirmed public views
+    PAID = "paid"            # weekly payout cycle complete
+
+
+class CampaignModel(Base):
+    """A brand's campaign — the unit of work in the marketplace.
+
+    Lifecycle: draft → live → (paused ↔ live) → completed.
+    Clippers claim slots in a 1:1 fashion (one claim = one clip attempt).
+    """
+
+    __tablename__ = "campaigns"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    brand_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    brief: Mapped[str] = mapped_column(Text, default="")
+    vertical: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)  # "Podcasts · Tech"
+    source_handle: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # "@founderpod"
+
+    # Money (all cents)
+    cpm_cents: Mapped[int] = mapped_column(Integer, default=700)  # $7.00 default
+    budget_cents: Mapped[int] = mapped_column(Integer, default=0)
+    spent_cents: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Slots (claim-based)
+    slots_total: Mapped[int] = mapped_column(Integer, default=10)
+    slots_filled: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Lifecycle
+    status: Mapped[str] = mapped_column(String(20), default=CampaignStatus.LIVE.value, index=True)
+    starts_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relations
+    brand = relationship("UserModel", back_populates="campaigns_as_brand", foreign_keys=[brand_user_id])
+    claims = relationship("CampaignClaimModel", back_populates="campaign", cascade="all, delete-orphan")
+    clips = relationship("CampaignClipModel", back_populates="campaign", cascade="all, delete-orphan")
+
+
+class CampaignClaimModel(Base):
+    """A clipper's claim on a campaign slot. One claim = one clip attempt.
+
+    Lives until the clip is submitted, expires, or is cancelled.
+    """
+
+    __tablename__ = "campaign_claims"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    campaign_id: Mapped[str] = mapped_column(String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
+    clipper_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    status: Mapped[str] = mapped_column(String(20), default=ClaimStatus.CLAIMED.value, index=True)
+    deadline_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Unique constraint: a clipper can only have one active claim per campaign
+    __table_args__ = (
+        # SQLAlchemy doesn't enforce this directly via the declarative; we
+        # add it in the migration. See backend/scripts/migrate_tier1.py.
+    )
+
+    # Relations
+    campaign = relationship("CampaignModel", back_populates="claims")
+    clipper = relationship("UserModel", back_populates="claims_as_clipper", foreign_keys=[clipper_user_id])
+    clips = relationship("CampaignClipModel", back_populates="claim", cascade="all, delete-orphan")
+
+
+class CampaignClipModel(Base):
+    """A clip submitted for a campaign claim. The atomic unit of value.
+
+    Once approved, view-count is tracked → earnings = views × cpm / 1000.
+    Weekly payout cycle flips status to 'paid' and updates the clipper's
+    lifetime_earnings_cents.
+    """
+
+    __tablename__ = "campaign_clips"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    campaign_id: Mapped[str] = mapped_column(String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
+    claim_id: Mapped[str] = mapped_column(String(36), ForeignKey("campaign_claims.id", ondelete="CASCADE"), nullable=False, index=True)
+    clipper_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Content
+    title: Mapped[str] = mapped_column(String(300), default="")
+    hook: Mapped[str] = mapped_column(String(500), default="")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    platform: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)  # tiktok, instagram, youtube_shorts
+    posted_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    duration_s: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    thumbnail_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Status + financials
+    status: Mapped[str] = mapped_column(String(20), default=CampaignClipStatus.SUBMITTED.value, index=True)
+    views: Mapped[int] = mapped_column(Integer, default=0)
+    earnings_cents: Mapped[int] = mapped_column(Integer, default=0)  # computed from views × cpm
+
+    # Lifecycle timestamps
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rejected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # view-bot confirmed
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Brand review notes (rejection reason, etc.)
+    brand_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Relations
+    campaign = relationship("CampaignModel", back_populates="clips")
+    claim = relationship("CampaignClaimModel", back_populates="clips")
+    clipper = relationship("UserModel", back_populates="clips_as_clipper", foreign_keys=[clipper_user_id])

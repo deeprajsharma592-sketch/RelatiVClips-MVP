@@ -20,6 +20,7 @@ use the public /api/v1/clippers/apply form which the founder owns.
 
 from __future__ import annotations
 
+import os
 import secrets
 import uuid
 from datetime import datetime
@@ -248,10 +249,26 @@ async def signup(
     ))
 
     user.last_login_at = datetime.utcnow()
+
+    # Auto-generate a 24h email-verification token for new signups.
+    # We don't await the email send here — best-effort, fire-and-forget.
+    from ..routers.email_auth_router import _render_verify_email
+    from ..services.email_service import send as send_email
+    user.email_verification_token = secrets.token_urlsafe(32)
+    user.email_verified_at = None
+
     await session.commit()
 
     set_session_cookie(response, token)
     log.info("user.signup", extra={"role": body.role, "user_id": user.id})
+
+    # Send the welcome + verification email in the background. Failure to
+    # send doesn't fail signup (the user can resend from /account).
+    try:
+        verify_url = f"{os.getenv('FRONTEND_URL', 'https://relativclips.com')}/verify-email?token={user.email_verification_token}"
+        await send_email(_render_verify_email(user.email, user.name, verify_url))
+    except Exception as e:
+        log.warning(f"welcome_email.failed user_id={user.id} err={e}")
 
     profile = await _get_profile_for_role(session, user.id, body.role)
     return AuthResponse(user=_user_to_response(user, profile))
