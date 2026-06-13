@@ -408,6 +408,34 @@ function ClipperCampaignsPageInner() {
     load();
   }, [authLoading, user, load]);
 
+  // ─── Build a claim → campaign lookup once ──────────────────────────────
+  const claimByCampaignId = useMemo(() => {
+    const map = new Map<string, Claim>();
+    for (const c of claims) {
+      // Only "open" claims block re-claiming; submitted/approved claims
+      // also satisfy the "already claimed" UI so the clipper sees the
+      // submit-clip CTA.
+      map.set(c.campaign_id, c);
+    }
+    return map;
+  }, [claims]);
+
+  // ─── Apply the active filter ───────────────────────────────────────────
+  const filteredCampaigns = useMemo(() => {
+    if (filter === "all") return campaigns;
+    if (filter === "high_cpm") return campaigns.filter((c) => c.cpm_cents >= 1000);
+    if (filter === "tech") return campaigns.filter((c) => verticalMatches(c.vertical, "tech"));
+    if (filter === "health") return campaigns.filter((c) => verticalMatches(c.vertical, "health"));
+    if (filter === "business")
+      return campaigns.filter((c) => verticalMatches(c.vertical, "business"));
+    if (filter === "closing_soon")
+      return campaigns.filter((c) => {
+        const d = daysUntil(c.ends_at);
+        return d !== null && d <= 7 && d >= 0;
+      });
+    return campaigns;
+  }, [campaigns, filter]);
+
   // ─── Auth: still resolving ─────────────────────────────────────────────
   if (authLoading) {
     return (
@@ -520,33 +548,7 @@ function ClipperCampaignsPageInner() {
     }
   };
 
-  // ─── Build a claim → campaign lookup once ──────────────────────────────
-  const claimByCampaignId = useMemo(() => {
-    const map = new Map<string, Claim>();
-    for (const c of claims) {
-      // Only "open" claims block re-claiming; submitted/approved claims
-      // also satisfy the "already claimed" UI so the clipper sees the
-      // submit-clip CTA.
-      map.set(c.campaign_id, c);
-    }
-    return map;
-  }, [claims]);
-
-  // ─── Apply the active filter ───────────────────────────────────────────
-  const filteredCampaigns = useMemo(() => {
-    if (filter === "all") return campaigns;
-    if (filter === "high_cpm") return campaigns.filter((c) => c.cpm_cents >= 1000);
-    if (filter === "tech") return campaigns.filter((c) => verticalMatches(c.vertical, "tech"));
-    if (filter === "health") return campaigns.filter((c) => verticalMatches(c.vertical, "health"));
-    if (filter === "business")
-      return campaigns.filter((c) => verticalMatches(c.vertical, "business"));
-    if (filter === "closing_soon")
-      return campaigns.filter((c) => {
-        const d = daysUntil(c.ends_at);
-        return d !== null && d <= 7 && d >= 0;
-      });
-    return campaigns;
-  }, [campaigns, filter]);
+  // (moved useMemos above the early returns — Rules of Hooks compliance)
 
   // ─── Live-state flags ──────────────────────────────────────────────────
   const isFirstLoad = dataLoading && !campaigns.length && !dataError;
