@@ -29,6 +29,8 @@ import {
 import MathBackground from "@/components/MathBackground";
 import ParticleField from "@/components/ParticleField";
 import HookCurve from "@/components/HookCurve";
+import TextScramble from "@/components/TextScramble";
+import MagneticButton from "@/components/MagneticButton";
 import { submitYouTubeUrl, pollUntilComplete } from "@/lib/api";
 import type { ProcessState, Clip } from "@/types";
 
@@ -265,7 +267,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
           <span style={{ color: "var(--color-text-primary)" }}>Turn one video into</span>
           <br />
           <span className="hero-text text-gradient-sunset" style={{ fontSize: "1.1em" }}>
-            ten viral clips
+            <TextScramble text="ten viral clips" />
           </span>
           <br />
           <span style={{ color: "var(--color-text-primary)" }}>in&nbsp;</span>
@@ -295,18 +297,13 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-4"
         >
-          <motion.button
-            onClick={onCtaClick}
-            className="btn-primary btn-shine inline-flex items-center gap-2"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-          >
+          <MagneticButton onClick={onCtaClick} className="btn-primary btn-shine inline-flex items-center gap-2" strength={0.18} range={80}>
             <span className="relative z-10 flex items-center gap-2">
               <Play className="h-4 w-4" fill="white" />
               Paste a YouTube URL
               <ArrowRight className="h-4 w-4" />
             </span>
-          </motion.button>
+          </MagneticButton>
 
           <Link href="/services" className="btn-glass inline-flex items-center gap-2">
             <Code2 className="h-4 w-4" />

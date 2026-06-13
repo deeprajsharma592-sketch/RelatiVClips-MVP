@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
 import ScrollProgress from "@/components/ScrollProgress";
+import CustomCursor from "@/components/CustomCursor";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
 
@@ -70,6 +71,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <AuthProvider>
+          <CustomCursor />
           <ScrollProgress />
           <Header />
           <main id="main-content" className="flex-1">{children}</main>
