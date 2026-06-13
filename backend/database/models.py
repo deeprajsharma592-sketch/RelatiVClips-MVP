@@ -219,6 +219,7 @@ class CampaignStatus(str, enum.Enum):
     LIVE = "live"
     PAUSED = "paused"
     COMPLETED = "completed"
+    CANCELLED = "cancelled"
 
 
 class ClaimStatus(str, enum.Enum):

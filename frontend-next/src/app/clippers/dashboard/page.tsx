@@ -606,7 +606,8 @@ export default function ClipperDashboard() {
                               />
                             </div>
                           </div>
-                          <button
+                          <Link
+                            href={`/clippers/campaigns?focus=${c.id}`}
                             className="btn-shine px-4 py-1.5 text-xs font-semibold rounded-full text-white transition-all hover:-translate-y-0.5"
                             style={{
                               background:
@@ -615,7 +616,7 @@ export default function ClipperDashboard() {
                             }}
                           >
                             Apply
-                          </button>
+                          </Link>
                         </div>
                       </div>
                     );

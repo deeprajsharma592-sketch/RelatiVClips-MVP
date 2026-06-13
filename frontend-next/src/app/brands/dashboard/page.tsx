@@ -583,7 +583,7 @@ export default function BrandDashboard() {
               </h2>
             </div>
             <Link
-              href="/brands#contact"
+              href="/brands/campaigns/new"
               className="text-xs font-mono transition-colors"
               style={{ color: "var(--color-accent)" }}
             >
@@ -748,8 +748,9 @@ function CampaignCard({ campaign }: { campaign: BrandDashboardCampaign }) {
   const pct = budgetDollars > 0 ? (spentDollars / budgetDollars) * 100 : 0;
 
   return (
-    <div
-      className="glass-card hover-glow p-5"
+    <Link
+      href={`/brands/campaigns/${campaign.id}`}
+      className="block glass-card hover-glow p-5 transition hover:scale-[1.01]"
       style={{ borderColor: status.ring }}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -860,7 +861,7 @@ function CampaignCard({ campaign }: { campaign: BrandDashboardCampaign }) {
       >
         {formatShortDate(campaign.starts_at)} → {formatShortDate(campaign.ends_at)}
       </div>
-    </div>
+    </Link>
   );
 }
 

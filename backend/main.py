@@ -18,7 +18,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from .models import ContactMessage, StatusResponse, TaskQueueInfo, TranscriptResponse
 from .pipeline.transcript_fetcher import fetch_transcript
-from .routers import local_router, youtube_router, intake_router, auth_router, dashboard_router, email_auth_router, billing_router
+from .routers import (
+    local_router,
+    youtube_router,
+    intake_router,
+    auth_router,
+    dashboard_router,
+    email_auth_router,
+    billing_router,
+    campaigns_router,
+    claims_router,
+    clips_router,
+    verification_router,
+)
 from .utils.config import OUTPUTS_DIR, TEMP_DIR
 from .utils.task_store import set_event_loop, task_store
 
@@ -94,6 +106,10 @@ app.include_router(auth_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(email_auth_router.router)
 app.include_router(billing_router.router)
+app.include_router(campaigns_router.router)
+app.include_router(claims_router.router)
+app.include_router(clips_router.router)
+app.include_router(verification_router.router)
 
 
 @app.get("/health")

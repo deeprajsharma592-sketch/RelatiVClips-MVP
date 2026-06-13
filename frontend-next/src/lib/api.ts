@@ -1,4 +1,4 @@
-import type { ProcessInitResponse, StatusResponse, Clip } from "@/types";
+import type { ProcessInitResponse, StatusResponse, Clip as PipelineClip } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
@@ -462,3 +462,209 @@ export async function getBrandDashboard(): Promise<BrandDashboardResponse> {
   }
   return res.json();
 }
+
+
+// ─────────────────────────────────────────────────────────────────────
+// Tier 2 — Marketplace (campaigns, claims, clips, verification)
+// ─────────────────────────────────────────────────────────────────────
+
+export interface Campaign {
+  id: string;
+  brand_user_id: string;
+  name: string;
+  brief: string;
+  vertical: string | null;
+  source_handle: string | null;
+  cpm_cents: number;
+  budget_cents: number;
+  spent_cents: number;
+  slots_total: number;
+  slots_filled: number;
+  slots_remaining: number;
+  status: CampaignStatus;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  claim_count: number;
+  clip_count: number;
+}
+
+export type CampaignStatus = "draft" | "live" | "paused" | "completed" | "cancelled";
+
+export interface Claim {
+  id: string;
+  campaign_id: string;
+  clipper_user_id: string;
+  status: "claimed" | "submitted" | "approved" | "rejected" | "expired";
+  claimed_at: string | null;
+  deadline_at: string | null;
+  submitted_at: string | null;
+  campaign?: {
+    id: string;
+    name: string;
+    cpm_cents: number;
+    status: string;
+    vertical: string | null;
+  } | null;
+  clipper?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface Clip {
+  id: string;
+  campaign_id: string;
+  claim_id: string;
+  clipper_user_id: string;
+  title: string;
+  hook: string;
+  caption: string;
+  platform: "tiktok" | "instagram" | "youtube_shorts" | "twitter" | "x" | null;
+  posted_url: string | null;
+  duration_s: number | null;
+  thumbnail_url: string | null;
+  status: "submitted" | "approved" | "live" | "rejected" | "verified" | "paid";
+  views: number;
+  earnings_cents: number;
+  submitted_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  verified_at: string | null;
+  paid_at: string | null;
+  brand_notes: string | null;
+  campaign?: { id: string; name: string; cpm_cents: number } | null;
+  clipper?: { id: string; name: string; email: string };
+}
+
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`/api/proxy${path}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      detail = body.detail || body.error || detail;
+    } catch { /* not JSON */ }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`/api/proxy${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const errBody = await res.json();
+      detail = errBody.detail || errBody.error || detail;
+    } catch { /* not JSON */ }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`/api/proxy${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const errBody = await res.json();
+      detail = errBody.detail || errBody.error || detail;
+    } catch { /* not JSON */ }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+// Campaigns
+export const listCampaigns = (params: { mine?: boolean; status?: string; q?: string } = {}) => {
+  const search = new URLSearchParams();
+  if (params.mine) search.set("mine", "true");
+  if (params.status) search.set("status", params.status);
+  if (params.q) search.set("q", params.q);
+  const qs = search.toString();
+  return apiGet<{ items: Campaign[]; total: number }>(`/api/v1/campaigns${qs ? `?${qs}` : ""}`);
+};
+
+export const getCampaign = (id: string) => apiGet<Campaign>(`/api/v1/campaigns/${id}`);
+
+export interface CampaignCreatePayload {
+  name: string;
+  brief: string;
+  vertical?: string;
+  source_handle?: string;
+  cpm_cents: number;
+  budget_cents: number;
+  slots_total: number;
+  ends_at?: string | null;
+}
+
+export const createCampaign = (payload: CampaignCreatePayload) =>
+  apiPost<Campaign>("/api/v1/campaigns", payload);
+
+export const pauseCampaign = (id: string) => apiPost<Campaign>(`/api/v1/campaigns/${id}/pause`, {});
+export const resumeCampaign = (id: string) => apiPost<Campaign>(`/api/v1/campaigns/${id}/resume`, {});
+export const completeCampaign = (id: string) => apiPost<Campaign>(`/api/v1/campaigns/${id}/complete`, {});
+export const cancelCampaign = (id: string) => apiDelete<Campaign>(`/api/v1/campaigns/${id}`);
+
+// Claims
+export const claimSlot = (campaignId: string) =>
+  apiPost<Claim>(`/api/v1/campaigns/${campaignId}/claim`, {});
+
+export const releaseClaim = (campaignId: string) =>
+  apiDelete<{ released: boolean; id: string }>(`/api/v1/campaigns/${campaignId}/claim`);
+
+export const listCampaignClaims = (campaignId: string) =>
+  apiGet<{ items: Claim[]; total: number }>(`/api/v1/campaigns/${campaignId}/claims`);
+
+export const myClaims = () =>
+  apiGet<{ items: Claim[]; total: number }>("/api/v1/me/claims");
+
+// Clips
+export interface ClipSubmitPayload {
+  title: string;
+  hook: string;
+  caption: string;
+  platform: "tiktok" | "instagram" | "youtube_shorts" | "twitter" | "x";
+  posted_url: string;
+  duration_s: number;
+  thumbnail_url?: string;
+}
+
+export const submitClip = (claimId: string, payload: ClipSubmitPayload) =>
+  apiPost<Clip>(`/api/v1/claims/${claimId}/clips`, payload);
+
+export const approveClip = (clipId: string) =>
+  apiPost<Clip>(`/api/v1/clips/${clipId}/approve`, {});
+
+export const rejectClip = (clipId: string, reason: string) =>
+  apiPost<Clip>(`/api/v1/clips/${clipId}/reject`, { reason });
+
+export const listMyClips = () =>
+  apiGet<{ items: Clip[]; total: number }>("/api/v1/me/clips");
+
+export const listCampaignClips = (campaignId: string) =>
+  apiGet<{ items: Clip[]; total: number }>(`/api/v1/campaigns/${campaignId}/clips`);
+
+export const listPendingReview = () =>
+  apiGet<{ items: Clip[]; total: number }>("/api/v1/clips/pending-review");
+
+// Verification
+export const runVerification = () =>
+  apiPost<{ updated: number; verified: number; total_views_added: number; ran_at: string }>(
+    "/api/v1/verification/run",
+    {}
+  );

@@ -5,3 +5,12 @@ __pycache__/
 node_modules/
 .next/
 *.egg-info/
+
+# Local env + secrets
+.env
+cookies.txt
+graphify-out/
+junk/
+outputs/
+temp/
+yolov10n.pt
