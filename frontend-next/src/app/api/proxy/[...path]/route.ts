@@ -2,17 +2,16 @@
 // This sidesteps the Vercel->Hetzner HTTP-rewrite timeout issue by giving us
 // proper error handling, timeouts, and streaming.
 //
-// Path convention: /api/proxy/<original-path>  →  http://91.98.144.72:9000/<original-path>
+// Path convention: /api/proxy/<original-path>  →  <BACKEND_BASE>/<original-path>
 //
-// v2: Added detailed error logging so we can diagnose Vercel→Hetzner network issues.
-
+// BACKEND_BASE comes from the BACKEND_BASE_URL env var (set in Vercel).
+// Fallback to the last known good Cloudflare Quick Tunnel URL.
+// To regenerate a tunnel: ssh hetzner "bash /root/.vercel-tmp/start-tunnel.sh"
+// then update the BACKEND_BASE_URL env var on Vercel (no code change needed).
 import { NextRequest, NextResponse } from "next/server";
 
-// Cloudflare Tunnel URL — Vercel can reach this even though it can't
-// reach the Hetzner IP directly (reputation block on 91.98.144.72).
-// Regenerate by running /root/.vercel-tmp/start-tunnel.sh on the Hetzner box
-// and updating this constant.
-const BACKEND_BASE = "https://scope-detective-worcester-scholarships.trycloudflare.com";
+const BACKEND_BASE = process.env.BACKEND_BASE_URL
+  || "https://retro-turned-outlined-decorative.trycloudflare.com";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
