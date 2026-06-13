@@ -17,7 +17,7 @@
  * section labels, Instrument Serif accents. Mirrors the clipper dashboard.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -370,7 +370,7 @@ function FilterChip({
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────
-export default function ClipperCampaignsPage() {
+function ClipperCampaignsPageInner() {
   const { user, loading: authLoading } = useAuth();
 
   const [campaigns, setCampaigns] = useState<OpenCampaign[]>([]);
@@ -787,5 +787,20 @@ export default function ClipperCampaignsPage() {
         )}
       </div>
     </section>
+  );
+}
+
+// Next.js 16 requires `useSearchParams` consumers to be wrapped in <Suspense>
+export default function ClipperCampaignsPage() {
+  return (
+    <Suspense fallback={
+      <section className="min-h-[60vh] flex items-center justify-center px-4 pt-32">
+        <div className="text-center">
+          <div className="inline-block h-6 w-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#8B5CF6", borderTopColor: "transparent" }} />
+        </div>
+      </section>
+    }>
+      <ClipperCampaignsPageInner />
+    </Suspense>
   );
 }
