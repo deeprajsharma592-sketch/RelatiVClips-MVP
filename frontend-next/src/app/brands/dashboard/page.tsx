@@ -28,9 +28,12 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { AlertCircle, LogIn } from "lucide-react";
 import DashboardShell, { type SidebarKey } from "@/components/dashboard/Sidebar";
 import StatCard from "@/components/dashboard/StatCard";
+import { useAuth } from "@/lib/AuthContext";
 
 type CampaignStatus = "live" | "review" | "completed" | "paused";
 
@@ -193,8 +196,70 @@ const STATUS_STYLES: Record<
 };
 
 export default function BrandDashboard() {
+  const { user, loading } = useAuth();
   const [active, setActive] = useState<SidebarKey>("overview");
   const [approving, setApproving] = useState<string | null>(null);
+
+  // Loading state — show the shell skeleton so layout doesn't jump
+  if (loading) {
+    return (
+      <DashboardShell
+        role="brand"
+        user={{ name: "…", handle: "Loading", initials: "·" }}
+        active={active}
+        onSelect={setActive}
+        pageTitle="Loading"
+        pageSubtitle="Fetching your account…"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-28 rounded-2xl bg-[color:var(--color-surface)]/60 animate-pulse border border-[color:var(--color-border)]"
+            />
+          ))}
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  // Not signed in (middleware should have bounced — this is a safety net)
+  if (!user) {
+    return (
+      <section className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <LogIn className="h-8 w-8 mx-auto mb-3 text-[color:var(--color-accent)]" />
+          <h1 className="font-display font-bold text-2xl mb-2">Sign in to continue</h1>
+          <p className="text-sm text-text-secondary mb-5">
+            You need a RelatiV account to access the brand dashboard.
+          </p>
+          <Link
+            href="/signup?next=/brands/dashboard"
+            className="btn-primary btn-shine inline-flex"
+          >
+            Create account
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  // Real-user identity for the sidebar
+  const initials =
+    (user.name || user.email)
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
+  const sidebarUser = {
+    name: user.name,
+    handle: user.email,
+    initials,
+  };
+
+  // Role mismatch: someone with a creator/clipper account is poking around
+  const isWrongRole = user.role !== "brand";
 
   // Page title swaps with sidebar selection
   const TITLE: Record<SidebarKey, { t: string; s?: string }> = {
@@ -218,12 +283,47 @@ export default function BrandDashboard() {
   return (
     <DashboardShell
       role="brand"
-      user={{ name: "Acme Co.", handle: "@acme-brand", initials: "A" }}
+      user={sidebarUser}
       active={active}
       onSelect={setActive}
       pageTitle={TITLE[active].t}
       pageSubtitle={TITLE[active].s}
     >
+      {isWrongRole && (
+        <div
+          className="mb-6 flex items-start gap-3 p-4 rounded-2xl border"
+          style={{
+            background: "rgba(251, 113, 133, 0.06)",
+            borderColor: "rgba(251, 113, 133, 0.25)",
+          }}
+        >
+          <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" style={{ color: "var(--color-accent-coral, #FB7185)" }} />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold mb-0.5" style={{ color: "var(--color-text-primary)" }}>
+              This is the brand dashboard, but your account is a {user.role}.
+            </p>
+            <p className="text-[color:var(--color-text-secondary)]">
+              You're seeing the demo data. To use brand features, sign up with a brand account
+              or sign in with one.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Link
+                href={
+                  user.role === "creator"
+                    ? "/creators/dashboard"
+                    : user.role === "clipper"
+                    ? "/clippers/dashboard"
+                    : "/account"
+                }
+                className="text-xs font-semibold underline"
+                style={{ color: "var(--color-accent)" }}
+              >
+                Go to my {user.role} dashboard →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       {active === "overview" && (
         <>
           {/* KPI strip */}
