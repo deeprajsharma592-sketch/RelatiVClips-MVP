@@ -17,7 +17,7 @@ const NAV_LINKS = [
 ];
 
 const ROLE_GRADIENT: Record<UserRole, string> = {
-  creator: "linear-gradient(135deg, #FB7185 0%, #D946EF 100%)",
+  creator: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)",
   brand: "linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)",
   clipper: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
 };
@@ -51,10 +51,11 @@ export default function Header() {
       <div
         className="absolute inset-0 -z-10"
         style={{
-          background: "rgba(246, 241, 231, 0.70)",
+          background: "rgba(24, 22, 18, 0.72)",
           backdropFilter: "blur(20px) saturate(180%)",
           WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid rgba(60, 50, 30, 0.08)",
+          borderBottom: "1px solid rgba(255, 245, 220, 0.08)",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.30)",
         }}
       />
       <div className="max-w-7xl mx-auto px-6 h-[68px] flex items-center justify-between">
@@ -63,18 +64,18 @@ export default function Header() {
           <motion.div
             className="w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #FB7185 0%, #D946EF 50%, #8B5CF6 100%)",
-              boxShadow: "0 4px 12px rgba(217, 70, 239, 0.30), 0 1px 0 rgba(255,255,255,0.4) inset",
+              background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
+              boxShadow: "0 4px 12px rgba(252, 211, 77, 0.30), 0 1px 0 rgba(255,245,220,0.20) inset",
             }}
             whileHover={{ scale: 1.05, rotate: -5 }}
             transition={{ type: "spring", stiffness: 400 }}
           >
-            <span className="font-display text-base font-bold text-white">R</span>
+            <span className="font-display text-base font-bold" style={{ color: "#1A1814" }}>R</span>
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 60%)",
+                  "linear-gradient(135deg, rgba(255,245,220,0.30) 0%, transparent 60%)",
                 pointerEvents: "none",
               }}
             />
@@ -106,10 +107,10 @@ export default function Header() {
                     ? "var(--color-text-primary)"
                     : "var(--color-text-secondary)",
                   background: active
-                    ? "rgba(255, 252, 242, 0.8)"
+                    ? "rgba(252, 211, 77, 0.10)"
                     : "transparent",
                   boxShadow: active
-                    ? "0 1px 3px rgba(140, 110, 60, 0.06), 0 1px 0 rgba(255,255,255,0.6) inset"
+                    ? "0 1px 3px rgba(252, 211, 77, 0.15), 0 1px 0 rgba(255,245,220,0.08) inset, 0 0 12px rgba(252, 211, 77, 0.10)"
                     : "none",
                 }}
               >
@@ -128,7 +129,7 @@ export default function Header() {
         {/* Right section */}
         <div className="flex items-center gap-2">
           {/* Online indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(255, 252, 242, 0.5)", border: "1px solid rgba(60, 50, 30, 0.06)" }}>
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(31, 29, 23, 0.60)", border: "1px solid rgba(255, 245, 220, 0.08)" }}>
             <motion.div
               className="w-1.5 h-1.5 rounded-full"
               style={{ background: "#10B981" }}
@@ -154,10 +155,10 @@ export default function Header() {
                 href="/signup"
                 className="hidden md:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all"
                 style={{
-                  background: "var(--gradient-sunset)",
-                  color: "#FFFFFF",
+                  background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
+                  color: "#1A1814",
                   padding: "9px 18px",
-                  boxShadow: "0 4px 12px rgba(217, 70, 239, 0.25), 0 1px 0 rgba(255,255,255,0.4) inset",
+                  boxShadow: "0 4px 16px rgba(252, 211, 77, 0.35), 0 1px 0 rgba(255,245,220,0.20) inset, 0 0 0 1px rgba(252, 211, 77, 0.20)",
                 }}
               >
                 Get started
@@ -170,7 +171,7 @@ export default function Header() {
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
                 className="flex items-center gap-2 px-2 py-1 rounded-full transition-all"
-                style={{ background: "rgba(255, 252, 242, 0.6)", border: "1px solid rgba(60, 50, 30, 0.08)" }}
+                style={{ background: "rgba(31, 29, 23, 0.60)", border: "1px solid rgba(255, 245, 220, 0.08)" }}
                 aria-label="User menu"
                 aria-expanded={userMenuOpen}
               >
@@ -204,15 +205,15 @@ export default function Header() {
                       transition={{ duration: 0.15 }}
                       className="absolute right-0 mt-2 w-60 overflow-hidden z-40"
                       style={{
-                        background: "rgba(255, 252, 242, 0.92)",
-                        backdropFilter: "blur(32px) saturate(200%)",
-                        WebkitBackdropFilter: "blur(32px) saturate(200%)",
-                        border: "1px solid rgba(255, 255, 255, 0.7)",
+                        background: "rgba(31, 29, 23, 0.92)",
+                        backdropFilter: "blur(32px) saturate(180%)",
+                        WebkitBackdropFilter: "blur(32px) saturate(180%)",
+                        border: "1px solid rgba(255, 245, 220, 0.10)",
                         borderRadius: "var(--radius-lg)",
-                        boxShadow: "var(--shadow-xl)",
+                        boxShadow: "0 24px 64px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 245, 220, 0.06) inset",
                       }}
                     >
-                      <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(60, 50, 30, 0.08)" }}>
+                      <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(255, 245, 220, 0.08)" }}>
                         <div className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
                           {user.name}
                         </div>
@@ -239,7 +240,7 @@ export default function Header() {
                       <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2.5 text-sm transition-colors border-t"
-                        style={{ color: "var(--color-error)", borderColor: "rgba(60, 50, 30, 0.08)" }}
+                        style={{ color: "var(--color-error)", borderColor: "rgba(255, 245, 220, 0.08)" }}
                       >
                         Sign out
                       </button>
@@ -254,7 +255,7 @@ export default function Header() {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors"
-            style={{ background: "rgba(255, 252, 242, 0.6)", border: "1px solid rgba(60, 50, 30, 0.08)" }}
+            style={{ background: "rgba(31, 29, 23, 0.60)", border: "1px solid rgba(255, 245, 220, 0.08)" }}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
           >
@@ -287,7 +288,7 @@ export default function Header() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="fixed inset-0 md:hidden"
-              style={{ background: "rgba(60, 50, 30, 0.30)", backdropFilter: "blur(8px)" }}
+              style={{ background: "rgba(0, 0, 0, 0.60)", backdropFilter: "blur(8px)" }}
               onClick={closeMenu}
             />
             <motion.nav
@@ -297,11 +298,11 @@ export default function Header() {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="fixed top-[68px] right-0 bottom-0 w-72 overflow-y-auto p-6 flex flex-col gap-1 md:hidden"
               style={{
-                background: "rgba(255, 252, 242, 0.92)",
-                backdropFilter: "blur(32px) saturate(200%)",
-                WebkitBackdropFilter: "blur(32px) saturate(200%)",
-                borderLeft: "1px solid rgba(60, 50, 30, 0.08)",
-                boxShadow: "var(--shadow-xl)",
+                background: "rgba(31, 29, 23, 0.92)",
+                backdropFilter: "blur(32px) saturate(180%)",
+                WebkitBackdropFilter: "blur(32px) saturate(180%)",
+                borderLeft: "1px solid rgba(255, 245, 220, 0.08)",
+                boxShadow: "0 24px 64px rgba(0, 0, 0, 0.55)",
               }}
             >
               {NAV_LINKS.map((link, i) => (
@@ -321,7 +322,7 @@ export default function Header() {
                         ? "var(--color-text-primary)"
                         : "var(--color-text-secondary)",
                       background: isActive(link.href)
-                        ? "rgba(217, 70, 239, 0.08)"
+                        ? "rgba(252, 211, 77, 0.10)"
                         : "transparent",
                     }}
                   >
@@ -336,7 +337,7 @@ export default function Header() {
                 </motion.div>
               ))}
 
-              <div className="mt-auto pt-6 space-y-2" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}>
+              <div className="mt-auto pt-6 space-y-2" style={{ borderTop: "1px solid rgba(255, 245, 220, 0.08)" }}>
                 {!loading && !user && (
                   <>
                     <Link
@@ -352,9 +353,9 @@ export default function Header() {
                       onClick={closeMenu}
                       className="block text-center py-3 text-sm font-semibold rounded-full"
                       style={{
-                        background: "var(--gradient-sunset)",
-                        color: "#FFFFFF",
-                        boxShadow: "0 4px 12px rgba(217, 70, 239, 0.25)",
+                        background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
+                        color: "#1A1814",
+                        boxShadow: "0 4px 16px rgba(252, 211, 77, 0.30)",
                       }}
                     >
                       Get started →

@@ -56,7 +56,7 @@ export default function Footer() {
       style={{
         background:
           "linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-deep) 100%)",
-        borderTop: "1px solid rgba(60, 50, 30, 0.10)",
+        borderTop: "1px solid rgba(255, 245, 220, 0.08)",
       }}
     >
       {/* Decorative orbs */}
@@ -77,17 +77,17 @@ export default function Footer() {
 
       <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-10">
         {/* Top — brand + tagline + newsletter */}
-        <div className="grid lg:grid-cols-12 gap-12 pb-16" style={{ borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}>
+        <div className="grid lg:grid-cols-12 gap-12 pb-16" style={{ borderBottom: "1px solid rgba(255, 245, 220, 0.08)" }}>
           <div className="lg:col-span-5">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden"
                 style={{
-                  background: "var(--gradient-sunset)",
-                  boxShadow: "0 4px 12px rgba(217, 70, 239, 0.30), 0 1px 0 rgba(255,255,255,0.4) inset",
+                  background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
+                  boxShadow: "0 4px 12px rgba(252, 211, 77, 0.30), 0 1px 0 rgba(255,245,220,0.20) inset",
                 }}
               >
-                <span className="font-display text-base font-bold text-white">R</span>
+                <span className="font-display text-base font-bold" style={{ color: "#1A1814" }}>R</span>
               </div>
               <span
                 className="font-display text-xl font-semibold tracking-tight"
@@ -108,9 +108,8 @@ export default function Footer() {
             <div
               className="mt-7 inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full"
               style={{
-                background: "rgba(255, 252, 242, 0.7)",
-                backdropFilter: "blur(12px) saturate(180%)",
-                border: "1px solid rgba(60, 50, 30, 0.08)",
+                background: "rgba(31, 29, 23, 0.60)",
+                border: "1px solid rgba(255, 245, 220, 0.08)",
               }}
             >
               <span className="relative flex h-2 w-2">
@@ -191,17 +190,17 @@ export default function Footer() {
                 href={s.href}
                 className="px-3 py-1.5 rounded-full text-[11px] font-medium transition-all"
                 style={{
-                  background: "rgba(255, 252, 242, 0.6)",
-                  border: "1px solid rgba(60, 50, 30, 0.08)",
+                  background: "rgba(31, 29, 23, 0.60)",
+                  border: "1px solid rgba(255, 245, 220, 0.08)",
                   color: "var(--color-text-secondary)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 252, 242, 0.9)";
-                  e.currentTarget.style.borderColor = "rgba(60, 50, 30, 0.18)";
+                  e.currentTarget.style.background = "rgba(45, 42, 34, 0.80)";
+                  e.currentTarget.style.borderColor = "rgba(255, 245, 220, 0.16)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 252, 242, 0.6)";
-                  e.currentTarget.style.borderColor = "rgba(60, 50, 30, 0.08)";
+                  e.currentTarget.style.background = "rgba(31, 29, 23, 0.60)";
+                  e.currentTarget.style.borderColor = "rgba(255, 245, 220, 0.08)";
                 }}
               >
                 {s.label}
