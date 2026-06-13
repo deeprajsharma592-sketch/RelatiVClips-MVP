@@ -154,6 +154,22 @@ export default function BrandDashboard() {
   const [dashLoading, setDashLoading] = useState(false);
   const [dashError, setDashError] = useState<string | null>(null);
 
+  // Derive counts for the sidebar TITLE strings.
+  // NOTE: must be declared BEFORE any early returns — React requires hooks
+  // to be called in the same order on every render. Putting useMemo after
+  // `if (authLoading) return …` caused the "Rendered more hooks than during
+  // the previous render" error (#310) on first paint.
+  const kpis = data?.kpis;
+  const campaigns = data?.campaigns ?? [];
+  const pendingClips = data?.pending_clips ?? [];
+  const weekChart = data?.week_chart ?? [];
+  const activeCount = kpis?.active_campaigns ?? 0;
+  const pausedCount = useMemo(
+    () => campaigns.filter((c) => c.status === "paused").length,
+    [campaigns]
+  );
+  const pendingCount = pendingClips.length;
+
   const reload = () => {
     if (!user) return;
     setDashLoading(true);
@@ -244,18 +260,6 @@ export default function BrandDashboard() {
 
   // Role mismatch: someone with a creator/clipper account is poking around
   const isWrongRole = user.role !== "brand";
-
-  // Derive counts for the sidebar TITLE strings
-  const kpis = data?.kpis;
-  const campaigns = data?.campaigns ?? [];
-  const pendingClips = data?.pending_clips ?? [];
-  const weekChart = data?.week_chart ?? [];
-  const activeCount = kpis?.active_campaigns ?? 0;
-  const pausedCount = useMemo(
-    () => campaigns.filter((c) => c.status === "paused").length,
-    [campaigns]
-  );
-  const pendingCount = pendingClips.length;
 
   // Page title swaps with sidebar selection — counts come from the API
   const TITLE: Record<SidebarKey, { t: string; s?: string }> = {
