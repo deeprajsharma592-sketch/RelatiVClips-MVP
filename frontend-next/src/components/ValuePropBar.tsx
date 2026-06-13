@@ -21,9 +21,9 @@ export default function ValuePropBar() {
       className="relative w-full z-40 hidden md:block"
       style={{
         background:
-          "linear-gradient(90deg, rgba(24,22,18,0.92) 0%, rgba(31,29,23,0.92) 50%, rgba(24,22,18,0.92) 100%)",
-        borderBottom: "1px solid rgba(255, 245, 220, 0.08)",
-        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.30)",
+          "linear-gradient(90deg, var(--color-bg-deep) 0%, var(--color-surface) 50%, var(--color-bg-deep) 100%)",
+        borderBottom: "1px solid var(--color-border)",
+        boxShadow: "var(--shadow-sm)",
       }}
     >
       <div className="max-w-7xl mx-auto px-6 h-9 flex items-center justify-between gap-6 text-[11px]">

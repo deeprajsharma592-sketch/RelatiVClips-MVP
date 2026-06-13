@@ -56,7 +56,7 @@ export default function Footer() {
       style={{
         background:
           "linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-deep) 100%)",
-        borderTop: "1px solid rgba(255, 245, 220, 0.08)",
+        borderTop: "1px solid var(--color-border)",
       }}
     >
       {/* Decorative orbs */}
@@ -77,7 +77,7 @@ export default function Footer() {
 
       <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-10">
         {/* Top — brand + tagline + newsletter */}
-        <div className="grid lg:grid-cols-12 gap-12 pb-16" style={{ borderBottom: "1px solid rgba(255, 245, 220, 0.08)" }}>
+        <div className="grid lg:grid-cols-12 gap-12 pb-16" style={{ borderBottom: "1px solid var(--color-border)" }}>
           <div className="lg:col-span-5">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <div
@@ -108,8 +108,8 @@ export default function Footer() {
             <div
               className="mt-7 inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full"
               style={{
-                background: "rgba(31, 29, 23, 0.60)",
-                border: "1px solid rgba(255, 245, 220, 0.08)",
+                background: "var(--glass-light)",
+                border: "1px solid var(--color-border)",
               }}
             >
               <span className="relative flex h-2 w-2">
@@ -190,17 +190,17 @@ export default function Footer() {
                 href={s.href}
                 className="px-3 py-1.5 rounded-full text-[11px] font-medium transition-all"
                 style={{
-                  background: "rgba(31, 29, 23, 0.60)",
-                  border: "1px solid rgba(255, 245, 220, 0.08)",
+                  background: "var(--glass-light)",
+                  border: "1px solid var(--color-border)",
                   color: "var(--color-text-secondary)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(45, 42, 34, 0.80)";
+                  e.currentTarget.style.background = "var(--color-surface-2)";
                   e.currentTarget.style.borderColor = "rgba(255, 245, 220, 0.16)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(31, 29, 23, 0.60)";
-                  e.currentTarget.style.borderColor = "rgba(255, 245, 220, 0.08)";
+                  e.currentTarget.style.background = "var(--glass-light)";
+                  e.currentTarget.style.borderColor = "var(--color-border)";
                 }}
               >
                 {s.label}

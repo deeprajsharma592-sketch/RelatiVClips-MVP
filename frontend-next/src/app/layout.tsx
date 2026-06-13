@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
 import ScrollProgress from "@/components/ScrollProgress";
 import CustomCursor from "@/components/CustomCursor";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
 
@@ -170,23 +171,25 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <AuthProvider>
-          <CustomCursor />
-          <ScrollProgress />
-          <Header />
-          <ValuePropBar />
-          <main id="main-content" className="flex-1">{children}</main>
-          <Footer />
-          <CookieBanner />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSON_LD) }}
-          />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD) }}
-          />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <CustomCursor />
+            <ScrollProgress />
+            <Header />
+            <ValuePropBar />
+            <main id="main-content" className="flex-1">{children}</main>
+            <Footer />
+            <CookieBanner />
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSON_LD) }}
+            />
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD) }}
+            />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

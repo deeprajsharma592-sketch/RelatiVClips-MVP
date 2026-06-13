@@ -6,6 +6,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { ROLE_LABEL, type UserRole } from "@/lib/auth";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV_LINKS = [
   { href: "/", label: "Workspace" },
@@ -51,11 +52,11 @@ export default function Header() {
       <div
         className="absolute inset-0 -z-10"
         style={{
-          background: "rgba(24, 22, 18, 0.72)",
+          background: "var(--glass-light-strong)",
           backdropFilter: "blur(20px) saturate(180%)",
           WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid rgba(255, 245, 220, 0.08)",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.30)",
+          borderBottom: "var(--color-border)",
+          boxShadow: "var(--shadow-md)",
         }}
       />
       <div className="max-w-7xl mx-auto px-6 h-[68px] flex items-center justify-between">
@@ -129,7 +130,7 @@ export default function Header() {
         {/* Right section */}
         <div className="flex items-center gap-2">
           {/* Online indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(31, 29, 23, 0.60)", border: "1px solid rgba(255, 245, 220, 0.08)" }}>
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "var(--glass-light)", border: "var(--color-border)" }}>
             <motion.div
               className="w-1.5 h-1.5 rounded-full"
               style={{ background: "#10B981" }}
@@ -151,6 +152,7 @@ export default function Header() {
               >
                 Sign in
               </Link>
+              <ThemeToggle />
               <Link
                 href="/signup"
                 className="hidden md:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all"
@@ -167,11 +169,13 @@ export default function Header() {
             </>
           )}
           {!loading && user && (
+            <>
+            <ThemeToggle />
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
                 className="flex items-center gap-2 px-2 py-1 rounded-full transition-all"
-                style={{ background: "rgba(31, 29, 23, 0.60)", border: "1px solid rgba(255, 245, 220, 0.08)" }}
+                style={{ background: "var(--glass-light)", border: "1px solid var(--color-border)" }}
                 aria-label="User menu"
                 aria-expanded={userMenuOpen}
               >
@@ -205,15 +209,15 @@ export default function Header() {
                       transition={{ duration: 0.15 }}
                       className="absolute right-0 mt-2 w-60 overflow-hidden z-40"
                       style={{
-                        background: "rgba(31, 29, 23, 0.92)",
+                        background: "var(--glass-light-strong)",
                         backdropFilter: "blur(32px) saturate(180%)",
                         WebkitBackdropFilter: "blur(32px) saturate(180%)",
-                        border: "1px solid rgba(255, 245, 220, 0.10)",
+                        border: "1px solid var(--color-border-strong)",
                         borderRadius: "var(--radius-lg)",
-                        boxShadow: "0 24px 64px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 245, 220, 0.06) inset",
+                        boxShadow: "var(--shadow-xl)",
                       }}
                     >
-                      <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(255, 245, 220, 0.08)" }}>
+                      <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
                         <div className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
                           {user.name}
                         </div>
@@ -240,7 +244,7 @@ export default function Header() {
                       <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2.5 text-sm transition-colors border-t"
-                        style={{ color: "var(--color-error)", borderColor: "rgba(255, 245, 220, 0.08)" }}
+                        style={{ color: "var(--color-error)", borderColor: "var(--color-border)" }}
                       >
                         Sign out
                       </button>
@@ -249,13 +253,14 @@ export default function Header() {
                 )}
               </AnimatePresence>
             </div>
+            </>
           )}
 
           {/* Hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors"
-            style={{ background: "rgba(31, 29, 23, 0.60)", border: "1px solid rgba(255, 245, 220, 0.08)" }}
+            style={{ background: "var(--glass-light)", border: "var(--color-border)" }}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
           >
@@ -298,11 +303,11 @@ export default function Header() {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="fixed top-[68px] right-0 bottom-0 w-72 overflow-y-auto p-6 flex flex-col gap-1 md:hidden"
               style={{
-                background: "rgba(31, 29, 23, 0.92)",
+                background: "var(--glass-light-strong)",
                 backdropFilter: "blur(32px) saturate(180%)",
                 WebkitBackdropFilter: "blur(32px) saturate(180%)",
-                borderLeft: "1px solid rgba(255, 245, 220, 0.08)",
-                boxShadow: "0 24px 64px rgba(0, 0, 0, 0.55)",
+                borderLeft: "var(--color-border)",
+                boxShadow: "var(--shadow-xl)",
               }}
             >
               {NAV_LINKS.map((link, i) => (
@@ -337,7 +342,10 @@ export default function Header() {
                 </motion.div>
               ))}
 
-              <div className="mt-auto pt-6 space-y-2" style={{ borderTop: "1px solid rgba(255, 245, 220, 0.08)" }}>
+              <div className="mt-auto pt-6 space-y-2" style={{ borderTop: "1px solid var(--color-border)" }}>
+                <div className="flex justify-center pb-2">
+                  <ThemeToggle />
+                </div>
                 {!loading && !user && (
                   <>
                     <Link
