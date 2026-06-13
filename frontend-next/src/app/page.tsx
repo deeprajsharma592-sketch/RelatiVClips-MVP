@@ -26,7 +26,7 @@ import {
   Shield,
   Mic,
 } from "lucide-react";
-import MathBackground from "@/components/MathBackground";
+import PremiumGrid from "@/components/PremiumGrid";
 import ParticleField from "@/components/ParticleField";
 import HookCurve from "@/components/HookCurve";
 import TextScramble from "@/components/TextScramble";
@@ -219,7 +219,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
   return (
     <section ref={ref} id="section-0" className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
       <motion.div style={{ y: bgY }}>
-        <MathBackground />
+        <PremiumGrid showDots showColumns showCrosshairs showGlyphs />
       </motion.div>
       {/* Premium aurora layer — iridescent wash that makes the hero feel alive */}
       <div
@@ -286,12 +286,12 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
         >
           <span style={{ color: "var(--color-text-primary)" }}>Turn one video into</span>
           <br />
-          <span className="font-fraunces-italic text-gradient-sunset" style={{ fontSize: "1.1em", fontWeight: 400 }}>
+          <span className="font-fraunces-italic text-gradient-soft-pink" style={{ fontSize: "1.1em", fontWeight: 400 }}>
             <TextScramble text="ten viral clips" />
           </span>
           <br />
           <span style={{ color: "var(--color-text-primary)" }}>in&nbsp;</span>
-          <span className="font-mono text-gradient-ocean" style={{ fontSize: "0.65em", fontStyle: "normal" }}>
+          <span className="font-mono text-gradient-gold" style={{ fontSize: "0.65em", fontStyle: "normal" }}>
             60.0s
           </span>
           <span style={{ color: "var(--color-text-primary)" }}>.</span>
@@ -467,15 +467,10 @@ function RealProductPreview() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            className="hidden md:flex absolute -left-6 top-1/4 px-3.5 py-2 rounded-full items-center gap-2 text-[11px] font-mono"
-            style={{
-              background: "var(--color-bg-base)",
-              boxShadow: "var(--shadow-premium)",
-              border: "1px solid rgba(60, 50, 30, 0.10)",
-            }}
+            className="hidden md:flex absolute -left-6 top-1/4 chip-gold"
           >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#10B981" }} />
-            <span style={{ color: "var(--color-text-primary)" }}>live CPM data</span>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-gold-500)" }} />
+            <span style={{ color: "var(--color-gold-600)" }}>live CPM data</span>
           </motion.div>
 
           <motion.div
@@ -483,33 +478,28 @@ function RealProductPreview() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.6, duration: 0.5 }}
-            className="hidden md:flex absolute -right-6 bottom-1/4 px-3.5 py-2 rounded-full items-center gap-2 text-[11px] font-mono"
-            style={{
-              background: "var(--color-bg-base)",
-              boxShadow: "var(--shadow-premium)",
-              border: "1px solid rgba(60, 50, 30, 0.10)",
-            }}
+            className="hidden md:flex absolute -right-6 bottom-1/4 chip-verified"
           >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#D946EF" }} />
-            <span style={{ color: "var(--color-text-primary)" }}>view-verified</span>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-mint-500)" }} />
+            <span style={{ color: "var(--color-mint-600)" }}>view-verified</span>
           </motion.div>
         </motion.div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-[12px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[12px] font-mono stagger-children" style={{ color: "var(--color-text-muted)" }}>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#10B981" }} />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-mint-500)" }} />
             <span>5 clippers earning</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#D946EF" }} />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-accent)" }} />
             <span>4 live campaigns</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#0EA5E9" }} />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-cool-cyan)" }} />
             <span>2.01M verified views</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#FB7185" }} />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-gold-500)" }} />
             <span>$15,880 paid to clippers</span>
           </span>
         </div>
@@ -842,7 +832,7 @@ function DemoSection() {
 function EngineBento() {
   return (
     <section id="section-3" className="relative py-32 overflow-hidden">
-      <MathBackground />
+      <PremiumGrid showDots showColumns={false} showCrosshairs showGlyphs />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
           <div className="flex items-center gap-3 mb-6">
@@ -1422,7 +1412,7 @@ function HookCurveSection() {
                 <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
                   detected peaks
                 </p>
-                <p className="text-2xl font-display font-semibold text-gradient-sunset">3 / 7200s</p>
+                <p className="text-2xl font-display font-semibold text-gradient-mint">3 / 7200s</p>
               </div>
             </div>
             <HookCurve />
@@ -1596,7 +1586,7 @@ function ForBrandsSection() {
 function PricingSection() {
   return (
     <section id="section-9" className="relative py-32 overflow-hidden">
-      <MathBackground />
+      <PremiumGrid showDots showColumns showCrosshairs={false} showGlyphs />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 text-center max-w-2xl mx-auto">
           <div className="flex items-center justify-center gap-3 mb-6">
@@ -1628,13 +1618,13 @@ function PricingSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className={tier.highlight ? "glass-panel p-7 relative overflow-hidden" : "glass-card p-7"}
-              style={tier.highlight ? { border: "2px solid rgba(217, 70, 239, 0.3)" } : undefined}
+              className={tier.highlight ? "glass-physics-strong hover-physics p-7 relative overflow-hidden" : "glass-physics hover-physics p-7"}
+              style={tier.highlight ? { border: "2px solid rgba(252, 211, 77, 0.40)" } : undefined}
             >
               {tier.highlight && (
                 <div
                   className="absolute -top-px left-0 right-0 h-1"
-                  style={{ background: "var(--gradient-sunset)" }}
+                  style={{ background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)" }}
                 />
               )}
               {tier.highlight && (
@@ -1642,9 +1632,9 @@ function PricingSection() {
                   <span
                     className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
                     style={{
-                      background: "var(--gradient-sunset)",
-                      color: "white",
-                      boxShadow: "0 2px 8px rgba(217, 70, 239, 0.30)",
+                      background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)",
+                      color: "#1A1814",
+                      boxShadow: "0 2px 8px rgba(245, 158, 11, 0.40)",
                     }}
                   >
                     Most popular

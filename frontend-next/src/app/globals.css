@@ -54,6 +54,44 @@
   --color-premium-magenta: #EC4899;    /* pink-500 */
   --color-premium-gold: #D4A574;       /* warm gold (NOT bright yellow) */
 
+  /* ─── NEW: Premium gold tier (rich, warm, "luxury" feel) ─── */
+  --color-gold-50:  #FEFCE8;            /* palest champagne */
+  --color-gold-100: #FEF3C7;
+  --color-gold-200: #FDE68A;
+  --color-gold-300: #FCD34D;           /* gold-300, the "premium" pop */
+  --color-gold-400: #FBBF24;
+  --color-gold-500: #F59E0B;           /* gold-500, amber */
+  --color-gold-600: #D97706;           /* gold-600, deep */
+  --color-gold-glow: rgba(252, 211, 77, 0.30);
+
+  /* ─── NEW: Light green / mint (verified, "live", success-but-soft) ─── */
+  --color-mint-50:  #ECFDF5;
+  --color-mint-100: #D1FAE5;
+  --color-mint-200: #A7F3D0;
+  --color-mint-300: #6EE7B7;           /* mint-300, the "verified" pop */
+  --color-mint-400: #34D399;           /* mint-400, soft success */
+  --color-mint-500: #10B981;           /* mint-500, primary success */
+  --color-mint-600: #059669;
+  --color-mint-glow: rgba(110, 231, 183, 0.30);
+
+  /* ─── NEW: Premium gray scale (8 steps, warm-tinted) ─── */
+  --color-gray-50:  #FAFAF9;            /* near-white, warm */
+  --color-gray-100: #F5F5F4;
+  --color-gray-200: #E7E5E4;            /* hairline borders */
+  --color-gray-300: #D6D3D1;
+  --color-gray-400: #A8A29E;            /* muted text on dark */
+  --color-gray-500: #78716C;
+  --color-gray-600: #57534E;
+  --color-gray-700: #44403C;
+  --color-gray-800: #292524;            /* ink-deep */
+  --color-gray-900: #1A1814;            /* ink-black */
+  --color-gray-950: #0C0A09;            /* near-black */
+
+  /* ─── NEW: Pink type color refinements (the user's call-out) ─── */
+  /* The fuchsia is too neon in some spots — soften to rose-500 territory for body */
+  --color-pink-soft: #F472B6;           /* pink-400, the "warm" pink */
+  --color-pink-soft-glow: rgba(244, 114, 182, 0.25);
+
   /* ─── Gradients (the "wow" moments) ─── */
   --gradient-sunset: linear-gradient(135deg, #FB7185 0%, #D946EF 50%, #8B5CF6 100%);
   --gradient-sunset-soft: linear-gradient(135deg, rgba(251,113,133,0.85) 0%, rgba(217,70,239,0.85) 50%, rgba(139,92,246,0.85) 100%);
@@ -113,12 +151,11 @@
   --gradient-noir: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #4C1D95 100%);
   --gradient-aurora: linear-gradient(135deg, rgba(217,70,239,0.15) 0%, rgba(139,92,246,0.10) 33%, rgba(20,184,166,0.12) 66%, rgba(251,113,133,0.15) 100%);
 
-  /* ─── Typography ─── */
-  --font-sans: "Inter", "system-ui", -apple-system, sans-serif;
+  /* ─── Typography: Geist Sans (body) + Space Grotesk (display) + Fraunces (italic accents) + Geist Mono (code) ─── */
+  --font-sans: "Geist", "system-ui", -apple-system, sans-serif;
   --font-display: "Space Grotesk", "system-ui", sans-serif;
-  --font-serif: "Instrument Serif", "Georgia", serif;
   --font-fraunces: "Fraunces", "Georgia", serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-mono: "Geist Mono", "JetBrains Mono", "Fira Code", monospace;
 
   /* ─── Radius (generous, premium) ─── */
   --radius-sm: 8px;
@@ -393,7 +430,7 @@ body::after {
 }
 
 .font-serif {
-  font-family: var(--font-serif);
+  font-family: var(--font-fraunces);
   font-style: italic;
   letter-spacing: -0.01em;
 }
@@ -404,7 +441,7 @@ body::after {
 
 /* Hero text — designer serif moment */
 .hero-text {
-  font-family: var(--font-serif);
+  font-family: var(--font-fraunces);
   font-style: italic;
   font-weight: 400;
   letter-spacing: -0.03em;
@@ -818,4 +855,207 @@ pre *:focus-visible,
   .glass, .glass-card, .glass-panel, .glass-modal, .glass-subtle, .glass-strong {
     background: rgba(255, 252, 242, 0.92);
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PHYSICS-OF-MOTION + MULTI-LAYER GLASSMORPHISM (v3)
+   The "gravity", "settle", and "depth" treatment.
+   Linear, Vercel, Stripe's glass aesthetic: layered translucency, real blur,
+   spring easing, and chromatic drop shadows.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Easing curves (spring physics) ─── */
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);        /* slight overshoot */
+  --ease-spring-soft: cubic-bezier(0.25, 0.46, 0.45, 0.94); /* no overshoot */
+  --ease-gravity: cubic-bezier(0.16, 1, 0.3, 1);           /* "drop" ease */
+  --ease-magnetic: cubic-bezier(0.7, 0, 0.3, 1);          /* snappy snap */
+  --ease-air: cubic-bezier(0.22, 1, 0.36, 1);             /* float-up */
+  --ease-physical: linear(0, 0.009 0.9%, 0.034 1.9%, 0.073 3%, 0.126 4.1%, 0.194 5.3%, 0.276 6.6%, 0.371 7.9%, 0.481 9.3%, 0.605 10.9%, 0.742 12.6%, 0.892 14.6%, 1.054 16.8%, 1.226 19.3%, 1.408 22.1%, 1.598 25.2%, 1.794 28.7%, 1.992 32.5%, 2.191 36.7%, 2.387 41.3%, 2.578 46.3%, 2.761 51.7%, 2.932 57.5%, 3.086 63.7%, 3.218 70.3%, 3.323 77.3%, 3.395 84.7%, 3.434 92.4%, 3.442 100%); /* true physical fall */
+
+  /* Durations */
+  --dur-snap: 180ms;
+  --dur-quick: 280ms;
+  --dur-settle: 480ms;
+  --dur-fall: 720ms;
+}
+
+/* ─── Multi-layer glass (3 layers: backdrop + tint + highlight) ─── */
+.glass-physics {
+  background: rgba(255, 252, 242, 0.62);
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    /* inner top highlight (light from above) */
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    /* inner bottom shadow (slight depth) */
+    inset 0 -1px 0 rgba(60, 50, 30, 0.06),
+    /* ambient layer (close, soft) */
+    0 2px 6px rgba(140, 110, 60, 0.04),
+    /* soft layer (medium distance) */
+    0 8px 24px rgba(140, 110, 60, 0.06),
+    /* far layer (atmospheric) */
+    0 24px 56px rgba(140, 110, 60, 0.08);
+}
+
+.glass-physics-soft {
+  background: rgba(255, 252, 242, 0.42);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.40);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(60, 50, 30, 0.04),
+    0 4px 16px rgba(140, 110, 60, 0.05);
+}
+
+.glass-physics-strong {
+  background: rgba(255, 252, 242, 0.82);
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(60, 50, 30, 0.08),
+    0 4px 12px rgba(140, 110, 60, 0.06),
+    0 16px 48px rgba(140, 110, 60, 0.10);
+}
+
+/* ─── Drop-into-place animation: elements settle with gravity ─── */
+@keyframes gravity-fall {
+  0%   { transform: translateY(-32px) scale(0.96); opacity: 0; }
+  60%  { transform: translateY(4px)   scale(1.005); opacity: 1; }
+  100% { transform: translateY(0)      scale(1);     opacity: 1; }
+}
+
+.animate-gravity {
+  animation: gravity-fall var(--dur-fall) var(--ease-physical) both;
+}
+
+/* ─── Spring bounce: overshoot, settle ─── */
+@keyframes spring-in {
+  0%   { transform: scale(0.85) translateY(8px); opacity: 0; }
+  60%  { transform: scale(1.04) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); }
+}
+.animate-spring {
+  animation: spring-in var(--dur-settle) var(--ease-spring) both;
+}
+
+/* ─── Magnetic hover lift (shadow intensifies as if "lifted" by hand) ─── */
+.hover-physics {
+  transition:
+    transform var(--dur-quick) var(--ease-spring),
+    box-shadow var(--dur-quick) var(--ease-spring-soft),
+    border-color var(--dur-quick) var(--ease-spring-soft);
+  will-change: transform;
+}
+.hover-physics:hover {
+  transform: translateY(-4px) scale(1.008);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(60, 50, 30, 0.06),
+    0 6px 12px rgba(140, 110, 60, 0.08),
+    0 20px 48px rgba(140, 110, 60, 0.10),
+    0 40px 80px rgba(140, 110, 60, 0.06);
+}
+.hover-physics:active {
+  transform: translateY(-1px) scale(1.001);
+  transition-duration: 90ms;
+}
+
+/* ─── Soft float (subtle hover) ─── */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.animate-float { animation: float-soft 4s ease-in-out infinite; }
+
+/* ─── Color gradient text utilities (gold, mint, soft pink) ─── */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-mint {
+  background: linear-gradient(135deg, #6EE7B7 0%, #34D399 50%, #10B981 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-soft-pink {
+  /* The "soft pink" the user called for — warmer, less neon than fuchsia */
+  background: linear-gradient(135deg, #F472B6 0%, #EC4899 50%, #DB2777 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-iridescent {
+  background: linear-gradient(135deg, #FCD34D 0%, #FB7185 25%, #D946EF 50%, #8B5CF6 75%, #06B6D4 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: iridescent-shift 8s ease-in-out infinite;
+}
+
+/* ─── Glass chip / pill with mint-glow for "verified" status ─── */
+.chip-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, rgba(110, 231, 183, 0.18) 0%, rgba(52, 211, 153, 0.12) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.30);
+  color: var(--color-mint-600);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 0 12px var(--color-mint-glow);
+}
+
+.chip-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, rgba(252, 211, 77, 0.22) 0%, rgba(245, 158, 11, 0.16) 100%);
+  border: 1px solid rgba(217, 119, 6, 0.32);
+  color: var(--color-gold-600);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 0 12px var(--color-gold-glow);
+}
+
+/* ─── Staggered children entrance (for sections) ─── */
+.stagger-children > * {
+  animation: gravity-fall var(--dur-fall) var(--ease-physical) both;
+}
+.stagger-children > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2)  { animation-delay: 80ms; }
+.stagger-children > *:nth-child(3)  { animation-delay: 160ms; }
+.stagger-children > *:nth-child(4)  { animation-delay: 240ms; }
+.stagger-children > *:nth-child(5)  { animation-delay: 320ms; }
+.stagger-children > *:nth-child(6)  { animation-delay: 400ms; }
+
+/* ─── Atmospheric fog (subtle background drift) ─── */
+@keyframes fog-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(2%, -1%) scale(1.05); }
+  66%      { transform: translate(-1%, 1%) scale(0.98); }
+}
+.fog-layer {
+  animation: fog-drift 24s ease-in-out infinite;
 }

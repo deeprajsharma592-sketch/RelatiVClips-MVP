@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono, Instrument_Serif, Fraunces } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
@@ -16,30 +16,24 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-// Body: Inter variable with tight tracking on display sizes
-const inter = Inter({
+// Body: Geist Sans — Vercel's own font, modern, premium, tight tracking
+const geist = Geist({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-// Mono: JetBrains Mono
-const jetbrainsMono = JetBrains_Mono({
+// Mono: Geist Mono — pairs with Geist Sans for code, KPIs, technical labels
+const geistMono = Geist_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-// Italic display: Instrument Serif for accents
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  display: "swap",
-  weight: "400",
-  style: ["normal", "italic"],
-});
-
-// Premium display serif: Fraunces (variable, opsz, SOFT, WONK axes) for "premium moments"
+// Italic display: Fraunces (variable, opsz, SOFT, WONK axes) — premium serif italic accents
+// Dropped Instrument Serif — Fraunces handles all italic display duties
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
@@ -166,7 +160,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${geist.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a
