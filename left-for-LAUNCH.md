@@ -394,6 +394,11 @@ cd /app/RelatiV && git log --oneline -5 && git status -s
 **Last updated: 2026-06-13 (post-v6-onboarding push)**
 **Status: real user onboarding shipped, middleware live in prod, 8/8 E2E auth checks pass, 4 test accounts seeded.**
 
+### 📋 Parked — content idea (awaiting user video)
+- User has a content idea branched days ago, will share as video "by tomorrow"
+- When video arrives: transcribe → distill → produce in whichever format (landing copy / social / email / pitch)
+- Source: Discord #gtm-marketing / content thread, started 2026-06-13 with "content"
+
 
 
 ## Tier 1 (v7) — Real User Onboarding & Live Data (2026-06-13)

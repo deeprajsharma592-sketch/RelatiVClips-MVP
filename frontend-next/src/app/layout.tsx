@@ -92,6 +92,58 @@ export const metadata: Metadata = {
   },
 };
 
+// ─── JSON-LD structured data (Organization + SoftwareApplication) ─────
+// Injected into every page via the root layout. Helps Google / Bing
+// build a knowledge graph entry for RelatiV.
+const ORG_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "RelatiV",
+  legalName: "RelatiV Labs",
+  url: "https://relativclips.com",
+  logo: "https://relativclips.com/icon.svg",
+  description:
+    "RelatiV turns one long video into ten ready-to-post short-form clips in minutes. Taste-based AI selection, designer captions, and a 3-sided marketplace for creators, brands, and clippers.",
+  foundingDate: "2026",
+  sameAs: [
+    "https://x.com/relativclips",
+    "https://github.com/deeprajsharma592-sketch/RelatiVClips-MVP",
+  ],
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer support",
+    url: "https://relativclips.com/contact",
+    availableLanguage: ["en"],
+  },
+};
+
+const APP_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "RelatiV",
+  applicationCategory: "MultimediaApplication",
+  applicationSubCategory: "Video Editing Software",
+  operatingSystem: "Web",
+  url: "https://relativclips.com",
+  description:
+    "Paste a YouTube link. Get 10 ready-to-post short-form clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors. 3-sided marketplace for creators, brands, and clippers.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free tier with pay-as-you-go marketplace + Pro/Elite plans",
+  },
+  featureList: [
+    "Taste-based AI clip selection",
+    "Auto-captions with designer styling",
+    "Brand color palettes",
+    "3-sided marketplace (creators, brands, clippers)",
+    "View-verification bot",
+    "CPM-based clipper earnings",
+    "Stripe checkout",
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -116,6 +168,14 @@ export default function RootLayout({
           <main id="main-content" className="flex-1">{children}</main>
           <Footer />
           <CookieBanner />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSON_LD) }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD) }}
+          />
         </AuthProvider>
       </body>
     </html>
