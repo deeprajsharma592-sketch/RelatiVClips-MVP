@@ -24,11 +24,11 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ─── Base surfaces (warm cream, layered) ─── */
-  --color-bg-base: #F6F1E7;
-  --color-bg-deep: #FAF7F0;
-  --color-bg-mist: #EFE9DC;
-  --color-bg-tint: #E8E1D1;
+  /* ─── Base surfaces (warm cream, layered with high contrast between variants) ─── */
+  --color-bg-base: #FAF6EE;       /* warm cream — primary base */
+  --color-bg-deep: #FFFFFF;       /* pure white — section break (visible contrast) */
+  --color-bg-mist: #F0EAD8;       /* cooler beige — section mist */
+  --color-bg-tint: #E5DCC4;       /* darker warm cream — section tint */
   --color-surface: #FFFFFF;
   --color-surface-2: #F5F0E2;
   --color-surface-elev: #FFFFFF;
@@ -36,12 +36,12 @@
   --color-border-strong: rgba(40, 30, 20, 0.20);
   --color-border-glass: rgba(40, 30, 20, 0.10);
 
-  /* ─── Text ─── */
-  --color-text-primary: #1A1814;
-  --color-text-secondary: #4A4540;
-  --color-text-muted: #78716C;
-  --color-text-faint: #A8A29E;
-  --color-text-on-glass: #1A1814;
+  /* ─── Text (warm cream → deep brown, high contrast for legibility) ─── */
+  --color-text-primary: #0F0D0A;
+  --color-text-secondary: #3A3530;
+  --color-text-muted: #6B635A;
+  --color-text-faint: #98928A;
+  --color-text-on-glass: #0F0D0A;
 
   /* ─── Accents (fuchsia in light, gold in dark) ─── */
   --color-accent: #D946EF;
@@ -180,11 +180,11 @@
   --color-border-glass: rgba(255, 255, 255, 0.08);        /* glass panel border */
 
   /* ─── Text (high contrast white-cream) ─── */
-  --color-text-primary: #FAFAFA;       /* near-white, slightly warm */
-  --color-text-secondary: #B4B4B8;     /* body copy, neutral */
-  --color-text-muted: #6E6E76;         /* meta, captions */
-  --color-text-faint: #44444C;         /* disabled, placeholder */
-  --color-text-on-glass: #FAFAFA;
+  --color-text-primary: #FFFFFF;       /* pure white for max contrast */
+  --color-text-secondary: #D1D1D6;     /* body copy — lifted from B4 to D1 for better readability */
+  --color-text-muted: #8E8E96;         /* meta, captions — lifted from 6E to 8E for visibility */
+  --color-text-faint: #5C5C66;         /* disabled, placeholder */
+  --color-text-on-glass: #FFFFFF;
 
   /* ─── Accents (gold-led for dark — luxury, distinctive) ─── */
   --color-accent: #FFD24A;             /* gold-300, primary — pops on near-black */
@@ -445,29 +445,29 @@ body::after {
   opacity: 0.7;
 }
 
-/* Dark mode: SLEEK grid — actually visible. Major lines + dots + grain. */
+/* Dark mode: SLEEK grid — major lines + dots + grain. Bold enough to read. */
 .dark body::after {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.10 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.20) 1.2px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.14 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
   background-position: -1px -1px, -1px -1px, 0 0, 0 0;
-  opacity: 0.95;
+  opacity: 1;
 }
 
-/* Light mode: warm hairline grid + dot intersections + grain */
+/* Light mode: warm hairline grid + dot intersections + grain. Tactile. */
 body::after {
   background-image:
-    linear-gradient(rgba(40, 30, 20, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(40, 30, 20, 0.08) 1px, transparent 1px),
-    radial-gradient(circle, rgba(40, 30, 20, 0.10) 1px, transparent 1.5px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    linear-gradient(rgba(40, 30, 20, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.12) 1px, transparent 1px),
+    radial-gradient(circle, rgba(40, 30, 20, 0.16) 1.2px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.10 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
   background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 0%, transparent 80%);
   mix-blend-mode: multiply;
-  opacity: 0.85;
+  opacity: 0.95;
   pointer-events: none;
 }
 
@@ -1637,10 +1637,16 @@ pre *:focus-visible,
 .section-mist {
   background: linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-mist) 50%, var(--color-bg-base) 100%);
 }
+.dark .section-mist {
+  background: linear-gradient(180deg, #060608 0%, #0A0A0E 50%, #060608 100%);
+}
 
 /* Tinted — surface-2 layer, for nested sections */
 .section-tint {
   background: var(--color-bg-tint);
+}
+.dark .section-tint {
+  background: linear-gradient(180deg, #08080A 0%, #0F0F14 100%);
 }
 
 /* Dark glass — full inversion, high contrast section break.
@@ -1673,13 +1679,13 @@ pre *:focus-visible,
   color: #FAF7F0;
 }
 
-/* In dark mode, section-dark goes true black with grid texture visible */
+/* In dark mode, section-dark goes true black with HIGHLY visible grid */
 .dark .section-dark {
   background: #000000;
   background-image:
-    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255, 210, 74, 0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 30% at 30% 50%, rgba(255, 119, 233, 0.03) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 30% at 70% 100%, rgba(255, 210, 74, 0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255, 210, 74, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 30% 50%, rgba(255, 119, 233, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 30% at 70% 100%, rgba(255, 210, 74, 0.04) 0%, transparent 70%),
     linear-gradient(180deg, #000000 0%, #000000 100%);
 }
 .dark .section-dark::after {
@@ -1687,15 +1693,30 @@ pre *:focus-visible,
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.10) 1px, transparent 1.5px);
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.2px, transparent 1.5px);
   background-size: 80px 80px, 80px 80px, 16px 16px;
   pointer-events: none;
   opacity: 1;
   z-index: 0;
 }
 .dark .section-dark > * { position: relative; z-index: 1; }
+
+/* Light mode section-dark: warm cream with grid showing */
+:root .section-dark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 245, 220, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 245, 220, 0.06) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 245, 220, 0.10) 1.2px, transparent 1.5px);
+  background-size: 80px 80px, 80px 80px, 16px 16px;
+  pointer-events: none;
+  opacity: 1;
+  z-index: 0;
+}
 
 /* Gold accent — warm gradient with gold halo */
 .section-gold {
@@ -1717,6 +1738,9 @@ pre *:focus-visible,
   background: linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-mist) 50%, var(--color-bg-base) 100%);
   position: relative;
 }
+.dark .section-mint {
+  background: linear-gradient(180deg, #050507 0%, #0A0F0E 50%, #050507 100%);
+}
 
 .section-mint::before {
   content: "";
@@ -1726,6 +1750,7 @@ pre *:focus-visible,
   pointer-events: none;
   opacity: 0.35;
 }
+.dark .section-mint::before { opacity: 0.5; }
 
 /* Pink accent — soft rose, for personality/voice moments */
 .section-pink {
@@ -1750,6 +1775,26 @@ pre *:focus-visible,
     radial-gradient(ellipse 50% 35% at 50% 50%, var(--color-mint-glow) 0%, transparent 80%),
     linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-deep) 100%);
 }
+.dark .section-aurora {
+  background:
+    radial-gradient(ellipse 40% 30% at 20% 30%, rgba(255, 119, 233, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 80% 70%, rgba(255, 210, 74, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 35% at 50% 50%, rgba(56, 189, 248, 0.05) 0%, transparent 80%),
+    linear-gradient(180deg, #050506 0%, #000000 100%);
+}
+.dark .section-aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.2px, transparent 1.5px);
+  background-size: 80px 80px, 80px 80px, 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .section-aurora > * { position: relative; z-index: 1; }
 
 /* ─── Drop-into-place animation: elements settle with gravity ─── */
 @keyframes gravity-fall {
