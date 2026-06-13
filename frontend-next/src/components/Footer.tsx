@@ -218,14 +218,10 @@ export default function Footer() {
           className="mt-20 text-center"
         >
           <p
-            className="font-display font-semibold tracking-tight select-none"
+            className="footer-wordmark font-display font-semibold tracking-tight select-none"
             style={{
               fontSize: "clamp(4rem, 18vw, 14rem)",
               lineHeight: 0.85,
-              color: "transparent",
-              background: "linear-gradient(180deg, rgba(60, 50, 30, 0.12) 0%, rgba(60, 50, 30, 0.02) 100%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
             }}
           >
             Relati<span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}>V</span>

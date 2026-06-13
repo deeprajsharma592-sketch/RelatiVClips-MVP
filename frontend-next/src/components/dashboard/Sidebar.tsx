@@ -107,17 +107,17 @@ export default function DashboardShell({
         <aside
           className="lg:sticky lg:top-24 self-start rounded-[var(--radius-xl)] p-4"
           style={{
-            background: "rgba(255, 252, 242, 0.65)",
+            background: "var(--glass-light-strong)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
-            border: "1px solid rgba(255, 255, 255, 0.7)",
-            boxShadow: "0 8px 32px rgba(140, 110, 60, 0.06)",
+            border: "1px solid var(--color-border)",
+            boxShadow: "var(--shadow-md)",
           }}
         >
           {/* User block */}
           <div
             className="flex items-center gap-3 pb-4 mb-4"
-            style={{ borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}
+            style={{ borderBottom: "1px solid var(--color-border)" }}
           >
             <div
               className="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-white shrink-0"
@@ -163,12 +163,12 @@ export default function DashboardShell({
                   className="relative w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-all duration-200"
                   style={{
                     color: isActive ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                    background: isActive ? "rgba(255, 252, 242, 0.95)" : "transparent",
-                    boxShadow: isActive ? "0 1px 3px rgba(140, 110, 60, 0.08), 0 1px 0 rgba(255, 255, 255, 0.6) inset" : "none",
+                    background: isActive ? "var(--color-surface)" : "transparent",
+                    boxShadow: isActive ? "0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 0 rgba(255, 255, 255, 0.04) inset" : "none",
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.background = "rgba(255, 252, 242, 0.5)";
+                      e.currentTarget.style.background = "var(--color-surface-2)";
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -212,7 +212,7 @@ export default function DashboardShell({
           {/* Back to public site */}
           <div
             className="mt-4 pt-4 space-y-2"
-            style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}
+            style={{ borderTop: "1px solid var(--color-border)" }}
           >
             <Link
               href={isClipper ? "/clippers/apply" : "/brands"}

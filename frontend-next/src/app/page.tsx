@@ -171,41 +171,6 @@ const FAQ_ITEMS = [
 ];
 
 // ════════════════════════════════════════════════════════════════════════════
-// SECTION 01 — ANNOUNCEMENT BAR
-// ════════════════════════════════════════════════════════════════════════════
-
-function AnnouncementBar() {
-  return (
-    <div
-      className="relative z-40 w-full"
-      style={{
-        background: "rgba(26, 24, 20, 0.95)",
-        color: "#F6F1E7",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-6 h-9 flex items-center justify-center gap-3 text-[12px]">
-        <span className="flex items-center gap-2">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "#10B981" }} />
-          </span>
-          <span className="font-mono text-[11px] tracking-wider opacity-70">v2.0</span>
-        </span>
-        <span className="opacity-60">·</span>
-        <span>
-          The viral clip engine is live.
-        </span>
-        <Link href="/services" className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline" style={{ color: "#FB7185" }}>
-          Read the engine spec
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════════
 // SECTION 02 — HERO
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -567,10 +532,10 @@ function DemoSection() {
 
   const STEPS = useMemo(
     () => [
-      { label: "Transcribe", sub: "Whisper · RunPod", math: "log P(wₜ|w<t)" },
-      { label: "Energy peak detect", sub: "librosa · 12 Hz", math: "∇² E(t)" },
-      { label: "Hook score", sub: "Claude · emotional peak", math: "argmax Φ(x)" },
-      { label: "Render", sub: "YOLO · 9:16 frame", math: "x' = σ(Wx+b)" },
+      { label: "Transcribe", sub: "Whisper · RunPod", math: "log P(wₜ|w<t)", pod: "pod-transcribe" as const },
+      { label: "Energy peak detect", sub: "librosa · 12 Hz", math: "∇² E(t)", pod: "pod-energy" as const },
+      { label: "Hook score", sub: "Claude · emotional peak", math: "argmax Φ(x)", pod: "pod-hook" as const },
+      { label: "Render", sub: "YOLO · 9:16 frame", math: "x' = σ(Wx+b)", pod: "pod-render" as const },
     ],
     []
   );
@@ -683,43 +648,79 @@ function DemoSection() {
                 </button>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {STEPS.map((step, i) => {
                   const isActive = state === "processing" && i === activeStep;
                   const isDone = state === "completed";
+                  // Per-step accent color (cyan / orange / pink / gold)
+                  const podColor = `var(--pod-${step.pod.replace("pod-", "")})`;
+                  const podGlow = `var(--pod-${step.pod.replace("pod-", "")}-glow)`;
                   return (
                     <motion.div
                       key={step.label}
-                      className="flex items-center gap-3 p-3.5 rounded-2xl transition-all"
+                      className={`relative flex items-center gap-3 p-3.5 pl-4 rounded-2xl overflow-hidden ${step.pod}`}
                       style={{
                         background: isActive
-                          ? "rgba(217, 70, 239, 0.06)"
+                          ? `linear-gradient(135deg, ${podGlow} 0%, transparent 100%), var(--color-surface)`
                           : isDone
-                          ? "rgba(16, 185, 129, 0.04)"
-                          : "rgba(255, 252, 242, 0.5)",
+                          ? `linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, transparent 100%), var(--color-surface)`
+                          : "var(--color-surface)",
                         border: isActive
-                          ? "1px solid rgba(217, 70, 239, 0.25)"
+                          ? `1px solid var(--pod-${step.pod.replace("pod-", "")}-border)`
                           : isDone
-                          ? "1px solid rgba(16, 185, 129, 0.15)"
-                          : "1px solid rgba(60, 50, 30, 0.06)",
+                          ? "1px solid rgba(16, 185, 129, 0.20)"
+                          : "1px solid var(--color-border)",
+                        boxShadow: isActive
+                          ? `0 4px 16px ${podGlow}, 0 0 0 1px var(--pod-${step.pod.replace("pod-", "")}-border) inset`
+                          : isDone
+                          ? "0 2px 8px rgba(16, 185, 129, 0.10)"
+                          : "0 1px 2px rgba(0, 0, 0, 0.04)",
+                        transform: isActive ? "translateX(2px)" : "translateX(0)",
                       }}
-                      animate={isActive ? { scale: [1, 1.015, 1] } : { scale: 1 }}
+                      animate={isActive ? { scale: [1, 1.012, 1] } : { scale: 1 }}
                       transition={{ duration: 1, repeat: isActive ? Infinity : 0 }}
                     >
+                      {/* Active step — left accent stripe */}
+                      {(isActive || isDone) && (
+                        <div
+                          aria-hidden
+                          className="absolute left-0 top-0 bottom-0 w-[3px]"
+                          style={{
+                            background: isDone
+                              ? "linear-gradient(180deg, #10B981 0%, transparent 100%)"
+                              : `linear-gradient(180deg, ${podColor} 0%, transparent 100%)`,
+                          }}
+                        />
+                      )}
                       <div
                         className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-mono font-semibold"
                         style={{
-                          background: isDone ? "var(--color-success)" : isActive ? "var(--color-accent)" : "rgba(60, 50, 30, 0.08)",
-                          color: isDone || isActive ? "white" : "var(--color-text-muted)",
+                          background: isDone
+                            ? "linear-gradient(135deg, #10B981 0%, #059669 100%)"
+                            : isActive
+                            ? `linear-gradient(135deg, ${podColor} 0%, ${podColor} 100%)`
+                            : "var(--color-surface-2)",
+                          color: isDone || isActive ? "#FFFFFF" : "var(--color-text-muted)",
+                          boxShadow: isActive
+                            ? `0 4px 12px ${podGlow}, 0 1px 0 rgba(255,255,255,0.20) inset`
+                            : isDone
+                            ? "0 4px 12px rgba(16, 185, 129, 0.25), 0 1px 0 rgba(255,255,255,0.20) inset"
+                            : "none",
                         }}
                       >
                         {isDone ? "✓" : i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-medium" style={{ color: "var(--color-text-primary)" }}>{step.label}</p>
-                        <p className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>{step.sub}</p>
+                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--color-text-muted)" }}>{step.sub}</p>
                       </div>
-                      <code className="text-[10px] font-mono hidden md:block" style={{ color: "var(--color-accent)" }}>
+                      <code
+                        className="text-[10px] font-mono hidden md:block"
+                        style={{
+                          color: isActive ? podColor : "var(--color-text-muted)",
+                          fontWeight: isActive ? 600 : 400,
+                        }}
+                      >
                         {step.math}
                       </code>
                     </motion.div>
@@ -1869,7 +1870,6 @@ export default function HomePage() {
 
   return (
     <>
-      <AnnouncementBar />
       <HeroSection onCtaClick={scrollToDemo} />
       <RealProductPreview />
       <TrustStrip />

@@ -167,11 +167,11 @@
 }
 
 .dark {
-  /* ─── Base surfaces (YC-startup-grade: deep black with subtle warm undertones) ─── */
-  --color-bg-base: #0A0A0B;            /* near-pure black, hairline warm tint */
-  --color-bg-deep: #050506;            /* deepest, for hero/atmosphere */
-  --color-bg-mist: #101012;            /* between base and deep */
-  --color-bg-tint: #14141A;            /* tinted section, slight cool lean */
+  /* ─── Base surfaces (engineered deep black with warm undertone, grid + texture layer) ─── */
+  --color-bg-base: #050506;            /* true deep black, hairline warm tint */
+  --color-bg-deep: #020203;            /* deepest, for hero/atmosphere */
+  --color-bg-mist: #0A0A0C;            /* between base and deep */
+  --color-bg-tint: #0F0F12;            /* tinted section, slight cool lean */
   --color-surface: #0F0F11;            /* card base — slightly lifted */
   --color-surface-2: #16161A;          /* nested card / hover */
   --color-surface-elev: #1C1C22;       /* modal / dropdown */
@@ -445,12 +445,33 @@ body::after {
   opacity: 0.7;
 }
 
-/* Dark mode: grid lines flip to hairline white (premium near-black aesthetic) */
+/* Dark mode: grid lines + dot pattern + stronger grain for "engineered dark" feel */
 .dark body::after {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    /* Major grid lines (80px) */
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    /* Minor dot grid (16px) */
+    radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1.5px),
+    /* Fine grain */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  background-size: 80px 80px, 80px 80px, 16px 16px, 200px 200px;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  opacity: 0.9;
+}
+
+/* Light mode: subtle dot grid + warm grain for "premium print" feel */
+body::after {
+  background-image:
+    linear-gradient(rgba(40, 30, 20, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 30, 20, 0.025) 1px, transparent 1px),
+    radial-gradient(circle, rgba(40, 30, 20, 0.05) 1px, transparent 1.5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  background-size: 56px 56px, 56px 56px, 14px 14px, 200px 200px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 0%, transparent 80%);
+  mix-blend-mode: multiply;
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 /* Dark mode: backdrop blobs — gold + soft pink + cyan, more contrast */
@@ -565,11 +586,222 @@ body::after {
    ════════════════════════════════════════════════════════════════════════════ */
 
 .text-gradient-sunset {
+  /* Theme-aware: fuchsia→violet in light, gold→amber in dark */
   background: var(--gradient-sunset-deep);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+
+.dark .text-gradient-sunset {
+  background: linear-gradient(135deg, #FFD24A 0%, #FBBF24 50%, #F59E0B 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-pink {
+  background: linear-gradient(135deg, #EC4899 0%, #F472B6 50%, #FF77E9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #06B6D4 0%, #22D3EE 50%, #67E8F9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-mint {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 50%, #6EE7B7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-violet {
+  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 50%, #C4B5FD 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-orange {
+  background: linear-gradient(135deg, #F97316 0%, #FB923C 50%, #FBBF24 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-mono {
+  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-text-secondary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PER-POD ACCENT TOKENS — used for Demo steps (4 stages) and Pricing tiers.
+   Each pod has its own color identity so they don't all blend together.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --pod-transcribe: #06B6D4;        /* cyan — data flow */
+  --pod-transcribe-bg: rgba(6, 182, 212, 0.08);
+  --pod-transcribe-border: rgba(6, 182, 212, 0.28);
+  --pod-transcribe-glow: rgba(6, 182, 212, 0.20);
+
+  --pod-energy: #F97316;            /* orange — heat, energy */
+  --pod-energy-bg: rgba(249, 115, 22, 0.08);
+  --pod-energy-border: rgba(249, 115, 22, 0.28);
+  --pod-energy-glow: rgba(249, 115, 22, 0.20);
+
+  --pod-hook: #EC4899;              /* pink — emotion, AI */
+  --pod-hook-bg: rgba(236, 72, 153, 0.08);
+  --pod-hook-border: rgba(236, 72, 153, 0.28);
+  --pod-hook-glow: rgba(236, 72, 153, 0.20);
+
+  --pod-render: #FCD34D;            /* gold — the output, the prize */
+  --pod-render-bg: rgba(252, 211, 77, 0.10);
+  --pod-render-border: rgba(252, 211, 77, 0.32);
+  --pod-render-glow: rgba(252, 211, 77, 0.25);
+
+  /* Pricing tier accent palette */
+  --tier-starter: #94A3B8;          /* slate — neutral */
+  --tier-starter-bg: rgba(148, 163, 184, 0.10);
+  --tier-starter-border: rgba(148, 163, 184, 0.30);
+  --tier-pro: #FCD34D;              /* gold — recommended */
+  --tier-pro-bg: rgba(252, 211, 77, 0.10);
+  --tier-pro-border: rgba(252, 211, 77, 0.40);
+  --tier-elite: #A78BFA;            /* violet — premium */
+  --tier-elite-bg: rgba(167, 139, 250, 0.10);
+  --tier-elite-border: rgba(167, 139, 250, 0.32);
+}
+
+.dark {
+  --pod-transcribe: #67E8F9;
+  --pod-transcribe-bg: rgba(6, 182, 212, 0.10);
+  --pod-transcribe-border: rgba(6, 182, 212, 0.32);
+  --pod-transcribe-glow: rgba(6, 182, 212, 0.28);
+
+  --pod-energy: #FB923C;
+  --pod-energy-bg: rgba(249, 115, 22, 0.10);
+  --pod-energy-border: rgba(249, 115, 22, 0.32);
+  --pod-energy-glow: rgba(249, 115, 22, 0.28);
+
+  --pod-hook: #FF77E9;
+  --pod-hook-bg: rgba(236, 72, 153, 0.10);
+  --pod-hook-border: rgba(236, 72, 153, 0.32);
+  --pod-hook-glow: rgba(236, 72, 153, 0.28);
+
+  --pod-render: #FFD24A;
+  --pod-render-bg: rgba(255, 210, 74, 0.10);
+  --pod-render-border: rgba(255, 210, 74, 0.38);
+  --pod-render-glow: rgba(255, 210, 74, 0.32);
+
+  --tier-starter: #94A3B8;
+  --tier-starter-bg: rgba(148, 163, 184, 0.08);
+  --tier-starter-border: rgba(148, 163, 184, 0.28);
+  --tier-pro: #FFD24A;
+  --tier-pro-bg: rgba(255, 210, 74, 0.08);
+  --tier-pro-border: rgba(255, 210, 74, 0.38);
+  --tier-elite: #C4B5FD;
+  --tier-elite-bg: rgba(167, 139, 250, 0.08);
+  --tier-elite-border: rgba(167, 139, 250, 0.34);
+}
+
+/* Pod variants — apply to a wrapper to give it a stage identity */
+.pod-transcribe {
+  --pod-color: var(--pod-transcribe);
+  --pod-color-bg: var(--pod-transcribe-bg);
+  --pod-color-border: var(--pod-transcribe-border);
+  --pod-color-glow: var(--pod-transcribe-glow);
+}
+.pod-energy {
+  --pod-color: var(--pod-energy);
+  --pod-color-bg: var(--pod-energy-bg);
+  --pod-color-border: var(--pod-energy-border);
+  --pod-color-glow: var(--pod-energy-glow);
+}
+.pod-hook {
+  --pod-color: var(--pod-hook);
+  --pod-color-bg: var(--pod-hook-bg);
+  --pod-color-border: var(--pod-hook-border);
+  --pod-color-glow: var(--pod-hook-glow);
+}
+.pod-render {
+  --pod-color: var(--pod-render);
+  --pod-color-bg: var(--pod-render-bg);
+  --pod-color-border: var(--pod-render-border);
+  --pod-color-glow: var(--pod-render-glow);
+}
+
+/* Pricing tier variants */
+.tier-starter {
+  --tier-color: var(--tier-starter);
+  --tier-color-bg: var(--tier-starter-bg);
+  --tier-color-border: var(--tier-starter-border);
+}
+.tier-pro {
+  --tier-color: var(--tier-pro);
+  --tier-color-bg: var(--tier-pro-bg);
+  --tier-color-border: var(--tier-pro-border);
+}
+.tier-elite {
+  --tier-color: var(--tier-elite);
+  --tier-color-bg: var(--tier-elite-bg);
+  --tier-color-border: var(--tier-elite-border);
+}
+
+/* Subtle grid texture for dark mode (line grid + dot pattern) */
+.bg-grid-dark {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px, 64px 64px, 32px 32px;
+  background-position: -1px -1px, -1px -1px, 0 0;
+}
+
+.bg-dots-light {
+  background-image: radial-gradient(circle, rgba(40, 30, 20, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-noise {
+  position: relative;
+}
+.bg-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+.dark .bg-noise::before { opacity: 0.5; }
+
+/* Footer big wordmark — theme aware so it stays visible */
+.footer-wordmark {
+  color: transparent;
+  background: linear-gradient(180deg, rgba(40, 30, 20, 0.18) 0%, rgba(40, 30, 20, 0.02) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.dark .footer-wordmark {
+  background: linear-gradient(180deg, rgba(255, 210, 74, 0.10) 0%, rgba(255, 210, 74, 0.01) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 .text-gradient-iridescent {
@@ -726,6 +958,161 @@ body::after {
 .btn-ghost:hover {
   background: rgba(60, 50, 30, 0.05);
   border-color: var(--color-text-primary);
+}
+
+.dark .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-text-primary);
+}
+
+/* Gradient button variants — for use when one role is too saturated */
+
+.btn-gold {
+  background: linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%);
+  color: #1A1814;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(252, 211, 77, 0.32), 0 1px 0 rgba(255, 245, 220, 0.30) inset;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(252, 211, 77, 0.45), 0 1px 0 rgba(255, 245, 220, 0.40) inset;
+}
+
+.btn-pink {
+  background: linear-gradient(135deg, #EC4899 0%, #F472B6 50%, #FF77E9 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.32), 0 1px 0 rgba(255, 255, 255, 0.30) inset;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-pink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(236, 72, 153, 0.45), 0 1px 0 rgba(255, 255, 255, 0.40) inset;
+}
+
+.btn-cyan {
+  background: linear-gradient(135deg, #06B6D4 0%, #22D3EE 50%, #67E8F9 100%);
+  color: #042F2E;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.32), 0 1px 0 rgba(255, 255, 255, 0.40) inset;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-cyan:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(6, 182, 212, 0.45), 0 1px 0 rgba(255, 255, 255, 0.50) inset;
+}
+
+.btn-mint {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 50%, #6EE7B7 100%);
+  color: #022C22;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.32), 0 1px 0 rgba(255, 255, 255, 0.40) inset;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-mint:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.45), 0 1px 0 rgba(255, 255, 255, 0.50) inset;
+}
+
+.btn-violet {
+  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 50%, #C4B5FD 100%);
+  color: #1E1B4B;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.32), 0 1px 0 rgba(255, 255, 255, 0.40) inset;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-violet:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.45), 0 1px 0 rgba(255, 255, 255, 0.50) inset;
+}
+
+/* Glass surface variants — for content panels, dark mode friendly */
+.surface-dark {
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+.dark .surface-dark {
+  background: rgba(15, 15, 17, 0.65);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+}
+
+/* Glass-morphic elevated surface — used for sections that need to feel
+   like floating glass panels in the dark. Stronger blur, more translucency,
+   hairline top highlight for the "Apple camera UI" depth. */
+.glass-morph {
+  background: var(--glass-light);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.06) inset,
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 24px 64px rgba(0, 0, 0, 0.05);
+}
+.dark .glass-morph {
+  background: rgba(20, 20, 24, 0.55);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.50) inset,
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 32px 80px rgba(0, 0, 0, 0.30);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

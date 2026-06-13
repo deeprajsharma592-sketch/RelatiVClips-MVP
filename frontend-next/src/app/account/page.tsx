@@ -132,11 +132,11 @@ export default function AccountPage() {
         <div
           className="rounded-[var(--radius-xl)] p-8 mb-6 relative overflow-hidden"
           style={{
-            background: "rgba(255, 252, 242, 0.70)",
+            background: "var(--glass-light-strong)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
             border: `1px solid ${role.border}`,
-            boxShadow: `0 0 0 1px ${role.border} inset, 0 16px 48px rgba(140, 110, 60, 0.08)`,
+            boxShadow: `0 0 0 1px ${role.border} inset, 0 16px 48px rgba(0, 0, 0, 0.10)`,
           }}
         >
           <div
@@ -171,9 +171,9 @@ export default function AccountPage() {
                   <span
                     className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full"
                     style={{
-                      background: "rgba(140, 110, 60, 0.10)",
+                      background: "var(--color-surface-2)",
                       color: "var(--color-text-muted)",
-                      border: "1px solid rgba(60, 50, 30, 0.10)",
+                      border: "1px solid var(--color-border)",
                     }}
                   >
                     Unverified
@@ -189,8 +189,8 @@ export default function AccountPage() {
               onClick={logout}
               className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-full transition-colors"
               style={{
-                background: "rgba(255, 252, 242, 0.6)",
-                border: "1px solid rgba(60, 50, 30, 0.10)",
+                background: "var(--color-surface-2)",
+                border: "1px solid var(--color-border)",
                 color: "var(--color-text-secondary)",
               }}
               onMouseEnter={(e) => {
@@ -198,7 +198,7 @@ export default function AccountPage() {
                 e.currentTarget.style.color = "var(--color-error)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(60, 50, 30, 0.10)";
+                e.currentTarget.style.borderColor = "var(--color-border)";
                 e.currentTarget.style.color = "var(--color-text-secondary)";
               }}
             >
@@ -328,7 +328,7 @@ export default function AccountPage() {
             </div>
             <div
               className="mt-6 pt-4 text-[10px] font-mono"
-              style={{ color: "var(--color-text-faint)", borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}
+              style={{ color: "var(--color-text-faint)", borderTop: "1px solid var(--color-border)" }}
             >
               Last login: {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "—"}
             </div>
