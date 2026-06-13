@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FB7185"/>
+      <stop offset="50%" stop-color="#D946EF"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#g)"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#shine)"/>
+  <text x="32" y="46" text-anchor="middle"
+    font-family="'Space Grotesk', -apple-system, system-ui, sans-serif"
+    font-size="38" font-weight="700" fill="#FFFFFF" letter-spacing="-1">R</text>
+</svg>
