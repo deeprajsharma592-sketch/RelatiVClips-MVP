@@ -448,3 +448,60 @@ cd /app/RelatiV && git log --oneline -5 && git status -s
 - Add `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_CLIPPER_PRO/ELITE` to `.env` to enable checkout
 - Optionally `RESEND_API_KEY` for transactional email
 - After that, Tier 2 (marketplace launch: campaigns CRUD, clip submission, view-verification bot)
+
+---
+
+## v8 — Tier 2: Marketplace Launch (2026-06-13)
+
+**Backend:** 4 new routers, 22 new endpoints, 1 new enum value. **Frontend:** 6 new pages, 32 total routes. **E2E:** 13/13 marketplace tests pass.
+
+### Backend (4 routers, 22 routes)
+
+- `routers/campaigns_router.py` — CRUD + pause/resume/complete/cancel with Pydantic validation (CPM $1-$1000, budget $10-$100k, slots 1-1000)
+- `routers/claims_router.py` — claim/unclaim/list-claimants/my-claims, 7-day auto-deadline
+- `routers/clips_router.py` — submit/approve/reject/pending-review/clip-detail, idempotent state transitions
+- `services/verification_service.py` + `routers/verification_router.py` — mock view-polling bot (platform-specific growth rates, auto-verified at 5K views)
+- `CampaignStatus.CANCELLED` added (soft-delete for budget unfreeze)
+
+### Frontend (6 pages, 32 routes total)
+
+- `/brands/campaigns` — list with status filter tabs + create CTA
+- `/brands/campaigns/new` — form with **live preview** (auto-computes reach, per-clip pay, slots)
+- `/brands/campaigns/[id]` — Overview/Claimants/Clips/Pending tabs with inline Approve/Reject
+- `/clippers/campaigns` — browse with filter chips (All/High CPM/Tech/Health/Business/Closing soon)
+- `/clippers/clips` — status-grouped list of submitted clips (Pending/Approved/Verified/Rejected)
+- `/clippers/clips/new` — submission form with claim context
+- Brand dashboard cards now link to detail; clipper dashboard "Apply" links to browse
+
+### Verified in production (https://relativclips.com)
+
+- 13/13 marketplace E2E tests pass against real DB
+  - brand creates campaign → clipper claims slot → submits clip → brand approves → view-verification run (+993 views, $7.94 earned)
+- All 5 new pages protected by middleware (anon→/signup 307)
+- Clipper signed in as Maya Chen sees 6 clips grouped: 2 pending (E2E), 2 approved, 2 verified ($4,215 lifetime)
+- Brand campaign form has live preview (CPM × budget auto-shows total reach)
+- 0 console errors, 0 React errors on any page
+
+### Bugs fixed during build
+
+1. **Route order** — `/clips/pending-review` matched as `{clip_id}` first → moved static path before dynamic
+2. **TypeScript collision** — `Clip` (pipeline) vs new `Clip` (marketplace) → aliased old as `PipelineClip`
+3. **T-SQL `iif()`** in dashboard → `case()` for PostgreSQL (carryover from Tier 1)
+4. **`UserRole.ADMIN` doesn't exist** → removed admin check, scoped verification to brand/clipper
+5. **`CampaignStatus.CANCELLED` missing** → added to enum
+6. **Next.js 16 `useSearchParams`** → wrapped in `<Suspense>` (was the wrong fix for the actual bug)
+7. **React error #310 "Rendered more hooks"** → moved 2 `useMemo` calls above the early returns in `/clippers/campaigns` and `/clippers/clips`
+
+### Files
+
+- NEW: `backend/routers/campaigns_router.py`, `claims_router.py`, `clips_router.py`, `verification_router.py`
+- NEW: `backend/services/verification_service.py`, `/tmp/test_marketplace.py`
+- NEW: 6 frontend pages listed above
+- MODIFIED: backend `models.py` (CANCELLED), `main.py` (4 new routers), `lib/api.ts` (+9 helpers)
+- 8 screenshots in `.hermes/screenshots/v8-marketplace/`
+
+### Pending for Tier 2 to be "done done"
+
+- Add a real view-verification polling job (currently invoked on-demand)
+- Brand campaign analytics: per-clip CPM actual vs target, drop-off scatterplot
+- Clip submission form: multi-platform URL detection, auto-fill title/hook from URL
