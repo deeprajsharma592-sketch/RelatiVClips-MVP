@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
+import { Space_Grotesk, Inter, JetBrains_Mono, Instrument_Serif, Fraunces } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
@@ -8,29 +8,43 @@ import CustomCursor from "@/components/CustomCursor";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
 
+// Display: Space Grotesk for headlines, with explicit weight + optical size
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
+// Body: Inter variable with tight tracking on display sizes
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
+// Mono: JetBrains Mono
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
 });
 
+// Italic display: Instrument Serif for accents
 const instrumentSerif = Instrument_Serif({
   variable: "--font-serif",
   subsets: ["latin"],
   display: "swap",
   weight: "400",
+  style: ["normal", "italic"],
+});
+
+// Premium display serif: Fraunces (variable, opsz, SOFT, WONK axes) for "premium moments"
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  display: "swap",
+  axes: ["opsz", "SOFT", "WONK"],
   style: ["normal", "italic"],
 });
 
@@ -152,7 +166,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a

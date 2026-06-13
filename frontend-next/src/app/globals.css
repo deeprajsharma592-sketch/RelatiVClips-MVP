@@ -117,6 +117,7 @@
   --font-sans: "Inter", "system-ui", -apple-system, sans-serif;
   --font-display: "Space Grotesk", "system-ui", sans-serif;
   --font-serif: "Instrument Serif", "Georgia", serif;
+  --font-fraunces: "Fraunces", "Georgia", serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   /* ─── Radius (generous, premium) ─── */
@@ -139,6 +140,38 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ─── Display heading tightening (premium SaaS aesthetic) ───
+   Linear, Vercel, Stripe all use -0.03em to -0.05em on large display.
+   We apply this to all .font-display elements at large sizes. */
+.font-display {
+  letter-spacing: -0.025em;
+  font-feature-settings: "ss01" on, "ss02" on, "cv11" on;
+}
+
+h1, h2 {
+  letter-spacing: -0.035em;
+}
+
+h1.font-display, h2.font-display {
+  letter-spacing: -0.04em;
+}
+
+/* Premium display serif (Fraunces) — use for hero italic accents */
+.font-fraunces {
+  font-family: var(--font-fraunces);
+  font-optical-sizing: auto;
+  font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
+  letter-spacing: -0.02em;
+}
+
+.font-fraunces-italic {
+  font-family: var(--font-fraunces);
+  font-style: italic;
+  font-optical-sizing: auto;
+  font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+  letter-spacing: -0.02em;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    Base
    ════════════════════════════════════════════════════════════════════════════ */
@@ -158,6 +191,8 @@ body {
    THE GLASSMORPHISM BACKDROP
    Animated, multi-color blobs behind everything. Slowly moving, very low
    contrast. This is the "magic" that makes glass layers feel alive.
+
+   v6 upgrade: added chromatic aberration overlay layer for premium depth.
    ════════════════════════════════════════════════════════════════════════════ */
 
 body::before {
@@ -166,16 +201,17 @@ body::before {
   inset: -20%;
   z-index: -2;
   background:
-    radial-gradient(circle at 15% 20%, rgba(251, 113, 133, 0.18) 0%, transparent 35%),
-    radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 50% 60%, rgba(20, 184, 166, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 80% 85%, rgba(217, 70, 239, 0.14) 0%, transparent 40%),
-    radial-gradient(circle at 25% 80%, rgba(251, 191, 36, 0.10) 0%, transparent 35%);
+    radial-gradient(circle at 15% 20%, rgba(251, 113, 133, 0.20) 0%, transparent 35%),
+    radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 50% 60%, rgba(20, 184, 166, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 80% 85%, rgba(217, 70, 239, 0.16) 0%, transparent 40%),
+    radial-gradient(circle at 25% 80%, rgba(251, 191, 36, 0.12) 0%, transparent 35%);
   filter: blur(60px);
   animation: backdrop-drift 32s ease-in-out infinite alternate;
   pointer-events: none;
 }
 
+/* Chromatic aberration overlay — subtle RGB-split that screams "premium SaaS" */
 body::after {
   content: "";
   position: fixed;

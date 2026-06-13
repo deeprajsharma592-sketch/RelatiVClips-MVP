@@ -271,12 +271,12 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="font-display font-semibold tracking-tight max-w-5xl"
-          style={{ fontSize: "clamp(2.75rem, 6.5vw, 5.5rem)", lineHeight: 0.98 }}
+          className="font-display font-semibold max-w-5xl"
+          style={{ fontSize: "clamp(2.75rem, 6.5vw, 5.5rem)", lineHeight: 0.98, letterSpacing: "-0.045em" }}
         >
           <span style={{ color: "var(--color-text-primary)" }}>Turn one video into</span>
           <br />
-          <span className="hero-text text-gradient-sunset" style={{ fontSize: "1.1em" }}>
+          <span className="font-fraunces-italic text-gradient-sunset" style={{ fontSize: "1.1em", fontWeight: 400 }}>
             <TextScramble text="ten viral clips" />
           </span>
           <br />
@@ -350,6 +350,159 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
             </motion.div>
           ))}
         </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SECTION 02.5 — REAL PRODUCT (clipped dashboard preview)
+// ════════════════════════════════════════════════════════════════════════════
+
+function RealProductPreview() {
+  return (
+    <section
+      id="section-product"
+      className="relative py-20 md:py-28 overflow-hidden"
+    >
+      <div className="relative max-w-7xl mx-auto px-6">
+        <div className="text-center mb-10 max-w-2xl mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>02.5</span>
+            <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
+            <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+              The real product
+            </span>
+          </div>
+          <h2
+            className="font-display font-semibold leading-[1.05]"
+            style={{
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              letterSpacing: "-0.04em",
+            }}
+          >
+            <span style={{ color: "var(--color-text-primary)" }}>This is </span>
+            <span className="font-fraunces-italic" style={{ color: "var(--color-accent)", fontWeight: 400 }}>
+              the dashboard
+            </span>
+            <span style={{ color: "var(--color-text-primary)" }}>.</span>
+          </h2>
+          <p className="mt-4 text-base md:text-lg" style={{ color: "var(--color-text-secondary)" }}>
+            Maya Chen is a real clipper on RelatiV. She earned{" "}
+            <span className="font-mono font-semibold" style={{ color: "var(--color-text-primary)" }}>$1,323</span>{" "}
+            last week cutting one Acme podcast. The dashboard is not a mockup.
+          </p>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="relative max-w-6xl mx-auto"
+        >
+          {/* Device frame with chromatic aberration shadow */}
+          <div
+            className="relative rounded-2xl overflow-hidden"
+            style={{
+              boxShadow: "var(--shadow-premium)",
+              border: "1px solid rgba(60, 50, 30, 0.12)",
+              background: "var(--color-bg-base)",
+            }}
+          >
+            {/* Browser chrome */}
+            <div
+              className="flex items-center gap-2 px-4 py-3 border-b"
+              style={{
+                background: "rgba(255, 252, 242, 0.95)",
+                borderColor: "rgba(60, 50, 30, 0.08)",
+              }}
+            >
+              <div className="flex gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#FB7185", opacity: 0.7 }} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#FBBF24", opacity: 0.7 }} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#10B981", opacity: 0.7 }} />
+              </div>
+              <div
+                className="flex-1 mx-4 px-3 py-1 rounded-md text-[11px] font-mono"
+                style={{
+                  background: "rgba(60, 50, 30, 0.05)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
+                relativclips.com/clippers/dashboard
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                live
+              </span>
+              <span
+                className="relative flex h-1.5 w-1.5"
+              >
+                <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "#10B981" }} />
+              </span>
+            </div>
+            {/* Screenshot */}
+            <img
+              src="/product-clipper-dashboard.png"
+              alt="RelatiV clipper dashboard showing Maya Chen's earnings, active campaigns, and recent clips"
+              className="block w-full h-auto"
+              style={{ display: "block" }}
+            />
+          </div>
+
+          {/* Floating annotation pills */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="hidden md:flex absolute -left-6 top-1/4 px-3.5 py-2 rounded-full items-center gap-2 text-[11px] font-mono"
+            style={{
+              background: "var(--color-bg-base)",
+              boxShadow: "var(--shadow-premium)",
+              border: "1px solid rgba(60, 50, 30, 0.10)",
+            }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#10B981" }} />
+            <span style={{ color: "var(--color-text-primary)" }}>live CPM data</span>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="hidden md:flex absolute -right-6 bottom-1/4 px-3.5 py-2 rounded-full items-center gap-2 text-[11px] font-mono"
+            style={{
+              background: "var(--color-bg-base)",
+              boxShadow: "var(--shadow-premium)",
+              border: "1px solid rgba(60, 50, 30, 0.10)",
+            }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#D946EF" }} />
+            <span style={{ color: "var(--color-text-primary)" }}>view-verified</span>
+          </motion.div>
+        </motion.div>
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-[12px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#10B981" }} />
+            <span>5 clippers earning</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#D946EF" }} />
+            <span>4 live campaigns</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#0EA5E9" }} />
+            <span>2.01M verified views</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#FB7185" }} />
+            <span>$15,880 paid to clippers</span>
+          </span>
+        </div>
       </div>
     </section>
   );
@@ -1714,6 +1867,7 @@ export default function HomePage() {
     <>
       <AnnouncementBar />
       <HeroSection onCtaClick={scrollToDemo} />
+      <RealProductPreview />
       <TrustStrip />
       <DemoSection />
       <EngineBento />
