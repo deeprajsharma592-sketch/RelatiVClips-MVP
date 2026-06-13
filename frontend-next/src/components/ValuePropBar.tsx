@@ -1,18 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { Zap, TrendingUp, DollarSign, Users } from "lucide-react";
+import { Sparkles, Code2, Rocket } from "lucide-react";
 
 /**
- * ValuePropBar — Sticky bar below the header showing 4 key stats that prove
- * the product's value. Helps users understand the proposition immediately.
- * Dusk edition: dark glass, gold accents, monospaced numbers.
+ * ValuePropBar — Sticky bar below the header.
+ *
+ * Honest, beginner-man positioning. No fake scale, no fake numbers.
+ * What we ARE:
+ *  - We just shipped (v2.0 live)
+ *  - We have an open-source code path
+ *  - We're shipping like crazy
+ *
+ * What we're NOT: a company with thousands of users, paid millions.
+ * We'll get there. For now, we're a small team shipping fast.
  */
-const STATS = [
-  { icon: Zap, value: "4.1 min", label: "for a 2h video" },
-  { icon: TrendingUp, value: "97.3%", label: "caption accuracy" },
-  { icon: DollarSign, value: "$15,880", label: "paid to clippers" },
-  { icon: Users, value: "5", label: "clippers earning" },
+const ITEMS = [
+  { icon: Rocket, value: "v2.0 just shipped", label: "May 2026" },
+  { icon: Code2, value: "open codebase", label: "GitHub" },
+  { icon: Sparkles, value: "private beta", label: "DM to join" },
 ];
 
 export default function ValuePropBar() {
@@ -47,9 +53,9 @@ export default function ValuePropBar() {
           </span>
         </div>
 
-        {/* Center — 4 stat pills */}
+        {/* Center — 3 honest pills */}
         <div className="flex items-center gap-1.5 lg:gap-3 overflow-x-auto">
-          {STATS.map((s, i) => {
+          {ITEMS.map((s, i) => {
             const Icon = s.icon;
             return (
               <div key={i} className="flex items-center gap-1.5">
@@ -76,10 +82,10 @@ export default function ValuePropBar() {
                 >
                   {s.label}
                 </span>
-                {i < STATS.length - 1 && (
+                {i < ITEMS.length - 1 && (
                   <span
                     className="hidden lg:inline mx-1.5"
-                    style={{ color: "rgba(255, 245, 220, 0.15)" }}
+                    style={{ color: "var(--color-border-strong)" }}
                   >
                     ·
                   </span>

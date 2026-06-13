@@ -113,12 +113,12 @@ const clip = await render(moment, {
 ];
 
 const VERTICALS = [
-  { tag: "01", title: "Podcasters", body: "Auto-detect the moment your guest says something quotable. Get 10 ready-to-post clips before the episode ends.", metric: "12 min", icon: Mic },
-  { tag: "02", title: "Sports Highlights", body: "Match events synced to commentator energy spikes. Highlight package ready seconds after the whistle.", metric: "8 sec", icon: Activity },
-  { tag: "03", title: "Coaches & Educators", body: "Long lessons, short attention spans. Find the 60-second insight that drives saves and shares.", metric: "4.7×", icon: TrendingUp },
-  { tag: "04", title: "Live E-commerce", body: "Pin the moment of the product reveal, the demo, the discount drop. Conversion-ready reels on the fly.", metric: "+18% CVR", icon: Zap },
-  { tag: "05", title: "Music & Artists", body: "Studio sessions, interviews, behind-the-scenes — distilled to the moments that drive catalog streams.", metric: "320% lift", icon: Hash },
-  { tag: "06", title: "Brand & D2C", body: "Turn one brand film into 200 paid-media variations. Hook analysis built for premium organic reach.", metric: "12× ROI", icon: BarChart3 },
+  { tag: "01", title: "Podcasters", body: "Auto-detect the moment your guest says something quotable. Get clips before the episode ends.", metric: "soon", icon: Mic },
+  { tag: "02", title: "Sports Highlights", body: "Match events synced to commentator energy spikes. Highlight package ready when the whistle blows.", metric: "soon", icon: Activity },
+  { tag: "03", title: "Coaches & Educators", body: "Long lessons, short attention spans. Find the 60-second insight that drives saves and shares.", metric: "soon", icon: TrendingUp },
+  { tag: "04", title: "Live E-commerce", body: "Pin the moment of the product reveal, the demo, the discount drop. Conversion-ready reels on the fly.", metric: "soon", icon: Zap },
+  { tag: "05", title: "Music & Artists", body: "Studio sessions, interviews, behind-the-scenes — distilled to the moments that drive catalog streams.", metric: "soon", icon: Hash },
+  { tag: "06", title: "Brand & D2C", body: "Turn one brand film into many paid-media variations. Hook analysis built for premium organic reach.", metric: "soon", icon: BarChart3 },
 ];
 
 const PRICING = [
@@ -150,7 +150,7 @@ const HOW_STEPS = [
   },
   {
     num: "02", icon: Cpu, title: "Engine runs",
-    body: "Four models score every moment: speech, energy, hook, frame. Ten winners surface in 4 minutes.",
+    body: "Four models score every moment: speech, energy, hook, frame. Winners surface in minutes.",
     artifact: { label: "computed", value: "4,820 turns · 47 peaks · 10 picks" },
   },
   {
@@ -217,7 +217,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
   const particleY = useTransform(scrollYProgress, [0, 1], [0, 120]);
 
   return (
-    <section ref={ref} id="section-0" className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
+    <section ref={ref} id="section-0" className="section-aurora relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-20">
       <motion.div style={{ y: bgY }}>
         <PremiumGrid showDots showColumns showCrosshairs showGlyphs />
       </motion.div>
@@ -339,10 +339,10 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
           className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl"
         >
           {[
-            { v: "97.3%", l: "caption accuracy" },
-            { v: "4.1 min", l: "for 2h video" },
-            { v: "10 clips", l: "per source" },
-            { v: "8.4×", l: "faster than manual" },
+            { v: "60s", l: "average clip" },
+            { v: "10×", l: "output per video" },
+            { v: "0", l: "manual editing" },
+            { v: "auto", l: "captions + titles" },
           ].map((m, i) => (
             <motion.div
               key={m.l}
@@ -373,7 +373,7 @@ function RealProductPreview() {
   return (
     <section
       id="section-product"
-      className="relative py-20 md:py-28 overflow-hidden"
+      className="section-cream relative py-20 md:py-28 overflow-hidden"
     >
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="text-center mb-10 max-w-2xl mx-auto">
@@ -488,19 +488,19 @@ function RealProductPreview() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[12px] font-mono stagger-children" style={{ color: "var(--color-text-muted)" }}>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-mint-500)" }} />
-            <span>5 clippers earning</span>
+            <span>built in Assam, India</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-accent)" }} />
-            <span>4 live campaigns</span>
+            <span>deployed globally</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-cool-cyan)" }} />
-            <span>2.01M verified views</span>
+            <span>private beta — DM to join</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-gold-500)" }} />
-            <span>$15,880 paid to clippers</span>
+            <span>shipped by a small team</span>
           </span>
         </div>
       </div>
@@ -515,9 +515,9 @@ function RealProductPreview() {
 function TrustStrip() {
   return (
     <section
-      className="relative py-16 overflow-hidden"
+      className="section-tint relative py-16 overflow-hidden"
       id="section-1"
-      style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)", borderBottom: "1px solid rgba(60, 50, 30, 0.08)" }}
+      style={{ borderTop: "1px solid var(--color-border)", borderBottom: "1px solid var(--color-border)" }}
     >
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center gap-8">
@@ -611,7 +611,7 @@ function DemoSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="section-2" className="relative py-32 overflow-hidden">
+    <section ref={sectionRef} id="section-2" className="section-gold relative py-32 overflow-hidden">
       <motion.div
         style={{
           y,
@@ -831,7 +831,7 @@ function DemoSection() {
 
 function EngineBento() {
   return (
-    <section id="section-3" className="relative py-32 overflow-hidden">
+    <section id="section-3" className="section-mist relative py-32 overflow-hidden">
       <PremiumGrid showDots showColumns={false} showCrosshairs showGlyphs />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
@@ -923,7 +923,7 @@ function EngineBento() {
 
 function HowItWorksSection() {
   return (
-    <section id="section-4" className="relative py-32 overflow-hidden">
+    <section id="section-4" className="section-default relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
           <div className="flex items-center gap-3 mb-6">
@@ -1101,7 +1101,7 @@ function LiveProductPreview() {
   });
 
   return (
-    <section id="section-5" className="relative py-32 overflow-hidden">
+    <section id="section-5" className="section-pink relative py-32 overflow-hidden">
       <ParticleField density={0.15} />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -1340,7 +1340,7 @@ function LiveProductPreview() {
 
 function HookCurveSection() {
   return (
-    <section id="section-6" className="relative py-32 overflow-hidden">
+    <section id="section-6" className="section-mint relative py-32 overflow-hidden">
       <ParticleField density={0.2} />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -1433,7 +1433,7 @@ function HookCurveSection() {
 
 function VerticalsSection() {
   return (
-    <section id="section-7" className="relative py-32 overflow-hidden">
+    <section id="section-7" className="section-default relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
           <div className="flex items-center gap-3 mb-6">
@@ -1500,7 +1500,7 @@ function VerticalsSection() {
 
 function ForBrandsSection() {
   return (
-    <section id="section-8" className="relative py-32 overflow-hidden">
+    <section id="section-8" className="section-gold relative py-32 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div
           className="glass-panel relative overflow-hidden p-10 md:p-16 hover-glow"
@@ -1527,7 +1527,7 @@ function ForBrandsSection() {
                 style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
               >
                 <span style={{ color: "var(--color-text-primary)" }}>One brand film.</span>{" "}
-                <span className="hero-text text-gradient-ocean">200 cuts.</span>
+                <span className="hero-text text-gradient-ocean">Many cuts.</span>
               </h2>
               <p
                 className="mt-5 text-lg max-w-xl"
@@ -1549,10 +1549,10 @@ function ForBrandsSection() {
 
             <div className="grid grid-cols-2 gap-3">
               {[
-                { k: "Avg ROAS", v: "4.2×", l: "across 200 paid campaigns" },
-                { k: "Cost per clip", v: "$0.18", l: "vs $4.20 in-studio" },
-                { k: "Hook variants", v: "4", l: "A/B/C/D per moment" },
-                { k: "Render time", v: "47s", l: "for 9:16 + 1:1 + 16:9" },
+                { k: "Aspect ratios", v: "9:16 · 1:1 · 16:9", l: "all in one render" },
+                { k: "Hook variants", v: "A / B / C / D", l: "test before spending" },
+                { k: "Captions", v: "auto", l: "your brand fonts + colors" },
+                { k: "Export", v: "MP4 / SRT", l: "drop into any tool" },
               ].map((m, i) => (
                 <motion.div
                   key={m.k}
@@ -1565,7 +1565,7 @@ function ForBrandsSection() {
                   <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
                     {m.k}
                   </p>
-                  <p className="font-display font-semibold text-3xl mt-2 text-gradient-ocean">{m.v}</p>
+                  <p className="font-display font-semibold text-2xl mt-2 text-gradient-ocean">{m.v}</p>
                   <p className="text-[11px] mt-1" style={{ color: "var(--color-text-muted)" }}>
                     {m.l}
                   </p>
@@ -1585,7 +1585,7 @@ function ForBrandsSection() {
 
 function PricingSection() {
   return (
-    <section id="section-9" className="relative py-32 overflow-hidden">
+    <section id="section-9" className="section-cream relative py-32 overflow-hidden">
       <PremiumGrid showDots showColumns showCrosshairs={false} showGlyphs />
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 text-center max-w-2xl mx-auto">
@@ -1695,7 +1695,7 @@ function PricingSection() {
 function FaqSection() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section id="section-10" className="relative py-32 overflow-hidden">
+    <section id="section-10" className="section-mist relative py-32 overflow-hidden">
       <div className="relative max-w-4xl mx-auto px-6">
         <div className="mb-16 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
@@ -1785,7 +1785,7 @@ function FaqSection() {
 
 function CtaSection() {
   return (
-    <section id="section-11" className="relative py-32 overflow-hidden">
+    <section id="section-11" className="section-aurora relative py-32 overflow-hidden">
       <div className="relative max-w-5xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
