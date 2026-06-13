@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Header";
+import ValuePropBar from "@/components/ValuePropBar";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
 import ScrollProgress from "@/components/ScrollProgress";
@@ -173,6 +174,7 @@ export default function RootLayout({
           <CustomCursor />
           <ScrollProgress />
           <Header />
+          <ValuePropBar />
           <main id="main-content" className="flex-1">{children}</main>
           <Footer />
           <CookieBanner />
