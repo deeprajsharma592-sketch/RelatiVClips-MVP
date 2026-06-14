@@ -198,6 +198,58 @@ def _caption_moments_from_transcript(
     return top
 
 
+def _pad_with_temporal_candidates(
+    moments: List["Moment"],
+    video_duration_s: float,
+    target_count: int = 3,
+) -> List["Moment"]:
+    """Ensure we always have at least `target_count` candidate moments.
+
+    If caption-based detection returned fewer (which happens for videos with
+    monotonous pacing — no density peaks, no long pauses), divide the video
+    into N equal temporal segments and add a "temporal" candidate at the
+    center of each segment that doesn't already contain a real moment.
+
+    The padded candidates have low score (0.4) so they never outrank real
+    density/silence peaks, but they guarantee the LLM/fallback always has
+    enough material to pick from. Result: always NUM_CLIPS_YOUTUBE clips
+    instead of 0-1 when captions are monotonous.
+    """
+    if len(moments) >= target_count or video_duration_s < 30.0:
+        return moments
+
+    seg_dur = video_duration_s / target_count
+    used_segs = set()
+    for m in moments:
+        used_segs.add(int(m.start / seg_dur))
+
+    padded = list(moments)
+    for i in range(target_count):
+        if i in used_segs:
+            continue
+        # Center of segment, with a 15s window (the standard clip length)
+        center = (i + 0.5) * seg_dur
+        start = max(0.0, center - 7.5)
+        end = min(video_duration_s, center + 7.5)
+        padded.append(Moment(
+            index=0,  # re-indexed later
+            start=round(start, 2),
+            end=round(end, 2),
+            signal_type="temporal",
+            score=0.4,  # below real peaks (0.6+) but above noise
+            snippet=f"[temporal segment {i+1}/{target_count} — {start:.0f}s to {end:.0f}s]",
+            source="temporal_padding",
+            story_position=center / max(1.0, video_duration_s),
+        ))
+
+    # Re-sort by score, re-index, keep top 20
+    padded.sort(key=lambda m: m.score, reverse=True)
+    top = padded[:20]
+    for i, m in enumerate(top, 1):
+        m.index = i
+    return top
+
+
 # ---------------------------------------------------------------------------
 # Audio-based moment detection (FALLBACK path — only if captions fail)
 # ---------------------------------------------------------------------------
@@ -243,6 +295,8 @@ def _audio_moments_from_file(
         ))
 
     moments.sort(key=lambda m: m.score, reverse=True)
+    # Pad with temporal candidates if too few real audio moments
+    moments = _pad_with_temporal_candidates(moments, video_duration_s, target_count=3)
     # Re-index
     for i, m in enumerate(moments[:20], 1):
         m.index = i
@@ -290,6 +344,9 @@ def detect_moments(
         segs = transcript["segments"]
         info["duration_s"] = float(segs[-1].get("end", 0))
         moments = _caption_moments_from_transcript(transcript, info["duration_s"])
+        # Pad with temporal candidates if too few real moments were found
+        # (guarantees NUM_CLIPS_YOUTUBE clips even for monotonous videos)
+        moments = _pad_with_temporal_candidates(moments, info["duration_s"], target_count=3)
         log(f"  Built {len(moments)} candidate moments from captions (no audio download)")
         return moments, info
 

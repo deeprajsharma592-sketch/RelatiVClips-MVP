@@ -48,14 +48,12 @@ import {
 // on `ClipperOpenCampaign` (used by the dashboard). This local extension
 // is the honest representation of what the backend ships.
 type OpenCampaign = Campaign & { premium?: boolean };
-
 // ─── Filter definitions ───────────────────────────────────────────────────
 // "High CPM" is a hard $10 threshold (the chip label says $10+).
 // Vertical chips match by case-insensitive substring — the backend
 // stores vertical as free text (e.g. "Podcasts · Tech", "D2C · Health").
 type FilterKey =
   | "all"
-  | "high_cpm"
   | "tech"
   | "health"
   | "business"
@@ -63,12 +61,30 @@ type FilterKey =
 
 const FILTERS: { key: FilterKey; label: string; icon?: any }[] = [
   { key: "all", label: "All" },
-  { key: "high_cpm", label: "High CPM ($10+)", icon: TrendingUp },
-  { key: "tech", label: "Tech" },
-  { key: "health", label: "Health" },
-  { key: "business", label: "Business" },
-  { key: "closing_soon", label: "Closing soon", icon: Clock },
+  { key: "tech", label: "Podcasts · Tech", icon: Sparkles },
+  { key: "business", label: "Podcasts · Business" },
+  { key: "health", label: "Podcasts · Health" },
+  { key: "closing_soon", label: "D2C · Wellness", icon: Clock },
 ];
+
+// CPM filter — independent group from the vertical filters above.
+type CpmFilterKey = "any" | "low" | "mid" | "high";
+
+const CPM_FILTERS: { key: CpmFilterKey; label: string }[] = [
+  { key: "any", label: "Any" },
+  { key: "low", label: "$0–5" },
+  { key: "mid", label: "$5–8" },
+  { key: "high", label: "$8+" },
+];
+
+function cpmMatches(cents: number, key: CpmFilterKey): boolean {
+  if (key === "any") return true;
+  const dollars = cents / 100;
+  if (key === "low") return dollars >= 0 && dollars < 5;
+  if (key === "mid") return dollars >= 5 && dollars < 8;
+  if (key === "high") return dollars >= 8;
+  return true;
+}
 
 // ─── Display helpers ──────────────────────────────────────────────────────
 function formatCents(cents: number): string {
@@ -378,6 +394,7 @@ function ClipperCampaignsPageInner() {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [cpmFilter, setCpmFilter] = useState<CpmFilterKey>("any");
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -420,21 +437,28 @@ function ClipperCampaignsPageInner() {
     return map;
   }, [claims]);
 
-  // ─── Apply the active filter ───────────────────────────────────────────
+  // ─── Apply the active filters (vertical + CPM, both AND'd) ────────────
   const filteredCampaigns = useMemo(() => {
-    if (filter === "all") return campaigns;
-    if (filter === "high_cpm") return campaigns.filter((c) => c.cpm_cents >= 1000);
-    if (filter === "tech") return campaigns.filter((c) => verticalMatches(c.vertical, "tech"));
-    if (filter === "health") return campaigns.filter((c) => verticalMatches(c.vertical, "health"));
-    if (filter === "business")
-      return campaigns.filter((c) => verticalMatches(c.vertical, "business"));
-    if (filter === "closing_soon")
-      return campaigns.filter((c) => {
-        const d = daysUntil(c.ends_at);
-        return d !== null && d <= 7 && d >= 0;
-      });
-    return campaigns;
-  }, [campaigns, filter]);
+    let result = campaigns;
+    if (filter !== "all") {
+      if (filter === "tech")
+        result = result.filter((c) => verticalMatches(c.vertical, "tech"));
+      else if (filter === "health")
+        result = result.filter((c) => verticalMatches(c.vertical, "health"));
+      else if (filter === "business")
+        result = result.filter((c) => verticalMatches(c.vertical, "business"));
+      else if (filter === "closing_soon") {
+        result = result.filter((c) => {
+          const d = daysUntil(c.ends_at);
+          return d !== null && d <= 7 && d >= 0;
+        });
+      }
+    }
+    if (cpmFilter !== "any") {
+      result = result.filter((c) => cpmMatches(c.cpm_cents, cpmFilter));
+    }
+    return result;
+  }, [campaigns, filter, cpmFilter]);
 
   // ─── Auth: still resolving ─────────────────────────────────────────────
   if (authLoading) {
@@ -557,7 +581,7 @@ function ClipperCampaignsPageInner() {
   // (campaigns.length === 0 with no error means the marketplace has no live drops)
 
   return (
-    <section className="relative pt-28 md:pt-32 pb-20 px-4 md:px-6">
+    <section className="relative pt-24 md:pt-28 pb-20 px-4 md:px-6 overflow-hidden">
       {/* Ambient glows — match the rest of the cream-glass pages */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div
@@ -575,27 +599,103 @@ function ClipperCampaignsPageInner() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <SectionMarker
-            num="01"
-            label="Open campaigns"
-            subtitle={
-              !isFirstLoad
-                ? `${filteredCampaigns.length} live · ${claims.length} claimed by you`
-                : undefined
-            }
-          />
-          <p
-            className="text-sm md:text-base max-w-2xl mt-2"
+        {/* Hero block — matches the campaigns-marketing aesthetic */}
+        <div className="text-center mb-12">
+          {/* 01 / OPEN CAMPAIGNS marker */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-3 mb-6"
+          >
+            <span
+              className="text-[11px] font-mono tracking-widest tabular-nums"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              01
+            </span>
+            <span
+              className="h-px w-10"
+              style={{ background: "var(--color-border-strong)" }}
+            />
+            <span
+              className="text-[11px] font-mono uppercase tracking-widest"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              Open campaigns
+            </span>
+          </motion.div>
+
+          {/* Live-payout badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.45, delay: 0.05 }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-card mb-7"
+          >
+            <span className="relative inline-flex h-2 w-2">
+              <span
+                className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+                style={{ background: "var(--color-success)" }}
+              />
+              <span
+                className="relative inline-flex h-2 w-2 rounded-full"
+                style={{ background: "var(--color-success)" }}
+              />
+            </span>
+            <span
+              className="text-[12px] font-mono"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              {!isFirstLoad
+                ? `${filteredCampaigns.length} live · payouts every Monday`
+                : "live · payouts every Monday"}
+            </span>
+          </motion.div>
+
+          {/* Big two-line hero heading */}
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-display font-semibold leading-[1.02] tracking-[-0.04em] max-w-4xl mx-auto"
+            style={{
+              fontSize: "clamp(2.5rem, 7vw, 5.5rem)",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Paid clipping{" "}
+            <span
+              className="font-fraunces-italic"
+              style={{
+                color: "var(--color-accent)",
+                fontWeight: 400,
+                fontStyle: "italic",
+              }}
+            >
+              campaigns.
+            </span>
+            <br />
+            Apply once. Get matched.
+          </motion.h1>
+
+          {/* Subtext with italic accent */}
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-6 text-base md:text-lg max-w-2xl mx-auto"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            <span className="font-serif italic" style={{ color: "var(--color-text-primary)" }}>
+            <span
+              className="font-fraunces-italic"
+              style={{ color: "var(--color-text-primary)" }}
+            >
               Pick a brief,
             </span>{" "}
-            claim a slot, post your clip, get paid per 1K verified views. Payouts
-            every Monday.
-          </p>
+            pick your CPM, and start clipping. The clipper network competes
+            for slots. Payouts every Monday.
+          </motion.p>
         </div>
 
         {/* Inline claim-error toast (e.g. "slot already taken") */}
@@ -632,27 +732,56 @@ function ClipperCampaignsPageInner() {
           )}
         </AnimatePresence>
 
-        {/* Filter chips */}
-        <div className="glass-card p-4 mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Filter className="h-3.5 w-3.5" style={{ color: "var(--color-text-muted)" }} />
-            <span
-              className="text-[10px] font-mono uppercase tracking-widest"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              Filter
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {FILTERS.map((f) => (
-              <FilterChip
-                key={f.key}
-                active={filter === f.key}
-                onClick={() => setFilter(f.key)}
-                label={f.label}
-                icon={f.icon}
-              />
-            ))}
+        {/* Filter chips — sticky on desktop so they stay visible while
+            scrolling the campaign grid */}
+        <div className="sticky top-20 z-30 -mx-4 md:-mx-6 px-4 md:px-6 mb-6">
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="h-3.5 w-3.5" style={{ color: "var(--color-text-muted)" }} />
+              <span
+                className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Filter
+              </span>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+              {/* Vertical filter group */}
+              <div className="flex items-start gap-2 flex-wrap">
+                <span
+                  className="text-[10px] font-mono uppercase tracking-widest self-center mr-1 shrink-0"
+                  style={{ color: "var(--color-text-faint)" }}
+                >
+                  Vertical
+                </span>
+                {FILTERS.map((f) => (
+                  <FilterChip
+                    key={f.key}
+                    active={filter === f.key}
+                    onClick={() => setFilter(f.key)}
+                    label={f.label}
+                    icon={f.icon}
+                  />
+                ))}
+              </div>
+              {/* CPM filter group */}
+              <div className="flex items-start gap-2 flex-wrap">
+                <span
+                  className="text-[10px] font-mono uppercase tracking-widest self-center mr-1 shrink-0"
+                  style={{ color: "var(--color-text-faint)" }}
+                >
+                  CPM
+                </span>
+                {CPM_FILTERS.map((c) => (
+                  <FilterChip
+                    key={c.key}
+                    active={cpmFilter === c.key}
+                    onClick={() => setCpmFilter(c.key)}
+                    label={c.label}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

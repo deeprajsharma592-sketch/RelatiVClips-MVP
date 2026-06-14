@@ -27,14 +27,12 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertCircle,
-  ArrowRight,
   Check,
   ChevronRight,
   ExternalLink,
   Loader2,
   LogIn,
   Mic,
-  Play,
   RefreshCw,
   Rss,
   Sparkles,
@@ -44,6 +42,7 @@ import {
 } from "lucide-react";
 import DashboardShell, { type SidebarKey } from "@/components/dashboard/Sidebar";
 import StatCard from "@/components/dashboard/StatCard";
+import PasteLinkPod from "./PasteLinkPod";
 import { useAuth } from "@/lib/AuthContext";
 import {
   fetchCreatorDashboard,
@@ -501,6 +500,8 @@ function CreatorOverview({ data }: { data: CreatorDashboardData }) {
 
   return (
     <>
+      <PasteLinkPod />
+
       {/* 01 · KPI strip */}
       <section className="mb-10">
         <SectionHeader index="01" label="This month" />
@@ -616,56 +617,6 @@ function CreatorOverview({ data }: { data: CreatorDashboardData }) {
             </AnimatePresence>
           </div>
         )}
-      </section>
-
-      {/* 06 · CTA */}
-      <section className="mb-6">
-        <div
-          className="glass-panel p-8 text-center relative overflow-hidden"
-          style={{ borderRadius: "var(--radius-2xl)" }}
-        >
-          <div
-            className="absolute -top-32 -right-32 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.18) 0%, transparent 70%)" }}
-          />
-          <div
-            className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(6, 182, 212, 0.14) 0%, transparent 70%)" }}
-          />
-          <div className="relative">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>
-                06
-              </span>
-              <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
-              <span
-                className="text-[11px] font-mono uppercase tracking-wider"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Upload a new episode
-              </span>
-            </div>
-            <h2
-              className="font-display font-semibold tracking-tight mb-3"
-              style={{ fontSize: "clamp(1.75rem, 3vw, 2.5rem)", lineHeight: 1.1 }}
-            >
-              <span style={{ color: "var(--color-text-primary)" }}>Drop a YouTube link. </span>
-              <span className="hero-text text-gradient-sunset">Get 10 clips.</span>
-            </h2>
-            <p
-              className="text-[14px] max-w-md mx-auto"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
-              Paste a URL from your channel. The engine transcribes, scores, and renders clips
-              matched to active brand deals.
-            </p>
-            <Link href="/" className="btn-primary btn-shine mt-6 inline-flex items-center gap-2">
-              <Play className="h-4 w-4" fill="white" />
-              Paste a URL
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
       </section>
     </>
   );

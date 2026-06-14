@@ -117,6 +117,117 @@ async def health_check():
     return {"status": "healthy", "version": "2.0.0"}
 
 
+@app.get("/llm-status")
+async def llm_status():
+    """Show LLM chain configuration and circuit breaker state. Useful for ops.
+
+    Returns configured providers, which one would be used next, and breaker state.
+    If you see 'groq' in providers_configured with breaker closed, the LLM is live.
+    """
+    try:
+        from .llm.chain import chain_status
+        return chain_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/proxy-status")
+async def proxy_status():
+    """Test the YouTube proxy chain + show config. Run 3 fresh YouTube fetches
+    through the rotating endpoint to confirm it's not rate-limited.
+    """
+    import os
+    import time
+    import urllib.request
+    from .utils.config import get_proxy, YT_PROXY
+
+    pool_raw = os.getenv("YT_PROXY_POOL", "").strip()
+    out = {
+        "yt_proxy_env": YT_PROXY or None,
+        "yt_proxy_pool_env": pool_raw or None,
+        "pool_size": len([p for p in pool_raw.split(",") if p.strip()]) if pool_raw else 0,
+        "current_proxy_choice": get_proxy(),
+        "tests": [],
+    }
+    # Test 3 fresh fetches to YouTube's timedtext endpoint (small, fast, no bot check)
+    for i in range(3):
+        proxy = get_proxy()
+        if not proxy:
+            out["tests"].append({"attempt": i + 1, "skipped": "no proxy configured"})
+            continue
+        try:
+            t0 = time.monotonic()
+            req = urllib.request.Request(
+                "https://www.youtube.com/api/timedtext?v=dQw4w9WgXcQ&lang=en&fmt=vtt",
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            opener = urllib.request.build_opener(
+                urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+            )
+            opener.open(req, timeout=10).read()
+            ms = int((time.monotonic() - t0) * 1000)
+            out["tests"].append({"attempt": i + 1, "proxy": proxy, "ok": True, "ms": ms})
+        except Exception as e:
+            out["tests"].append({"attempt": i + 1, "proxy": proxy, "ok": False, "error": str(e)[:120]})
+    out["healthy"] = sum(1 for t in out["tests"] if t.get("ok")) >= 1
+    return out
+
+
+@app.get("/cookie-status")
+async def cookie_status():
+    """Parse the YouTube cookies file and show expiry health.
+
+    Returns count of cookies by domain, and which auth cookies are expiring soon.
+    """
+    import datetime
+    import time
+    from pathlib import Path
+
+    from .utils.config import COOKIES_PATH
+    p = Path(COOKIES_PATH) if COOKIES_PATH else None
+    out = {
+        "cookies_path": str(p) if p else None,
+        "exists": p.exists() if p else False,
+        "size_bytes": p.stat().st_size if p and p.exists() else 0,
+        "youtube_cookies": [],
+        "expiring_30d": 0,
+        "expired": 0,
+    }
+    if not (p and p.exists()):
+        return out
+    now = int(time.time())
+    soon = now + 30 * 24 * 3600
+    domains = {}
+    with open(p, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 7:
+                continue
+            domain, _path, _secure, _expiry_kind, expiry, name, *_ = parts
+            try:
+                expiry_i = int(expiry)
+            except ValueError:
+                continue
+            d = domain.lstrip(".").lower()
+            domains.setdefault(d, []).append((name, expiry_i))
+            if expiry_i and expiry_i < now:
+                out["expired"] += 1
+            elif expiry_i and expiry_i < soon:
+                out["expiring_30d"] += 1
+    out["domain_counts"] = {d: len(v) for d, v in sorted(domains.items(), key=lambda x: -len(x[1]))[:15]}
+    yt = domains.get("youtube.com", []) + domains.get(".youtube.com", [])
+    out["youtube_cookies"] = [
+        {"name": n, "expires": e, "expires_in_days": round((e - now) / 86400) if e else None}
+        for n, e in sorted(yt, key=lambda x: -x[1])[:25]
+    ]
+    out["earliest_youtube_expiry_days"] = (
+        round((min(e for _, e in yt) - now) / 86400) if yt else None
+    )
+    return out
+
+
 @app.post("/contact")
 async def contact(msg: ContactMessage):
     print(f"[Contact] From: {msg.email} | Subject: {msg.subject} | Message: {msg.message[:100]}")

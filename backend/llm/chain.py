@@ -17,6 +17,7 @@ If all providers fail (or none are configured), we fall back to the
 energy-based heuristic via `taste.selector._fallback_selection`.
 """
 import logging
+import os
 import time
 from threading import Lock
 from typing import Callable, List, Optional, Tuple
@@ -151,6 +152,14 @@ def _build_deepseek_callable() -> Optional[Callable[[str], str]]:
     return _ds_generate
 
 
+def _build_groq_callable() -> Optional[Callable[[str], str]]:
+    """Return a callable that calls Groq, or None if not configured."""
+    if not os.getenv("GROQ_API_KEY", ""):
+        return None
+    from .groq_client import generate as _groq_generate
+    return _groq_generate
+
+
 # --- The chain ---
 
 
@@ -160,6 +169,7 @@ def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
     Empty list means no provider is configured — callers must fall back
     to the energy-based heuristic.
     """
+    groq = _build_groq_callable()
     claude = _build_claude_callable()
     deepseek = _build_deepseek_callable()
 
@@ -167,15 +177,21 @@ def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
         return [("claude", claude)] if claude else []
     if LLM_PROVIDER == "deepseek":
         return [("deepseek", deepseek)] if deepseek else []
+    if LLM_PROVIDER == "groq":
+        return [("groq", groq)] if groq else []
     if LLM_PROVIDER == "both":
         chain = []
         if claude:
             chain.append(("claude", claude))
         if deepseek:
             chain.append(("deepseek", deepseek))
+        if groq:
+            chain.append(("groq", groq))
         return chain
-    # "auto" / default: claude > deepseek > minimax
+    # "auto" / default: groq (free, fast) > claude > deepseek > minimax
     chain = []
+    if groq:
+        chain.append(("groq", groq))
     if claude:
         chain.append(("claude", claude))
     if deepseek:
@@ -216,6 +232,8 @@ def call_with_fallback(prompt: str) -> Tuple[Optional[str], Optional[str]]:
 def available_providers() -> List[str]:
     """Return the names of providers that are configured (ignoring breakers)."""
     names = []
+    if os.getenv("GROQ_API_KEY", ""):
+        names.append("groq")
     if ANTHROPIC_API_KEY:
         names.append("claude")
     if DEEPSEEK_API_KEY:

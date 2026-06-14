@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Callable
 
-from ..utils.config import TEMP_DIR, YTDLP_PATH, COOKIES_PATH
+from ..utils.config import TEMP_DIR, YTDLP_PATH, COOKIES_PATH, get_proxy
 
 
 def _extract_video_id(url: str) -> str:
@@ -113,16 +113,27 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         "--remote-components", "ejs:github",
     ]
 
+    # Copy cookies to /tmp to avoid yt-dlp's save_cookies corrupting the source
+    _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
-        cmd.extend(["--cookies", str(COOKIES_PATH)])
+        import shutil
+        _working = "/tmp/youtube_cookies_working.txt"
+        try:
+            shutil.copy2(str(COOKIES_PATH), _working)
+            _cookies_arg = _working
+        except Exception:
+            _cookies_arg = str(COOKIES_PATH)
+        cmd.extend(["--cookies", _cookies_arg])
+    _proxy = get_proxy()
+    if _proxy:
+        cmd.extend(["--proxy", _proxy])
 
     cmd.append(url)
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-
-        if result.returncode != 0:
-            log(f"  yt-dlp subtitle download returned {result.returncode}")
+        result = _run_with_retry(cmd, log, label="subtitle download", max_attempts=4, timeout=120)
+        if result is None or result.returncode != 0:
+            log("  yt-dlp subtitle download failed after retries")
             return None
 
         segments = []
@@ -213,15 +224,26 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         url,
     ]
 
+    # Copy cookies to /tmp to avoid yt-dlp's save_cookies corrupting the source
+    _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
-        cmd.extend(["--cookies", str(COOKIES_PATH)])
+        import shutil
+        _working = "/tmp/youtube_cookies_working.txt"
+        try:
+            shutil.copy2(str(COOKIES_PATH), _working)
+            _cookies_arg = _working
+        except Exception:
+            _cookies_arg = str(COOKIES_PATH)
+        cmd.extend(["--cookies", _cookies_arg])
+    _proxy = get_proxy()
+    if _proxy:
+        cmd.extend(["--proxy", _proxy])
 
     try:
         log("  Downloading audio...")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-
-        if result.returncode != 0:
-            log(f"  Audio download failed: {result.stderr[:100]}")
+        result = _run_with_retry(cmd, log, label="audio download", max_attempts=4, timeout=600)
+        if result is None or result.returncode != 0:
+            log(f"  Audio download failed after retries")
             return None
 
         if audio_path.exists() and audio_path.stat().st_size > 0:
@@ -286,3 +308,29 @@ def fetch_transcript(
         return transcript
 
     return {"segments": [], "language": "en", "source": None}
+
+def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, timeout: int = 120):
+    """Run a yt-dlp command with retries on transient failures (rc=1, bot blocks).
+
+    YouTube's anti-bot sometimes returns rc=1 for specific Webshare rotating-proxy
+    IPs. A different IP on the next call often works. We retry with exponential backoff.
+    """
+    import time
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            if result.returncode == 0:
+                return result
+            err_snippet = (result.stderr or "")[:150].replace("\n", " ")
+            if log_fn:
+                log_fn(f"  [{label}] attempt {attempt}/{max_attempts} failed (rc={result.returncode}): {err_snippet}")
+        except subprocess.TimeoutExpired:
+            if log_fn:
+                log_fn(f"  [{label}] attempt {attempt}/{max_attempts} timed out after {timeout}s")
+        except Exception as e:
+            if log_fn:
+                log_fn(f"  [{label}] attempt {attempt}/{max_attempts} crashed: {e}")
+        if attempt < max_attempts:
+            backoff = 3 * attempt
+            time.sleep(backoff)
+    return None

@@ -31,7 +31,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - BGUTIL_POT_BASE_URL=http://bgutil:4416
       - YT_PROXY=${YT_PROXY:-}
-      - JWT_SECRET=${JWT_SECRET:-}
+      - YT_PROXY_POOL=${YT_PROXY_POOL:-http://notwsorf-rotate:314mswy67hf9@p.webshare.io:80/}
+      - JWT_SECRET=***
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
       - IP_SALT=${IP_SALT:-relativ-default-salt}
     depends_on:
@@ -40,6 +41,7 @@ services:
     volumes:
       - ./outputs:/app/outputs
       - ./temp:/app/temp
+      - ./cookies.txt:/app/cookies.txt
     networks:
       - relativ_mesh
     restart: unless-stopped

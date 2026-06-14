@@ -35,7 +35,7 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower().strip()
 # Legacy alias; "LLM_PROVIDER_PRIORITY" still works for back-compat.
 LLM_PROVIDER_PRIORITY = [
-    p.strip() for p in os.getenv("LLM_PROVIDER_PRIORITY", "claude,deepseek,minimax").split(",")
+    p.strip() for p in os.getenv("LLM_PROVIDER_PRIORITY", "groq,claude,deepseek,minimax").split(",")
     if p.strip()
 ]
 
@@ -147,3 +147,20 @@ if PIPELINE_VERSION not in (1, 2):
 NUM_SNAPSHOTS_PER_CLIP = 3
 SNAPSHOT_JPEG_QUALITY = 90
 SNAPSHOT_OUTPUT_SIZE = (720, 1280)
+
+# --- Proxy pool (rotating residential) ---
+# YT_PROXY_POOL="http://u:p@h:p,http://u:p@h:p,..." rotates per yt-dlp call
+# Falls back to single YT_PROXY (legacy) for back-compat.
+import random as _random
+_PROXY_POOL_RAW = os.getenv("YT_PROXY_POOL", "").strip()
+if _PROXY_POOL_RAW:
+    _PROXY_POOL = [p.strip() for p in _PROXY_POOL_RAW.split(",") if p.strip()]
+else:
+    _PROXY_POOL = [YT_PROXY] if YT_PROXY else []
+
+
+def get_proxy():
+    """Pick a random proxy from the pool. Returns None if pool is empty."""
+    if not _PROXY_POOL:
+        return None
+    return _random.choice(_PROXY_POOL)
