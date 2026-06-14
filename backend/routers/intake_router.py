@@ -14,6 +14,7 @@ from collections import defaultdict
 from threading import Lock
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field, EmailStr
 
 from ..models import (
     BrandContact,
@@ -22,6 +23,7 @@ from ..models import (
     ClipperApplication,
 )
 from ..store import intake
+import logging
 
 
 router = APIRouter(prefix="/api/v1", tags=["intake"])
@@ -37,6 +39,7 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     # (max_requests, window_seconds)
     "/clippers/apply": (10, 60),    # 10 per minute per IP
     "/brands/contact": (10, 60),    # 10 per minute per IP
+    "/support/contact": (10, 60),   # 10 per minute per IP
     "/campaigns/quote": (60, 60),   # 60 per minute per IP (calculator is a UI call)
 }
 _rate_log: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
@@ -119,3 +122,35 @@ async def intake_counts() -> dict:
     token before exposing publicly.
     """
     return intake.intake_counts()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Public support contact form (backed by /contact page)
+# Different from /brands/contact (sales) — this is for general support
+# inquiries from any visitor, with a simple {email, subject, message} shape.
+# ─────────────────────────────────────────────────────────────────────────────
+class SupportMessage(BaseModel):
+    email: str = Field(..., min_length=3, max_length=200)
+    subject: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=1, max_length=4000)
+
+
+@router.post("/support/contact")
+async def support_contact(msg: SupportMessage, request: Request) -> dict:
+    """
+    Receive a support message from /contact page. Logs to stdout
+    (piped to email/Slack via Vector/Logtail) and returns a confirmation.
+    Not persisted to the in-memory store — support messages are
+    handled asynchronously by the engineering team.
+    """
+    ip = _client_ip(request)
+    _check_rate_limit(ip, "/support/contact")
+    logger = logging.getLogger("relativ.support")
+    logger.info(
+        "support_message ip=%s email=%s subject=%r body_len=%d",
+        ip, msg.email, msg.subject[:60], len(msg.message),
+    )
+    return {
+        "ok": True,
+        "message": "Message received. We'll respond within 24 hours.",
+    }
