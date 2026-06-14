@@ -1811,18 +1811,13 @@ pre *:focus-visible,
   opacity: 0.5;
 }
 
-/* Inverted in light mode — section-dark becomes a dramatic warm-charcoal break */
+/* In light mode: section-dark is a subtle warm-tint variation (works with default text colors) */
 :root .section-dark {
-  background: linear-gradient(180deg, #1A1814 0%, #100E0A 50%, #1A1814 100%);
-  color: #FAF7F0;
+  background: var(--color-bg-tint);
+  color: var(--color-text-primary);
 }
 
-:root .section-dark h1, :root .section-dark h2, :root .section-dark h3,
-:root .section-dark p, :root .section-dark span:not([data-mono]) {
-  color: #FAF7F0;
-}
-
-/* In dark mode, section-dark goes true black with CIRCLE-FADED grid */
+/* In dark mode: section-dark goes true black with CIRCLE-FADED grid (text stays light via text-primary) */
 .dark .section-dark {
   background: #000000;
   background-image:
