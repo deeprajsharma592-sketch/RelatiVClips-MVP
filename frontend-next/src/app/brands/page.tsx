@@ -252,7 +252,7 @@ export default function BrandsPage() {
                     className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
                     style={{ background: "var(--gradient-sunset)", boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)" }}
                   >
-                    <span className="font-display font-bold text-white text-xl">{i + 1}</span>
+                    <span className="font-display font-bold text-text-primary text-xl">{i + 1}</span>
                   </div>
                   <h3
                     className="font-display font-semibold text-xl mb-3"

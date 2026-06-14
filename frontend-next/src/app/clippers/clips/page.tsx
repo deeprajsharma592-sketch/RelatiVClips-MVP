@@ -566,7 +566,7 @@ function ClipperClipsBody() {
           </div>
           <Link
             href="/clippers/campaigns"
-            className="btn-shine inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-full text-white transition-all hover:-translate-y-0.5 shrink-0"
+            className="btn-shine inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-full text-text-primary transition-all hover:-translate-y-0.5 shrink-0"
             style={{
               background: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
               boxShadow: "0 4px 12px rgba(139, 92, 246, 0.30)",
@@ -647,7 +647,7 @@ function ClipperClipsBody() {
             </p>
             <Link
               href="/clippers/campaigns"
-              className="btn-shine inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-full text-white transition-all hover:-translate-y-0.5"
+              className="btn-shine inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-full text-text-primary transition-all hover:-translate-y-0.5"
               style={{
                 background: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
                 boxShadow: "0 6px 18px rgba(139, 92, 246, 0.35)",

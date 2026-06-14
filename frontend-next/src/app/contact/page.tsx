@@ -57,7 +57,7 @@ export default function ContactPage() {
           </span>
           <div className="h-px flex-1 bg-gradient-to-r from-accent to-transparent" />
         </div>
-        <h1 className="text-4xl font-display font-bold text-white mb-3">
+        <h1 className="text-4xl font-display font-bold text-text-primary mb-3">
           Contact <span className="text-accent">Support</span>
         </h1>
         <p className="text-base text-text-muted max-w-2xl font-sans">
@@ -68,7 +68,7 @@ export default function ContactPage() {
       <div className="bento-grid">
         <BentoCard colSpan={7} glow="accent">
           <div className="space-y-6">
-            <h2 className="text-lg font-display font-bold text-white">
+            <h2 className="text-lg font-display font-bold text-text-primary">
               Send a Message
             </h2>
 
@@ -142,7 +142,7 @@ export default function ContactPage() {
                 <motion.button
                   onClick={handleSubmit}
                   disabled={sending || sent}
-                  className="px-6 py-3 bg-accent text-white text-sm font-semibold rounded-[4px] font-sans disabled:opacity-30"
+                  className="px-6 py-3 bg-accent text-text-primary text-sm font-semibold rounded-[4px] font-sans disabled:opacity-30"
                   whileHover={!sending && !sent ? { scale: 1.02, boxShadow: "0 0 20px rgba(77,77,255,0.3)" } : {}}
                   whileTap={!sending && !sent ? { scale: 0.98 } : {}}
                 >
@@ -151,7 +151,7 @@ export default function ContactPage() {
                 {sent && (
                   <motion.button
                     onClick={() => setSent(false)}
-                    className="px-4 py-3 bg-transparent border border-border text-text-muted text-sm rounded-[4px] font-sans hover:text-white transition-colors"
+                    className="px-4 py-3 bg-transparent border border-border text-text-muted text-sm rounded-[4px] font-sans hover:text-text-primary transition-colors"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                   >
@@ -165,7 +165,7 @@ export default function ContactPage() {
 
         <BentoCard colSpan={5} glow="secondary">
           <div className="space-y-6">
-            <h2 className="text-lg font-display font-bold text-white">
+            <h2 className="text-lg font-display font-bold text-text-primary">
               Contact Info
             </h2>
 

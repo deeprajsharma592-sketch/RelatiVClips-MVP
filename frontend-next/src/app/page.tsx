@@ -742,7 +742,7 @@ function DemoSection() {
                 {state === "idle" && (
                   <div className="p-8 text-center min-h-[300px] flex flex-col items-center justify-center">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: "var(--gradient-sunset)", boxShadow: "0 4px 16px rgba(217,70,239,0.25)" }}>
-                      <Wand2 className="h-6 w-6 text-white" />
+                      <Wand2 className="h-6 w-6 text-text-primary" />
                     </div>
                     <p className="text-sm font-medium" style={{ color: "var(--color-text-primary)" }}>Your clips will appear here</p>
                     <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>Paste a YouTube URL or load a demo</p>
@@ -782,7 +782,7 @@ function DemoSection() {
                         style={{ background: "rgba(255, 252, 242, 0.75)", border: "1px solid rgba(60, 50, 30, 0.06)" }}
                       >
                         <div
-                          className="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-mono font-semibold text-white text-sm"
+                          className="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-mono font-semibold text-text-primary text-sm"
                           style={{ background: `linear-gradient(135deg, #FB7185, #8B5CF6)` }}
                         >
                           {i + 1}
@@ -873,7 +873,7 @@ function EngineBento() {
                         boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)",
                       }}
                     >
-                      <Icon className="h-5 w-5 text-white" />
+                      <Icon className="h-5 w-5 text-text-primary" />
                     </div>
                     <div>
                       <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>
@@ -983,7 +983,7 @@ function HowItWorksSection() {
                       boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)",
                     }}
                   >
-                    <Icon className="h-5 w-5 text-white" />
+                    <Icon className="h-5 w-5 text-text-primary" />
                   </div>
 
                   <h3

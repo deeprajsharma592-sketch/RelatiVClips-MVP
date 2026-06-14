@@ -189,7 +189,7 @@ function LoginForm() {
                     initial={{ opacity: 0, scale: 0.7 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.7 }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center text-[12px] font-bold text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center text-[12px] font-bold text-text-primary"
                     style={{ background: "var(--color-error)" }}
                   >
                     !
@@ -200,7 +200,7 @@ function LoginForm() {
                     initial={{ opacity: 0, scale: 0.7 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.7 }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center text-[12px] font-bold text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center text-[12px] font-bold text-text-primary"
                     style={{ background: "var(--color-success)" }}
                   >
                     ✓
@@ -286,7 +286,7 @@ function LoginForm() {
             {submitting ? (
               <>
                 <motion.span
-                  className="inline-block h-4 w-4 rounded-full border-2 border-white/30 border-t-white"
+                  className="inline-block h-4 w-4 rounded-full border-2 border-border border-t-text-primary"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
                 />

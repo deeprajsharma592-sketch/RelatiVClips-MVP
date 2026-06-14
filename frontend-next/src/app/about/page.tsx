@@ -18,7 +18,7 @@ export default function AboutPage() {
           </span>
           <div className="h-px flex-1 bg-gradient-to-r from-accent to-transparent" />
         </div>
-        <h1 className="text-4xl font-display font-bold text-white mb-3">
+        <h1 className="text-4xl font-display font-bold text-text-primary mb-3">
           About <span className="text-accent">RelatiV</span>
         </h1>
         <p className="text-base text-text-muted max-w-2xl font-sans">
@@ -28,7 +28,7 @@ export default function AboutPage() {
 
       <div className="bento-grid">
         <BentoCard colSpan={6} glow="accent">
-          <h2 className="text-lg font-display font-bold text-white mb-4">
+          <h2 className="text-lg font-display font-bold text-text-primary mb-4">
             Our Mission
           </h2>
           <p className="text-sm text-text-muted font-sans leading-relaxed">
@@ -42,7 +42,7 @@ export default function AboutPage() {
         </BentoCard>
 
         <BentoCard colSpan={6} glow="secondary">
-          <h2 className="text-lg font-display font-bold text-white mb-4">
+          <h2 className="text-lg font-display font-bold text-text-primary mb-4">
             The Technology
           </h2>
           <p className="text-sm text-text-muted font-sans leading-relaxed">

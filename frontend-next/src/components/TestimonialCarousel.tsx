@@ -63,7 +63,7 @@ export default function TestimonialCarousel() {
           className="text-center max-w-2xl mx-auto"
         >
           <span className="text-3xl text-accent/30 font-serif leading-none">&ldquo;</span>
-          <p className="text-lg md:text-xl text-white font-sans leading-relaxed -mt-2">
+          <p className="text-lg md:text-xl text-text-primary font-sans leading-relaxed -mt-2">
             {t.quote}
           </p>
           <span className="text-3xl text-accent/30 font-serif leading-none block -mt-1">&rdquo;</span>
@@ -73,7 +73,7 @@ export default function TestimonialCarousel() {
               <span className="font-mono text-xs text-accent">{t.author.charAt(0)}</span>
             </div>
             <div className="text-left">
-              <p className="text-sm font-sans text-white">{t.author}</p>
+              <p className="text-sm font-sans text-text-primary">{t.author}</p>
               <p className="text-xs text-text-muted">{t.title}</p>
             </div>
             <div className="h-8 w-px bg-border" />

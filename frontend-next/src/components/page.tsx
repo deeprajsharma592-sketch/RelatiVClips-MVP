@@ -128,7 +128,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2 mb-8 border border-white/10 bg-white/[0.03] backdrop-blur-sm px-3 py-1.5 rounded-full"
+          className="inline-flex items-center gap-2 mb-8 border border-border bg-text-primary/[0.03] backdrop-blur-sm px-3 py-1.5 rounded-full"
         >
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
@@ -145,11 +145,11 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
           transition={{ duration: 0.7, delay: 0.05 }}
           className="font-display font-bold tracking-tight text-[clamp(2.5rem,7vw,6rem)] leading-[0.95] max-w-5xl"
         >
-          <span className="block text-white">Turn one video into</span>
+          <span className="block text-text-primary">Turn one video into</span>
           <span className="block bg-gradient-to-r from-accent via-accent-secondary to-accent bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient">
             10 viral clips
           </span>
-          <span className="block text-white/90">in 60 seconds.</span>
+          <span className="block text-text-primary">in 60 seconds.</span>
         </motion.h1>
 
         <motion.p
@@ -188,7 +188,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
 
           <Link
             href="/services"
-            className="text-text-muted hover:text-white transition-colors text-sm font-sans flex items-center gap-2 px-4 py-3"
+            className="text-text-muted hover:text-text-primary transition-colors text-sm font-sans flex items-center gap-2 px-4 py-3"
           >
             See the engine
             <span className="text-xs font-mono">[demo]</span>
@@ -248,7 +248,7 @@ function TrustBar() {
   // duplicate for seamless marquee
   const loop = [...items, ...items];
   return (
-    <section className="relative border-y border-white/5 bg-black/40 py-8 overflow-hidden">
+    <section className="relative border-y border-border bg-bg-deep/40 py-8 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-5">
         <p className="text-xs font-mono text-text-muted text-center">
           Built on <span className="text-accent font-semibold">open source</span> · no vendor lock-in · self-host in 5 min
@@ -263,7 +263,7 @@ function TrustBar() {
           {loop.map((label, i) => (
             <div
               key={`${label}-${i}`}
-              className="flex items-center gap-2 shrink-0 text-sm font-mono text-white/70"
+              className="flex items-center gap-2 shrink-0 text-sm font-mono text-text-secondary"
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent/60" />
               {label}
@@ -353,12 +353,12 @@ function DemoSection() {
 
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
-          <div className="inline-flex items-center gap-2 border border-white/10 bg-white/[0.03] backdrop-blur-sm px-3 py-1.5 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 border border-border bg-text-primary/[0.03] backdrop-blur-sm px-3 py-1.5 rounded-full mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary" />
             <span className="text-xs font-mono text-text-muted">STEP 01 · 02 · 03</span>
           </div>
           <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05]">
-            <span className="text-white">Paste a URL.</span>
+            <span className="text-text-primary">Paste a URL.</span>
             <br />
             <span className="bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">
               Get ten clips.
@@ -370,7 +370,7 @@ function DemoSection() {
         </div>
 
         {/* Interactive demo card */}
-        <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-sm p-6 md:p-10">
+        <div className="relative rounded-2xl border border-border bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-sm p-6 md:p-10">
           <div className="grid lg:grid-cols-12 gap-8">
             {/* Input column */}
             <div className="lg:col-span-5 space-y-6">
@@ -386,7 +386,7 @@ function DemoSection() {
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                     placeholder="https://youtube.com/watch?v=..."
                     disabled={state === "processing"}
-                    className="flex-1 bg-black/60 border border-white/10 rounded-full px-5 py-3.5 text-sm text-white placeholder-text-muted/40 font-sans focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all disabled:opacity-50"
+                    className="flex-1 bg-bg-deep/60 border border-border rounded-full px-5 py-3.5 text-sm text-text-primary placeholder-text-muted/40 font-sans focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all disabled:opacity-50"
                   />
                   <motion.button
                     onClick={handleSubmit}
@@ -420,16 +420,16 @@ function DemoSection() {
                           ? "border-accent/50 bg-accent/5"
                           : isDone
                             ? "border-accent-secondary/30 bg-accent-secondary/5"
-                            : "border-white/5 bg-white/[0.02]"
+                            : "border-border bg-text-primary/[0.02]"
                       }`}
                       animate={isActive ? { scale: [1, 1.01, 1] } : { scale: 1 }}
                       transition={{ duration: 1, repeat: isActive ? Infinity : 0 }}
                     >
-                      <div className="shrink-0 w-7 h-7 rounded-full border border-white/10 flex items-center justify-center text-[10px] font-mono">
+                      <div className="shrink-0 w-7 h-7 rounded-full border border-border flex items-center justify-center text-[10px] font-mono">
                         {isDone ? "✓" : i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-sans truncate">{step.label}</p>
+                        <p className="text-sm text-text-primary font-sans truncate">{step.label}</p>
                         <p className="text-[10px] text-text-muted font-mono truncate">{step.sub}</p>
                       </div>
                       {isActive && (
@@ -470,7 +470,7 @@ function DemoSection() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="rounded-xl border border-dashed border-white/10 p-12 text-center"
+                      className="rounded-xl border border-dashed border-border p-12 text-center"
                     >
                       <p className="text-sm text-text-muted/60 font-mono">clips will appear here</p>
                     </motion.div>
@@ -482,13 +482,13 @@ function DemoSection() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex gap-4"
+                        className="rounded-xl border border-border bg-text-primary/[0.02] p-4 flex gap-4"
                       >
                         <div className="w-16 aspect-9-16 rounded-lg bg-gradient-to-br from-white/5 to-white/[0.02] animate-pulse" />
                         <div className="flex-1 space-y-2 py-1">
-                          <div className="h-3 w-3/4 rounded bg-white/5 animate-pulse" />
-                          <div className="h-3 w-1/2 rounded bg-white/5 animate-pulse" />
-                          <div className="h-2 w-1/4 rounded bg-white/5 animate-pulse mt-2" />
+                          <div className="h-3 w-3/4 rounded bg-text-primary/5 animate-pulse" />
+                          <div className="h-3 w-1/2 rounded bg-text-primary/5 animate-pulse" />
+                          <div className="h-2 w-1/4 rounded bg-text-primary/5 animate-pulse mt-2" />
                         </div>
                       </motion.div>
                     ))}
@@ -499,13 +499,13 @@ function DemoSection() {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.08 }}
-                        className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-4 flex gap-4 hover:border-accent/40 transition-colors group"
+                        className="rounded-xl border border-border bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-4 flex gap-4 hover:border-accent/40 transition-colors group"
                       >
-                        <div className="w-16 aspect-9-16 rounded-lg bg-gradient-to-br from-accent/30 to-accent-secondary/20 flex items-center justify-center text-2xl font-display font-bold text-white shrink-0">
+                        <div className="w-16 aspect-9-16 rounded-lg bg-gradient-to-br from-accent/30 to-accent-secondary/20 flex items-center justify-center text-2xl font-display font-bold text-text-primary shrink-0">
                           {i + 1}
                         </div>
                         <div className="flex-1 min-w-0 space-y-1">
-                          <p className="text-sm font-display font-semibold text-white leading-snug line-clamp-2">
+                          <p className="text-sm font-display font-semibold text-text-primary leading-snug line-clamp-2">
                             {clip.viral_title}
                           </p>
                           <p className="text-xs text-text-muted line-clamp-2 leading-snug">{clip.caption}</p>
@@ -541,12 +541,12 @@ function EngineSection() {
     <section className="relative py-32" id="engine">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
-          <div className="inline-flex items-center gap-2 border border-white/10 bg-white/[0.03] backdrop-blur-sm px-3 py-1.5 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 border border-border bg-text-primary/[0.03] backdrop-blur-sm px-3 py-1.5 rounded-full mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-accent" />
             <span className="text-xs font-mono text-text-muted">THE Φ-ENGINE</span>
           </div>
           <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05]">
-            <span className="text-white">Four models.</span>
+            <span className="text-text-primary">Four models.</span>
             <br />
             <span className="bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">
               One click.
@@ -564,12 +564,12 @@ function EngineSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.01 }}
             transition={{ duration: 0.5 }}
-            className="md:col-span-3 md:row-span-2 group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-accent/10 via-black to-black p-8 hover:border-accent/40 transition-all"
+            className="md:col-span-3 md:row-span-2 group relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-accent/10 via-black to-black p-8 hover:border-accent/40 transition-all"
           >
             <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-accent/20 blur-3xl group-hover:bg-accent/30 transition-colors" />
             <div className="relative h-full flex flex-col">
               <span className="text-xs font-mono text-accent mb-4">[Φ-HOOK]</span>
-              <h3 className="text-3xl font-display font-bold text-white leading-tight mb-4">
+              <h3 className="text-3xl font-display font-bold text-text-primary leading-tight mb-4">
                 Claude calibrates the moment.
               </h3>
               <p className="text-text-muted leading-relaxed mb-6">
@@ -589,11 +589,11 @@ function EngineSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.01 }}
               transition={{ duration: 0.5, delay: (i + 1) * 0.1 }}
-              className="md:col-span-3 group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-black p-8 hover:border-accent/40 transition-all"
+              className="md:col-span-3 group relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-white/[0.04] to-black p-8 hover:border-accent/40 transition-all"
             >
               <div className="flex flex-col h-full">
                 <span className="text-xs font-mono text-accent-secondary mb-3">[{f.badge}]</span>
-                <h3 className="text-xl font-display font-bold text-white mb-2">{f.title}</h3>
+                <h3 className="text-xl font-display font-bold text-text-primary mb-2">{f.title}</h3>
                 <p className="text-sm text-text-muted leading-relaxed mb-6 flex-1">{f.body}</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-display font-bold text-accent-secondary">{f.metric}</span>
@@ -617,7 +617,7 @@ function VerticalsSection() {
     <section className="relative py-32 bg-gradient-to-b from-transparent via-white/[0.01] to-transparent">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-16 max-w-3xl">
-          <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05] text-white">
+          <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05] text-text-primary">
             Built for every<br />
             <span className="bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">content vertical.</span>
           </h2>
@@ -631,7 +631,7 @@ function VerticalsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.01 }}
               transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 hover:border-accent/40 hover:bg-white/[0.04] transition-all"
+              className="group relative rounded-2xl border border-border bg-text-primary/[0.02] p-6 hover:border-accent/40 hover:bg-text-primary/[0.04] transition-all"
             >
               <div className="flex items-start justify-between mb-4">
                 <span className="text-xs font-mono text-text-muted/50">{v.tag}</span>
@@ -643,7 +643,7 @@ function VerticalsSection() {
                   →
                 </motion.span>
               </div>
-              <h3 className="text-xl font-display font-bold text-white mb-3 group-hover:text-accent transition-colors">
+              <h3 className="text-xl font-display font-bold text-text-primary mb-3 group-hover:text-accent transition-colors">
                 {v.title}
               </h3>
               <p className="text-sm text-text-muted leading-relaxed">{v.body}</p>
@@ -661,7 +661,7 @@ function VerticalsSection() {
 
 function StatsSection() {
   return (
-    <section className="relative py-24 border-y border-white/5">
+    <section className="relative py-24 border-y border-border">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
           <AnimatedCounter symbol="Σ" to={2.4} suffix="B" decimals={1} label="monthly views generated" />
@@ -683,7 +683,7 @@ function PricingSection() {
     <section className="relative py-32" id="pricing">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16 max-w-2xl mx-auto">
-          <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05] text-white mb-4">
+          <h2 className="font-display font-bold text-5xl md:text-6xl tracking-tight leading-[1.05] text-text-primary mb-4">
             Simple pricing.
           </h2>
           <p className="text-lg text-text-muted">Start free. Upgrade when you ship more.</p>
@@ -700,7 +700,7 @@ function PricingSection() {
               className={`relative rounded-2xl p-8 ${
                 tier.highlight
                   ? "border-2 border-accent bg-gradient-to-b from-accent/10 to-black"
-                  : "border border-white/10 bg-white/[0.02]"
+                  : "border border-border bg-text-primary/[0.02]"
               }`}
             >
               {tier.highlight && (
@@ -710,14 +710,14 @@ function PricingSection() {
               )}
               <p className="text-sm font-mono text-text-muted mb-2">{tier.tier}</p>
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-5xl font-display font-bold text-white">{tier.price}</span>
+                <span className="text-5xl font-display font-bold text-text-primary">{tier.price}</span>
                 <span className="text-text-muted text-sm">/ {tier.cadence}</span>
               </div>
               <motion.button
                 className={`w-full mt-6 py-3 rounded-full font-semibold text-sm transition-colors ${
                   tier.highlight
                     ? "bg-accent text-black hover:bg-accent-secondary"
-                    : "bg-white/5 text-white border border-white/10 hover:bg-white/10"
+                    : "bg-text-primary/5 text-text-primary border border-border hover:bg-text-primary/10"
                 }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -755,7 +755,7 @@ function FinalCta() {
       />
 
       <div className="relative max-w-4xl mx-auto px-6 text-center">
-        <h2 className="font-display font-bold text-5xl md:text-7xl tracking-tight leading-[1.05] text-white mb-6">
+        <h2 className="font-display font-bold text-5xl md:text-7xl tracking-tight leading-[1.05] text-text-primary mb-6">
           Stop editing.<br />
           <span className="bg-gradient-to-r from-accent via-accent-secondary to-accent bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient">
             Start shipping.
@@ -775,7 +775,7 @@ function FinalCta() {
           </motion.a>
           <Link
             href="/plans"
-            className="px-8 py-4 text-white border border-white/20 rounded-full font-semibold text-base hover:bg-white/5 transition-colors"
+            className="px-8 py-4 text-text-primary border border-border-strong rounded-full font-semibold text-base hover:bg-text-primary/5 transition-colors"
           >
             See plans
           </Link>

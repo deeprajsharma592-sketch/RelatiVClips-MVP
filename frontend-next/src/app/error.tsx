@@ -55,7 +55,7 @@ export default function Error({
       <div className="flex gap-3">
         <button
           onClick={reset}
-          className="px-5 py-2.5 bg-accent text-white text-sm font-semibold rounded-[4px] hover:opacity-90 transition-opacity"
+          className="px-5 py-2.5 bg-accent text-text-primary text-sm font-semibold rounded-[4px] hover:opacity-90 transition-opacity"
         >
           Try again
         </button>

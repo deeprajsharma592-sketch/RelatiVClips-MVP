@@ -180,7 +180,7 @@ export default function Header() {
                 aria-expanded={userMenuOpen}
               >
                 <div
-                  className="h-8 w-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-white"
+                  className="h-8 w-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-text-primary"
                   style={{ background: ROLE_GRADIENT[user.role] }}
                 >
                   {user.name.slice(0, 1).toUpperCase()}

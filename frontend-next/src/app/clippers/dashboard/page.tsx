@@ -608,7 +608,7 @@ export default function ClipperDashboard() {
                           </div>
                           <Link
                             href={`/clippers/campaigns?focus=${c.id}`}
-                            className="btn-shine px-4 py-1.5 text-xs font-semibold rounded-full text-white transition-all hover:-translate-y-0.5"
+                            className="btn-shine px-4 py-1.5 text-xs font-semibold rounded-full text-text-primary transition-all hover:-translate-y-0.5"
                             style={{
                               background:
                                 "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
@@ -692,7 +692,7 @@ export default function ClipperDashboard() {
                   </p>
                   {data.open_campaigns.length > 0 ? (
                     <button
-                      className="btn-shine px-5 py-2 text-sm font-semibold rounded-full text-white transition-all hover:-translate-y-0.5"
+                      className="btn-shine px-5 py-2 text-sm font-semibold rounded-full text-text-primary transition-all hover:-translate-y-0.5"
                       style={{
                         background:
                           "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
@@ -704,7 +704,7 @@ export default function ClipperDashboard() {
                   ) : (
                     <Link
                       href="/clippers/apply"
-                      className="inline-block btn-shine px-5 py-2 text-sm font-semibold rounded-full text-white transition-all hover:-translate-y-0.5"
+                      className="inline-block btn-shine px-5 py-2 text-sm font-semibold rounded-full text-text-primary transition-all hover:-translate-y-0.5"
                       style={{
                         background:
                           "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",

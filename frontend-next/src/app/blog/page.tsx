@@ -40,7 +40,7 @@ export default function BlogIndex() {
             <Link
               key={p.slug}
               href={`/blog/${p.slug}`}
-              className="block group p-6 md:p-8 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] transition-all"
+              className="block group p-6 md:p-8 rounded-2xl bg-text-primary/[0.02] hover:bg-text-primary/[0.04] border border-border-glass hover:border-border-strong transition-all"
             >
               <div className="flex items-baseline gap-3 mb-3 flex-wrap text-xs font-mono text-muted-foreground">
                 <time dateTime={p.date}>{p.date}</time>
@@ -63,7 +63,7 @@ export default function BlogIndex() {
           ))}
         </div>
 
-        <div className="mt-16 pt-10 border-t border-white/10 text-center text-sm text-muted-foreground">
+        <div className="mt-16 pt-10 border-t border-border text-center text-sm text-muted-foreground">
           More posts coming.{" "}
           <Link
             href="/changelog"

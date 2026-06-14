@@ -45,7 +45,7 @@ export default function CookieBanner() {
               className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center"
               style={{ background: "var(--gradient-sunset)" }}
             >
-              <Cookie className="h-4 w-4 text-white" />
+              <Cookie className="h-4 w-4 text-text-primary" />
             </div>
             <p className="flex-1 text-[12px] leading-snug" style={{ color: "var(--color-text-secondary)" }}>
               <span className="font-semibold" style={{ color: "var(--color-text-primary)" }}>Heads up:</span> we use local storage for auth + preferences. No tracking, no third-party cookies.

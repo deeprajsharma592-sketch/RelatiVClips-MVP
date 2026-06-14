@@ -120,7 +120,7 @@ export default function DashboardShell({
             style={{ borderBottom: "1px solid var(--color-border)" }}
           >
             <div
-              className="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-white shrink-0"
+              className="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-text-primary shrink-0"
               style={{
                 background: roleAccentClass,
                 boxShadow: `0 4px 12px ${accentGlow}`,

@@ -102,7 +102,7 @@ export default function YCPage() {
               className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ background: "var(--gradient-sunset)", boxShadow: "0 4px 12px rgba(217, 70, 239, 0.30)" }}
             >
-              <span className="font-display text-lg font-bold text-white">R</span>
+              <span className="font-display text-lg font-bold text-text-primary">R</span>
             </div>
             <span className="font-display font-semibold text-xl tracking-tight" style={{ color: "var(--color-text-primary)" }}>
               Relati<span className="text-gradient-sunset">V</span>
@@ -406,7 +406,7 @@ export default function YCPage() {
               <div key={m.name} className="glass-card p-7">
                 <div className="flex items-start gap-4">
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center font-display font-semibold text-xl text-white shrink-0"
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center font-display font-semibold text-xl text-text-primary shrink-0"
                     style={{ background: "var(--gradient-sunset)" }}
                   >
                     {m.name[0]}

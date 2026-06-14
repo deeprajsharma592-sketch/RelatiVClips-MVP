@@ -160,7 +160,7 @@ export default function ServicesPage() {
                 <div className="relative">
                   <div className="flex items-center gap-3 mb-5">
                     <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center font-display font-bold text-white text-lg"
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center font-display font-bold text-text-primary text-lg"
                       style={{ background: s.gradient, boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)" }}
                     >
                       {s.num}

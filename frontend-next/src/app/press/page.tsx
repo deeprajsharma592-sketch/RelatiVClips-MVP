@@ -101,7 +101,7 @@ export default function PressPage() {
                   boxShadow: "0 8px 24px rgba(217, 70, 239, 0.30)",
                 }}
               >
-                <span className="font-display text-4xl font-bold text-white">R</span>
+                <span className="font-display text-4xl font-bold text-text-primary">R</span>
               </div>
               <p className="mt-5 font-display text-2xl font-semibold tracking-tight" style={{ color: "var(--color-text-primary)" }}>
                 Relati<span className="text-gradient-sunset">V</span>
@@ -115,9 +115,9 @@ export default function PressPage() {
                 className="w-20 h-20 rounded-2xl flex items-center justify-center"
                 style={{ background: "var(--gradient-sunset)", boxShadow: "0 8px 24px rgba(217, 70, 239, 0.40)" }}
               >
-                <span className="font-display text-4xl font-bold text-white">R</span>
+                <span className="font-display text-4xl font-bold text-text-primary">R</span>
               </div>
-              <p className="mt-5 font-display text-2xl font-semibold tracking-tight text-white">
+              <p className="mt-5 font-display text-2xl font-semibold tracking-tight text-text-primary">
                 Relati<span style={{ background: "linear-gradient(135deg, #FB7185 0%, #D946EF 50%, #8B5CF6 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" }}>V</span>
               </p>
               <p className="mt-1 text-[11px] font-mono uppercase tracking-wider" style={{ color: "#8B8472" }}>On dark</p>
@@ -127,13 +127,13 @@ export default function PressPage() {
             <div className="glass-card p-10 flex flex-col items-center justify-center min-h-[220px]">
               <div className="flex items-end gap-3">
                 <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: "var(--gradient-sunset)" }}>
-                  <span className="font-display text-2xl font-bold text-white">R</span>
+                  <span className="font-display text-2xl font-bold text-text-primary">R</span>
                 </div>
                 <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: "var(--gradient-sunset)" }}>
-                  <span className="font-display text-base font-bold text-white">R</span>
+                  <span className="font-display text-base font-bold text-text-primary">R</span>
                 </div>
                 <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: "var(--gradient-sunset)" }}>
-                  <span className="font-display text-[10px] font-bold text-white">R</span>
+                  <span className="font-display text-[10px] font-bold text-text-primary">R</span>
                 </div>
               </div>
               <p className="mt-5 text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Scales 16 → 180px</p>
@@ -233,7 +233,7 @@ export default function PressPage() {
                     className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
                     style={{ background: "var(--gradient-sunset)", boxShadow: "0 4px 12px rgba(217, 70, 239, 0.20)" }}
                   >
-                    <Download className="h-5 w-5 text-white" />
+                    <Download className="h-5 w-5 text-text-primary" />
                   </div>
                   <div>
                     <p className="text-[14px] font-semibold" style={{ color: "var(--color-text-primary)" }}>{a.name}</p>

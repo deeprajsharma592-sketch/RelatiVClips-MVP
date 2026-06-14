@@ -828,7 +828,7 @@ function NewClipForm() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-shine inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-full text-white transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-wait disabled:hover:translate-y-0"
+                  className="btn-shine inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-full text-text-primary transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-wait disabled:hover:translate-y-0"
                   style={{
                     background:
                       "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",

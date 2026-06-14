@@ -145,7 +145,7 @@ export default function AccountPage() {
           />
           <div className="relative flex items-start gap-5">
             <div
-              className="h-16 w-16 rounded-full flex items-center justify-center font-display font-semibold text-2xl text-white shrink-0"
+              className="h-16 w-16 rounded-full flex items-center justify-center font-display font-semibold text-2xl text-text-primary shrink-0"
               style={{
                 background: role.gradient,
                 boxShadow: `0 8px 24px ${isClipper ? "rgba(139, 92, 246, 0.30)" : "rgba(217, 70, 239, 0.30)"}`,

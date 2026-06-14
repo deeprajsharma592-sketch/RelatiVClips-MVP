@@ -35,7 +35,7 @@ export default function ChangelogPage() {
         </div>
 
         {/* Timeline */}
-        <ol className="relative border-l border-white/10 ml-3 space-y-12">
+        <ol className="relative border-l border-border ml-3 space-y-12">
           {changelog.map((entry, i) => (
             <li key={entry.date} className="pl-8 md:pl-10 relative">
               <span
@@ -87,7 +87,7 @@ export default function ChangelogPage() {
                   {Object.entries(entry.stats).map(([k, v]) => (
                     <div
                       key={k}
-                      className="px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
+                      className="px-3 py-2 rounded-md bg-text-primary/[0.03] border border-border-glass"
                     >
                       <div className="text-muted-foreground uppercase tracking-wider text-[10px]">
                         {k}
@@ -104,7 +104,7 @@ export default function ChangelogPage() {
         </ol>
 
         {/* Footer note */}
-        <div className="mt-20 pt-10 border-t border-white/10 text-xs text-muted-foreground text-center font-mono">
+        <div className="mt-20 pt-10 border-t border-border text-xs text-muted-foreground text-center font-mono">
           <p>Last ship: {changelog[0].date} · {changelog.length} entries ·</p>
           <p className="mt-1">
             <a

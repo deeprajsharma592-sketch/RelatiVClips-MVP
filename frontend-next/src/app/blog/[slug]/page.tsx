@@ -58,8 +58,8 @@ export default async function BlogPostPage({ params }: { params: Params }) {
           {post.dek}
         </p>
 
-        <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground pb-10 mb-10 border-b border-white/10">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-violet-500 flex items-center justify-center text-white text-xs font-bold">
+        <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground pb-10 mb-10 border-b border-border">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-violet-500 flex items-center justify-center text-text-primary text-xs font-bold">
             {post.author.name[0]}
           </div>
           <span>{post.author.name}</span>
@@ -71,7 +71,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
           {body}
         </div>
 
-        <div className="mt-16 pt-10 border-t border-white/10">
+        <div className="mt-16 pt-10 border-t border-border">
           <Link
             href="/blog"
             className="text-sm font-mono text-accent hover:underline underline-offset-4"

@@ -256,7 +256,7 @@ function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
                 <button
                   onClick={onResume}
                   disabled={acting}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 text-text-primary text-sm font-medium hover:bg-emerald-600 transition disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5" /> Resume
                 </button>
@@ -265,7 +265,7 @@ function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
                 <button
                   onClick={onCancel}
                   disabled={acting}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-500 text-text-primary text-sm font-medium hover:bg-rose-600 transition disabled:opacity-50"
                 >
                   <X className="w-3.5 h-3.5" /> Cancel
                 </button>
@@ -585,7 +585,7 @@ function PendingTab({
               <button
                 onClick={() => onReject(c.id)}
                 disabled={acting || !rejectReason.trim()}
-                className="px-3.5 py-2 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 transition disabled:opacity-50"
+                className="px-3.5 py-2 rounded-lg bg-rose-500 text-text-primary text-sm font-medium hover:bg-rose-600 transition disabled:opacity-50"
               >
                 Confirm reject
               </button>
@@ -604,7 +604,7 @@ function PendingTab({
               <button
                 onClick={() => onApprove(c.id)}
                 disabled={acting}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-medium hover:shadow-md transition disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-text-primary text-sm font-medium hover:shadow-md transition disabled:opacity-50"
               >
                 <Check className="w-3.5 h-3.5" /> Approve
               </button>
@@ -666,7 +666,7 @@ function SignInGate() {
         </p>
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 via-coral-500 to-violet-500 text-white text-sm font-medium hover:shadow-md transition"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 via-coral-500 to-violet-500 text-text-primary text-sm font-medium hover:shadow-md transition"
         >
           Sign in <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -692,7 +692,7 @@ function BrandOnlyGate() {
           </Link>
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 via-coral-500 to-violet-500 text-white text-sm font-medium hover:shadow-md transition"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 via-coral-500 to-violet-500 text-text-primary text-sm font-medium hover:shadow-md transition"
           >
             Create brand account <ArrowRight className="w-3.5 h-3.5" />
           </Link>
