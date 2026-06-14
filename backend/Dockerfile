@@ -63,6 +63,13 @@ RUN pip install --no-cache-dir \
         -r requirements.txt \
     && chown -R relativ:relativ /app
 
+# Pre-create runtime directories the pipeline writes to (uploads, temp clips,
+# rendered outputs). Without this, they get created as root on first run
+# and the relativ user gets "Permission denied" when yt-dlp/ffmpeg try to
+# write to them. See ticket: pipeline E2E failed with Errno 13 in /app/temp.
+RUN mkdir -p /app/temp/uploads /app/temp/creator_history /app/outputs \
+    && chown -R relativ:relativ /app/temp /app/outputs
+
 # Copy application code into /app/backend/ so `from .X import Y` in
 # main.py resolves as `backend.X` (loaded as the `backend.main` module).
 # PYTHONPATH=/app (set below) makes the `backend` package importable.
