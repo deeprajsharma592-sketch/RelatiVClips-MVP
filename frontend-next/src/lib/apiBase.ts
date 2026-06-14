@@ -49,8 +49,20 @@ export function apiBase(): string {
  *     browser prod → "/api/proxy/api/v1/auth/login"
  *     browser dev  → "http://localhost:9000/api/v1/auth/login"
  *     SSR          → "/api/v1/auth/login" or NEXT_PUBLIC_API_URL+"/api/v1/auth/login"
+ *
+ * NOTE: `path` MUST start with "/api/v1/" — the helper does not
+ * auto-prepend the API version. Missing the prefix used to silently
+ * 404 in production (browser → /api/proxy/support/contact with no
+ * /api/v1). We now warn in dev if the prefix is missing.
  */
 export function apiPath(path: string): string {
+  if (path && !path.startsWith("/api/v1/")) {
+    if (typeof console !== "undefined") {
+      console.warn(
+        `[apiBase] path "${path}" is missing the "/api/v1/" prefix — backend routes require it`
+      );
+    }
+  }
   if (!isBrowser()) {
     const base = process.env.NEXT_PUBLIC_API_URL || "";
     return `${base}${path}`;

@@ -27,7 +27,7 @@ export default function ContactPage() {
     setError(null);
     setSending(true);
     try {
-      const res = await fetch(apiPath("/support/contact"), {
+      const res = await fetch(apiPath("/api/v1/support/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, subject, message }),
