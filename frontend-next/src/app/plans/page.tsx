@@ -23,7 +23,7 @@ import { Check, ChevronDown, ArrowRight, Sparkles, Loader2, CreditCard } from "l
 import { useAuth } from "@/lib/AuthContext";
 import { createCheckout, getBillingConfig, type BillingConfig } from "@/lib/api";
 
-type Side = "clippers" | "brands";
+type Side = "clippers" | "brands" | "creators";
 
 interface Tier {
   name: string;
@@ -38,8 +38,98 @@ interface Tier {
   // When set, the CTA button triggers Stripe Checkout for this plan
   // instead of navigating to the href. Only applies to signed-in
   // clipper/creator accounts.
-  stripePlan?: "clipper_pro" | "clipper_elite";
+  stripePlan?: "clipper_pro" | "clipper_elite" | "creator_go" | "creator_pro" | "creator_premium" | "creator_enterprise";
+  // Per-clip quota or pay-as-you-go marker (creator tiers)
+  clipsIncluded?: number;
+  perClipPrice?: string;
+  // Margin / cost transparency shown under the price
+  unitCost?: string;
 }
+
+const CREATOR_TIERS: Tier[] = [
+  {
+    name: "Go",
+    price: "₹499",
+    unit: "/month",
+    cta: "Start Go",
+    href: "/signup?plan=creator_go",
+    bestFor: "Solo creators, dipping your toes in",
+    clipsIncluded: 20,
+    unitCost: "~₹10 / clip effective",
+    features: [
+      "20 AI-generated clips per month",
+      "Vertical 9:16 rendering, hardcoded captions",
+      "Hook detection from energy + transcript",
+      "3 YouTube channels connected",
+      "Standard rendering queue (no priority)",
+      "UPI / card billing",
+    ],
+    stripePlan: "creator_go",
+  },
+  {
+    name: "Pro",
+    price: "₹899",
+    unit: "/month",
+    cta: "Go Pro",
+    href: "/signup?plan=creator_pro",
+    highlight: true,
+    bestFor: "Active creators, 2-3 videos / week",
+    clipsIncluded: 50,
+    unitCost: "~₹18 / clip effective",
+    cpmHint: "Best value · 67% margin",
+    features: [
+      "50 AI-generated clips per month",
+      "AI taste-select (DeepSeek V3) on every video",
+      "Auto-caption + viral-title generation",
+      "10 YouTube channels + upload-from-device",
+      "Priority render queue (3× faster)",
+      "A/B hook variants (3 per clip)",
+      "Email + Discord support",
+    ],
+    stripePlan: "creator_pro",
+  },
+  {
+    name: "Premium",
+    price: "₹1,999",
+    unit: "/month",
+    cta: "Go Premium",
+    href: "/signup?plan=creator_premium",
+    bestFor: "Agencies, podcast networks, power creators",
+    clipsIncluded: 150,
+    unitCost: "~₹13 / clip effective",
+    cpmHint: "Lowest per-clip · 70% margin",
+    features: [
+      "150 AI-generated clips per month",
+      "Everything in Pro, plus:",
+      "Custom branding (logo, color, font on captions)",
+      "API access — call the pipeline from your tools",
+      "Reserved GPU lane (10× faster transcription)",
+      "Team seats (up to 5)",
+      "Quarterly strategy call with founders",
+    ],
+    stripePlan: "creator_premium",
+  },
+  {
+    name: "Enterprise",
+    price: "₹25",
+    unit: "/clip",
+    cta: "Start pay-as-you-go",
+    href: "/contact?intent=enterprise",
+    bestFor: "Brands, one-offs, no commitment",
+    perClipPrice: "₹25 per clip · billed monthly",
+    unitCost: "No commitment · cancel anytime",
+    cpmHint: "88% margin · 8× cost recovery",
+    features: [
+      "Pay only for what you generate",
+      "Volume discount past 100 clips / month",
+      "All Premium features unlocked per-clip",
+      "Dedicated account manager (10K+ clips / mo)",
+      "SOC2 / contract review on request",
+      "Custom SLA + data residency",
+    ],
+    stripePlan: "creator_enterprise",
+  },
+];
 
 const CLIPPER_TIERS: Tier[] = [
   {
@@ -113,6 +203,9 @@ const FAQ = [
   { q: "Is there a free trial?", a: "Clippers always start free. Brands get a $500 Pilot credit on their first campaign — if it doesn't deliver 50K+ verified views, we don't invoice you for the difference." },
   { q: "How are FTC disclosures handled?", a: "We require `#ad` or `#sponsored` on every paid clip submitted through the network. Clippers who don't disclose are removed. We also generate a disclosure kit for each campaign with platform-specific templates." },
   { q: "Can I cancel anytime?", a: "Yes. No annual contracts on any tier. Cancel from the dashboard; we prorate to the day. Active payouts settle on the next Monday." },
+  { q: "Why are creator plans priced at ₹499/₹899/₹1999?", a: "We reverse-engineered our unit economics in public. Per-clip variable cost (YouTube fetch + LLM + render) is ~₹3, fixed monthly infra is ~₹7,238. At 50 customers we break even; at 100 we net ~₹80K/month. The pricing puts us at 59–88% net margin per tier, depending on usage. We post the full breakdown above." },
+  { q: "What happens when you switch to DeepSeek V3?", a: "Two things: (1) Existing subscribers get a 6-month price lock at the rate they signed up for — if you join at ₹899 Pro, you stay at ₹899 Pro through that window even if public pricing drops. (2) New Pro subscribers will get ₹799 once we cross 100 paying users, since the underlying LLM cost drops 10×." },
+  { q: "Can I use my own LLM key?", a: "Not on the standard tiers — we keep the inference path closed for cost predictability. Enterprise customers can request bring-your-own-key (BYOK) for compliance reasons; talk to us." },
 ];
 
 function SectionMarker({ num, label, centered = false }: { num: string; label: string; centered?: boolean }) {
@@ -178,7 +271,15 @@ export default function PlansPage() {
     return plan?.available === true;
   };
 
-  const tiers = side === "clippers" ? CLIPPER_TIERS : BRAND_TIERS;
+  const tiers = side === "clippers" ? CLIPPER_TIERS : side === "brands" ? BRAND_TIERS : CREATOR_TIERS;
+  const heroAccent =
+    side === "clippers" ? "rgba(252, 211, 77, 0.18)" :
+    side === "brands" ? "rgba(217, 70, 239, 0.18)" :
+    "rgba(16, 185, 129, 0.18)"; // emerald for creators
+  const heroAccent2 =
+    side === "clippers" ? "rgba(6, 182, 212, 0.14)" :
+    side === "brands" ? "rgba(139, 92, 246, 0.14)" :
+    "rgba(20, 184, 166, 0.14)"; // teal for creators
 
   return (
     <div className="relative">
@@ -187,11 +288,11 @@ export default function PlansPage() {
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div
             className="absolute top-0 right-1/4 h-[500px] w-[500px] rounded-full blur-3xl"
-            style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.18) 0%, transparent 70%)" }}
+            style={{ background: `radial-gradient(circle, ${heroAccent} 0%, transparent 70%)` }}
           />
           <div
             className="absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full blur-3xl"
-            style={{ background: "radial-gradient(circle, rgba(6, 182, 212, 0.14) 0%, transparent 70%)" }}
+            style={{ background: `radial-gradient(circle, ${heroAccent2} 0%, transparent 70%)` }}
           />
         </div>
 
@@ -224,7 +325,7 @@ export default function PlansPage() {
               role="tablist"
               aria-label="Pricing audience"
             >
-              {(["clippers", "brands"] as const).map((s) => (
+              {(["clippers", "brands", "creators"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSide(s)}
@@ -242,13 +343,21 @@ export default function PlansPage() {
                       layoutId="side-pill"
                       className="absolute inset-0 rounded-full"
                       style={{
-                        background: s === "clippers" ? "rgba(252, 211, 77, 0.10)" : "rgba(139, 92, 246, 0.10)",
-                        border: s === "clippers" ? "1px solid rgba(252, 211, 77, 0.40)" : "1px solid rgba(139, 92, 246, 0.30)",
+                        background:
+                          s === "clippers" ? "rgba(252, 211, 77, 0.10)" :
+                          s === "brands" ? "rgba(139, 92, 246, 0.10)" :
+                          "rgba(16, 185, 129, 0.10)",
+                        border:
+                          s === "clippers" ? "1px solid rgba(252, 211, 77, 0.40)" :
+                          s === "brands" ? "1px solid rgba(139, 92, 246, 0.30)" :
+                          "1px solid rgba(16, 185, 129, 0.40)",
                       }}
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
-                  <span className="relative">{s === "clippers" ? "For clippers" : "For brands"}</span>
+                  <span className="relative">
+                    {s === "clippers" ? "For clippers" : s === "brands" ? "For brands" : "For creators"}
+                  </span>
                 </button>
               ))}
             </div>
@@ -347,9 +456,10 @@ export default function PlansPage() {
               )}
               {tiers.map((tier, i) => {
                 const isHighlight = tier.highlight;
-                const gradient = side === "brands"
-                  ? "var(--gradient-sunset)"
-                  : "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)";
+                const gradient =
+                  side === "brands" ? "var(--gradient-sunset)" :
+                  side === "clippers" ? "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)" :
+                  "linear-gradient(135deg, #10B981 0%, #14B8A6 100%)"; // emerald-teal for creators
                 return (
                   <motion.div
                     key={tier.name}
@@ -359,7 +469,7 @@ export default function PlansPage() {
                     className={`relative rounded-[var(--radius-xl)] p-7 flex flex-col overflow-hidden hover-lift ${
                       isHighlight ? "glass-panel" : "glass-card hover-glow"
                     }`}
-                    style={isHighlight ? { border: "2px solid rgba(217, 70, 239, 0.30)" } : undefined}
+                    style={isHighlight ? { border: "2px solid rgba(16, 185, 129, 0.30)" } : undefined}
                   >
                     {isHighlight && (
                       <div
@@ -374,10 +484,10 @@ export default function PlansPage() {
                           style={{
                             background: gradient,
                             color: "white",
-                            boxShadow: side === "brands" ? "0 2px 8px rgba(217, 70, 239, 0.30)" : "0 2px 8px rgba(139, 92, 246, 0.30)",
+                            boxShadow: side === "brands" ? "0 2px 8px rgba(217, 70, 239, 0.30)" : "0 2px 8px rgba(16, 185, 129, 0.30)",
                           }}
                         >
-                          {side === "brands" ? "Best for scaling" : "Most popular"}
+                          {side === "brands" ? "Best for scaling" : side === "clippers" ? "Most popular" : "Best value"}
                         </span>
                       </div>
                     )}
@@ -399,6 +509,23 @@ export default function PlansPage() {
                           </span>
                         )}
                       </div>
+                      {tier.clipsIncluded && (
+                        <p className="mt-2.5 text-[12px] font-mono" style={{ color: "var(--color-text-secondary)" }}>
+                          <span style={{ color: "var(--color-text-muted)" }}>Includes </span>
+                          <span className="font-semibold" style={{ color: "#10B981" }}>{tier.clipsIncluded} clips</span>
+                          <span style={{ color: "var(--color-text-muted)" }}> / month</span>
+                        </p>
+                      )}
+                      {tier.perClipPrice && (
+                        <p className="mt-2.5 text-[12px] font-mono" style={{ color: "var(--color-text-secondary)" }}>
+                          {tier.perClipPrice}
+                        </p>
+                      )}
+                      {tier.unitCost && (
+                        <p className="mt-1.5 text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+                          {tier.unitCost}
+                        </p>
+                      )}
                       {tier.cpmHint && (
                         <code
                           className="mt-2.5 inline-block text-[10px] font-mono px-2 py-0.5 rounded-full"
@@ -422,7 +549,7 @@ export default function PlansPage() {
                         <li key={f} className="flex items-start gap-2.5 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
                           <Check
                             className="h-4 w-4 mt-0.5 shrink-0"
-                            style={{ color: isHighlight ? (side === "brands" ? "var(--color-accent)" : "#8B5CF6") : "var(--color-success)" }}
+                            style={{ color: isHighlight ? (side === "brands" ? "var(--color-accent)" : side === "clippers" ? "#8B5CF6" : "#10B981") : "var(--color-success)" }}
                           />
                           <span>{f}</span>
                         </li>
@@ -494,6 +621,183 @@ export default function PlansPage() {
               </div>
             </motion.div>
           )}
+
+          {/* ════════════ TRANSPARENCY PANEL (creators only) ════════════ */}
+          {side === "creators" && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="mt-16 relative overflow-hidden"
+            >
+              <div className="text-center mb-8">
+                <SectionMarker num="03" label="Unit economics" centered />
+                <h3
+                  className="font-display font-semibold tracking-tight mb-2"
+                  style={{ fontSize: "clamp(1.75rem, 3vw, 2.5rem)", lineHeight: 1.1, color: "var(--color-text-primary)" }}
+                >
+                  How we price. <span className="hero-text" style={{ color: "#10B981" }}>50% margin, math included.</span>
+                </h3>
+                <p className="text-[14px] max-w-2xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
+                  Most SaaS hides the unit economics. We don&apos;t. Here&apos;s exactly what it costs us to generate a clip — and what&apos;s left as profit.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Per-clip cost breakdown */}
+                <div className="glass-panel p-6 relative overflow-hidden">
+                  <div
+                    className="absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full blur-3xl pointer-events-none"
+                    style={{ background: "radial-gradient(circle, rgba(16, 185, 129, 0.10) 0%, transparent 70%)" }}
+                  />
+                  <div className="relative">
+                    <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "#10B981" }}>
+                      Cost per clip
+                    </p>
+                    <div className="flex items-baseline gap-1 mb-4">
+                      <span className="font-display font-semibold" style={{ fontSize: "2.25rem", lineHeight: 1, color: "var(--color-text-primary)" }}>
+                        ₹3.02
+                      </span>
+                      <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>avg</span>
+                    </div>
+                    <ul className="space-y-2 text-[12px] font-mono">
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>YouTube fetch (residential proxy)</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹2.74</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>Claude hook select</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹0.08</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>Render (ffmpeg CPU)</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹0.20</span>
+                      </li>
+                    </ul>
+                    <div className="mt-4 pt-3" style={{ borderTop: "1px dashed rgba(16, 185, 129, 0.20)" }}>
+                      <p className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+                        Post-campaign: drops to <span style={{ color: "#10B981" }}>₹2.96</span> via DeepSeek V3
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fixed cost table */}
+                <div className="glass-panel p-6 relative overflow-hidden">
+                  <div
+                    className="absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full blur-3xl pointer-events-none"
+                    style={{ background: "radial-gradient(circle, rgba(139, 92, 246, 0.10) 0%, transparent 70%)" }}
+                  />
+                  <div className="relative">
+                    <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "#8B5CF6" }}>
+                      Fixed infra · monthly
+                    </p>
+                    <div className="flex items-baseline gap-1 mb-4">
+                      <span className="font-display font-semibold" style={{ fontSize: "2.25rem", lineHeight: 1, color: "var(--color-text-primary)" }}>
+                        ₹7,238
+                      </span>
+                    </div>
+                    <ul className="space-y-2 text-[12px] font-mono">
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>Claude API</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹2,800</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>Hetzner VPS</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹1,492</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>Hermes M3 agent</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹1,452</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>RunPod transcription</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹830</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span style={{ color: "var(--color-text-muted)" }}>Residential proxy</span>
+                        <span style={{ color: "var(--color-text-secondary)" }}>₹664</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Margin by tier */}
+                <div className="glass-panel p-6 relative overflow-hidden">
+                  <div
+                    className="absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full blur-3xl pointer-events-none"
+                    style={{ background: "radial-gradient(circle, rgba(252, 211, 77, 0.10) 0%, transparent 70%)" }}
+                  />
+                  <div className="relative">
+                    <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "#FCD34D" }}>
+                      Net margin per tier
+                    </p>
+                    <div className="flex items-baseline gap-1 mb-4">
+                      <span className="font-display font-semibold" style={{ fontSize: "2.25rem", lineHeight: 1, color: "var(--color-text-primary)" }}>
+                        59–88<span style={{ fontSize: "1.25rem", color: "var(--color-text-muted)" }}>%</span>
+                      </span>
+                    </div>
+                    <ul className="space-y-2 text-[12px] font-mono">
+                      <li className="flex justify-between items-center">
+                        <span style={{ color: "var(--color-text-muted)" }}>Go</span>
+                        <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(16, 185, 129, 0.10)", color: "#10B981" }}>59%</span>
+                      </li>
+                      <li className="flex justify-between items-center">
+                        <span style={{ color: "var(--color-text-muted)" }}>Pro</span>
+                        <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10B981" }}>67%</span>
+                      </li>
+                      <li className="flex justify-between items-center">
+                        <span style={{ color: "var(--color-text-muted)" }}>Premium</span>
+                        <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(16, 185, 129, 0.20)", color: "#10B981" }}>70%</span>
+                      </li>
+                      <li className="flex justify-between items-center">
+                        <span style={{ color: "var(--color-text-muted)" }}>Enterprise (per-clip)</span>
+                        <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(252, 211, 77, 0.15)", color: "#FCD34D" }}>88%</span>
+                      </li>
+                    </ul>
+                    <div className="mt-4 pt-3" style={{ borderTop: "1px dashed rgba(252, 211, 77, 0.20)" }}>
+                      <p className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+                        Break-even: <span style={{ color: "#FCD34D" }}>12 paying customers</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* DeepSeek migration banner */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="mt-6 glass-card p-5 relative overflow-hidden"
+                style={{ border: "1px solid rgba(16, 185, 129, 0.25)" }}
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #10B981 0%, #14B8A6 100%)" }}
+                  >
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[12px] font-mono uppercase tracking-wider mb-1" style={{ color: "#10B981" }}>
+                      Roadmap · post-campaign
+                    </p>
+                    <h4 className="font-display font-semibold text-[17px] mb-1" style={{ color: "var(--color-text-primary)" }}>
+                      We&apos;re swapping Claude for DeepSeek V3. You keep the savings.
+                    </h4>
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                      Post-launch, we&apos;ll switch hook selection from Claude Haiku to DeepSeek V3 — 10× cheaper per call,
+                      same quality for taste-select. <span style={{ color: "#10B981", fontWeight: 600 }}>Existing customers get a price lock at current rates for 6 months</span>,
+                      and new Pro subscribers start at ₹799 (down from ₹899) once we cross 100 paying users.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </div>
       </section>
 
@@ -501,7 +805,7 @@ export default function PlansPage() {
       <section className="relative py-32 overflow-hidden" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}>
         <div className="max-w-4xl mx-auto px-6">
           <div className="text-center mb-16">
-            <SectionMarker num="03" label="FAQ" centered />
+            <SectionMarker num="04" label="FAQ" centered />
             <h2
               className="font-display font-semibold tracking-tight"
               style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", lineHeight: 1.05 }}
@@ -561,7 +865,7 @@ export default function PlansPage() {
       {/* ════════════ 04 · FINAL CTA ════════════ */}
       <section className="relative py-32 overflow-hidden">
         <div className="max-w-3xl mx-auto px-6 text-center">
-          <SectionMarker num="04" label="Not sure?" centered />
+          <SectionMarker num="05" label="Not sure?" centered />
           <h2
             className="font-display font-semibold tracking-tight"
             style={{ fontSize: "clamp(2.25rem, 4vw, 3.25rem)", lineHeight: 1.05 }}
