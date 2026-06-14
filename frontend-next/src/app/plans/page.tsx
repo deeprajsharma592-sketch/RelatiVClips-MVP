@@ -69,8 +69,8 @@ const AGENCY_VOLUMES: AgencyVolume[] = [
     features: [
       "Everything in 250/mo, plus:",
       "Multi-seat dashboard (10 seats)",
-      "API access for batch jobs",
       "Dedicated Slack channel",
+      "Quarterly AI taste-tuning session",
     ],
     cta: "Start at 500/mo",
     highlight: true,
@@ -159,7 +159,6 @@ const CREATOR_TIERS: Tier[] = [
     href: "/signup?plan=creator_go",
     bestFor: "Solo creators, dipping your toes in",
     clipsIncluded: 20,
-    unitCost: "~₹10 / clip effective",
     features: [
       "20 AI-generated clips per month",
       "Vertical 9:16 rendering, hardcoded captions",
@@ -179,7 +178,6 @@ const CREATOR_TIERS: Tier[] = [
     highlight: true,
     bestFor: "Active creators, 2-3 videos / week",
     clipsIncluded: 50,
-    unitCost: "~₹18 / clip effective",
     cpmHint: "Best value · 67% margin",
     features: [
       "50 AI-generated clips per month",
@@ -200,15 +198,14 @@ const CREATOR_TIERS: Tier[] = [
     href: "/signup?plan=creator_premium",
     bestFor: "Agencies, podcast networks, power creators",
     clipsIncluded: 150,
-    unitCost: "~₹13 / clip effective",
     cpmHint: "Lowest per-clip · 70% margin",
     features: [
       "150 AI-generated clips per month",
       "Everything in Pro, plus:",
       "Custom branding (logo, color, font on captions)",
-      "API access — call the pipeline from your tools",
       "Reserved GPU lane (10× faster transcription)",
       "Team seats (up to 5)",
+      "Priority support — 4h response SLA",
       "Quarterly strategy call with founders",
     ],
     stripePlan: "creator_premium",
@@ -221,12 +218,11 @@ const CREATOR_TIERS: Tier[] = [
     href: "/contact?intent=enterprise",
     bestFor: "Brands, one-offs, no commitment",
     perClipPrice: "₹25 per clip · billed monthly",
-    unitCost: "No commitment · cancel anytime",
     cpmHint: "88% margin · 8× cost recovery",
     features: [
       "Pay only for what you generate",
       "Volume discount past 100 clips / month",
-      "All Premium features unlocked per-clip",
+      "Every feature, pay-as-you-go",
       "Dedicated account manager (10K+ clips / mo)",
       "SOC2 / contract review on request",
       "Custom SLA + data residency",
@@ -309,8 +305,8 @@ const FAQ = [
   { q: "Can I cancel anytime?", a: "Yes. No annual contracts on any tier. Cancel from the dashboard; we prorate to the day. Active payouts settle on the next Monday." },
   { q: "Why are creator plans priced at ₹499/₹899/₹1999?", a: "We reverse-engineered our unit economics in public. Per-clip variable cost (YouTube fetch + LLM + render) is ~₹3, fixed monthly infra is ~₹7,238. At 50 customers we break even; at 100 we net ~₹80K/month. The pricing puts us at 59–88% net margin per tier, depending on usage. We post the full breakdown above." },
   { q: "What happens when you switch to DeepSeek V3?", a: "Two things: (1) Existing subscribers get a 6-month price lock at the rate they signed up for — if you join at ₹899 Pro, you stay at ₹899 Pro through that window even if public pricing drops. (2) New Pro subscribers will get ₹799 once we cross 100 paying users, since the underlying LLM cost drops 10×." },
-  { q: "Can I use my own LLM key?", a: "Not on the standard tiers — we keep the inference path closed for cost predictability. Enterprise customers can request bring-your-own-key (BYOK) for compliance reasons; talk to us." },
-  { q: "How does agency billing work?", a: "We don't do flat subscriptions for agencies — instead, you pick a monthly clip volume (100 to 10,000+) and we quote a per-clip rate. The bigger the commit, the lower the per-clip. All tiers include every Premium feature unlocked (white-label, multi-seat, API, dedicated support). The 500/mo tier is the sweet spot at ₹13/clip and 77% margin on our side." },
+  { q: "Can I use my own LLM key?", a: "API access is reserved for agency and enterprise contracts — not advertised as a tier feature on the standard plans. If you need programmatic access for compliance or integration reasons, talk to us about a custom arrangement." },
+  { q: "How does agency billing work?", a: "We don't do flat subscriptions for agencies — instead, you pick a monthly clip volume (100 to 10,000+) and we quote a per-clip rate. The bigger the commit, the lower the per-clip. All tiers include every Premium feature unlocked (white-label, multi-seat, dedicated support). The 500/mo tier is the sweet spot at ₹13/clip and 77% margin on our side." },
   { q: "Can I change my agency volume month-to-month?", a: "Yes — upgrade or downgrade at the start of any month. If you exceed your committed volume, we bill the overage at the same per-clip rate (no penalty). If you underuse, the unused clips don't roll over (we keep the math simple). Annual commits unlock an extra 10% discount — talk to us for that." },
   { q: "What about white-labeling for my agency clients?", a: "Standard on all agency tiers: your logo + brand color on clip delivery pages, custom domain (clips.youragency.com) on the 1,000+ tier. Full white-label (no RelatiV branding anywhere) starts at 2,500 clips/mo. We're happy to sign reseller agreements if you're selling clips as a service." },
 ];
@@ -327,7 +323,7 @@ function SectionMarker({ num, label, centered = false }: { num: string; label: s
 
 export default function PlansPage() {
   const { user } = useAuth();
-  const [side, setSide] = useState<Side>("clippers");
+  const [side, setSide] = useState<Side>("creators");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Stripe config (fetched once on mount; public endpoint, no auth needed)
@@ -435,7 +431,7 @@ export default function PlansPage() {
               role="tablist"
               aria-label="Pricing audience"
             >
-              {(["clippers", "brands", "creators", "agencies"] as const).map((s) => (
+              {(["creators", "clippers", "brands", "agencies"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSide(s)}
@@ -728,7 +724,6 @@ export default function PlansPage() {
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Volume</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Per-clip</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Monthly</th>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>vs ₹25 retail</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Our margin</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Best for</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider text-right" style={{ color: "var(--color-text-muted)" }}></th>
@@ -736,8 +731,6 @@ export default function PlansPage() {
                   </thead>
                   <tbody>
                     {AGENCY_VOLUMES.map((vol, i) => {
-                      const retail = 25;
-                      const savings = vol.perClip > 0 ? Math.round((1 - vol.perClip / retail) * 100) : null;
                       const monthly = vol.perClip > 0 ? vol.clipsPerMonth * vol.perClip : null;
                       const isHi = vol.highlight;
                       return (
@@ -776,18 +769,6 @@ export default function PlansPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4">
-                            {savings !== null ? (
-                              <span
-                                className="px-2 py-0.5 rounded-full text-[11px] font-mono"
-                                style={{ background: "rgba(16, 185, 129, 0.10)", color: "#10B981" }}
-                              >
-                                −{savings}%
-                              </span>
-                            ) : (
-                              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>—</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-4">
                             <span
                               className="px-2 py-0.5 rounded-full text-[11px] font-mono"
                               style={{
@@ -822,8 +803,6 @@ export default function PlansPage() {
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {AGENCY_VOLUMES.map((vol) => {
-                  const retail = 25;
-                  const savings = vol.perClip > 0 ? Math.round((1 - vol.perClip / retail) * 100) : null;
                   const monthly = vol.perClip > 0 ? vol.clipsPerMonth * vol.perClip : null;
                   return (
                     <div
@@ -842,12 +821,7 @@ export default function PlansPage() {
                       <p className="text-[12px] mb-3" style={{ color: "var(--color-text-secondary)" }}>
                         {vol.bestFor}
                       </p>
-                      <div className="flex gap-2 mb-3">
-                        {savings !== null && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono" style={{ background: "rgba(16, 185, 129, 0.10)", color: "#10B981" }}>
-                            −{savings}% vs retail
-                          </span>
-                        )}
+                      <div className="mb-3">
                         <span
                           className="px-2 py-0.5 rounded-full text-[10px] font-mono"
                           style={{
