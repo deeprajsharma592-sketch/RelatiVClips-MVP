@@ -481,8 +481,8 @@ export default function PlansPage() {
               transition={{ duration: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-3 gap-5"
             >
-              {/* Stripe status banner (clippers + creators) */}
-              {(side === "clippers" || side === "creators") && (
+              {/* Stripe status banner (clippers only — creators have their own premium flow) */}
+              {side === "clippers" && (
                 <div className="md:col-span-3">
                   {billing === null ? (
                     <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
