@@ -89,7 +89,7 @@ export default function InputDropzone({
             }}
             placeholder="https://youtube.com/watch?v=..."
             disabled={disabled || !!selectedFile}
-            className="flex-1 bg-surface border border-border rounded-[4px] px-4 py-3 text-sm text-white placeholder-text-muted/40 font-sans input-glow transition-all duration-200 disabled:opacity-40"
+            className="flex-1 bg-bg-base border border-border rounded-[4px] px-4 py-3 text-sm text-text-primary placeholder-text-muted/40 font-sans input-glow transition-all duration-200 disabled:opacity-40"
           />
           <motion.button
             onClick={handleUrlSubmit}

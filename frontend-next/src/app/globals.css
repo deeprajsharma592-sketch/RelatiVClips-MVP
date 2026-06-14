@@ -1342,6 +1342,17 @@ body::after {
   background: rgba(255, 252, 242, 0.85);
 }
 
+/* input-glow — focus state for form inputs (theme-aware accent ring) */
+.input-glow:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.input-glow:hover:not(:focus) {
+  border-color: var(--color-border-strong);
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    ANIMATIONS
    ════════════════════════════════════════════════════════════════════════════ */

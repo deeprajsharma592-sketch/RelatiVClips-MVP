@@ -111,7 +111,7 @@ export default function ProcessingLogs({
           key={currentLog}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mt-4 p-3 bg-black border border-border rounded-[4px]"
+          className="mt-4 p-3 bg-bg-base border border-border rounded-[4px]"
         >
           <span className="font-mono text-xs text-accent-secondary/70">{">"}</span>{" "}
           <span className="font-mono text-xs text-text-muted">{currentLog}</span>

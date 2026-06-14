@@ -81,9 +81,9 @@ export default function OutputCanvas({ clips, onReset }: OutputCanvasProps) {
                   { label: "Total Size", symbol: "Σ", value: `${aggregatedStats.totalSize.toFixed(1)} MB` },
                   { label: "Clips", symbol: "Φ", value: `${aggregatedStats.count}` },
                 ].map((stat) => (
-                  <div key={stat.label} className="p-2 bg-black border border-border rounded-[2px] text-center">
+                  <div key={stat.label} className="p-2 bg-bg-base border border-border rounded-[2px] text-center">
                     <span className="font-mono text-xs text-accent-secondary">[{stat.symbol}]</span>
-                    <p className="font-mono text-sm text-white mt-1">{stat.value}</p>
+                    <p className="font-mono text-sm text-text-primary mt-1">{stat.value}</p>
                     <p className="text-[10px] text-text-muted">{stat.label}</p>
                   </div>
                 ))}

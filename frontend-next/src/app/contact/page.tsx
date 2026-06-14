@@ -106,7 +106,7 @@ export default function ContactPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   disabled={sending || sent}
-                  className="w-full bg-black border border-border rounded-[4px] px-4 py-3 text-sm text-white placeholder-text-muted/40 font-sans input-glow transition-all disabled:opacity-40"
+                  className="w-full bg-bg-base border border-border rounded-[4px] px-4 py-3 text-sm text-text-primary placeholder-text-muted/40 font-sans input-glow transition-all disabled:opacity-40"
                 />
               </div>
 
@@ -120,7 +120,7 @@ export default function ContactPage() {
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="What can we help with?"
                   disabled={sending || sent}
-                  className="w-full bg-black border border-border rounded-[4px] px-4 py-3 text-sm text-white placeholder-text-muted/40 font-sans input-glow transition-all disabled:opacity-40"
+                  className="w-full bg-bg-base border border-border rounded-[4px] px-4 py-3 text-sm text-text-primary placeholder-text-muted/40 font-sans input-glow transition-all disabled:opacity-40"
                 />
               </div>
 
@@ -134,7 +134,7 @@ export default function ContactPage() {
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your issue or question..."
                   disabled={sending || sent}
-                  className="w-full bg-black border border-border rounded-[4px] px-4 py-3 text-sm text-white placeholder-text-muted/40 font-sans input-glow transition-all resize-none disabled:opacity-40"
+                  className="w-full bg-bg-base border border-border rounded-[4px] px-4 py-3 text-sm text-text-primary placeholder-text-muted/40 font-sans input-glow transition-all resize-none disabled:opacity-40"
                 />
               </div>
 
@@ -189,10 +189,10 @@ export default function ContactPage() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="p-3 bg-black border border-border rounded-[4px]"
+                  className="p-3 bg-bg-base border border-border rounded-[4px]"
                 >
                   <PhysicsIcon symbol={item.symbol} label={item.label} />
-                  <p className="mt-2 text-sm font-mono text-white">
+                  <p className="mt-2 text-sm font-mono text-text-primary">
                     {item.value}
                   </p>
                 </div>

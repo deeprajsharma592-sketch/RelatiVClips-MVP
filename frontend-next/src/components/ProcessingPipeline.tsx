@@ -148,12 +148,12 @@ export default function ProcessingPipeline({
               { label: "Est. Remaining", symbol: "ε", value: `${estimateSeconds}s` },
               { label: "Active Step", symbol: "φ", value: steps.find(s => s.status === "active")?.label || "—" },
             ].map((metric) => (
-              <div key={metric.symbol} className="flex items-center justify-between p-3 bg-black border border-border rounded-[4px]">
+              <div key={metric.symbol} className="flex items-center justify-between p-3 bg-bg-base border border-border rounded-[4px]">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs text-accent-secondary">[{metric.symbol}]</span>
                   <span className="text-xs text-text-muted">{metric.label}</span>
                 </div>
-                <span className="font-mono text-xs text-white">{metric.value}</span>
+                <span className="font-mono text-xs text-text-primary">{metric.value}</span>
               </div>
             ))}
           </div>
