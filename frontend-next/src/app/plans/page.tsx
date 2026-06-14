@@ -23,7 +23,111 @@ import { Check, ChevronDown, ArrowRight, Sparkles, Loader2, CreditCard } from "l
 import { useAuth } from "@/lib/AuthContext";
 import { createCheckout, getBillingConfig, type BillingConfig } from "@/lib/api";
 
-type Side = "clippers" | "brands" | "creators";
+type Side = "clippers" | "brands" | "creators" | "agencies";
+
+interface AgencyVolume {
+  clipsPerMonth: number;
+  perClip: number;            // ₹ per clip
+  marginPct: number;          // our net margin at this volume
+  bestFor: string;
+  features: string[];
+  highlight?: boolean;        // most popular sweet-spot
+  cta: string;
+}
+
+const AGENCY_VOLUMES: AgencyVolume[] = [
+  {
+    clipsPerMonth: 100,
+    perClip: 20,
+    marginPct: 85,
+    bestFor: "Solo agency, 1-2 clients",
+    features: [
+      "All Premium features unlocked",
+      "Bulk upload (10 videos at once)",
+      "Email support, 24h response",
+    ],
+    cta: "Start at 100/mo",
+  },
+  {
+    clipsPerMonth: 250,
+    perClip: 16,
+    marginPct: 81,
+    bestFor: "Boutique agency, 3-5 clients",
+    features: [
+      "Everything in 100/mo, plus:",
+      "Multi-seat dashboard (3 seats)",
+      "White-label clip delivery",
+      "Priority render queue",
+    ],
+    cta: "Start at 250/mo",
+  },
+  {
+    clipsPerMonth: 500,
+    perClip: 13,
+    marginPct: 77,
+    bestFor: "Mid-size agency, 5-15 clients",
+    features: [
+      "Everything in 250/mo, plus:",
+      "Multi-seat dashboard (10 seats)",
+      "API access for batch jobs",
+      "Dedicated Slack channel",
+    ],
+    cta: "Start at 500/mo",
+    highlight: true,
+  },
+  {
+    clipsPerMonth: 1000,
+    perClip: 10,
+    marginPct: 70,
+    bestFor: "Large agency, 15-30 clients",
+    features: [
+      "Everything in 500/mo, plus:",
+      "Multi-seat dashboard (25 seats)",
+      "Custom AI hooks (your brand voice)",
+      "Quarterly business review",
+    ],
+    cta: "Start at 1,000/mo",
+  },
+  {
+    clipsPerMonth: 2500,
+    perClip: 7.5,
+    marginPct: 60,
+    bestFor: "Enterprise agency, multi-team",
+    features: [
+      "Everything in 1,000/mo, plus:",
+      "Unlimited seats",
+      "Reserved GPU lane (no queue)",
+      "Net-30 invoicing",
+    ],
+    cta: "Start at 2,500/mo",
+  },
+  {
+    clipsPerMonth: 5000,
+    perClip: 6,
+    marginPct: 50,
+    bestFor: "Holding-co / white-label reseller",
+    features: [
+      "Everything in 2,500/mo, plus:",
+      "Annual commit (10% extra discount)",
+      "Co-branded onboarding",
+      "Named CSM + 4h SLA",
+    ],
+    cta: "Start at 5,000/mo",
+  },
+  {
+    clipsPerMonth: 10000,
+    perClip: 0, // custom
+    marginPct: 55,
+    bestFor: "10K+ clips/mo — let's talk",
+    features: [
+      "Custom per-clip rate (volume-based)",
+      "Custom SLA + data residency",
+      "On-prem option available",
+      "Direct line to founders",
+    ],
+    cta: "Talk to us",
+  },
+];
 
 interface Tier {
   name: string;
@@ -206,6 +310,9 @@ const FAQ = [
   { q: "Why are creator plans priced at ₹499/₹899/₹1999?", a: "We reverse-engineered our unit economics in public. Per-clip variable cost (YouTube fetch + LLM + render) is ~₹3, fixed monthly infra is ~₹7,238. At 50 customers we break even; at 100 we net ~₹80K/month. The pricing puts us at 59–88% net margin per tier, depending on usage. We post the full breakdown above." },
   { q: "What happens when you switch to DeepSeek V3?", a: "Two things: (1) Existing subscribers get a 6-month price lock at the rate they signed up for — if you join at ₹899 Pro, you stay at ₹899 Pro through that window even if public pricing drops. (2) New Pro subscribers will get ₹799 once we cross 100 paying users, since the underlying LLM cost drops 10×." },
   { q: "Can I use my own LLM key?", a: "Not on the standard tiers — we keep the inference path closed for cost predictability. Enterprise customers can request bring-your-own-key (BYOK) for compliance reasons; talk to us." },
+  { q: "How does agency billing work?", a: "We don't do flat subscriptions for agencies — instead, you pick a monthly clip volume (100 to 10,000+) and we quote a per-clip rate. The bigger the commit, the lower the per-clip. All tiers include every Premium feature unlocked (white-label, multi-seat, API, dedicated support). The 500/mo tier is the sweet spot at ₹13/clip and 77% margin on our side." },
+  { q: "Can I change my agency volume month-to-month?", a: "Yes — upgrade or downgrade at the start of any month. If you exceed your committed volume, we bill the overage at the same per-clip rate (no penalty). If you underuse, the unused clips don't roll over (we keep the math simple). Annual commits unlock an extra 10% discount — talk to us for that." },
+  { q: "What about white-labeling for my agency clients?", a: "Standard on all agency tiers: your logo + brand color on clip delivery pages, custom domain (clips.youragency.com) on the 1,000+ tier. Full white-label (no RelatiV branding anywhere) starts at 2,500 clips/mo. We're happy to sign reseller agreements if you're selling clips as a service." },
 ];
 
 function SectionMarker({ num, label, centered = false }: { num: string; label: string; centered?: boolean }) {
@@ -271,15 +378,18 @@ export default function PlansPage() {
     return plan?.available === true;
   };
 
-  const tiers = side === "clippers" ? CLIPPER_TIERS : side === "brands" ? BRAND_TIERS : CREATOR_TIERS;
+  const isAgency = side === "agencies";
+  const tiers = side === "clippers" ? CLIPPER_TIERS : side === "brands" ? BRAND_TIERS : side === "creators" ? CREATOR_TIERS : [];
   const heroAccent =
     side === "clippers" ? "rgba(252, 211, 77, 0.18)" :
     side === "brands" ? "rgba(217, 70, 239, 0.18)" :
-    "rgba(16, 185, 129, 0.18)"; // emerald for creators
+    side === "creators" ? "rgba(16, 185, 129, 0.18)" :
+    "rgba(249, 115, 22, 0.18)"; // orange for agencies
   const heroAccent2 =
     side === "clippers" ? "rgba(6, 182, 212, 0.14)" :
     side === "brands" ? "rgba(139, 92, 246, 0.14)" :
-    "rgba(20, 184, 166, 0.14)"; // teal for creators
+    side === "creators" ? "rgba(20, 184, 166, 0.14)" :
+    "rgba(234, 88, 12, 0.14)"; // deep-orange for agencies
 
   return (
     <div className="relative">
@@ -325,7 +435,7 @@ export default function PlansPage() {
               role="tablist"
               aria-label="Pricing audience"
             >
-              {(["clippers", "brands", "creators"] as const).map((s) => (
+              {(["clippers", "brands", "creators", "agencies"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSide(s)}
@@ -346,17 +456,19 @@ export default function PlansPage() {
                         background:
                           s === "clippers" ? "rgba(252, 211, 77, 0.10)" :
                           s === "brands" ? "rgba(139, 92, 246, 0.10)" :
-                          "rgba(16, 185, 129, 0.10)",
+                          s === "creators" ? "rgba(16, 185, 129, 0.10)" :
+                          "rgba(249, 115, 22, 0.10)",
                         border:
                           s === "clippers" ? "1px solid rgba(252, 211, 77, 0.40)" :
                           s === "brands" ? "1px solid rgba(139, 92, 246, 0.30)" :
-                          "1px solid rgba(16, 185, 129, 0.40)",
+                          s === "creators" ? "1px solid rgba(16, 185, 129, 0.40)" :
+                          "1px solid rgba(249, 115, 22, 0.40)",
                       }}
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
                   <span className="relative">
-                    {s === "clippers" ? "For clippers" : s === "brands" ? "For brands" : "For creators"}
+                    {s === "clippers" ? "For clippers" : s === "brands" ? "For brands" : s === "creators" ? "For creators" : "For agencies"}
                   </span>
                 </button>
               ))}
@@ -589,6 +701,199 @@ export default function PlansPage() {
               })}
             </motion.div>
           </AnimatePresence>
+
+          {/* ════════════ AGENCY VOLUME TABLE ════════════ */}
+          {isAgency && (
+            <motion.div
+              key="agencies-volume"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-2"
+            >
+              <div className="text-center mb-8">
+                <p className="text-[11px] font-mono uppercase tracking-wider mb-2" style={{ color: "#F97316" }}>
+                  Pick your volume. See the per-clip rate.
+                </p>
+                <p className="text-[13px] max-w-2xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
+                  All tiers include every Premium feature. The discount comes from how predictable your volume is — agencies commit monthly, we drop the per-clip rate. Margin stays at 50%+.
+                </p>
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden md:block glass-panel overflow-hidden">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(249, 115, 22, 0.20)" }}>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Volume</th>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Per-clip</th>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Monthly</th>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>vs ₹25 retail</th>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Our margin</th>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Best for</th>
+                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider text-right" style={{ color: "var(--color-text-muted)" }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {AGENCY_VOLUMES.map((vol, i) => {
+                      const retail = 25;
+                      const savings = vol.perClip > 0 ? Math.round((1 - vol.perClip / retail) * 100) : null;
+                      const monthly = vol.perClip > 0 ? vol.clipsPerMonth * vol.perClip : null;
+                      const isHi = vol.highlight;
+                      return (
+                        <tr
+                          key={vol.clipsPerMonth}
+                          style={{
+                            borderBottom: i < AGENCY_VOLUMES.length - 1 ? "1px solid rgba(100, 116, 139, 0.10)" : "none",
+                            background: isHi ? "rgba(249, 115, 22, 0.04)" : "transparent",
+                          }}
+                          className="transition-colors hover:bg-[rgba(249,115,22,0.06)]"
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-display font-semibold text-[15px]" style={{ color: "var(--color-text-primary)" }}>
+                                {vol.clipsPerMonth >= 10000 ? "10,000+" : vol.clipsPerMonth.toLocaleString("en-IN")}
+                              </span>
+                              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>clips / mo</span>
+                              {isHi && (
+                                <span
+                                  className="px-1.5 py-0.5 rounded-full text-[9px] font-mono uppercase tracking-wider"
+                                  style={{ background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)", color: "white" }}
+                                >
+                                  Sweet spot
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="font-mono text-[15px] font-semibold" style={{ color: vol.perClip > 0 ? "#F97316" : "var(--color-text-muted)" }}>
+                              {vol.perClip > 0 ? `₹${vol.perClip}` : "Custom"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="font-mono text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
+                              {monthly ? `₹${monthly.toLocaleString("en-IN")}` : "Let's talk"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {savings !== null ? (
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[11px] font-mono"
+                                style={{ background: "rgba(16, 185, 129, 0.10)", color: "#10B981" }}
+                              >
+                                −{savings}%
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[11px] font-mono"
+                              style={{
+                                background: vol.marginPct >= 70 ? "rgba(16, 185, 129, 0.10)" : vol.marginPct >= 55 ? "rgba(252, 211, 77, 0.10)" : "rgba(251, 113, 133, 0.10)",
+                                color: vol.marginPct >= 70 ? "#10B981" : vol.marginPct >= 55 ? "#FCD34D" : "#FB7185",
+                              }}
+                            >
+                              {vol.marginPct}%
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 max-w-[200px]">
+                            <span className="text-[12px]" style={{ color: "var(--color-text-secondary)" }}>
+                              {vol.bestFor}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <Link
+                              href={vol.perClip > 0 ? `/contact?intent=agency&volume=${vol.clipsPerMonth}` : "/contact?intent=agency&volume=10000+"}
+                              className={isHi ? "btn-primary btn-shine text-[12px] py-1.5 px-3 inline-flex items-center gap-1" : "btn-glass text-[12px] py-1.5 px-3 inline-flex items-center gap-1"}
+                            >
+                              {vol.cta}
+                              <ArrowRight className="h-3 w-3" />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3">
+                {AGENCY_VOLUMES.map((vol) => {
+                  const retail = 25;
+                  const savings = vol.perClip > 0 ? Math.round((1 - vol.perClip / retail) * 100) : null;
+                  const monthly = vol.perClip > 0 ? vol.clipsPerMonth * vol.perClip : null;
+                  return (
+                    <div
+                      key={vol.clipsPerMonth}
+                      className={`p-5 rounded-2xl ${vol.highlight ? "glass-panel" : "glass-card"}`}
+                      style={vol.highlight ? { border: "1px solid rgba(249, 115, 22, 0.30)" } : undefined}
+                    >
+                      <div className="flex items-baseline justify-between mb-2">
+                        <span className="font-display font-semibold text-[20px]" style={{ color: "var(--color-text-primary)" }}>
+                          {vol.clipsPerMonth >= 10000 ? "10,000+" : vol.clipsPerMonth.toLocaleString("en-IN")} clips/mo
+                        </span>
+                        <span className="font-mono text-[18px] font-semibold" style={{ color: "#F97316" }}>
+                          {vol.perClip > 0 ? `₹${vol.perClip}` : "Custom"}
+                        </span>
+                      </div>
+                      <p className="text-[12px] mb-3" style={{ color: "var(--color-text-secondary)" }}>
+                        {vol.bestFor}
+                      </p>
+                      <div className="flex gap-2 mb-3">
+                        {savings !== null && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono" style={{ background: "rgba(16, 185, 129, 0.10)", color: "#10B981" }}>
+                            −{savings}% vs retail
+                          </span>
+                        )}
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-mono"
+                          style={{
+                            background: vol.marginPct >= 70 ? "rgba(16, 185, 129, 0.10)" : "rgba(252, 211, 77, 0.10)",
+                            color: vol.marginPct >= 70 ? "#10B981" : "#FCD34D",
+                          }}
+                        >
+                          {vol.marginPct}% margin
+                        </span>
+                      </div>
+                      <Link
+                        href={vol.perClip > 0 ? `/contact?intent=agency&volume=${vol.clipsPerMonth}` : "/contact?intent=agency&volume=10000+"}
+                        className="btn-glass w-full justify-center text-[12px] py-2"
+                      >
+                        {vol.cta}
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Custom-volume CTA */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                className="mt-6 glass-card p-5 relative overflow-hidden text-center"
+                style={{ border: "1px solid rgba(249, 115, 22, 0.20)" }}
+              >
+                <p className="text-[12px] font-mono uppercase tracking-wider mb-1" style={{ color: "#F97316" }}>
+                  Custom volume?
+                </p>
+                <h4 className="font-display font-semibold text-[16px] mb-1" style={{ color: "var(--color-text-primary)" }}>
+                  Need 7,500 clips/mo? Or 25,000? Or weird seasonal patterns?
+                </h4>
+                <p className="text-[12px] mb-3" style={{ color: "var(--color-text-secondary)" }}>
+                  We do custom contracts — annual commits, seasonal ramps, multi-tenant white-label.
+                </p>
+                <Link href="/contact?intent=agency&volume=custom" className="btn-primary btn-shine inline-flex items-center gap-2 text-[12px] py-2">
+                  Talk to a founder
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </motion.div>
+            </motion.div>
+          )}
 
           {/* First-campaign guarantee (brands only) */}
           {side === "brands" && (
