@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
 
-const BASE = "https://relativclips.com";
-
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -11,24 +9,17 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/api/",
           "/account",
+          "/admin",
           "/brands/dashboard",
-          "/clippers/dashboard",
-          "/creators/dashboard",
           "/brands/campaigns",
-          "/brands/campaigns/*",
-          "/clippers/campaigns",
+          "/clippers/dashboard",
           "/clippers/clips",
-          "/clippers/clips/*",
-          "/plans",
-          "/login",
-          "/signup",
-          "/forgot-password",
-          "/reset-password",
-          "/verify-email",
+          "/clippers/campaigns",
+          "/creators/dashboard",
+          "/(auth)/",
         ],
       },
     ],
-    sitemap: `${BASE}/sitemap.xml`,
-    host: BASE,
+    sitemap: "https://relativclips.com/sitemap.xml",
   };
 }

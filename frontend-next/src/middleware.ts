@@ -8,11 +8,13 @@
  * confirm the session is real — this middleware is the first line of defense,
  * not the only one.
  *
- * Protected surfaces:
+ * Protected surfaces (workspace only — top-level /brands, /creators, /clippers
+ * are public marketing pages):
  *   /account           — every logged-in user
- *   /brands/*          — brand role only (other roles → /account)
- *   /clippers/*        — clipper role only (other roles → /account)
- *   /creators/*        — creator role only (other roles → /account)
+ *   /brands/dashboard  — brand role only
+ *   /brands/campaigns  — brand role only
+ *   /clippers/*        — clipper role only (workspace only)
+ *   /creators/dashboard — creator role only
  *   /onboarding/*      — every logged-in user
  *
  * Why cookie-presence, not role-aware? The role lives inside the encrypted
@@ -22,11 +24,17 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
+// Workspace routes that REQUIRE auth. Note: /brands, /creators, /clippers
+// at the TOP level are public marketing pages — only the workspace subpaths
+// (dashboard, campaigns, etc.) are protected.
 const PROTECTED_PREFIXES = [
   "/account",
-  "/brands",
-  "/clippers",
-  "/creators",
+  "/brands/dashboard",
+  "/brands/campaigns",
+  "/creators/dashboard",
+  "/clippers/dashboard",
+  "/clippers/clips",
+  "/clippers/campaigns",
   "/onboarding",
 ];
 
