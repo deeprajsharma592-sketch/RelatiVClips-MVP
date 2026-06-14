@@ -79,6 +79,13 @@ NUM_CLIPS_YOUTUBE = 3
 MIN_CLIPS = 3
 
 PEAK_THRESHOLD_MULTIPLIER = 1.5
+# A "valley" = RMS below mean × this factor. Lower = stricter (only dead silences).
+# 0.5 = "this moment is at least half as quiet as the average frame."
+VALLEY_THRESHOLD_MULTIPLIER = 0.5
+# Minimum duration (seconds) of a low-energy region to count as a valley
+VALLEY_MIN_DURATION_S = 1.0
+# Padding around a valley to form a clip window (so the valley has context)
+VALLEY_CONTEXT_PADDING_S = 4.0
 
 CROP_WIDTH = 608
 CROP_HEIGHT = 1080

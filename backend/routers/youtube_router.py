@@ -14,7 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict
+from pathlib import Path
 
 from ..models import ProcessResponse, TaskStatus
 from ..utils.task_store import task_store
@@ -488,19 +489,25 @@ def create_progress_callback(task_id: str):
 
 
 async def run_youtube_orchestrator(task_id: str, url: str, callback):
-    """New 9-stage pipeline path (PIPELINE_VERSION=2).
+    """New pipeline path (PIPELINE_VERSION=2) — caption-first, audio-only-for-librosa.
 
-    The orchestrator downloads surgically via stage 4 and transcribes per-segment
-    via stage 5 — no full audio download. This is the strategic direction.
+    Flow (the "v3" pipeline):
+      1. Try YouTube captions via yt-dlp (FREE, no audio download)
+      2. If captions succeed: build candidate moments from word density + pauses
+      3. If captions fail: download audio (low priority), run librosa peaks + valleys,
+         build candidate moments from those
+      4. Run the rest of the pipeline (surgical, render) on top moments
+      5. LLM (claude/deepseek) picks 2-5 with strict JSON, low token cost
 
-    Cost-saver: tries yt-dlp captions first. If YouTube has auto-captions, we
-    skip the RunPod transcription call entirely. This is the difference between
-    $0 and $0.01+ per video.
+    Audio is NEVER used as input to the LLM. Audio is ONLY used for librosa
+    energy analysis when captions aren't available. Captions are 80%+ of the
+    pipeline; audio is the fallback.
     """
     from ..pipeline.orchestrator import run_new_pipeline
+    from ..pipeline.moment_detector import detect_moments, Moment
+    from ..taste.icl import build_moment_prompt, parse_moment_response
 
     def _bridge(stage: str, msg: str) -> None:
-        # Map orchestrator progress (stage, msg) → legacy (msg, step, progress)
         try:
             step = int(stage) if str(stage).isdigit() else None
         except Exception:
@@ -510,42 +517,255 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
         except Exception:
             pass
 
-    # Try YouTube captions first (free, no RunPod cost).
-    precomputed_transcript = None
-    try:
-        from ..pipeline.transcript_fetcher import fetch_transcript
-        callback("Checking YouTube captions...", step=1)
-        log_messages = []
-        tr = fetch_transcript(url, task_id, log=lambda m: log_messages.append(m))
-        if tr and tr.get("segments") and tr.get("source") in ("ytdlp_vtt", "ytdlp_srt"):
-            precomputed_transcript = tr
-            callback(
-                f"Found {len(tr['segments'])} caption segments — skipping cloud transcription",
-                step=1,
-            )
-        else:
-            for m in log_messages:
-                callback(m, step=1)
-    except Exception as e:
-        callback(f"Caption fetch failed: {e} — will use cloud transcription", step=1)
+    # --- STAGE 1 + 2 (combined): caption-first signal extraction ---
+    # Try captions first; if they fail, download audio for librosa.
+    callback("Analyzing source...", step=1)
+    moments, info = detect_moments(
+        source=url,
+        task_id=task_id,
+        log=lambda m: callback(m, step=1),
+    )
+
+    if not moments:
+        callback("No candidate moments found — pipeline will not render", step=2)
+        return {
+            "clips": [],
+            "hooks": [],
+            "transcript": info.get("transcript"),
+            "video_meta": info,
+            "stages_run": [1, 2],
+            "task_id": task_id,
+        }
+    callback(
+        f"Built {len(moments)} candidate moments from "
+        f"{'captions (no audio download)' if info['source'] == 'captions' else 'audio peaks + valleys'}",
+        step=2,
+    )
+
+    # --- STAGE 3-5: surgical download of top moments ---
+    # We use the top 8 moments (more than LLM picks so the LLM has good candidates)
+    top_for_surgery = moments[:8]
+    surgical_candidates = []
+    for m in top_for_surgery:
+        surgical_candidates.append({
+            "start": m.start,
+            "end": m.end,
+            "hook_score": m.score,
+            "components": {"signal": m.score, "type": m.signal_type},
+            "reason": m.snippet,
+            "surgical_padding_s": 2.0,  # 2s extra context on each side
+            "source_url": url,
+        })
+
+    # --- STAGE 6: LLM taste select (strict JSON, low token) ---
+    callback("Asking LLM to pick the 2-5 most viral moments...", step=6)
+    video_meta = {
+        "title": info.get("transcript", {}).get("title") if info.get("transcript") else None,
+        "duration_s": info.get("duration_s", 0),
+        "source": info.get("source", "unknown"),
+    }
+    prompt = build_moment_prompt(moments, video_meta, max_picks=3)
+    # NOTE: the LLM key is INVALID in this env, so this will fail and the
+    # energy/moment fallback will be used. Once the key is rotated, the
+    # LLM call below activates and replaces the fallback picks.
 
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
+    final_clips = await loop.run_in_executor(
         None,
-        lambda: run_new_pipeline(
-            source=url,
-            # Stage 1 (analyze) + Stage 3 (hooks from transcript) + Stage 4
-            # (surgical) + downstream. Stage 2 (energy peaks) is skipped
-            # because we don't have full audio yet — captions came from
-            # YouTube directly. The hook detector falls back to a
-            # transcript-only scoring pass when no peaks are present.
-            stages=[1, 3, 4, 5, 6, 7, 8, 9],
-            progress=_bridge,
+        lambda: _run_moment_pipeline(
+            url=url,
             task_id=task_id,
-            precomputed_transcript=precomputed_transcript,
+            moments=moments,
+            top_for_surgery=top_for_surgery,
+            prompt=prompt,
+            video_meta=video_meta,
+            video_duration_s=info.get("duration_s", 0),
+            callback=callback,
+            info=info,
         ),
     )
-    return result
+    return final_clips
+
+
+def _run_moment_pipeline(
+    url: str,
+    task_id: str,
+    moments,
+    top_for_surgery,
+    prompt: str,
+    video_meta: dict,
+    video_duration_s: float,
+    callback,
+    info: dict,
+) -> dict:
+    """Run the surgical download + LLM select + render in a thread.
+
+    LLM key is currently INVALID (per 2026-06-14 audit), so this falls
+    back to the moment-based heuristic when the LLM fails. The fallback
+    picks the top-N moments by score and synthesizes viral_title/caption.
+    """
+    from ..pipeline import surgical as surgical_stage
+    from ..pipeline import face_detection as face_stage
+    from ..pipeline import renderer as renderer_module
+    from datetime import datetime
+    from ..llm.chain import call_with_fallback
+    from ..taste.icl import parse_moment_response
+
+    def _bridge(stage_or_msg: str, msg: str = None) -> None:
+        """Bridge accepts either (stage, msg) or just (msg) — the renderer
+        uses a single-arg progress callback, but the orchestrator stages
+        use (stage, msg)."""
+        try:
+            if msg is None:
+                callback(stage_or_msg, step=None)
+            else:
+                callback(msg, step=None)
+        except Exception:
+            pass
+
+    # 1. Surgical download of the top moments
+    # Note: surgical_download_youtube uses dict-style access, so convert
+    # Moment objects to dicts first.
+    _bridge("surgical", f"Fetching audio for top {len(top_for_surgery)} moments...")
+    moment_dicts = [
+        {
+            "start": m.start,
+            "end": m.end,
+            "hook_score": m.score,
+            "components": {"signal": m.score, "type": m.signal_type},
+            "reason": m.snippet,
+        }
+        for m in top_for_surgery
+    ]
+    segments = surgical_stage.surgical_download_youtube(
+        url, moment_dicts, task_id, log_fn=_bridge,
+    )
+
+    # 2. Try LLM taste select
+    _bridge("taste", "Calling LLM with strict-JSON prompt...")
+    picks = []
+    provider_used = None
+    try:
+        text, provider_used = call_with_fallback(prompt)
+        if text:
+            picks = parse_moment_response(text)
+            _bridge("taste", f"LLM ({provider_used}) picked {len(picks)} moments")
+    except Exception as e:
+        _bridge("taste", f"LLM failed: {e} — using moment-based fallback")
+
+    # 3. Map LLM picks to actual moments (using moment_index)
+    moment_by_idx = {m.index: m for m in moments}
+    final_clips: List[Dict] = []
+    if picks:
+        for p in picks:
+            m = moment_by_idx.get(int(p.get("moment_index", 0)))
+            if not m:
+                continue
+            trim_s = float(p.get("trim_start", 0))
+            trim_e = float(p.get("trim_end", 0))
+            clip_start = max(0, m.start + trim_s)
+            clip_end = max(clip_start + 5, m.end - trim_e)
+            # Find the matching surgical segment
+            matching_seg = next(
+                (s for s in segments
+                 if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
+                None,
+            )
+            final_clips.append({
+                "start": round(clip_start, 2),
+                "end": round(clip_end, 2),
+                "source_start": matching_seg.get("source_start") if matching_seg else m.start,
+                "source_end": matching_seg.get("source_end") if matching_seg else m.end,
+                "audio_path": matching_seg.get("audio_path") if matching_seg else None,
+                "viral_title": p.get("viral_title", m.snippet[:40]),
+                "caption": p.get("caption", ""),
+                "hashtags": p.get("hashtags", "#shorts #viral"),
+                "reason": p.get("reason", m.snippet[:60]),
+                "signal_type": m.signal_type,
+                "llm_provider": provider_used or "fallback",
+            })
+    if not final_clips:
+        # Fallback: take top 3 moments by score, synthesize viral_title
+        _bridge("taste", "Using moment-based fallback (top 3 by score)")
+        for m in moments[:3]:
+            matching_seg = next(
+                (s for s in segments
+                 if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
+                None,
+            )
+            default_title = {
+                "peak": "THIS MOMENT HITS",
+                "valley": "THE AWKWARD PAUSE",
+                "density": "FAST FORWARD",
+                "silence": "WAIT FOR IT",
+            }.get(m.signal_type, "TOP MOMENT")
+            final_clips.append({
+                "start": round(m.start, 2),
+                "end": round(m.end, 2),
+                "source_start": matching_seg.get("source_start") if matching_seg else m.start,
+                "source_end": matching_seg.get("source_end") if matching_seg else m.end,
+                "audio_path": matching_seg.get("audio_path") if matching_seg else None,
+                "viral_title": default_title,
+                "caption": m.snippet[:100] if m.snippet else f"{m.signal_type} at {m.start:.0f}s",
+                "hashtags": "#shorts #viral",
+                "reason": f"signal={m.signal_type} score={m.score:.2f}",
+                "signal_type": m.signal_type,
+                "llm_provider": "fallback",
+            })
+
+    # 4. Face detection (only on segments with audio)
+    _bridge("face", "Detecting faces...")
+    for clip in final_clips:
+        ap = clip.get("audio_path")
+        if ap and Path(ap).exists():
+            try:
+                face_data = face_stage.get_batch_face_data(ap, [clip])
+                clip["face_data"] = face_data[0] if face_data else None
+            except Exception as e:
+                _bridge("face", f"  face detection failed: {e}")
+                clip["face_data"] = None
+        else:
+            clip["face_data"] = None
+
+    # 5. Render (uses the audio+still composition we wired in earlier)
+    _bridge("render", f"Rendering {len(final_clips)} clip(s)...")
+    rendered = []
+    video_id = info.get("transcript", {}).get("video_id") if info.get("transcript") else None
+    for i, clip in enumerate(final_clips):
+        try:
+            out = renderer_module.render_clip(
+                video_path=clip.get("audio_path") or clip.get("source_start", url),
+                clip=clip,
+                clip_index=i + 1,
+                video_id=video_id or "local",
+                task_id=task_id,
+                progress_callback=lambda m: _bridge("render", m),
+            )
+            if out:
+                rendered.append({
+                    **clip,
+                    "clip_id": out.get("clip_id"),
+                    "file_path": out.get("file_path"),
+                    "file_size_mb": out.get("file_size_mb", 0),
+                    "duration_s": round(clip.get("end", 0) - clip.get("start", 0), 2),
+                    "created_at": datetime.utcnow().isoformat() + "Z",
+                })
+        except Exception as e:
+            _bridge("render", f"  render failed for clip {i}: {e}")
+
+    _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
+    # Strip non-serializable / circular fields before returning
+    clean_rendered = []
+    for c in rendered:
+        clean = {k: v for k, v in c.items() if k not in ("face_data", "transcript")}
+        clean_rendered.append(clean)
+    return {
+        "clips": clean_rendered,
+        "hooks": [m.__dict__ for m in moments],  # serialize dataclasses
+        "video_meta": video_meta,
+        "stages_run": [1, 2, 4, 5, 6, 7, 8],
+        "task_id": task_id,
+    }
 
 
 async def run_youtube_pipeline_async(task_id: str, url: str, callback):
