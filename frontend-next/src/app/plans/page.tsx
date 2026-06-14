@@ -375,7 +375,7 @@ export default function PlansPage() {
   };
 
   const isAgency = side === "agencies";
-  const tiers = side === "clippers" ? CLIPPER_TIERS : side === "brands" ? BRAND_TIERS : side === "creators" ? CREATOR_TIERS : [];
+  const tiers = side === "clippers" ? CLIPPER_TIERS : side === "brands" ? BRAND_TIERS : [];
   const heroAccent =
     side === "clippers" ? "rgba(252, 211, 77, 0.18)" :
     side === "brands" ? "rgba(217, 70, 239, 0.18)" :
@@ -481,8 +481,8 @@ export default function PlansPage() {
               transition={{ duration: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-3 gap-5"
             >
-              {/* Stripe status banner (clipper side only, when in the clippers view) */}
-              {side === "clippers" && (
+              {/* Stripe status banner (clippers + creators) */}
+              {(side === "clippers" || side === "creators") && (
                 <div className="md:col-span-3">
                   {billing === null ? (
                     <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
@@ -698,6 +698,206 @@ export default function PlansPage() {
             </motion.div>
           </AnimatePresence>
 
+          {/* ════════════ CREATOR PREMIUM DESIGN (creators only) ════════════ */}
+          {side === "creators" && (
+            <motion.div
+              key="creators-premium"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              {/* Subheading */}
+              <div className="text-center mb-12">
+                <h2
+                  className="font-display font-semibold tracking-tight"
+                  style={{ fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)", lineHeight: 1.0 }}
+                >
+                  <span style={{ color: "var(--color-text-primary)" }}>Pay per clip, not </span>
+                  <em
+                    style={{
+                      color: "#FF77E9",
+                      fontStyle: "italic",
+                      fontFamily: "Georgia, 'Times New Roman', ui-serif, serif",
+                    }}
+                  >
+                    per seat
+                  </em>
+                  <span style={{ color: "var(--color-text-primary)" }}>.</span>
+                </h2>
+                <p className="mt-5 text-[15px] max-w-xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
+                  Start free. Upgrade when you ship. Cancel anytime — your clips stay yours.
+                </p>
+              </div>
+
+              {/* 3 subscription cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {([
+                  {
+                    name: "Go",
+                    price: "₹499",
+                    unit: "/month",
+                    tagline: "20 clips · 3 channels",
+                    accent: "slate",
+                    features: [
+                      "20 AI-generated clips per month",
+                      "Vertical 9:16 rendering, hardcoded captions",
+                      "Hook detection from energy + transcript",
+                      "3 YouTube channels connected",
+                      "Standard rendering queue (no priority)",
+                      "UPI / card billing",
+                    ],
+                    cta: "Start Go",
+                    href: "/signup?plan=creator_go",
+                  },
+                  {
+                    name: "Pro",
+                    price: "₹899",
+                    unit: "/month",
+                    tagline: "50 clips · 10 channels · AI taste-select",
+                    accent: "gold",
+                    highlight: true,
+                    features: [
+                      "50 AI-generated clips per month",
+                      "AI taste-select (DeepSeek V3) on every video",
+                      "Auto-caption + viral-title generation",
+                      "10 YouTube channels + upload-from-device",
+                      "Priority render queue (3× faster)",
+                      "A/B hook variants (3 per clip)",
+                      "Email + Discord support",
+                    ],
+                    cta: "Try Pro free for 7 days",
+                    href: "/signup?plan=creator_pro",
+                  },
+                  {
+                    name: "Premium",
+                    price: "₹1,999",
+                    unit: "/month",
+                    tagline: "150 clips · 5 seats · reserved GPU",
+                    accent: "violet",
+                    features: [
+                      "150 AI-generated clips per month",
+                      "Everything in Pro, plus:",
+                      "Custom branding (logo, color, font on captions)",
+                      "Reserved GPU lane (10× faster transcription)",
+                      "Team seats (up to 5)",
+                      "Priority support — 4h response SLA",
+                      "Quarterly strategy call with founders",
+                    ],
+                    cta: "Go Premium",
+                    href: "/signup?plan=creator_premium",
+                  },
+                ] as const).map((tier, i) => {
+                  const accentMap = {
+                    slate: { dot: "#94A3B8", border: "rgba(148, 163, 184, 0.35)", check: "#94A3B8" },
+                    gold: { dot: "#FCD34D", border: "rgba(252, 211, 77, 0.55)", check: "#FCD34D" },
+                    violet: { dot: "#A78BFA", border: "rgba(167, 139, 250, 0.35)", check: "#A78BFA" },
+                  } as const;
+                  const a = accentMap[tier.accent];
+                  const isHi = "highlight" in tier && tier.highlight;
+                  return (
+                    <motion.div
+                      key={tier.name}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.08, duration: 0.5 }}
+                      className="relative rounded-2xl p-7 flex flex-col"
+                      style={{
+                        background: isHi
+                          ? "linear-gradient(180deg, rgba(252, 211, 77, 0.12) 0%, rgba(252, 211, 77, 0.04) 100%)"
+                          : "var(--color-surface)",
+                        border: `1px solid ${isHi ? a.border : "var(--color-border)"}`,
+                        boxShadow: isHi ? "0 1px 0 rgba(252, 211, 77, 0.08) inset" : undefined,
+                      }}
+                    >
+                      {isHi && (
+                        <div className="absolute top-4 right-4">
+                          <span
+                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider"
+                            style={{ background: "#FCD34D", color: "#0A0A0B" }}
+                          >
+                            Most popular
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mb-4">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: a.dot }}
+                        />
+                        <p
+                          className="text-[11px] font-mono uppercase tracking-wider font-semibold"
+                          style={{ color: a.dot }}
+                        >
+                          {tier.name}
+                        </p>
+                      </div>
+
+                      <div className="flex items-baseline gap-1.5 mb-1.5">
+                        <span
+                          className="font-display font-semibold tracking-tight"
+                          style={{ fontSize: "3.5rem", lineHeight: 1, color: "var(--color-text-primary)" }}
+                        >
+                          {tier.price}
+                        </span>
+                        {tier.unit && (
+                          <span className="text-[13px]" style={{ color: "var(--color-text-muted)" }}>
+                            {tier.unit}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[12px] font-mono mb-6" style={{ color: "var(--color-text-muted)" }}>
+                        {tier.tagline}
+                      </p>
+
+                      <Link
+                        href={tier.href}
+                        className={
+                          isHi
+                            ? "btn-primary btn-shine w-full justify-center inline-flex mb-6"
+                            : "btn-glass w-full justify-center inline-flex mb-6"
+                        }
+                      >
+                        {tier.cta}
+                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Link>
+
+                      <ul className="space-y-2.5">
+                        {tier.features.map((f) => (
+                          <li
+                            key={f}
+                            className="flex items-start gap-2.5 text-[13px]"
+                            style={{ color: "var(--color-text-secondary)" }}
+                          >
+                            <Check
+                              className="h-4 w-4 mt-0.5 shrink-0"
+                              style={{ color: a.check }}
+                            />
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Enterprise link */}
+              <div className="mt-8 text-center">
+                <p className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
+                  Need 150+ clips/mo, an enterprise deal, or white-label?{" "}
+                  <Link
+                    href="/contact?intent=enterprise"
+                    className="font-semibold underline"
+                    style={{ color: "#FF77E9" }}
+                  >
+                    See full plans →
+                  </Link>
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {/* ════════════ AGENCY VOLUME TABLE ════════════ */}
           {isAgency && (
             <motion.div
@@ -724,7 +924,6 @@ export default function PlansPage() {
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Volume</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Per-clip</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Monthly</th>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Our margin</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Best for</th>
                       <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider text-right" style={{ color: "var(--color-text-muted)" }}></th>
                     </tr>
@@ -768,17 +967,6 @@ export default function PlansPage() {
                               {monthly ? `₹${monthly.toLocaleString("en-IN")}` : "Let's talk"}
                             </span>
                           </td>
-                          <td className="px-5 py-4">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[11px] font-mono"
-                              style={{
-                                background: vol.marginPct >= 70 ? "rgba(16, 185, 129, 0.10)" : vol.marginPct >= 55 ? "rgba(252, 211, 77, 0.10)" : "rgba(251, 113, 133, 0.10)",
-                                color: vol.marginPct >= 70 ? "#10B981" : vol.marginPct >= 55 ? "#FCD34D" : "#FB7185",
-                              }}
-                            >
-                              {vol.marginPct}%
-                            </span>
-                          </td>
                           <td className="px-5 py-4 max-w-[200px]">
                             <span className="text-[12px]" style={{ color: "var(--color-text-secondary)" }}>
                               {vol.bestFor}
@@ -818,20 +1006,9 @@ export default function PlansPage() {
                           {vol.perClip > 0 ? `₹${vol.perClip}` : "Custom"}
                         </span>
                       </div>
-                      <p className="text-[12px] mb-3" style={{ color: "var(--color-text-secondary)" }}>
+                      <p className="text-[12px] mb-6" style={{ color: "var(--color-text-secondary)" }}>
                         {vol.bestFor}
                       </p>
-                      <div className="mb-3">
-                        <span
-                          className="px-2 py-0.5 rounded-full text-[10px] font-mono"
-                          style={{
-                            background: vol.marginPct >= 70 ? "rgba(16, 185, 129, 0.10)" : "rgba(252, 211, 77, 0.10)",
-                            color: vol.marginPct >= 70 ? "#10B981" : "#FCD34D",
-                          }}
-                        >
-                          {vol.marginPct}% margin
-                        </span>
-                      </div>
                       <Link
                         href={vol.perClip > 0 ? `/contact?intent=agency&volume=${vol.clipsPerMonth}` : "/contact?intent=agency&volume=10000+"}
                         className="btn-glass w-full justify-center text-[12px] py-2"
