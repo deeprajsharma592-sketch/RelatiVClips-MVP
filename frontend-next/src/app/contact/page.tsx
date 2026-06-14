@@ -53,7 +53,7 @@ export default function ContactPage() {
       >
         <div className="flex items-center gap-3 mb-4">
           <span className="text-sm font-mono text-accent">
-            [\u03A6-Support]
+            [Φ-Support]
           </span>
           <div className="h-px flex-1 bg-gradient-to-r from-accent to-transparent" />
         </div>
@@ -98,7 +98,7 @@ export default function ContactPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-mono text-text-muted mb-2">
-                  [\u03B5] Email
+                  [ε] Email
                 </label>
                 <input
                   type="email"
@@ -112,7 +112,7 @@ export default function ContactPage() {
 
               <div>
                 <label className="block text-xs font-mono text-text-muted mb-2">
-                  [\u03C6] Subject
+                  [φ] Subject
                 </label>
                 <input
                   type="text"
@@ -126,7 +126,7 @@ export default function ContactPage() {
 
               <div>
                 <label className="block text-xs font-mono text-text-muted mb-2">
-                  [\u0394v] Message
+                  [Δv] Message
                 </label>
                 <textarea
                   rows={5}
@@ -146,7 +146,7 @@ export default function ContactPage() {
                   whileHover={!sending && !sent ? { scale: 1.02, boxShadow: "0 0 20px rgba(77,77,255,0.3)" } : {}}
                   whileTap={!sending && !sent ? { scale: 0.98 } : {}}
                 >
-                  {sending ? "Sending..." : sent ? "Sent \u2713" : "Send Message [\u03A6]"}
+                  {sending ? "Sending..." : sent ? "Sent ✓" : "Send Message [Φ]"}
                 </motion.button>
                 {sent && (
                   <motion.button
@@ -172,17 +172,17 @@ export default function ContactPage() {
             <div className="space-y-4">
               {[
                 {
-                  symbol: "\u03B7",
+                  symbol: "η",
                   label: "Email",
                   value: "engineering@relativ.dev",
                 },
                 {
-                  symbol: "\u03A3",
+                  symbol: "Σ",
                   label: "Response Time",
                   value: "< 24 hours",
                 },
                 {
-                  symbol: "\u03B5",
+                  symbol: "ε",
                   label: "Status",
                   value: "All systems nominal",
                 },

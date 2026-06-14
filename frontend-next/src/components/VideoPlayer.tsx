@@ -32,7 +32,7 @@ export default function VideoPlayer({ src, label }: VideoPlayerProps) {
     <div className="space-y-4">
       {label && (
         <div className="flex items-center gap-2">
-          <span className="text-sm font-mono text-accent-secondary">[\u25B6]</span>
+          <span className="text-sm font-mono text-accent-secondary">[▶]</span>
           <span className="text-sm font-display text-white font-semibold">
             {label}
           </span>
@@ -65,9 +65,9 @@ export default function VideoPlayer({ src, label }: VideoPlayerProps) {
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <span className="text-4xl text-border">\u25B6</span>
+            <span className="text-4xl text-border">▶</span>
             <span className="text-xs text-text-muted font-mono">
-              [\u2205] No clip loaded
+              [∅] No clip loaded
             </span>
           </div>
         )}

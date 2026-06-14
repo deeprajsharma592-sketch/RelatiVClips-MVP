@@ -14,7 +14,7 @@ export default function AboutPage() {
       >
         <div className="flex items-center gap-3 mb-4">
           <span className="text-sm font-mono text-accent">
-            [\u03A6-Manifesto]
+            [Φ-Manifesto]
           </span>
           <div className="h-px flex-1 bg-gradient-to-r from-accent to-transparent" />
         </div>
@@ -37,7 +37,7 @@ export default function AboutPage() {
             — zero uploads, zero cloud dependencies, zero privacy compromise.
           </p>
           <div className="mt-6 flex items-center gap-2">
-            <PhysicsIcon symbol="\u03B7" label="Zero Data Exfiltration" />
+            <PhysicsIcon symbol="η" label="Zero Data Exfiltration" />
           </div>
         </BentoCard>
 
@@ -51,7 +51,7 @@ export default function AboutPage() {
             with surgical precision.
           </p>
           <div className="mt-6 flex items-center gap-2">
-            <PhysicsIcon symbol="\u0394v" label="Audio + Visual Fusion" />
+            <PhysicsIcon symbol="Δv" label="Audio + Visual Fusion" />
           </div>
         </BentoCard>
       </div>

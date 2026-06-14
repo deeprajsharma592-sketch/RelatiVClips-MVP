@@ -69,7 +69,7 @@ export default function OutputCanvas({ clips, onReset }: OutputCanvasProps) {
             <div className="space-y-4 h-full flex flex-col">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-accent-secondary">[\u03A3]</span>
+                  <span className="text-sm font-mono text-accent-secondary">[Σ]</span>
                   <span className="text-sm font-display text-white font-semibold">Generated Clips</span>
                 </div>
                 <span className="text-xs font-mono text-text-muted">{clips.length} total</span>
@@ -77,9 +77,9 @@ export default function OutputCanvas({ clips, onReset }: OutputCanvasProps) {
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Total Duration", symbol: "\u0394t", value: `${aggregatedStats.totalDuration.toFixed(0)}s` },
-                  { label: "Total Size", symbol: "\u03A3", value: `${aggregatedStats.totalSize.toFixed(1)} MB` },
-                  { label: "Clips", symbol: "\u03A6", value: `${aggregatedStats.count}` },
+                  { label: "Total Duration", symbol: "Δt", value: `${aggregatedStats.totalDuration.toFixed(0)}s` },
+                  { label: "Total Size", symbol: "Σ", value: `${aggregatedStats.totalSize.toFixed(1)} MB` },
+                  { label: "Clips", symbol: "Φ", value: `${aggregatedStats.count}` },
                 ].map((stat) => (
                   <div key={stat.label} className="p-2 bg-black border border-border rounded-[2px] text-center">
                     <span className="font-mono text-xs text-accent-secondary">[{stat.symbol}]</span>
@@ -112,7 +112,7 @@ export default function OutputCanvas({ clips, onReset }: OutputCanvasProps) {
           className="flex items-center justify-between p-4 bg-surface border border-border rounded-[4px]"
         >
           <div className="flex items-center gap-3">
-            <span className="text-sm font-mono text-accent-secondary">[\u03A6]</span>
+            <span className="text-sm font-mono text-accent-secondary">[Φ]</span>
             <span className="text-sm text-text-muted">
               All clips processed at <span className="font-mono text-accent-secondary">1080x1920</span> with{" "}
               <span className="font-mono text-accent-secondary">face tracking</span>
@@ -125,7 +125,7 @@ export default function OutputCanvas({ clips, onReset }: OutputCanvasProps) {
               whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(77,77,255,0.3)" }}
               whileTap={{ scale: 0.98 }}
             >
-              Export All [\u03A3]
+              Export All [Σ]
             </motion.button>
           </div>
         </motion.div>

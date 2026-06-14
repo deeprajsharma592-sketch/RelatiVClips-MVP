@@ -9,12 +9,12 @@ interface ProcessingLogsProps {
 }
 
 const stepIcons: Record<string, string> = {
-  DOWNLOADING_VIDEO: "\u2193",
-  ANALYZING_AUDIO: "\u03B5",
-  TRANSCRIBING: "\u03C4",
-  SELECTING_CLIPS: "\u03C6",
-  DETECTING_FACES: "\u0394v",
-  RENDERING: "\u03A3",
+  DOWNLOADING_VIDEO: "↓",
+  ANALYZING_AUDIO: "ε",
+  TRANSCRIBING: "τ",
+  SELECTING_CLIPS: "φ",
+  DETECTING_FACES: "Δv",
+  RENDERING: "Σ",
 };
 
 export default function ProcessingLogs({
@@ -24,7 +24,7 @@ export default function ProcessingLogs({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-6">
-        <span className="text-sm font-mono text-accent-secondary">[\u03A3]</span>
+        <span className="text-sm font-mono text-accent-secondary">[Σ]</span>
         <span className="text-sm font-display text-white font-semibold">
           Pipeline Execution Logs
         </span>
@@ -51,7 +51,7 @@ export default function ProcessingLogs({
               {/* Status indicator */}
               <div className="w-5 h-5 flex items-center justify-center shrink-0">
                 {step.status === "done" ? (
-                  <span className="text-accent-secondary text-xs">\u2713</span>
+                  <span className="text-accent-secondary text-xs">✓</span>
                 ) : step.status === "active" ? (
                   <motion.span
                     className="w-2 h-2 rounded-full bg-accent"
@@ -59,7 +59,7 @@ export default function ProcessingLogs({
                     transition={{ duration: 1.5, repeat: Infinity }}
                   />
                 ) : step.status === "error" ? (
-                  <span className="text-error text-xs">\u2717</span>
+                  <span className="text-error text-xs">✗</span>
                 ) : (
                   <span className="w-2 h-2 rounded-full bg-border" />
                 )}
@@ -75,7 +75,7 @@ export default function ProcessingLogs({
                       : "text-text-muted"
                 }`}
               >
-                [{stepIcons[step.label] || "\u03B7"}]
+                [{stepIcons[step.label] || "η"}]
               </span>
 
               {/* Label */}

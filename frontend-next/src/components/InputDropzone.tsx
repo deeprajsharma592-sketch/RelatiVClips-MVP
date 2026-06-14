@@ -77,7 +77,7 @@ export default function InputDropzone({
       {/* URL Input */}
       <div>
         <label className="block text-xs font-mono text-text-muted mb-2">
-          [\u03A6] Video URL
+          [Φ] Video URL
         </label>
         <div className="flex gap-2">
           <input
@@ -102,7 +102,7 @@ export default function InputDropzone({
             }
             whileTap={!disabled && url.trim() ? { scale: 0.98 } : {}}
           >
-            Extract [\u03A6]
+            Extract [Φ]
           </motion.button>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function InputDropzone({
       {/* Divider */}
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-text-muted font-mono">[\u2225]</span>
+        <span className="text-xs text-text-muted font-mono">[∥]</span>
         <div className="flex-1 h-px bg-border" />
       </div>
 
@@ -146,7 +146,7 @@ export default function InputDropzone({
 
         {selectedFile ? (
           <div className="space-y-2">
-            <span className="text-2xl text-accent-secondary">\u2713</span>
+            <span className="text-2xl text-accent-secondary">✓</span>
             <p className="text-sm text-white font-semibold">
               {selectedFile.name}
             </p>
@@ -156,7 +156,7 @@ export default function InputDropzone({
           </div>
         ) : (
           <div className="space-y-2">
-            <span className="text-2xl text-text-muted">\u2191</span>
+            <span className="text-2xl text-text-muted">↑</span>
             <p className="text-sm text-text-muted">
               <span className="text-accent font-semibold">Click to upload</span>{" "}
               or drag and drop
@@ -171,7 +171,7 @@ export default function InputDropzone({
         <div className="space-y-2">
           <div className="p-3 bg-accent-secondary/5 border border-accent-secondary/20 rounded-[2px]">
             <p className="text-[11px] text-accent-secondary font-mono">
-              [\u26A0] File upload requires the local processing endpoint. Use a YouTube URL in the field above for now.
+              [⚠] File upload requires the local processing endpoint. Use a YouTube URL in the field above for now.
             </p>
           </div>
           <div className="flex gap-2">
@@ -203,7 +203,7 @@ export default function InputDropzone({
           }
           whileTap={!disabled ? { scale: 0.98 } : {}}
         >
-          Initialize Extraction [\u03A6]
+          Initialize Extraction [Φ]
         </motion.button>
       )}
     </div>

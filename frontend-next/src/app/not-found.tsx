@@ -11,23 +11,36 @@ export default function NotFound() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <span className="text-sm font-mono text-accent">[ \u03A6-404 ]</span>
-        <h1 className="text-6xl md:text-8xl font-display font-bold text-white mt-4 mb-2">
-          <span className="bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">
-            404
-          </span>
+        <span className="text-sm font-mono" style={{ color: "var(--color-accent)" }}>
+          [ Φ-404 ]
+        </span>
+        <h1
+          className="font-display font-bold mt-4 mb-2"
+          style={{
+            fontSize: "clamp(4rem, 12vw, 9rem)",
+            lineHeight: 1,
+            background: "linear-gradient(135deg, #FF77E9 0%, #FFD24D 100%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          404
         </h1>
-        <p className="text-lg text-text-muted font-sans mb-2">
+        <p className="text-lg mb-2" style={{ color: "var(--color-text-secondary)" }}>
           Signal not found. This page does not exist.
         </p>
-        <p className="text-sm text-text-muted/60 font-mono mb-8">
-          [\u2205] The requested resource could not be located in the pipeline.
+        <p
+          className="text-sm font-mono mb-8"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          [∅] The requested resource could not be located in the pipeline.
         </p>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white text-sm font-semibold rounded-[4px] font-sans hover:shadow-lg hover:shadow-accent/20 transition-all"
+          className="btn-gold inline-flex items-center gap-2"
         >
-          \u2190 Return to Workspace
+          ← Return to Workspace
         </Link>
       </motion.div>
     </div>

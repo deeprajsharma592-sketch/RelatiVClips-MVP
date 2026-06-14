@@ -119,7 +119,7 @@ export default function ProcessingPipeline({
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-accent">[\u03A3]</span>
+                <span className="text-sm font-mono text-accent">[Σ]</span>
                 <h2 className="text-lg font-display font-bold text-white">Quantum Processing Pipeline</h2>
               </div>
               <span className="font-mono text-sm text-accent-secondary">{progress}%</span>
@@ -139,14 +139,14 @@ export default function ProcessingPipeline({
         <BentoCard colSpan={4} glow="secondary">
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-mono text-accent-secondary">[\u03B7]</span>
+              <span className="text-sm font-mono text-accent-secondary">[η]</span>
               <span className="text-sm font-display text-white font-semibold">Processing Metrics</span>
             </div>
             {[
-              { label: "Progress", symbol: "\u03B7", value: `${progress}%` },
-              { label: "Elapsed", symbol: "\u0394t", value: `${elapsedSeconds}s` },
-              { label: "Est. Remaining", symbol: "\u03B5", value: `${estimateSeconds}s` },
-              { label: "Active Step", symbol: "\u03C6", value: steps.find(s => s.status === "active")?.label || "—" },
+              { label: "Progress", symbol: "η", value: `${progress}%` },
+              { label: "Elapsed", symbol: "Δt", value: `${elapsedSeconds}s` },
+              { label: "Est. Remaining", symbol: "ε", value: `${estimateSeconds}s` },
+              { label: "Active Step", symbol: "φ", value: steps.find(s => s.status === "active")?.label || "—" },
             ].map((metric) => (
               <div key={metric.symbol} className="flex items-center justify-between p-3 bg-black border border-border rounded-[4px]">
                 <div className="flex items-center gap-2">
