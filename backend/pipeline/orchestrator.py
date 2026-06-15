@@ -213,6 +213,12 @@ def _run_stage_6_taste_select(
             candidates, None, video_duration=video_meta.get("duration_s", 0),
         )
 
+    # ── LAYER 2.5: pick model tier (smart / calibration / budget / fallback) ──
+    from ..llm import model_router
+    model_name, tier, cost_per_pick = model_router.pick_model()
+    _emit(progress, "taste",
+          f"LLM tier: {tier} ({model_name}, ${cost_per_pick:.6f}/pick)")
+
     history = []
     if creator_id and taste_store.creator_exists(creator_id):
         history = taste_store.load_history(creator_id, limit=10)

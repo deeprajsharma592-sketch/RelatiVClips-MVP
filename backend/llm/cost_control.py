@@ -31,6 +31,10 @@ from typing import Dict, List, Optional, Tuple, Any
 
 log = logging.getLogger(__name__)
 
+# Module-level reference to model_router, populated lazily by cost_status().
+# Set explicitly in tests to avoid lazy import overhead.
+_model_router = None
+
 
 # ─── Cost constants (USD per million tokens, as of 2025-06) ────────────────
 # Update these if Anthropic changes pricing.
@@ -83,21 +87,94 @@ def _maybe_reset_daily() -> None:
             _state["input_tokens_today"] = 0
             _state["output_tokens_today"] = 0
             _state["cost_usd_today"] = 0.0
+            _state["cache_savings_usd_today"] = 0.0
+            _state["warned_today"] = False
             _state["last_reset_date"] = today
 
 
-def estimate_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Estimate USD cost of one LLM call. Returns 0 for unknown models."""
+def reset_state() -> None:
+    """Reset all in-process state. For tests."""
+    with _state_lock:
+        for k in _state:
+            if isinstance(_state[k], list):
+                _state[k] = []
+            elif isinstance(_state[k], dict):
+                _state[k] = {}
+            elif isinstance(_state[k], bool):
+                _state[k] = False
+            else:
+                _state[k] = 0
+        _state["last_reset_date"] = time.strftime("%Y-%m-%d")
+
+
+def estimate_cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read: int = 0,
+    cache_write: int = 0,
+) -> float:
+    """Estimate USD cost of one LLM call. Returns 0 for unknown models.
+
+    cache_read / cache_write: tokens that hit Anthropic's prompt cache.
+    For models with prompt caching, the cached portion is billed at the
+    cache_read rate ($0.10/MTok for Haiku 4.5) instead of the input rate.
+    """
     rate = _COST_PER_MTOK.get(model, _DEFAULT_COST)
-    input_cost = (input_tokens / 1_000_000.0) * rate[0]
+    # For models with cache rates, use them; otherwise treat as standard input
+    cache_rates = _CACHE_RATES.get(model, {})
+    if cache_read and cache_rates.get("read"):
+        cached_cost = (cache_read / 1_000_000.0) * cache_rates["read"]
+        fresh_input = max(0, input_tokens - cache_read)
+        fresh_cost = (fresh_input / 1_000_000.0) * rate[0]
+        input_cost = cached_cost + fresh_cost
+    else:
+        input_cost = (input_tokens / 1_000_000.0) * rate[0]
     output_cost = (output_tokens / 1_000_000.0) * rate[1]
     return round(input_cost + output_cost, 6)
 
 
-def record_call(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Record a successful LLM call. Returns the cost in USD."""
+# ─── Prompt-cache rate overrides (USD per MTok) ─────────────────────────────
+# When a model reports cache_read_input_tokens, we bill those at this rate
+# instead of the standard input rate. Set to None to disable caching.
+_CACHE_RATES = {
+    "claude-haiku-4-5-20251001": {
+        "read": 0.10,    # 10x cheaper than fresh input
+        "write": 1.25,   # slightly more than input (we pay for the cache slot)
+    },
+    "claude-haiku-3-5-20241022": {
+        "read": 0.08,
+        "write": 1.0,
+    },
+    "claude-3-5-sonnet-20241022": {
+        "read": 0.30,
+        "write": 3.75,
+    },
+    "deepseek-v4-flash": {
+        "read": 0.0028,  # 50x cheaper than fresh input
+        "write": 0.14,
+    },
+    "deepseek-v4-pro": {
+        "read": 0.003625,
+        "write": 0.435,
+    },
+}
+
+
+def record_call(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read: int = 0,
+    cache_write: int = 0,
+) -> float:
+    """Record a successful LLM call. Returns the cost in USD.
+
+    cache_read / cache_write: tokens that hit Anthropic's prompt cache.
+    These are billed at the cache rates ($0.10/MTok read for Haiku 4.5).
+    """
     _maybe_reset_daily()
-    cost = estimate_cost_usd(model, input_tokens, output_tokens)
+    cost = estimate_cost_usd(model, input_tokens, output_tokens, cache_read, cache_write)
     with _state_lock:
         _state["calls_today"] += 1
         _state["input_tokens_today"] += input_tokens
@@ -108,8 +185,16 @@ def record_call(model: str, input_tokens: int, output_tokens: int) -> float:
             "model": model,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
+            "cache_read_tokens": cache_read,
             "cost_usd": cost,
         })
+        # Track total cache savings (input cost without cache - actual input cost)
+        if cache_read > 0:
+            in_rate, _ = _COST_PER_MTOK.get(model, _DEFAULT_COST)
+            full_input_cost = (input_tokens / 1_000_000.0) * in_rate
+            actual_input_cost = (cache_read / 1_000_000.0) * _CACHE_RATES.get(model, {}).get("read", in_rate) + \
+                                (max(0, input_tokens - cache_read) / 1_000_000.0) * in_rate
+            _state["cache_savings_usd_today"] = _state.get("cache_savings_usd_today", 0.0) + (full_input_cost - actual_input_cost)
         # Keep last 100 entries (for ops visibility)
         if len(_state["history"]) > 100:
             _state["history"] = _state["history"][-100:]
@@ -147,29 +232,54 @@ def record_skipped_budget() -> None:
 
 def cost_status() -> dict:
     """Snapshot of LLM cost state — for /cost-status endpoint."""
+    global _model_router
+    if _model_router is None:
+        try:
+            from llm import model_router as _mr
+        except (ImportError, ValueError):
+            from . import model_router as _mr  # package-relative fallback
+        _model_router = _mr
     _maybe_reset_daily()
+    # Capture local snapshot INSIDE the lock, then release before calling
+    # into the router (which takes its own lock — would deadlock).
     with _state_lock:
-        return {
-            "daily_budget_usd": LLM_DAILY_BUDGET_USD,
-            "spent_today_usd": round(_state["cost_usd_today"], 6),
-            "remaining_today_usd": round(
-                max(0.0, LLM_DAILY_BUDGET_USD - _state["cost_usd_today"]), 6
-            ),
-            "budget_utilization_pct": round(
-                100.0 * _state["cost_usd_today"] / max(LLM_DAILY_BUDGET_USD, 0.01), 2
-            ),
+        recent = list(_state["history"][-10:])
+        cache_read_today = sum(c.get("cache_read_tokens", 0) for c in _state["history"])
+        local_state = {
+            "cost_usd_today": _state["cost_usd_today"],
             "calls_today": _state["calls_today"],
             "input_tokens_today": _state["input_tokens_today"],
             "output_tokens_today": _state["output_tokens_today"],
+            "cache_savings_usd_today": _state.get("cache_savings_usd_today", 0.0),
             "calls_skipped_smart": _state["calls_skipped_smart"],
             "calls_skipped_budget": _state["calls_skipped_budget"],
-            "max_output_tokens_per_call": LLM_MAX_OUTPUT_TOKENS,
-            "smart_skip_threshold": {
-                "min_moments": SMART_SKIP_MIN_MOMENTS,
-                "min_score": SMART_SKIP_MIN_SCORE,
-            },
-            "recent_calls": _state["history"][-10:],  # last 10 for ops
         }
+    # Now safe to call into the router
+    routing = _model_router.get_routing_state()
+    return {
+        "daily_budget_usd": LLM_DAILY_BUDGET_USD,
+        "spent_today_usd": round(local_state["cost_usd_today"], 6),
+        "remaining_today_usd": round(
+            max(0.0, LLM_DAILY_BUDGET_USD - local_state["cost_usd_today"]), 6
+        ),
+        "budget_utilization_pct": round(
+            100.0 * local_state["cost_usd_today"] / max(LLM_DAILY_BUDGET_USD, 0.01), 2
+        ),
+        "calls_today": local_state["calls_today"],
+        "input_tokens_today": local_state["input_tokens_today"],
+        "output_tokens_today": local_state["output_tokens_today"],
+        "cache_read_tokens_today": cache_read_today,
+        "cache_savings_usd_today": round(local_state["cache_savings_usd_today"], 6),
+        "calls_skipped_smart": local_state["calls_skipped_smart"],
+        "calls_skipped_budget": local_state["calls_skipped_budget"],
+        "max_output_tokens_per_call": LLM_MAX_OUTPUT_TOKENS,
+        "smart_skip_threshold": {
+            "min_moments": SMART_SKIP_MIN_MOMENTS,
+            "min_score": SMART_SKIP_MIN_SCORE,
+        },
+        "routing": routing,
+        "recent_calls": recent,  # last 10 for ops
+    }
 
 
 # ─── Smart-skip heuristic ──────────────────────────────────────────────────

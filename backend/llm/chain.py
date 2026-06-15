@@ -116,10 +116,43 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
     # select_clips_with_claude's internal httpx call pattern is heavy; instead
     # we build a simpler "send prompt, return text" wrapper here.
     def _call(prompt: str) -> str:
-        from . import cost_control
+        from . import cost_control, model_router
         import httpx
         max_out = cost_control.LLM_MAX_OUTPUT_TOKENS
+        # Use the router to pick the model (and enable prompt caching for Haiku)
+        model_name, tier, _ = model_router.pick_model()
+        # Prompt caching: split into stable (cacheable) + variable parts.
+        # Our ICL prompt is ~800 stable tokens, followed by per-request context.
+        # Splitting at the last "---" line — the ICL ends with examples, the
+        # variable context is the new moment data after that.
+        # Strategy: mark the first ~80% of the prompt as cacheable.
+        split_point = int(len(prompt) * 0.80)
+        # Find the last newline before split_point so we don't cut mid-line
+        last_nl = prompt.rfind("\n", 0, split_point)
+        if last_nl > 0:
+            split_point = last_nl
+        cacheable = prompt[:split_point]
+        variable = prompt[split_point:]
+        use_cache = (
+            model_name.startswith("claude-")
+            and "haiku" in model_name
+        )
         with httpx.Client(timeout=120.0) as client:
+            payload = {
+                "model": model_name,
+                "max_tokens": max_out,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            if use_cache:
+                payload["system"] = [
+                    {
+                        "type": "text",
+                        "text": cacheable,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ]
+                # Move the cacheable part to system; messages gets only variable
+                payload["messages"] = [{"role": "user", "content": variable}]
             r = client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -127,11 +160,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                     "anthropic-version": "2023-06-01",
                     "content-type": "application/json",
                 },
-                json={
-                    "model": config.CLAUDE_MODEL,
-                    "max_tokens": max_out,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
+                json=payload,
             )
         if r.status_code != 200:
             raise RuntimeError(
@@ -142,8 +171,14 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         usage = body.get("usage", {})
         in_tok = int(usage.get("input_tokens", 0))
         out_tok = int(usage.get("output_tokens", 0))
+        cache_read = int(usage.get("cache_read_input_tokens", 0))
         if in_tok or out_tok:
-            cost_control.record_call(config.CLAUDE_MODEL, in_tok, out_tok)
+            cost_control.record_call(model_name, in_tok, out_tok, cache_read=cache_read)
+            # Estimate cost and feed the router
+            est_cost = cost_control.estimate_cost_usd(
+                model_name, in_tok, out_tok, cache_read=cache_read
+            )
+            model_router.record_pick(model_name, est_cost)
         for block in body.get("content", []):
             if block.get("type") == "text":
                 return block.get("text", "")
