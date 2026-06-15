@@ -4,7 +4,6 @@ import Header from "@/components/Header";
 import ValuePropBar from "@/components/ValuePropBar";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
-import ScrollProgress from "@/components/ScrollProgress";
 import CustomCursor from "@/components/CustomCursor";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -177,7 +176,6 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <CustomCursor />
-            <ScrollProgress />
             <Header />
             <ValuePropBar />
             <main id="main-content" className="flex-1 relative z-[1]">{children}</main>

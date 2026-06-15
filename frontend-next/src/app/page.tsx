@@ -61,10 +61,8 @@ const PILLARS = [
 export default function HomePage() {
   return (
     <>
-      <Header />
+      {/* Header, Footer, CookieBanner, ValuePropBar all come from layout.tsx */}
       <StickyInputBar />
-
-      <main className="relative">
         {/* ════════════════════════════════════════════════════════════════
             HERO — Left: text + paste URL + funnel
                    Right: long-form video stack
@@ -433,11 +431,6 @@ export default function HomePage() {
             </motion.div>
           </div>
         </section>
-
-        <Footer />
-      </main>
-
-      <CookieBanner />
     </>
   );
 }
