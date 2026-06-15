@@ -92,8 +92,13 @@ def _download_one_segment(
     seg_idx: int,
     total: int,
     log_lock: threading.Lock,
+    on_segment_done: Optional[Callable[[int, int, bool], None]] = None,
 ) -> Dict:
-    """Download a single audio segment. Thread-safe (uses log_lock for shared log_fn)."""
+    """Download a single audio segment. Thread-safe (uses log_lock for shared log_fn).
+
+    `on_segment_done(idx, total, ok)` is invoked after each attempt outcome
+    so callers can update a progress bar without parsing log messages.
+    """
     if audio_path.exists():
         try:
             audio_path.unlink()
@@ -109,6 +114,7 @@ def _download_one_segment(
     _log(f"  Downloading segment {seg_idx + 1}/{total} [{start:.1f}s - {end:.1f}s]...")
 
     result = None
+    final_ok = False
     try:
         for seg_attempt in range(1, 5):
             try:
@@ -117,6 +123,7 @@ def _download_one_segment(
                         cmd, stdout=f, stderr=subprocess.PIPE, timeout=120
                     )
                 if result.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 0:
+                    final_ok = True
                     break
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
                 _log(f"  [segment {seg_idx + 1}/{total}] attempt {seg_attempt}/4 failed (rc={result.returncode}): {err_snippet[:100]}")
@@ -126,6 +133,11 @@ def _download_one_segment(
                 _log(f"  [segment {seg_idx + 1}/{total}] attempt {seg_attempt}/4 crashed: {e}")
             if seg_attempt < 4:
                 time.sleep(3 * seg_attempt)
+        if on_segment_done is not None:
+            try:
+                on_segment_done(seg_idx, total, final_ok)
+            except Exception:
+                pass
         if result is None or result.returncode != 0 or not audio_path.exists() or audio_path.stat().st_size == 0:
             _log(f"  Segment {seg_idx + 1} download failed (rc={getattr(result, 'returncode', 'n/a')})")
             return {"audio_path": None, "source_start": start, "source_end": end}
@@ -141,6 +153,7 @@ def surgical_download_youtube(
     candidates: List[Dict],
     task_id: str,
     log_fn: Optional[Callable] = None,
+    on_segment_done: Optional[Callable[[int, int, bool], None]] = None,
 ) -> List[Dict]:
     """Download audio segments around each candidate IN PARALLEL.
 
@@ -181,6 +194,7 @@ def surgical_download_youtube(
             fut = pool.submit(
                 _download_one_segment,
                 url, start, end, audio_path, log_fn, i, len(candidates), log_lock,
+                on_segment_done,
             )
             futures.append((i, fut))
 

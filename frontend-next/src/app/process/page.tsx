@@ -24,13 +24,24 @@ import type { ProcessState, Clip } from "@/types";
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000; // 5 min hard cap
 
+// Mirrors backend PIPELINE_STEPS so the UI shows the same step names the
+// orchestrator reports. step_number is 1-indexed.
 const STEPS = [
-  { key: "fetch", label: "Fetching source", sub: "YouTube · proxy rotation" },
-  { key: "transcribe", label: "Transcribing", sub: "Whisper · local CPU" },
-  { key: "detect", label: "Detecting moments", sub: "librosa · energy peaks" },
-  { key: "calibrate", label: "Tasting clips", sub: "Claude · hook scoring" },
-  { key: "render", label: "Rendering", sub: "FFmpeg · 9:16 export" },
+  { number: 1, label: "Fetching source", sub: "YouTube · proxy rotation" },
+  { number: 2, label: "Analyzing audio", sub: "librosa · energy peaks" },
+  { number: 3, label: "Transcribing", sub: "Captions · Whisper fallback" },
+  { number: 4, label: "Selecting clips", sub: "Claude · hook scoring" },
+  { number: 5, label: "Detecting faces", sub: "Center-crop · OpenCV" },
+  { number: 6, label: "Rendering", sub: "FFmpeg · 9:16 export" },
 ];
+
+function formatTime(secs: number): string {
+  if (secs <= 0) return "0s";
+  if (secs < 60) return `${Math.round(secs)}s`;
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  return `${m}m ${s}s`;
+}
 
 export default function ProcessPage() {
   return (
@@ -64,8 +75,12 @@ function ProcessInner() {
   const [state, setState] = useState<ProcessState>(initialUrl ? "processing" : "idle");
   const [clips, setClips] = useState<Clip[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState(0);
+  // Backend-driven progress fields (replaces the old 1.4s rotation timer)
+  const [progress, setProgress] = useState(0);
+  const [stepNumber, setStepNumber] = useState(0);
+  const [currentStepMsg, setCurrentStepMsg] = useState("Starting…");
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [etaSec, setEtaSec] = useState<number | null>(null);
   const taskIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
 
@@ -77,23 +92,14 @@ function ProcessInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Step rotation while processing
-  useEffect(() => {
-    if (state !== "processing") return;
-    const t = setInterval(() => {
-      setActiveStep((s) => (s + 1) % STEPS.length);
-    }, 1400);
-    return () => clearInterval(t);
-  }, [state]);
-
-  // Elapsed timer
+  // Elapsed timer (independent of progress — always ticks)
   useEffect(() => {
     if (state !== "processing") return;
     const t = setInterval(() => {
       if (startedAtRef.current > 0) {
         setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000));
       }
-    }, 1000);
+    }, 500);
     return () => clearInterval(t);
   }, [state]);
 
@@ -101,7 +107,10 @@ function ProcessInner() {
     async (targetUrl: string) => {
       setError(null);
       setClips([]);
-      setActiveStep(0);
+      setProgress(0);
+      setStepNumber(0);
+      setCurrentStepMsg("Starting…");
+      setEtaSec(null);
       setState("processing");
       startedAtRef.current = Date.now();
       try {
@@ -111,9 +120,26 @@ function ProcessInner() {
         while (Date.now() < deadline) {
           await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
           const status = await checkProcessingStatus(init.taskId);
+
+          // Backend is the source of truth — drive the bar from real data
+          if (typeof status.progress === "number") {
+            // Clamp monotonically so the bar never jumps backwards
+            setProgress((prev) => Math.max(prev, Math.min(100, status.progress ?? 0)));
+          }
+          if (typeof status.step_number === "number" && status.step_number > 0) {
+            setStepNumber((prev) => Math.max(prev, status.step_number ?? 0));
+          }
+          if (status.current_step) {
+            setCurrentStepMsg(status.current_step);
+          }
+          if (typeof status.time_estimate_seconds === "number") {
+            setEtaSec(status.time_estimate_seconds);
+          }
+
           if (status.status === "complete") {
+            setProgress(100);
+            setStepNumber(STEPS.length);
             setClips(status.clips ?? []);
-            setActiveStep(STEPS.length - 1);
             setState("completed");
             return;
           }
@@ -306,20 +332,61 @@ function ProcessInner() {
                       style={{ color: "var(--color-text-muted)" }}
                     >
                       Processing · {elapsedSec}s
+                      {etaSec !== null && etaSec > 0
+                        ? ` · ~${formatTime(etaSec)} left`
+                        : ""}
                     </span>
                   </div>
-                  {STEPS.map((step, i) => {
-                    const isActive = i === activeStep;
-                    const isPast = i < activeStep;
+
+                  {/* Real progress bar — driven by backend progress field,
+                      NOT a CSS animation. Width = backend progress %. */}
+                  <div
+                    className="relative h-1.5 w-full overflow-hidden rounded-full"
+                    style={{ background: "var(--color-surface-2)" }}
+                    role="progressbar"
+                    aria-valuenow={progress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${progress}%`,
+                        background:
+                          "linear-gradient(90deg, #D946EF 0%, #F59E0B 100%)",
+                        transition: "width 0.4s ease-out",
+                        boxShadow:
+                          "0 0 12px rgba(217, 70, 239, 0.45)",
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span style={{ color: "var(--color-text-muted)" }}>
+                      {currentStepMsg}
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--color-text-primary)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {Math.round(progress)}%
+                    </span>
+                  </div>
+
+                  {STEPS.map((step) => {
+                    const isActive = step.number === stepNumber;
+                    const isPast = step.number < stepNumber;
                     return (
                       <div
-                        key={step.key}
+                        key={step.number}
                         className="flex items-center gap-3 p-3 rounded-2xl"
                         style={{
                           background: isActive
                             ? "linear-gradient(135deg, rgba(217, 70, 239, 0.08) 0%, transparent 100%)"
                             : "transparent",
                           transition: "background 0.3s ease",
+                          opacity: isActive || isPast ? 1 : 0.45,
                         }}
                       >
                         <div
@@ -333,9 +400,9 @@ function ProcessInner() {
                             color: isPast || isActive ? "#FFFFFF" : "var(--color-text-muted)",
                           }}
                         >
-                          {isPast ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                          {isPast ? <Check className="h-3.5 w-3.5" /> : step.number}
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p
                             className="text-[14px] font-medium"
                             style={{ color: "var(--color-text-primary)" }}
@@ -351,7 +418,7 @@ function ProcessInner() {
                         </div>
                         {isActive && (
                           <Sparkles
-                            className="h-3.5 w-3.5 animate-pulse"
+                            className="h-3.5 w-3.5 animate-pulse shrink-0"
                             style={{ color: "var(--color-accent)" }}
                           />
                         )}

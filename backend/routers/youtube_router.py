@@ -18,7 +18,7 @@ from typing import Optional, List, Dict
 from pathlib import Path
 
 from ..models import ProcessResponse, TaskStatus
-from ..utils.task_store import task_store
+from ..utils.task_store import task_store, PIPELINE_STEPS
 from ..utils.config import (
     TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, FFPROBE_PATH,
     TARGET_SAMPLE_RATE, PEAK_THRESHOLD_MULTIPLIER,
@@ -471,19 +471,68 @@ class YouTubeSurgicalFunnel:
         return rendered_clips
 
 
+def _step_progress_range(step_number: int) -> tuple[int, int, int, str]:
+    """Return (step_number, progress_start, progress_end, step_name) for a step.
+    Used to fill sub-step progress within the step's allocated range."""
+    for s in PIPELINE_STEPS:
+        if s["number"] == step_number:
+            return s["number"], s["progress_start"], s["progress_end"], s["name"]
+    return step_number, 0, 100, "Processing"
+
+
 def create_progress_callback(task_id: str):
-    def callback(message: str, step: int = None, progress: int = None):
+    """Build a progress callback that:
+    - Sets step_number + step_name when step changes
+    - Computes progress% from step_number, and refines it within the step's
+      range using a sub_progress value (0-1) so "downloading segment 2/3"
+      visually advances the bar instead of looping
+    - Records the message as current_step
+    """
+    last_step = {"value": 0}
+    sub_counter = {"value": 0.0, "step": 0, "denominator": 1}
+
+    def callback(message: str, step: int = None, sub_progress: float = None, progress: int = None):
+        # Backward-compat: legacy callers (v1 funnel + orchestrator completion
+        # notifications) pass `progress=N` as a literal 0-100 value. Map that
+        # to a direct progress override so old code keeps working.
+        if progress is not None and 0 <= int(progress) <= 100:
+            if task_id not in progress_logs:
+                progress_logs[task_id] = []
+            progress_logs[task_id].append({
+                "timestamp": __import__('datetime').datetime.now().isoformat(),
+                "message": message,
+            })
+            return task_store.update_task(
+                task_id, current_step=message, progress=int(progress),
+            )
+
         if task_id not in progress_logs:
             progress_logs[task_id] = []
         progress_logs[task_id].append({
             "timestamp": __import__('datetime').datetime.now().isoformat(),
             "message": message
         })
+
         updates = {"current_step": message}
+
+        # Explicit progress override via step=N where N > 100 (legacy hack)
+        if isinstance(step, (int, float)) and step > 100:
+            updates["progress"] = int(step)
+            return task_store.update_task(task_id, **updates)
+
         if step is not None:
-            updates["step_number"] = step
-        if progress is not None:
-            updates["progress"] = progress
+            step_num, p_start, p_end, step_name = _step_progress_range(int(step))
+            updates["step_number"] = step_num
+            updates["step_name"] = step_name
+            if sub_progress is None:
+                updates["progress"] = p_start
+            last_step["value"] = int(step)
+
+        if sub_progress is not None and 0.0 <= float(sub_progress) <= 1.0:
+            step_num, p_start, p_end, _ = _step_progress_range(last_step["value"] or 1)
+            fill = p_start + (p_end - p_start) * float(sub_progress)
+            updates["progress"] = int(fill)
+
         task_store.update_task(task_id, **updates)
     return callback
 
@@ -519,15 +568,16 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
 
     # --- STAGE 1 + 2 (combined): caption-first signal extraction ---
     # Try captions first; if they fail, download audio for librosa.
-    callback("Analyzing source...", step=1)
+    callback("Fetching captions and source metadata...", step=1, sub_progress=0.0)
     moments, info = detect_moments(
         source=url,
         task_id=task_id,
-        log=lambda m: callback(m, step=1),
+        log=lambda m: callback(m, step=1, sub_progress=0.5),
     )
+    callback("Source analyzed", step=1, sub_progress=1.0)
 
     if not moments:
-        callback("No candidate moments found — pipeline will not render", step=2)
+        callback("No candidate moments found — pipeline will not render", step=2, sub_progress=0.0)
         return {
             "clips": [],
             "hooks": [],
@@ -540,7 +590,14 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
         f"Built {len(moments)} candidate moments from "
         f"{'captions (no audio download)' if info['source'] == 'captions' else 'audio peaks + valleys'}",
         step=2,
+        sub_progress=1.0,
     )
+
+    # --- STAGE 3: download the source video so we can extract audio per moment
+    # (PIPELINE_STEPS slot 3 is "Transcribing audio" — collapsed with stage 1
+    # since we read captions first; we still update the slot so the bar moves
+    # smoothly through the 20-60% range).
+    callback("Preparing source media for clip extraction...", step=3, sub_progress=0.5)
 
     # --- STAGE 3-5: surgical download of top moments ---
     # We use the top 8 moments (more than LLM picks so the LLM has good candidates)
@@ -611,15 +668,17 @@ def _run_moment_pipeline(
     from ..llm.chain import call_with_fallback
     from ..taste.icl import parse_moment_response
 
-    def _bridge(stage_or_msg: str, msg: str = None) -> None:
-        """Bridge accepts either (stage, msg) or just (msg) — the renderer
-        uses a single-arg progress callback, but the orchestrator stages
-        use (stage, msg)."""
+    def _bridge(stage_or_msg: str, msg: str = None, step: int = None, sub_progress: float = None) -> None:
+        """Bridge accepts (stage, msg) or just (msg) — the renderer uses a
+        single-arg progress callback, but the orchestrator stages use
+        (stage, msg). Pass through to the main callback with step/sub_progress
+        so the progress bar advances within the step's range.
+        """
         try:
             if msg is None:
-                callback(stage_or_msg, step=None)
+                callback(stage_or_msg, step=step, sub_progress=sub_progress)
             else:
-                callback(msg, step=None)
+                callback(msg, step=step, sub_progress=sub_progress)
         except Exception:
             pass
 
@@ -637,21 +696,46 @@ def _run_moment_pipeline(
         }
         for m in top_for_surgery
     ]
+    _bridge("surgical", "Fetching audio for top moments...", step=4, sub_progress=0.0)
+
+    # Track per-segment progress for the UI progress bar.
+    # Surgical downloads run in parallel; we count done/total.
+    _seg_done = {"n": 0}
+    _seg_total = len(moment_dicts)
+
+    def _on_seg_done(idx: int, total: int, ok: bool) -> None:
+        _seg_done["n"] += 1
+        frac = min(0.85, _seg_done["n"] / max(1, _seg_total))
+        _bridge(
+            "surgical",
+            f"Fetched {_seg_done['n']}/{_seg_total} audio segments",
+            step=4,
+            sub_progress=frac,
+        )
+
     segments = surgical_stage.surgical_download_youtube(
-        url, moment_dicts, task_id, log_fn=_bridge,
+        url, moment_dicts, task_id,
+        log_fn=_bridge,
+        on_segment_done=_on_seg_done,
     )
+    _bridge("surgical", f"Fetched {len(segments)} audio segments", step=4, sub_progress=1.0)
 
     # 2. Try LLM taste select
     _bridge("taste", "Calling LLM with strict-JSON prompt...")
     picks = []
     provider_used = None
+    # LLM is a quick call within stage 4 (60-70%). Keep sub_progress at
+    # 0.85 (≈68%) so the bar doesn't visually dip from surgical-complete.
+    _bridge("taste", "Calling LLM with strict-JSON prompt...", step=4, sub_progress=0.85)
     try:
         text, provider_used = call_with_fallback(prompt)
         if text:
             picks = parse_moment_response(text)
-            _bridge("taste", f"LLM ({provider_used}) picked {len(picks)} moments")
+            _bridge("taste", f"LLM ({provider_used}) picked {len(picks)} moments",
+                    step=4, sub_progress=0.95)
     except Exception as e:
-        _bridge("taste", f"LLM failed: {e} — using moment-based fallback")
+        _bridge("taste", f"LLM failed: {e} — using moment-based fallback",
+                step=4, sub_progress=0.95)
 
     # 3. Map LLM picks to actual moments (using moment_index)
     moment_by_idx = {m.index: m for m in moments}
@@ -714,8 +798,8 @@ def _run_moment_pipeline(
             })
 
     # 4. Face detection (only on segments with audio)
-    _bridge("face", "Detecting faces...")
-    for clip in final_clips:
+    _bridge("face", "Detecting faces...", step=5, sub_progress=0.0)
+    for face_idx, clip in enumerate(final_clips):
         ap = clip.get("audio_path")
         if ap and Path(ap).exists():
             try:
@@ -726,9 +810,13 @@ def _run_moment_pipeline(
                 clip["face_data"] = None
         else:
             clip["face_data"] = None
+        if final_clips:
+            _bridge("face", f"  face {face_idx+1}/{len(final_clips)}",
+                    step=5, sub_progress=(face_idx + 1) / max(1, len(final_clips)))
 
     # 5. Render (uses the audio+still composition we wired in earlier)
-    _bridge("render", f"Rendering {len(final_clips)} clip(s)...")
+    _bridge("render", f"Rendering {len(final_clips)} clip(s)...",
+            step=6, sub_progress=0.0)
     rendered = []
     video_id = info.get("transcript", {}).get("video_id") if info.get("transcript") else None
     for i, clip in enumerate(final_clips):
@@ -752,6 +840,9 @@ def _run_moment_pipeline(
                 })
         except Exception as e:
             _bridge("render", f"  render failed for clip {i}: {e}")
+        if final_clips:
+            _bridge("render", f"Rendered {i+1}/{len(final_clips)} clips",
+                    step=6, sub_progress=(i + 1) / max(1, len(final_clips)))
 
     _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
     # Strip non-serializable / circular fields before returning
@@ -778,17 +869,17 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback):
                 task_id,
                 status=TaskStatus.COMPLETE,
                 progress=100,
-                step_number=9,
+                step_number=6,
                 step_name="Complete",
                 clips=clips,
                 current_step=f"Complete - {len(clips)} clips generated",
             )
-            callback(f"SUCCESS: {len(clips)} clips generated!", step=9, progress=100)
+            callback(f"SUCCESS: {len(clips)} clips generated!", step=6, progress=100)
         except Exception as e:
             task_store.update_task(
                 task_id, status=TaskStatus.FAILED, error=str(e),
             )
-            callback(f"FAILED: {e}", step=9, progress=0)
+            callback(f"FAILED: {e}", step=6, progress=0)
         _active_tasks.pop(task_id, None)
         task_store.try_promote_queued()
         return
