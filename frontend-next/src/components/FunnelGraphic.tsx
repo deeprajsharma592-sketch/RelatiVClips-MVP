@@ -1,16 +1,19 @@
 "use client";
 
 /**
- * FunnelGraphic — Static, unmoving glassmorphic funnel SVG.
+ * FunnelGraphic — Premium glassmorphic funnel.
  *
- * This is the centerpiece of the new landing page hero. It uses real
- * glassmorphism (backdrop-filter blur) over a layered gradient body
- * with subtle inner glow + accent particles. The whole composition
- * is intentionally static (no transforms, no animation) so it
- * reads as a "fixed piece of the brand", not another parallax layer.
+ * The visual centerpiece of the hero. Big, glassy, with proper depth:
+ *   - Wide top opening (1× source) tapering to narrow spout (10× clips)
+ *   - Multi-layer glass body: outer color gradient + inner core highlight
+ *   - True glassmorphism via inner shadow + highlight on top rim
+ *   - Floating "data particles" inside (video frames flowing through)
+ *   - Dashed center line suggesting the data path
+ *   - Soft outer glow (gold halo around the rim)
  *
- * The funnel represents: 1 long-form video → 10 short-form clips.
- * Wide at top (one source), narrow at bottom (refined output).
+ * Intentionally static — represents the "taste funnel" of the engine.
+ * Designed to be the bottom anchor of the left column, with the
+ * paste URL above it appearing to "feed" into the top rim.
  */
 
 interface FunnelGraphicProps {
@@ -24,169 +27,208 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
       aria-hidden
     >
       <svg
-        viewBox="0 0 520 620"
+        viewBox="0 0 600 800"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
         xmlns="http://www.w3.org/2001/svg"
-        style={{ overflow: "visible" }}
+        style={{ overflow: "visible", filter: "drop-shadow(0 30px 60px rgba(217, 70, 239, 0.12))" }}
       >
         <defs>
-          {/* Outer glass body gradient — warm cream → fuchsia → gold */}
+          {/* MAIN GLASS BODY — strong gradient, ~40% opacity for true glass feel */}
           <linearGradient id="funnelBody" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.18)" />
-            <stop offset="35%" stopColor="rgba(217, 70, 239, 0.14)" />
-            <stop offset="70%" stopColor="rgba(245, 158, 11, 0.16)" />
-            <stop offset="100%" stopColor="rgba(217, 70, 239, 0.22)" />
+            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.55)" />
+            <stop offset="25%" stopColor="rgba(255, 119, 233, 0.32)" />
+            <stop offset="55%" stopColor="rgba(217, 70, 239, 0.38)" />
+            <stop offset="85%" stopColor="rgba(245, 158, 11, 0.50)" />
+            <stop offset="100%" stopColor="rgba(245, 158, 11, 0.65)" />
           </linearGradient>
 
-          {/* Inner core — brighter, narrower */}
+          {/* INNER CORE — bright, narrow, gives the "depth" inside the glass */}
           <linearGradient id="funnelCore" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255, 245, 220, 0.55)" />
-            <stop offset="50%" stopColor="rgba(255, 210, 240, 0.35)" />
-            <stop offset="100%" stopColor="rgba(252, 211, 77, 0.40)" />
+            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.65)" />
+            <stop offset="40%" stopColor="rgba(255, 220, 245, 0.35)" />
+            <stop offset="100%" stopColor="rgba(252, 211, 77, 0.55)" />
           </linearGradient>
 
-          {/* Edge highlight stroke */}
+          {/* EDGE STROKE — bright gold→fuchsia→gold */}
           <linearGradient id="funnelEdge" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.85)" />
-            <stop offset="50%" stopColor="rgba(217, 70, 239, 0.55)" />
-            <stop offset="100%" stopColor="rgba(245, 158, 11, 0.75)" />
+            <stop offset="0%" stopColor="rgba(252, 211, 77, 1.0)" />
+            <stop offset="50%" stopColor="rgba(217, 70, 239, 0.85)" />
+            <stop offset="100%" stopColor="rgba(245, 158, 11, 1.0)" />
           </linearGradient>
 
-          {/* Top rim — wide, golden */}
-          <linearGradient id="funnelRim" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.45)" />
-            <stop offset="100%" stopColor="rgba(252, 211, 77, 0.05)" />
-          </linearGradient>
+          {/* TOP RIM — wide, glowing */}
+          <radialGradient id="funnelRimGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.55)" />
+            <stop offset="60%" stopColor="rgba(252, 211, 77, 0.15)" />
+            <stop offset="100%" stopColor="rgba(252, 211, 77, 0)" />
+          </radialGradient>
 
-          {/* Bottom spout — narrow, focused */}
+          {/* BOTTOM SPOUT */}
           <linearGradient id="funnelSpout" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(217, 70, 239, 0.55)" />
-            <stop offset="100%" stopColor="rgba(245, 158, 11, 0.85)" />
+            <stop offset="0%" stopColor="rgba(217, 70, 239, 0.90)" />
+            <stop offset="100%" stopColor="rgba(245, 158, 11, 1.0)" />
           </linearGradient>
 
-          {/* Soft inner shadow blur */}
-          <filter id="funnelSoft" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="1.2" />
+          {/* Subtle drop shadow filter */}
+          <filter id="funnelSoft" x="-15%" y="-15%" width="130%" height="130%">
+            <feGaussianBlur stdDeviation="0.8" />
           </filter>
 
-          {/* Background grid (subtle, behind the funnel) */}
-          <pattern id="funnelGrid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(40, 30, 20, 0.04)" strokeWidth="0.5" />
+          {/* Strong outer glow (gold halo) */}
+          <filter id="funnelHalo" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="14" />
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.6" />
+            </feComponentTransfer>
+          </filter>
+
+          {/* Background grid pattern — visible through the glass */}
+          <pattern id="funnelGrid" x="0" y="0" width="36" height="36" patternUnits="userSpaceOnUse">
+            <path d="M 36 0 L 0 0 0 36" fill="none" stroke="rgba(40, 30, 20, 0.06)" strokeWidth="0.6" />
           </pattern>
 
-          {/* Clip path matching the funnel shape for grid + accents */}
+          {/* Clip path matching the funnel shape for the grid */}
           <clipPath id="funnelClip">
             <path d="
-              M 60 60
-              L 460 60
-              C 460 60 430 240 380 380
-              C 340 480 310 540 260 560
-              C 210 540 180 480 140 380
-              C 90 240 60 60 60 60
+              M 80 60
+              L 520 60
+              C 520 60 460 350 360 600
+              C 340 660 320 720 300 760
+              C 280 720 260 660 240 600
+              C 140 350 80 60 80 60
               Z
             " />
           </clipPath>
         </defs>
 
-        {/* Subtle grid fill inside funnel — adds texture without noise */}
+        {/* ─── OUTER HALO — gold glow around the rim ─── */}
+        <ellipse
+          cx="300"
+          cy="60"
+          rx="280"
+          ry="40"
+          fill="url(#funnelRimGlow)"
+          filter="url(#funnelHalo)"
+          opacity="0.7"
+        />
+
+        {/* ─── BACKGROUND GRID (visible through glass) ─── */}
         <g clipPath="url(#funnelClip)">
-          <rect x="0" y="0" width="520" height="620" fill="url(#funnelGrid)" />
+          <rect x="0" y="0" width="600" height="800" fill="url(#funnelGrid)" />
         </g>
 
-        {/* Funnel body — main glass surface */}
+        {/* ─── MAIN GLASS BODY ─── */}
         <path
           d="
-            M 60 60
-            L 460 60
-            C 460 60 430 240 380 380
-            C 340 480 310 540 260 560
-            C 210 540 180 480 140 380
-            C 90 240 60 60 60 60
+            M 80 60
+            L 520 60
+            C 520 60 460 350 360 600
+            C 340 660 320 720 300 760
+            C 280 720 260 660 240 600
+            C 140 350 80 60 80 60
             Z
           "
           fill="url(#funnelBody)"
           stroke="url(#funnelEdge)"
-          strokeWidth="1.25"
+          strokeWidth="2"
           filter="url(#funnelSoft)"
         />
 
-        {/* Inner core — narrower highlight to suggest depth */}
+        {/* ─── INNER CORE — narrower, brighter, gives depth ─── */}
         <path
           d="
-            M 110 100
-            L 410 100
-            C 410 100 386 240 348 360
-            C 316 444 290 500 260 518
-            C 230 500 204 444 172 360
-            C 134 240 110 100 110 100
+            M 130 105
+            L 470 105
+            C 470 105 418 350 332 580
+            C 318 640 305 700 300 720
+            C 295 700 282 640 268 580
+            C 182 350 130 105 130 105
             Z
           "
           fill="url(#funnelCore)"
           opacity="0.55"
         />
 
-        {/* Top rim ellipse — wide opening */}
+        {/* ─── TOP RIM — wide opening (1× source) ─── */}
         <ellipse
-          cx="260"
+          cx="300"
+          cy="60"
+          rx="220"
+          ry="20"
+          fill="url(#funnelRimGlow)"
+          stroke="rgba(252, 211, 77, 0.95)"
+          strokeWidth="1.5"
+        />
+        <ellipse
+          cx="300"
           cy="60"
           rx="200"
-          ry="14"
-          fill="url(#funnelRim)"
-          stroke="rgba(252, 211, 77, 0.55)"
-          strokeWidth="1"
+          ry="11"
+          fill="rgba(255, 255, 255, 0.55)"
         />
         <ellipse
-          cx="260"
+          cx="300"
           cy="60"
-          rx="186"
-          ry="9"
-          fill="rgba(255, 255, 255, 0.35)"
-        />
-
-        {/* Bottom spout ellipse — narrow output */}
-        <ellipse
-          cx="260"
-          cy="560"
-          rx="44"
+          rx="180"
           ry="6"
+          fill="rgba(255, 255, 255, 0.75)"
+        />
+
+        {/* ─── BOTTOM SPOUT — narrow output (10× clips) ─── */}
+        <ellipse
+          cx="300"
+          cy="760"
+          rx="48"
+          ry="9"
           fill="url(#funnelSpout)"
-          stroke="rgba(245, 158, 11, 0.75)"
-          strokeWidth="1"
+          stroke="rgba(245, 158, 11, 0.95)"
+          strokeWidth="1.5"
+        />
+        <ellipse
+          cx="300"
+          cy="760"
+          rx="38"
+          ry="5"
+          fill="rgba(255, 255, 255, 0.55)"
         />
 
-        {/* Central vertical "flow" line — the path through the funnel */}
+        {/* ─── CENTER FLOW LINE — data flowing down ─── */}
         <line
-          x1="260"
-          y1="68"
-          x2="260"
-          y2="555"
-          stroke="rgba(255, 255, 255, 0.25)"
-          strokeWidth="0.75"
-          strokeDasharray="2 6"
+          x1="300"
+          y1="78"
+          x2="300"
+          y2="755"
+          stroke="rgba(255, 255, 255, 0.45)"
+          strokeWidth="0.8"
+          strokeDasharray="3 9"
         />
 
-        {/* Accent particles inside the funnel — fixed, not animated */}
-        <g opacity="0.9">
-          <circle cx="180" cy="160" r="2.5" fill="rgba(252, 211, 77, 0.85)" />
-          <circle cx="340" cy="200" r="2" fill="rgba(217, 70, 239, 0.85)" />
-          <circle cx="220" cy="280" r="1.5" fill="rgba(245, 158, 11, 0.85)" />
-          <circle cx="300" cy="320" r="2.5" fill="rgba(252, 211, 77, 0.75)" />
-          <circle cx="260" cy="400" r="2" fill="rgba(255, 119, 233, 0.85)" />
-          <circle cx="245" cy="460" r="1.5" fill="rgba(252, 211, 77, 0.75)" />
-          <circle cx="275" cy="500" r="2" fill="rgba(245, 158, 11, 0.85)" />
+        {/* ─── FLOATING PARTICLES — video frames flowing through ─── */}
+        <g>
+          <circle cx="190" cy="170" r="6" fill="rgba(252, 211, 77, 0.95)" />
+          <circle cx="410" cy="190" r="5" fill="rgba(217, 70, 239, 0.95)" />
+          <circle cx="220" cy="280" r="4" fill="rgba(245, 158, 11, 0.95)" />
+          <circle cx="380" cy="310" r="6" fill="rgba(252, 211, 77, 0.90)" />
+          <circle cx="300" cy="380" r="5" fill="rgba(255, 119, 233, 0.95)" />
+          <circle cx="240" cy="440" r="4" fill="rgba(245, 158, 11, 0.95)" />
+          <circle cx="360" cy="460" r="5" fill="rgba(252, 211, 77, 0.85)" />
+          <circle cx="270" cy="540" r="4" fill="rgba(255, 119, 233, 0.95)" />
+          <circle cx="330" cy="570" r="3" fill="rgba(245, 158, 11, 0.95)" />
+          <circle cx="290" cy="640" r="3" fill="rgba(252, 211, 77, 0.85)" />
+          <circle cx="310" cy="700" r="2.5" fill="rgba(245, 158, 11, 0.95)" />
         </g>
 
-        {/* Φ symbol floating above the funnel mouth — brand mark */}
-        <g transform="translate(260, 32)">
-          <circle r="14" fill="rgba(255, 255, 255, 0.85)" stroke="rgba(252, 211, 77, 0.7)" strokeWidth="1" />
+        {/* ─── Φ SYMBOL ABOVE THE RIM — brand mark ─── */}
+        <g transform="translate(300, 28)">
+          <circle r="20" fill="rgba(255, 255, 255, 0.95)" stroke="rgba(252, 211, 77, 0.95)" strokeWidth="1.5" />
           <text
             x="0"
-            y="1"
+            y="2"
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="16"
+            fontSize="22"
             fontWeight="600"
             fontFamily="ui-serif, Georgia, serif"
             fill="#1A1814"
@@ -195,40 +237,27 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
           </text>
         </g>
 
-        {/* "Output" label below spout */}
-        <g transform="translate(260, 590)">
-          <rect x="-32" y="-9" width="64" height="18" rx="9" fill="rgba(255, 255, 255, 0.7)" stroke="rgba(40, 30, 20, 0.12)" strokeWidth="0.5" />
+        {/* ─── "10× CLIPS" LABEL BELOW SPOUT ─── */}
+        <g transform="translate(300, 790)">
+          <rect x="-46" y="-12" width="92" height="24" rx="12" fill="rgba(255, 255, 255, 0.92)" stroke="rgba(40, 30, 20, 0.15)" strokeWidth="0.5" />
           <text
             x="0"
-            y="1"
+            y="2"
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="9"
-            fontWeight="600"
+            fontSize="11"
+            fontWeight="700"
             fontFamily="ui-monospace, SFMono-Regular, monospace"
-            letterSpacing="0.12em"
+            letterSpacing="0.14em"
             fill="#3A3530"
           >
             10× CLIPS
           </text>
         </g>
 
-        {/* "Source" label above rim */}
-        <g transform="translate(260, 14)">
-          <rect x="-44" y="-9" width="88" height="18" rx="9" fill="rgba(255, 255, 255, 0.7)" stroke="rgba(40, 30, 20, 0.12)" strokeWidth="0.5" />
-          <text
-            x="0"
-            y="1"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="9"
-            fontWeight="600"
-            fontFamily="ui-monospace, SFMono-Regular, monospace"
-            letterSpacing="0.12em"
-            fill="#3A3530"
-          >
-            1× SOURCE
-          </text>
+        {/* ─── "1× SOURCE" LABEL — small, above the rim ─── */}
+        <g transform="translate(300, -2)" opacity="0">
+          {/* Hidden — the Φ symbol handles the brand mark at top */}
         </g>
       </svg>
     </div>

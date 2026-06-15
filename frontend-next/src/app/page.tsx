@@ -3,21 +3,31 @@
 /**
  * Landing page — RelatiV
  *
- * New design (June 2026):
- *  - Hero: 2-column split
- *      LEFT  · Static glassmorphic funnel graphic + headline + paste URL
- *              input that "dissolves" into the funnel via bottom-edge mask
- *      RIGHT · Stack of long-form video thumbnails (still, slight rotation)
- *  - Section 02: Moving clips grid (6 smaller auto-playing cards)
- *  - Sticky input bar appears on scroll (top, below header)
+ * HERO LAYOUT (single column on mobile, 2-column on desktop):
  *
- * Built around the existing design system (warm cream + fuchsia + gold,
- * glassmorphism, Space Grotesk + Geist + Fraunces).
+ *   LEFT  · Eyebrow → Headline → Subtext
+ *            → PasteLinkInput (with bottom-edge "dissolve" mask)
+ *            → FunnelGraphic (BIG, glassmorphic, anchored at bottom)
+ *
+ *   RIGHT · LongFormStack (4 long-form video thumbnails, still)
+ *
+ * The paste URL's bottom edge "dissolves" into the funnel's top rim —
+ * they share the same glassmorphic material so they feel continuous.
+ * The funnel is intentionally static (no animation) — it represents
+ * the "taste filter" of the engine.
+ *
+ * Below the hero:
+ *   - Section 02: MovingClipsGrid (6 smaller auto-animating short clips)
+ *   - Section 03: Three-pillar engine explainer
+ *   - Section 04: Final CTA strip with paste input
+ *
+ * StickyInputBar slides in from the top after 320px of scroll,
+ * keeping "Paste URL + Get clips" accessible while browsing.
  */
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Zap, Brain, Wand2, Mic } from "lucide-react";
+import { ArrowRight, Sparkles, Brain, Wand2, Mic } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
@@ -58,12 +68,12 @@ export default function HomePage() {
 
       <main className="relative">
         {/* ════════════════════════════════════════════════════════════════
-            HERO — Left: funnel + headline + paste URL
+            HERO — Left: text + paste URL + funnel
                    Right: long-form video stack
-           ════════════════════════════════════════════════════════════ */}
+           ════════════════════════════════════════════════════════════════ */}
         <section
           id="hero"
-          className="relative min-h-[100vh] flex items-center overflow-hidden pt-28 pb-16 md:pt-32 md:pb-20"
+          className="relative min-h-[100vh] flex items-center overflow-hidden pt-28 pb-12 md:pt-32 md:pb-20"
           style={{
             background:
               "radial-gradient(ellipse at 30% 0%, rgba(252, 211, 77, 0.10) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(217, 70, 239, 0.10) 0%, transparent 50%), var(--color-bg-base)",
@@ -85,36 +95,16 @@ export default function HomePage() {
           />
 
           <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
-            <div className="grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-              {/* ─── LEFT COLUMN: Funnel + headline + paste URL ─── */}
-              <div className="lg:col-span-7 relative">
-                {/* The static funnel graphic — positioned absolute so it
-                    doesn't move with scroll or content flow. Sized to fill
-                    the left column height. */}
-                <div
-                  className="absolute pointer-events-none"
-                  style={{
-                    top: "-10%",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "min(420px, 90%)",
-                    height: "min(560px, 110%)",
-                    opacity: 0.95,
-                    zIndex: 1,
-                  }}
+            <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
+              {/* ─── LEFT COLUMN: text → paste URL → funnel ─── */}
+              <div className="lg:col-span-7 flex flex-col">
+                {/* Top: eyebrow + headline + subtext */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
                 >
-                  <FunnelGraphic />
-                </div>
-
-                {/* Content layer — sits on top of the funnel */}
-                <div className="relative z-10 pt-[40%] md:pt-[42%]">
-                  {/* Eyebrow — small label above headline */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex items-center gap-3 mb-6"
-                  >
+                  <div className="flex items-center gap-3 mb-6">
                     <span
                       className="text-[11px] font-mono tracking-wider"
                       style={{ color: "var(--color-text-muted)" }}
@@ -131,16 +121,12 @@ export default function HomePage() {
                     >
                       The funnel
                     </span>
-                  </motion.div>
+                  </div>
 
-                  {/* Headline — big, modern, premium */}
-                  <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: 0.1 }}
+                  <h1
                     className="font-display font-semibold max-w-2xl"
                     style={{
-                      fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)",
+                      fontSize: "clamp(2.75rem, 5.5vw, 4.5rem)",
                       lineHeight: 0.98,
                       letterSpacing: "-0.045em",
                       color: "var(--color-text-primary)",
@@ -160,12 +146,9 @@ export default function HomePage() {
                     <span style={{ color: "var(--color-text-primary)" }}>
                       Zero editing.
                     </span>
-                  </motion.h1>
+                  </h1>
 
-                  <motion.p
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
+                  <p
                     className="mt-6 text-base md:text-lg max-w-xl leading-relaxed"
                     style={{ color: "var(--color-text-secondary)" }}
                   >
@@ -179,58 +162,79 @@ export default function HomePage() {
                     . Then writes the caption, the title, and the hashtags.
                     <br className="hidden md:block" />
                     You paste a URL. You publish clips.
-                  </motion.p>
+                  </p>
+                </motion.div>
 
-                  {/* Paste URL — dissolves into the funnel below */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="mt-10 max-w-xl"
-                  >
-                    <PasteLinkInput variant="hero" />
-                  </motion.div>
+                {/* Middle: paste URL with dissolve-into-funnel mask */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.15 }}
+                  className="mt-8 max-w-xl relative"
+                >
+                  <PasteLinkInput variant="hero" />
 
-                  {/* Trust strip — small text below the input */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                    className="mt-8 flex flex-wrap items-center gap-4 text-[12px] font-mono"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    <span className="inline-flex items-center gap-1.5">
+                  {/* The "stream" between paste URL and funnel — a soft
+                      beam that visually connects the input to the rim.
+                      Reinforces the "URL feeds the funnel" metaphor. */}
+                  <div
+                    aria-hidden
+                    className="hidden md:block mx-auto mt-0 h-12 w-px"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(252, 211, 77, 0.4) 0%, rgba(217, 70, 239, 0.25) 50%, transparent 100%)",
+                    }}
+                  />
+                </motion.div>
+
+                {/* Bottom: the funnel — big, anchored, glassmorphic */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+                  className="relative flex-1 flex items-end justify-center mt-4 md:mt-6"
+                  style={{ minHeight: "clamp(420px, 55vh, 620px)" }}
+                >
+                  <FunnelGraphic className="w-full max-w-[520px] h-full" />
+                </motion.div>
+
+                {/* Trust strip — under the funnel */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                  className="mt-6 flex flex-wrap items-center justify-center gap-4 text-[12px] font-mono"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="relative flex h-1.5 w-1.5">
                       <span
-                        className="relative flex h-1.5 w-1.5"
-                      >
-                        <span
-                          className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
-                          style={{ background: "#10B981" }}
-                        />
-                        <span
-                          className="relative inline-flex rounded-full h-1.5 w-1.5"
-                          style={{ background: "#10B981" }}
-                        />
-                      </span>
-                      Public beta
+                        className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+                        style={{ background: "#10B981" }}
+                      />
+                      <span
+                        className="relative inline-flex rounded-full h-1.5 w-1.5"
+                        style={{ background: "#10B981" }}
+                      />
                     </span>
-                    <span style={{ color: "var(--color-text-faint)" }}>·</span>
-                    <span>60s per video</span>
-                    <span style={{ color: "var(--color-text-faint)" }}>·</span>
-                    <span>9:16 auto-crop</span>
-                    <span style={{ color: "var(--color-text-faint)" }}>·</span>
-                    <span>Captions baked in</span>
-                  </motion.div>
-                </div>
+                    Public beta
+                  </span>
+                  <span style={{ color: "var(--color-text-faint)" }}>·</span>
+                  <span>60s per video</span>
+                  <span style={{ color: "var(--color-text-faint)" }}>·</span>
+                  <span>9:16 auto-crop</span>
+                  <span style={{ color: "var(--color-text-faint)" }}>·</span>
+                  <span>Captions baked in</span>
+                </motion.div>
               </div>
 
               {/* ─── RIGHT COLUMN: Long-form video stack ─── */}
-              <div className="lg:col-span-5 relative">
+              <div className="lg:col-span-5 relative flex items-center">
                 <motion.div
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.7, delay: 0.2 }}
-                  className="relative z-10"
+                  className="relative z-10 w-full"
                 >
                   <LongFormStack />
                 </motion.div>
@@ -241,14 +245,12 @@ export default function HomePage() {
 
         {/* ════════════════════════════════════════════════════════════════
             SECTION 02 — MOVING CLIPS GRID
-            Smaller, auto-playing clip cards below the hero
-           ════════════════════════════════════════════════════════════ */}
+           ════════════════════════════════════════════════════════════════ */}
         <section
           id="section-2"
           className="relative py-20 md:py-32 overflow-hidden"
           style={{ background: "var(--color-bg-deep)" }}
         >
-          {/* Soft accent backdrop */}
           <div
             aria-hidden
             className="absolute inset-0 pointer-events-none"
@@ -329,7 +331,6 @@ export default function HomePage() {
                       "0 8px 24px rgba(40, 30, 20, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
                   }}
                 >
-                  {/* Accent stripe at top */}
                   <div
                     className="absolute top-0 left-0 right-0 h-1"
                     style={{ background: p.accent }}
@@ -359,7 +360,6 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* CTA at the bottom — try it again */}
             <div className="mt-14 text-center">
               <Link
                 href="/services"
@@ -374,7 +374,7 @@ export default function HomePage() {
         </section>
 
         {/* ════════════════════════════════════════════════════════════════
-            SECTION 04 — CTA STRIP
+            SECTION 04 — FINAL CTA STRIP
            ════════════════════════════════════════════════════════════════ */}
         <section
           id="section-4"
