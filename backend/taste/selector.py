@@ -40,11 +40,24 @@ def rank_candidates(
         log.warning("No LLM response — falling back to top-N hook candidates")
         return _fallback_selection(candidates, video_duration)
 
-    # Map LLM's candidate_index to actual candidate.
+    # Map LLM's moment_index (new) OR candidate_index (legacy) to actual
+    # candidate. We accept both because parse_moment_response emits
+    # `moment_index` while the older parse_response emitted `candidate_index`.
     final = []
     used_starts: list = []
     for sel in llm_response:
-        idx = sel["candidate_index"] - 1  # LLM is 1-indexed
+        # Normalize field names — accept both the new (moment_index / reason
+        # / caption / hashtags) and legacy (candidate_index / edit_reason /
+        # suggested_caption / suggested_hashtags) keys.
+        idx_raw = sel.get("moment_index", sel.get("candidate_index"))
+        if idx_raw is None:
+            log.warning(f"LLM pick missing index field, skipping: {sel}")
+            continue
+        try:
+            idx = int(idx_raw) - 1  # 1-indexed in both schemas
+        except (TypeError, ValueError):
+            log.warning(f"LLM pick has non-integer index {idx_raw!r}, skipping")
+            continue
         if idx < 0 or idx >= len(candidates):
             log.warning(f"LLM referenced out-of-range candidate {idx+1}, skipping")
             continue
@@ -55,9 +68,9 @@ def rank_candidates(
         # floor only applies to the energy-peak fallback path (below).
         # We do enforce duration bounds, dedup, and the video-duration cap.
 
-        # Apply trim offsets (defensive: missing fields default to 0)
-        start = max(0.0, cand["start"] + sel.get("trim_start_offset", 0))
-        end = min(video_duration, cand["end"] + sel.get("trim_end_offset", 0))
+        # Apply trim offsets (new: trim_start/trim_end, legacy: trim_start_offset)
+        start = max(0.0, cand["start"] + sel.get("trim_start", sel.get("trim_start_offset", 0)))
+        end = min(video_duration, cand["end"] + sel.get("trim_end", sel.get("trim_end_offset", 0)))
 
         # Enforce duration window
         if end - start < CLIP_DURATION_MIN:
@@ -70,14 +83,21 @@ def rank_candidates(
             continue
         used_starts.append(start)
 
+        # Normalize the text fields — accept either the new (caption / hashtags
+        # / reason) or the legacy (suggested_caption / suggested_hashtags /
+        # edit_reason) names.
+        caption = sel.get("caption", sel.get("suggested_caption", "")) or ""
+        hashtags = sel.get("hashtags", sel.get("suggested_hashtags", "")) or ""
+        edit_reason = sel.get("reason", sel.get("edit_reason", "")) or ""
+
         final.append({
             "start": round(start, 3),
             "end": round(end, 3),
             "hook_score": cand.get("hook_score", 0),
-            "edit_reason": sel.get("edit_reason", ""),
-            "caption": sel.get("suggested_caption", "") or "",
-            "hashtags": sel.get("suggested_hashtags", "") or "",
-            "viral_title": sel.get("viral_title", "") or _default_viral_title(sel.get("edit_reason", "")),
+            "edit_reason": edit_reason,
+            "caption": caption,
+            "hashtags": hashtags,
+            "viral_title": sel.get("viral_title", "") or _default_viral_title(edit_reason),
         })
 
     if not final:

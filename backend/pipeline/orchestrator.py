@@ -257,7 +257,7 @@ def _run_stage_6_taste_select(
     if llm_callable is not None:
         try:
             raw = llm_callable(prompt)
-            llm_response = taste_icl.parse_response(raw)
+            llm_response = taste_icl.parse_moment_response(raw)
         except Exception as e:
             log.warning(f"LLM call failed, falling back to energy: {e}")
     else:

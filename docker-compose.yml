@@ -32,7 +32,11 @@ services:
       - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-haiku-4-5-20251001}
       - LLM_PROVIDER=${LLM_PROVIDER:-auto}
       - LLM_TIER=${LLM_TIER:-smart}
-      - LLM_MAX_OUTPUT_TOKENS=${LLM_MAX_OUTPUT_TOKENS:-200}
+      # Bumped to 500 from 200 on 2026-06-15: with the strict-JSON output
+      # schema ({picks: [...]} with viral_title + caption + hashtags + reason
+      # per pick), 200 tokens was cutting the response off mid-JSON after
+      # 2 picks. 500 covers 3 full picks + JSON wrapper + safety margin.
+      - LLM_MAX_OUTPUT_TOKENS=${LLM_MAX_OUTPUT_TOKENS:-500}
       - LLM_DAILY_BUDGET_USD=${LLM_DAILY_BUDGET_USD:-0.50}
       - LLM_HARD_BUDGET_USD=${LLM_HARD_BUDGET_USD:-1.00}
       - LLM_SMART_THRESHOLD=${LLM_SMART_THRESHOLD:-2000}
