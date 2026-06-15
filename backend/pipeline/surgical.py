@@ -83,6 +83,45 @@ def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
     return cmd
 
 
+def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
+    """Build a yt-dlp command that downloads only [start, end] of the video
+    AS A VIDEO FILE (with both video and audio streams) for the renderer.
+
+    Used AFTER the LLM picks the winning moments — we re-fetch the picked
+    segments with both video and audio so the renderer can crop real video
+    frames (instead of falling back to a still image).
+    """
+    pad = SURGICAL_BUFFER_SECONDS
+    s = max(0.0, start - pad)
+    e = end + pad
+    from datetime import timedelta
+    s_str = str(timedelta(seconds=int(s)))
+    e_str = str(timedelta(seconds=int(e)))
+    cmd = [
+        YTDLP_PATH,
+        "-f", "best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best",
+        "--download-sections", f"*{s_str}-{e_str}",
+        "--force-keyframes-at-cuts",
+        "--merge-output-format", "mp4",
+        "-o", "-",  # stdout
+        "--no-warnings",
+        "--no-check-certificates",
+        url,
+    ]
+    if COOKIES_PATH and COOKIES_PATH.exists():
+        import shutil
+        _working = "/tmp/youtube_cookies_working.txt"
+        try:
+            shutil.copy2(str(COOKIES_PATH), _working)
+            cmd.extend(["--cookies", _working])
+        except Exception:
+            cmd.extend(["--cookies", str(COOKIES_PATH)])
+    _proxy = get_proxy()
+    if _proxy:
+        cmd.extend(["--proxy", _proxy])
+    return cmd
+
+
 def _download_one_segment(
     url: str,
     start: float,
@@ -263,6 +302,146 @@ def surgical_extract_local(
             log_fn(f"  Segment {i+1} error: {str(e)[:80]}")
             results.append({**cand, "audio_path": None, "source_start": start, "source_end": end})
 
+    return results
+
+
+def _download_one_video_segment(
+    url: str,
+    start: float,
+    end: float,
+    video_path: Path,
+    log_fn: Callable,
+    seg_idx: int,
+    total: int,
+    log_lock: threading.Lock,
+    on_segment_done: Optional[Callable[[int, int, bool], None]] = None,
+) -> Dict:
+    """Download a single VIDEO segment (with audio) — used AFTER the LLM
+    picks the winning moments. The renderer needs real video frames to
+    compose a watchable clip, so we re-fetch the picked ranges as mp4
+    instead of audio-only m4a.
+    """
+    if video_path.exists():
+        try:
+            video_path.unlink()
+        except Exception:
+            pass
+
+    cmd = _ytdlp_video_section_url(url, start, end)
+
+    def _log(msg: str) -> None:
+        with log_lock:
+            log_fn(msg)
+
+    _log(f"  Downloading video segment {seg_idx + 1}/{total} [{start:.1f}s - {end:.1f}s]...")
+
+    result = None
+    final_ok = False
+    try:
+        for seg_attempt in range(1, 4):
+            try:
+                with open(video_path, "wb") as f:
+                    result = subprocess.run(
+                        cmd, stdout=f, stderr=subprocess.PIPE, timeout=180
+                    )
+                if (result.returncode == 0 and video_path.exists()
+                        and video_path.stat().st_size > 1024):
+                    # Verify it actually has a video stream (not just audio
+                    # mistakenly returned by the format selector).
+                    # Quick ffprobe check via subprocess — cheaper than
+                    # importing a helper module.
+                    try:
+                        probe = subprocess.run(
+                            ["ffprobe", "-v", "error", "-select_streams", "v",
+                             "-show_entries", "stream=codec_type", "-of",
+                             "csv=p=0", str(video_path)],
+                            capture_output=True, text=True, timeout=10,
+                        )
+                        if "video" in (probe.stdout or ""):
+                            final_ok = True
+                            break
+                    except Exception:
+                        # ffprobe failed — trust returncode
+                        final_ok = True
+                        break
+                err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
+                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 failed (rc={result.returncode}): {err_snippet[:100]}")
+            except subprocess.TimeoutExpired:
+                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 timed out")
+            except Exception as e:
+                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 crashed: {e}")
+            if seg_attempt < 3:
+                time.sleep(2 * seg_attempt)
+        if on_segment_done is not None:
+            try:
+                on_segment_done(seg_idx, total, final_ok)
+            except Exception:
+                pass
+        if not final_ok:
+            _log(f"  Video segment {seg_idx + 1} download failed")
+            return {"video_path": None, "source_start": start, "source_end": end}
+        _log(f"  Video segment {seg_idx + 1} ready ({video_path.stat().st_size / 1024:.0f} KB)")
+        return {"video_path": str(video_path), "source_start": start, "source_end": end}
+    except Exception as e:
+        _log(f"  Video segment {seg_idx + 1} error: {str(e)[:80]}")
+        return {"video_path": None, "source_start": start, "source_end": end}
+
+
+def surgical_download_video_youtube(
+    url: str,
+    candidates: List[Dict],
+    task_id: str,
+    log_fn: Optional[Callable] = None,
+    on_segment_done: Optional[Callable[[int, int, bool], None]] = None,
+) -> List[Dict]:
+    """Download VIDEO segments (mp4 with both streams) for the LLM-picked
+    moments. Runs in parallel like the audio version.
+
+    Returns a list of {video_path, source_start, source_end} dicts in
+    the same order as the input candidates.
+    """
+    log_fn = log_fn or (lambda m: None)
+    log_lock = threading.Lock()
+    workers = max(1, min(PARALLEL_SURGICAL_WORKERS, len(candidates)))
+    started_at = time.monotonic()
+
+    log_fn(f"  Re-fetching {len(candidates)} video segment(s) (with video frames) in parallel...")
+
+    futures = []
+    indexed_results: List[Optional[Dict]] = [None] * len(candidates)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="vidseg") as pool:
+        for i, cand in enumerate(candidates):
+            start = float(cand["start"])
+            end = float(cand["end"])
+            video_path = TEMP_DIR / f"{task_id}_vidseg{i}.mp4"
+            fut = pool.submit(
+                _download_one_video_segment,
+                url, start, end, video_path, log_fn, i, len(candidates), log_lock,
+                on_segment_done,
+            )
+            futures.append((i, fut))
+
+        for i, fut in futures:
+            try:
+                seg_meta = fut.result(timeout=240)
+            except Exception as e:
+                log_fn(f"  Video segment {i + 1} worker crashed: {str(e)[:120]}")
+                start = float(candidates[i]["start"])
+                end = float(candidates[i]["end"])
+                seg_meta = {"video_path": None, "source_start": start, "source_end": end}
+            indexed_results[i] = seg_meta
+
+    elapsed = time.monotonic() - started_at
+    log_fn(f"  Video parallel download complete in {elapsed:.1f}s")
+
+    results = []
+    for i, cand in enumerate(candidates):
+        meta = indexed_results[i] or {
+            "video_path": None,
+            "source_start": float(cand["start"]),
+            "source_end": float(cand["end"]),
+        }
+        results.append({**cand, **meta})
     return results
 
 

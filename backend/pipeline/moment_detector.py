@@ -52,24 +52,49 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Moment:
-    """One candidate 10-25s window that might be a good clip."""
+    """One candidate 10-25s window that might be a good clip.
+
+    Carries BOTH text and audio context so the LLM can verify clips:
+      - text snippet (8-20 words) for content
+      - signal_type for audio characterisation (peak/valley/steep_peak/...)
+      - audio_features dict with raw energy + transition values
+      - source (caption_peak | audio_steep_peak | merged_text_audio | ...)
+    """
     index: int
     start: float
     end: float
-    signal_type: str  # "peak" | "valley" | "density" | "silence"
+    signal_type: str  # "peak" | "valley" | "density" | "silence" | "steep_peak" | "steep_valley"
     score: float
-    snippet: str = ""           # 8-20 words of context, not the full transcript
-    source: str = ""            # "caption_peak" | "caption_valley" | "audio_peak" | "audio_valley"
-    story_position: float = 0.0 # 0.0 (start) - 1.0 (end) — where in the video is this?
+    snippet: str = ""           # 8-20 words of text context
+    source: str = ""            # "caption_peak" | "audio_steep_peak" | "merged_text_audio" | ...
+    story_position: float = 0.0 # 0.0 (start) - 1.0 (end)
+    audio_features: Dict = field(default_factory=dict)
+    # e.g. {"relative_rise": 2.4, "peak_s": 142.3, "relative_drop": 0.3,
+    #       "trough_s": 87.1, "mean_energy": 0.04, "peak_energy": 0.18}
 
     def to_prompt_line(self) -> str:
-        """Format for the ICL prompt — terse, single line, ~40-60 tokens."""
+        """Format for the ICL prompt — terse, single line, includes both
+        text snippet and audio descriptor so the LLM can verify."""
         dur = self.end - self.start
-        snip = (self.snippet[:60] + "…") if len(self.snippet) > 60 else self.snippet
+        snip = (self.snippet[:80] + "…") if len(self.snippet) > 80 else self.snippet
         pos_pct = int(self.story_position * 100)
+        af = self.audio_features or {}
+
+        # Build audio descriptor (e.g. "AUDIO: peak +2.4× at 142.3s")
+        audio_desc = ""
+        if self.signal_type in ("steep_peak", "peak") and "relative_rise" in af:
+            audio_desc = f"AUDIO: {self.signal_type} +{af['relative_rise']:.2f}× mean energy"
+        elif self.signal_type in ("steep_valley", "valley") and "relative_drop" in af:
+            audio_desc = f"AUDIO: {self.signal_type} -{af['relative_drop']:.2f}× mean energy (quiet beat)"
+        elif self.signal_type == "density":
+            audio_desc = "AUDIO: fast speech density"
+        elif self.signal_type == "silence":
+            audio_desc = "AUDIO: long silence / beat"
+
         return (
             f"[{self.index}] t={self.start:.1f}-{self.end:.1f}s ({dur:.0f}s, "
-            f"{self.signal_type}, score={self.score:.2f}, pos={pos_pct}%): {snip!r}"
+            f"{self.signal_type}, score={self.score:.2f}, pos={pos_pct}%) "
+            f"{audio_desc} | TEXT: {snip!r}"
         )
 
 
@@ -199,6 +224,189 @@ def _caption_moments_from_transcript(
     return top
 
 
+# Words/phrases that strongly suggest a "compelling story moment"
+STORY_INTENSIFIERS = {
+    # Strong emotions / reactions
+    "insane", "crazy", "nuts", "unbelievable", "shocking", "incredible",
+    "literally", "absolutely", "totally", "completely", "actually",
+    "honestly", "seriously", "obviously", "clearly", "evidently",
+    # Story beats
+    "realized", "realize", "discovered", "discover", "found", "find",
+    "happened", "happens", "remember", "forgot", "thought", "knew",
+    "secret", "truth", "actually", "honestly", "turns out", "guess what",
+    # Punch / takeaway
+    "never", "always", "forever", "worst", "best", "only", "must",
+    "should", "need to", "have to", "gotta", "want to",
+    # Money / numbers
+    "thousand", "million", "billion", "dollars", "bucks", "rich",
+    "broke", "poor", "free", "cost",
+    # Contrast / reveal
+    "but", "however", "yet", "except", "instead", "actually",
+    "wait", "hold on", "stop", "no way", "are you serious",
+}
+
+# Words that mark "I have a story" / first-person
+FIRST_PERSON = {"i", "i'm", "i've", "i'll", "i'd", "me", "my", "mine",
+                "we", "we're", "we've", "we'll", "us", "our", "ours"}
+
+
+def _content_signal_score(text: str) -> tuple[float, list[str]]:
+    """Score a caption segment for STORY-CONTENT signals.
+
+    Returns (score 0-1, list of reasons). Looks for:
+      - numbers (digits, "thousand", "million")
+      - intensifiers from STORY_INTENSIFIERS
+      - first-person pronouns
+      - question marks (curiosity hook)
+      - exclamations (emotion)
+      - capitalized words (often proper nouns, names, brands)
+    """
+    if not text:
+        return 0.0, []
+    text_l = text.lower()
+    words = text_l.split()
+    reasons: list[str] = []
+
+    score = 0.0
+
+    # Numbers
+    has_number = any(ch.isdigit() for ch in text)
+    if has_number:
+        score += 0.25
+        reasons.append("has number")
+
+    # Money keywords
+    money_words = {"thousand", "million", "billion", "dollars", "bucks", "$", "€", "£"}
+    if any(w in text_l for w in money_words):
+        score += 0.2
+        reasons.append("money reference")
+
+    # Intensifiers
+    int_count = sum(1 for w in words if w in STORY_INTENSIFIERS)
+    if int_count:
+        score += min(0.3, int_count * 0.1)
+        reasons.append(f"{int_count} intensifier(s)")
+
+    # First-person
+    fp_count = sum(1 for w in words if w in FIRST_PERSON)
+    if fp_count:
+        score += min(0.2, fp_count * 0.07)
+        reasons.append(f"{fp_count} 1st-person")
+
+    # Questions (curiosity hook)
+    if "?" in text:
+        score += 0.15
+        reasons.append("question")
+
+    # Exclamations
+    if "!" in text:
+        score += 0.1
+        reasons.append("exclamation")
+
+    # Capitalized words (proper nouns, names, brands — 2+ caps mid-sentence)
+    cap_words = [w for w in text.split() if len(w) > 2 and w[0].isupper()]
+    if len(cap_words) >= 2:
+        score += 0.1
+        reasons.append(f"{len(cap_words)} proper noun(s)")
+
+    # Quote marks (someone is being quoted — punchline / reveal)
+    if '"' in text or '"' in text or '"' in text:
+        score += 0.15
+        reasons.append("quote")
+
+    return min(1.0, score), reasons
+
+
+def _content_signal_moments(
+    transcript: dict,
+    video_duration_s: float,
+    min_score: float = 0.25,
+) -> List[Moment]:
+    """Find candidate moments based on STORY CONTENT signals, not just
+    word density. Looks for segments with high content-score (numbers,
+    intensifiers, first-person, questions, quotes) and clusters adjacent
+    high-scoring segments into 10-20s windows.
+
+    This complements _caption_moments_from_transcript (density/pause) for
+    the common case of uniform-speed auto-captions where density peaks
+    don't fire.
+    """
+    segs = transcript.get("segments", [])
+    if not segs or len(segs) < 2:
+        return []
+
+    # Score each segment
+    scored: list[tuple[int, float, list[str]]] = []
+    for i, s in enumerate(segs):
+        text = (s.get("text") or "").strip()
+        if not text:
+            continue
+        score, reasons = _content_signal_score(text)
+        if score >= min_score:
+            scored.append((i, score, reasons))
+
+    if not scored:
+        return []
+
+    # Cluster adjacent high-scoring segments (within 3s of each other)
+    clusters: list[list[tuple[int, float, list[str]]]] = []
+    current: list[tuple[int, float, list[str]]] = []
+    last_end = 0.0
+    for i, sc, rs in scored:
+        seg = segs[i]
+        start = float(seg.get("start", 0))
+        end = float(seg.get("end", 0))
+        if not current or start - last_end <= 3.0:
+            current.append((i, sc, rs))
+        else:
+            clusters.append(current)
+            current = [(i, sc, rs)]
+        last_end = end
+    if current:
+        clusters.append(current)
+
+    moments: list[Moment] = []
+    for cluster in clusters:
+        if len(cluster) < 1:
+            continue
+        first_i = cluster[0][0]
+        last_i = cluster[-1][0]
+        start = float(segs[first_i].get("start", 0))
+        end = float(segs[last_i].get("end", 0))
+        # Build snippet from cluster text
+        texts = [(segs[i].get("text") or "").strip() for i, _, _ in cluster]
+        snippet = " ".join(texts)[:100]
+        # Score = mean of cluster scores, boosted by cluster size
+        mean_score = sum(sc for _, sc, _ in cluster) / len(cluster)
+        cluster_bonus = min(0.2, (len(cluster) - 1) * 0.05)
+        all_reasons = sorted({r for _, _, rs in cluster for r in rs})
+        final_score = min(1.0, mean_score + cluster_bonus)
+        # Pad window to 10-20s
+        win_dur = end - start
+        if win_dur < 10:
+            pad = (10 - win_dur) / 2
+            start = max(0, start - pad)
+            end = end + pad
+        elif win_dur > 25:
+            # Keep last 20s of the cluster
+            end = start + 20
+        reasons_str = ",".join(all_reasons[:3])
+        moments.append(Moment(
+            index=0,
+            start=round(start, 2),
+            end=round(end, 2),
+            signal_type="content",
+            score=final_score,
+            snippet=snippet or f"[content: {reasons_str}]",
+            source="caption_content",
+            story_position=start / max(1.0, video_duration_s),
+            audio_features={"content_signals": all_reasons[:5]},
+        ))
+
+    moments.sort(key=lambda m: m.score, reverse=True)
+    return moments[:15]
+
+
 def _pad_with_temporal_candidates(
     moments: List["Moment"],
     video_duration_s: float,
@@ -284,6 +492,11 @@ def _audio_moments_from_file(
             snippet="[audio peak — loud sustained moment]",
             source="audio_peak",
             story_position=start / max(1.0, video_duration_s),
+            audio_features={
+                "peak_s": float(p["timestamp"]),
+                "relative_rise": float(p["relative_to_mean"]),
+                "energy_score": float(p.get("energy_score", 0)),
+            },
         ))
 
     # Top 5 sustained valleys
@@ -297,6 +510,11 @@ def _audio_moments_from_file(
             snippet=f"[audio valley — {v['duration_s']:.1f}s pause, depth={v['depth']:.2f}]",
             source="audio_valley",
             story_position=v["start"] / max(1.0, video_duration_s),
+            audio_features={
+                "trough_s": float((v["start"] + v["end"]) / 2),
+                "relative_drop": float(v.get("depth", 0)),
+                "duration_s": float(v.get("duration_s", 0)),
+            },
         ))
 
     # Top 8 STEEP PEAKS — sudden loud transitions
@@ -310,6 +528,10 @@ def _audio_moments_from_file(
             snippet=f"[STEEP PEAK — sudden loud at {sp['peak_s']:.1f}s, +{sp['relative_rise']:.2f}× mean energy]",
             source="audio_steep_peak",
             story_position=sp["start"] / max(1.0, video_duration_s),
+            audio_features={
+                "peak_s": float(sp["peak_s"]),
+                "relative_rise": float(sp["relative_rise"]),
+            },
         ))
 
     # Top 8 STEEP VALLEYS — sudden quiet transitions (the "wait for it" beats)
@@ -323,6 +545,10 @@ def _audio_moments_from_file(
             snippet=f"[STEEP VALLEY — sudden quiet at {sv['trough_s']:.1f}s, -{sv['relative_drop']:.2f}× mean energy]",
             source="audio_steep_valley",
             story_position=sv["start"] / max(1.0, video_duration_s),
+            audio_features={
+                "trough_s": float(sv["trough_s"]),
+                "relative_drop": float(sv["relative_drop"]),
+            },
         ))
 
     # Dedupe overlapping moments — keep highest score
@@ -471,9 +697,28 @@ def detect_moments(
         segs = transcript["segments"]
         info["duration_s"] = float(segs[-1].get("end", 0))
         text_moments = _caption_moments_from_transcript(transcript, info["duration_s"])
-        text_moments = _pad_with_temporal_candidates(text_moments, info["duration_s"], target_count=3)
-        log(f"  Built {len(text_moments)} text candidate moments from captions")
-        moments = text_moments
+
+        # ── ALSO scan for STORY CONTENT signals (numbers, intensifiers,
+        # first-person, questions, quotes) — these work for uniform-density
+        # content like podcasts and interviews where word density peaks
+        # don't fire. Complement the density/pause detector.
+        content_moments = _content_signal_moments(transcript, info["duration_s"])
+        log(f"  Built {len(text_moments)} density/pause moments + "
+            f"{len(content_moments)} content-signal moments")
+
+        # Merge: dedupe overlapping, boost moments detected by BOTH
+        # sources (text+density AND content).
+        moments = _merge_text_and_audio_moments(text_moments, content_moments)
+        moments = _pad_with_temporal_candidates(moments, info["duration_s"], target_count=3)
+        log(f"  Built {len(moments)} merged candidate moments")
+        # If still too few, try harder with lower content-signal threshold
+        if len([m for m in moments if m.signal_type != "temporal"]) < 3:
+            more_content = _content_signal_moments(
+                transcript, info["duration_s"], min_score=0.15,
+            )
+            if more_content:
+                moments = _merge_text_and_audio_moments(moments, more_content)
+                log(f"  Added {len(more_content)} more low-threshold content moments → {len(moments)} total")
 
         # ── If we already have an audio file (caller passed precomputed_audio_path),
         # do the audio analysis and MERGE. This is the "nail in the coffin" path:

@@ -124,10 +124,10 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         # System prompt (user-defined 2026-06-15). Cached after first call so
         # subsequent calls only pay $0.10/MTok for this ~50-token block.
         system_prompt = (
-            "Analyze the audio and text data. Provide the timestamps for the "
-            "best clip, followed by a short, 4 to 5-word note explaining what "
-            "is happening, and a brief, single-sentence reason for why this "
-            "segment was selected."
+            "You are a short-form video editor. You receive pre-scored candidate "
+            "moments (with 8 retention features) and the video's archetype. For each "
+            "pick, write a HOOK (first 3 seconds) and a RETENTION BRIDGE (the "
+            "reason to keep watching). Be specific, not generic. Return JSON only."
         )
         # Prompt caching: split into stable (cacheable) + variable parts.
         # Our ICL prompt is ~800 stable tokens, followed by per-request context.

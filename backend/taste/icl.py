@@ -20,7 +20,7 @@ Why moments instead of full transcript:
 Strict JSON only. No prose, no markdown, no explanation.
 """
 from typing import List, Dict, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
@@ -75,10 +75,23 @@ def build_moment_prompt(
 
     # 1. System — terse, no prose
     parts.append(
-        "Pick the 2-5 most viral moments from the list. Prioritize: "
-        "(1) contrast (valley→peak, silence→laugh, beat→reveal), "
-        "(2) self-contained (works without context), "
-        "(3) hook in first 2s. "
+        "You see BOTH audio descriptors (energy peaks, valleys, "
+        "transitions) AND text snippets. For each candidate, rate its "
+        "STORY QUALITY as confidence 0.0-1.0 — a 'compelling story-type "
+        "clip' is one where the audio+text together indicate a real "
+        "narrative beat: a strong reaction, a punchline, a reveal, a "
+        "hot take, a turn of events. Use this guide:\n"
+        "  0.9-1.0  = CLEAR story beat (laugh, reveal, \"I couldn't "
+        "believe it\", numbers, intensifiers, payoff)\n"
+        "  0.7-0.8  = LIKELY story beat (contrast, fast speech, "
+        "emotional peak, dramatic pause)\n"
+        "  0.5-0.6  = POSSIBLE (something is happening, but context "
+        "is thin)\n"
+        "  0.3-0.4  = WEAK (filler, transition, just talking)\n"
+        "  0.0-0.2  = NO STORY (generic padding, repeated words, "
+        "silence, no narrative signal)\n"
+        "Be honest. The user wants 1-3 STRONG clips, not 3 weak ones. "
+        "If only 1 candidate is compelling, return 1 pick. "
         "Output ONLY the JSON object, no prose."
     )
 
@@ -87,12 +100,13 @@ def build_moment_prompt(
     title = title[:80]
     dur = float(video_meta.get("duration_s") or video_meta.get("duration") or 0)
     parts.append(
-        f"Video: {title!r} ({dur:.0f}s)"
+        f"Video: {title!r} ({dur:.0f}s, target=1-3 clips, ~1 per 3-5min)"
     )
 
     # 3. Signal legend
     parts.append(
-        "Signals: peak=loud, valley=quiet pause, density=fast speech, silence=beat/pause"
+        "Signals: peak=loud, valley=quiet pause, density=fast speech, "
+        "silence=beat/pause, steep_peak=sudden loud, steep_valley=sudden quiet"
     )
 
     # 4. Moments (the input)
@@ -104,14 +118,118 @@ def build_moment_prompt(
             f"Candidates ({len(cand_lines)}):\n" + "\n".join(cand_lines)
         )
 
-    # 5. Output schema — strict JSON
+    # 5. Output schema — strict JSON with confidence 0.0-1.0
     parts.append(
         f"\nReturn JSON: {{\"picks\": [{{\"moment_index\": <int>, "
         f"\"trim_start\": <float, def 0>, \"trim_end\": <float, def 0>, "
+        f"\"confidence\": <float 0.0-1.0 — how strong is this as a story beat?>, "
         f"\"viral_title\": \"<3-6 words ALL CAPS>\", "
         f"\"caption\": \"<max 100 chars>\", \"hashtags\": \"<max 5 space-sep>\", "
         f"\"reason\": \"<max 80 chars>\"}}, ...]}}. "
-        f"Return {max_picks} picks. JSON only, no markdown."
+        f"Return {max_picks} picks. Use confidence honestly: 1.0 = "
+        f"unmissable, 0.5 = worth showing, 0.2 = filler. JSON only, no markdown."
+    )
+
+    return "\n".join(parts)
+
+
+def build_archetype_aware_prompt(
+    moments: List["Moment"],
+    video_meta: Dict,
+    archetype: str = "general",
+    archetype_confidence: float = 0.0,
+    retention_scores: Optional[Dict[int, Dict[str, float]]] = None,
+    max_picks: int = 3,
+) -> str:
+    """
+    New (2026-06-15) archetype-aware prompt.
+
+    Key changes from build_moment_prompt:
+      1. Passes archetype + confidence so the LLM knows what content type
+         it's writing for. This unlocks archetype-specific hooks.
+      2. Passes per-moment 8-feature retention scores (0-1 each).
+      3. Asks for THREE specific fields per pick:
+         - hook: 6-10 words, the first thing the viewer hears (open loop)
+         - retention_bridge: 8-15 words, "and then what" / "but here's the thing"
+         - title: 3-6 words, ALL CAPS, for thumbnail/UI
+         (legacy: caption, hashtags, reason are also accepted)
+      4. Stricter structure: includes archetype-specific guidance.
+
+    The LLM is no longer asked to "find a story" — it's given candidates
+    that are pre-scored and pre-typed. It only writes COPY.
+
+    Token cost: ~400 in + ~500 out. Same as before.
+    """
+    import os
+    try:
+        from ..pipeline.archetype import archetype_specific_guidance
+    except ImportError:
+        archetype_specific_guidance = lambda a: ""
+
+    parts: List[str] = []
+
+    # 1. SYSTEM — explicit 3-job instruction
+    parts.append(
+        "You are a short-form video editor (TikTok/Reels/Shorts). You do "
+        "THREE things for each pick:\n"
+        "  1. HOOK (6-10 words): the FIRST thing the viewer sees/hears. "
+        "Must create an OPEN LOOP — a question, surprise, or curiosity gap "
+        "that they want closed.\n"
+        "  2. RETENTION BRIDGE (8-15 words): the 'and then what?' that "
+        "keeps them watching. Connect the hook to a payoff.\n"
+        "  3. TITLE (3-6 words, ALL CAPS): for thumbnail/UI. "
+        "Stop-scrolling, specific, not generic.\n\n"
+        "Be SPECIFIC to the moment. Reference the actual content, not "
+        "abstract patterns. Avoid 'TOP MOMENT', 'YOU WON'T BELIEVE' as a "
+        "literal phrase — find the precise beat."
+    )
+
+    # 2. ARCHETYPE — context for the LLM
+    arch_conf = f" (conf {archetype_confidence:.2f})" if archetype_confidence else ""
+    parts.append(
+        f"ARCHETYPE: {archetype}{arch_conf}\n"
+        f"{archetype_specific_guidance(archetype)}"
+    )
+
+    # 3. VIDEO META
+    title = (video_meta.get("title", "(no title)") or "(no title)")[:80]
+    dur = float(video_meta.get("duration_s") or video_meta.get("duration") or 0)
+    parts.append(f"\nVideo: {title!r} ({dur:.0f}s, target={max_picks} clips)")
+
+    # 4. CANDIDATES — moment + retention features
+    if not moments:
+        parts.append("No candidate moments found — return empty picks array.")
+    else:
+        cand_lines = []
+        for m in moments[:20]:
+            base = m.to_prompt_line() if hasattr(m, "to_prompt_line") else str(m)
+            # Append retention features if provided
+            if retention_scores and m.index in retention_scores:
+                feats = retention_scores[m.index]
+                feat_str = " ".join(
+                    f"{k}={v:.2f}" for k, v in feats.items()
+                    if k in ("composite", "energy_peak", "power_words", "question",
+                             "numbers", "first_person", "speech_rate")
+                )
+                base = f"{base}  [retention: {feat_str}]"
+            cand_lines.append(base)
+        parts.append(
+            f"\nCandidates ({len(cand_lines)}):\n" + "\n".join(cand_lines)
+        )
+
+    # 5. OUTPUT SCHEMA — strict JSON
+    parts.append(
+        f"\nReturn JSON: {{\"picks\": [{{"
+        f"\"moment_index\": <int 1-based from list above>, "
+        f"\"confidence\": <float 0.0-1.0>, "
+        f"\"hook\": \"<6-10 words, the OPEN LOOP>\", "
+        f"\"retention_bridge\": \"<8-15 words, the 'and then what?'>\", "
+        f"\"title\": \"<3-6 words ALL CAPS>\", "
+        f"\"hashtags\": \"<3-5 space-sep tags>\""
+        f"}}, ...]}}\n"
+        f"Return {max_picks} picks. If only 1-2 candidates are real story "
+        f"beats, return 1-2 picks. Honest > padded. JSON only, no markdown, "
+        f"no prose before/after."
     )
 
     return "\n".join(parts)
@@ -169,12 +287,49 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
             continue
         if "moment_index" not in p:
             continue
+        # Confidence: float 0.0-1.0. Backward compat with old "verified"
+        # field — if confidence is missing but verified is present, map
+        # True→0.9, False→0.2.
+        conf_raw = p.get("confidence", None)
+        if conf_raw is None:
+            if "verified" in p:
+                conf_raw = 0.9 if p.get("verified") else 0.2
+            else:
+                conf_raw = 0.5  # unknown → middle
+        try:
+            confidence = float(conf_raw)
+        except (TypeError, ValueError):
+            confidence = 0.5
+        confidence = max(0.0, min(1.0, confidence))
+        # New 3-job schema: hook, retention_bridge, title
+        # Fall back to legacy field names if not present.
+        hook = str(
+            p.get("hook")
+            or p.get("viral_title")
+            or ""
+        )[:200]
+        retention_bridge = str(
+            p.get("retention_bridge")
+            or p.get("caption")
+            or ""
+        )[:300]
+        title = str(
+            p.get("title")
+            or p.get("viral_title")
+            or hook[:60]
+        )[:100].upper()
         valid.append({
             "moment_index": int(p["moment_index"]),
             "trim_start": float(p.get("trim_start", 0)),
             "trim_end": float(p.get("trim_end", 0)),
-            "viral_title": str(p.get("viral_title", ""))[:100],
-            "caption": str(p.get("caption", ""))[:200],
+            "confidence": confidence,
+            # Backward-compat: expose a "verified" boolean for old code paths
+            "verified": confidence >= 0.5,
+            "viral_title": title,  # legacy alias
+            "hook": hook,
+            "retention_bridge": retention_bridge,
+            "title": title,
+            "caption": retention_bridge or str(p.get("caption", ""))[:200],  # legacy alias
             "hashtags": str(p.get("hashtags", ""))[:200],
             "reason": str(p.get("reason", ""))[:500],
         })

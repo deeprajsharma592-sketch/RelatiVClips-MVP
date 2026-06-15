@@ -208,7 +208,16 @@ class TaskStore:
             "time_elapsed_seconds": elapsed_seconds,
             "time_estimate_seconds": time_estimate,
             "clips": task.get("clips", []) if task["status"] == TaskStatus.COMPLETE else [],
-            "error": task.get("error")
+            "error": task.get("error"),
+            # Cost data (added with the verified-picks flow)
+            "llm_cost_usd": task.get("llm_cost_usd"),
+            "cost_per_clip_usd": task.get("cost_per_clip_usd"),
+            "llm_provider": task.get("llm_provider"),
+            "clips_verified": task.get("clips_verified"),
+            "clips_unverified": task.get("clips_unverified"),
+            "clips_requested": task.get("clips_requested"),
+            "honest_result": task.get("honest_result", False),
+            "honest_message": task.get("honest_message"),
         }
 
     def _calculate_eta(self, task: dict, elapsed_seconds: int) -> int:

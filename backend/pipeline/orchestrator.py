@@ -159,6 +159,7 @@ def _run_stage_6_taste_select(
     video_meta: Dict,
     progress: ProgressCallback,
     llm_callable: Optional[Callable[[str], str]] = None,
+    audio_features: Optional[Dict] = None,
 ) -> List[Dict]:
     """Stage 6: build ICL prompt, call LLM, parse, rank, filter.
 
@@ -168,6 +169,9 @@ def _run_stage_6_taste_select(
       2. Budget check: if daily budget is exhausted, skip the LLM and use
          lexical fallback. Prevents a runaway prompt from blowing the cap.
       3. Normal LLM call with strict token caps.
+
+    audio_features (NEW 2026-06-15): dict with {peaks, valleys} from
+    stage 2. Used by retention scoring + clip design.
     """
     from ..llm import cost_control
 
@@ -223,27 +227,93 @@ def _run_stage_6_taste_select(
     if creator_id and taste_store.creator_exists(creator_id):
         history = taste_store.load_history(creator_id, limit=10)
 
-    hook_dataclasses = [
-        taste_icl.HookCandidate(
-            start=c.get("start", 0),
-            end=c.get("end", 0),
-            hook_score=c.get("hook_score", 0),
-            components=c.get("components", {}),
-            reason=c.get("reason", ""),
-            # Pass surgery context through if stage 4 ran and we have it
-            surgical_padding_s=float(c.get("surgical_padding_s", 0) or 0),
-            source_start=c.get("source_start"),
-            source_end=c.get("source_end"),
-            source_url=c.get("source_url"),
-        )
-        for c in candidates
-    ]
+    # ── NEW (2026-06-15): Archetype + retention scoring pre-pass ─────────
+    # 0 LLM tokens. ~50ms. Gives the LLM structured context so it can
+    # write archetype-specific copy instead of guessing.
+    # NOTE: 'transcript' is the function parameter, not video_meta._transcript.
+    # 'audio_features' is the new function parameter.
+    _af = audio_features or {}
 
-    prompt = taste_icl.build_prompt(
-        creator_history=history,
-        hook_candidates=hook_dataclasses,
-        video_meta=video_meta,
-    )
+    archetype: str = "general"
+    arch_confidence: float = 0.0
+    retention_scores: Optional[Dict[int, Dict[str, float]]] = None
+
+    try:
+        from .archetype import detect_archetype, archetype_specific_guidance
+        from .retention import score_window, ARCHETYPE_WEIGHTS
+        from .postcheck import post_check_picks
+        from .clip_design import design_clip
+
+        arch_result = detect_archetype(transcript) if transcript else None
+        archetype = arch_result.primary if arch_result else "general"
+        arch_confidence = arch_result.confidence if arch_result else 0.0
+
+        # Score each candidate's retention features
+        retention_scores = {}
+        for i, c in enumerate(candidates, 1):
+            s = float(c.get("start", 0))
+            e = float(c.get("end", 0))
+            f = score_window(transcript or {}, _af, s, e, archetype=archetype)
+            retention_scores[i] = {
+                "composite": f.composite(ARCHETYPE_WEIGHTS.get(archetype, ARCHETYPE_WEIGHTS["general"])),
+                "energy_peak": f.energy_peak,
+                "power_words": f.power_words,
+                "question": f.question,
+                "numbers": f.numbers,
+                "first_person": f.first_person,
+                "speech_rate": f.speech_rate,
+            }
+        _emit(progress, "taste",
+              f"Archetype: {archetype} ({arch_confidence:.2f}) — "
+              f"scored {len(retention_scores)} candidate(s)")
+    except Exception as e:
+        log.warning(f"Archetype/retention pre-pass failed: {e}")
+
+    # Build moments list for the new prompt
+    moment_list = []
+    for i, c in enumerate(candidates, 1):
+        moment_list.append(taste_icl.Moment(
+            index=i,
+            start=float(c.get("start", 0)),
+            end=float(c.get("end", 0)),
+            signal_type=c.get("signal_type", "peak"),
+            score=float(c.get("score", c.get("hook_score", 0.5))),
+            snippet=(c.get("snippet") or c.get("reason") or c.get("text") or "")[:200],
+            source=c.get("source", "pre_scored"),
+            story_position=float(c.get("story_position", 0.5)),
+        ))
+
+    # Use the NEW archetype-aware prompt when we have candidates + retention
+    if moment_list and retention_scores:
+        prompt = taste_icl.build_archetype_aware_prompt(
+            moments=moment_list,
+            video_meta=video_meta,
+            archetype=archetype,
+            archetype_confidence=arch_confidence,
+            retention_scores=retention_scores,
+            max_picks=3,
+        )
+    else:
+        # Fallback to legacy prompt
+        hook_dataclasses = [
+            taste_icl.HookCandidate(
+                start=c.get("start", 0),
+                end=c.get("end", 0),
+                hook_score=c.get("hook_score", 0),
+                components=c.get("components", {}),
+                reason=c.get("reason", ""),
+                surgical_padding_s=float(c.get("surgical_padding_s", 0) or 0),
+                source_start=c.get("source_start"),
+                source_end=c.get("source_end"),
+                source_url=c.get("source_url"),
+            )
+            for c in candidates
+        ]
+        prompt = taste_icl.build_prompt(
+            creator_history=history,
+            hook_candidates=hook_dataclasses,
+            video_meta=video_meta,
+        )
 
     # Auto-default to the highest-priority LLM provider if none was passed in.
     # The user typically wants Claude to run hook selection when a key is set.
@@ -258,6 +328,41 @@ def _run_stage_6_taste_select(
         try:
             raw = llm_callable(prompt)
             llm_response = taste_icl.parse_moment_response(raw)
+            # NEW (2026-06-15): Post-check + clip design on the LLM picks
+            try:
+                # 1. Source-side clip design (sentence boundaries, rehook)
+                designed_picks = []
+                for p in llm_response or []:
+                    mid = p.get("moment_index")
+                    cand = next((c for i, c in enumerate(candidates, 1) if i == mid), None)
+                    if not cand:
+                        designed_picks.append(p)
+                        continue
+                    bounds = design_clip(
+                        start=float(cand.get("start", 0)),
+                        end=float(cand.get("end", 0)),
+                        transcript=transcript or {},
+                        audio_features=_af,
+                        video_duration=video_meta.get("duration_s", 0),
+                    )
+                    p["start"] = bounds.start
+                    p["end"] = bounds.end
+                    p["source_start"] = cand.get("source_start", bounds.start)
+                    p["source_end"] = cand.get("source_end", bounds.end)
+                    p["_snap_reasons"] = {
+                        "start": bounds.snap_start_reason,
+                        "end": bounds.snap_end_reason,
+                    }
+                    designed_picks.append(p)
+                # 2. Post-check (hook quality, title rewrite, time overlap)
+                llm_response, _post_results = post_check_picks(
+                    designed_picks, archetype=archetype, min_confidence=0.3,
+                )
+                rewrites = sum(len(r.rewrites_applied) for r in _post_results)
+                _emit(progress, "taste",
+                      f"Post-check: {rewrites} rewrite(s) applied for archetype={archetype}")
+            except Exception as e:
+                log.warning(f"Post-check failed (non-fatal): {e}")
         except Exception as e:
             log.warning(f"LLM call failed, falling back to energy: {e}")
     else:
@@ -464,6 +569,7 @@ def run_new_pipeline(
         final_clips = _run_stage_6_taste_select(
             hook_candidates, result.get("transcript"),
             creator_id, video_meta, progress, llm_callable=llm_callable,
+            audio_features=peaks,  # NEW 2026-06-15: pass stage 2 peaks
         )
         # Enrich each taste pick with the audio_path from the matching
         # surgical segment. The taste selector doesn't know about the

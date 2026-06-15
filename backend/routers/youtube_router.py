@@ -554,7 +554,7 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
     """
     from ..pipeline.orchestrator import run_new_pipeline
     from ..pipeline.moment_detector import detect_moments, Moment
-    from ..taste.icl import build_moment_prompt, parse_moment_response
+    from ..taste.icl import build_moment_prompt, build_archetype_aware_prompt, parse_moment_response
 
     def _bridge(stage: str, msg: str) -> None:
         try:
@@ -621,7 +621,32 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
         "duration_s": info.get("duration_s", 0),
         "source": info.get("source", "unknown"),
     }
-    prompt = build_moment_prompt(moments, video_meta, max_picks=3)
+    # Build the prompt. Use the new archetype-aware prompt (2026-06-15) when
+    # we have enough moments to give the LLM context. Fall back to the legacy
+    # moment prompt for edge cases.
+    try:
+        # Quick archetype detection (fast, no LLM)
+        from ..pipeline.archetype import detect_archetype
+        # Build a transcript dict from moment snippets (each is 8-20 words)
+        synth_transcript = {
+            "segments": [
+                {"start": m.start, "end": m.end, "text": m.snippet}
+                for m in moments[:30]
+            ]
+        }
+        arch_result = detect_archetype(synth_transcript)
+        if arch_result.confidence > 0.1:
+            prompt = build_archetype_aware_prompt(
+                moments=moments, video_meta=video_meta,
+                archetype=arch_result.primary,
+                archetype_confidence=arch_result.confidence,
+                max_picks=3,
+            )
+        else:
+            prompt = build_moment_prompt(moments, video_meta, max_picks=3)
+    except Exception:
+        # Fall back to legacy prompt on any error
+        prompt = build_moment_prompt(moments, video_meta, max_picks=3)
     # NOTE: the LLM key is INVALID in this env, so this will fail and the
     # energy/moment fallback will be used. Once the key is rotated, the
     # LLM call below activates and replaces the fallback picks.
@@ -720,6 +745,34 @@ def _run_moment_pipeline(
     )
     _bridge("surgical", f"Fetched {len(segments)} audio segments", step=4, sub_progress=1.0)
 
+    # 1b. Run audio analysis on each downloaded segment so the LLM sees
+    # real audio features (peaks, valleys, energy) — not just the text
+    # snippet. The Moment.audio_features dict gets populated here.
+    try:
+        from ..pipeline import audio_analysis
+        from ..pipeline.moment_detector import (
+            _audio_moments_from_file, _merge_text_and_audio_moments,
+        )
+        for seg, m in zip(segments, top_for_surgery):
+            ap = seg.get("audio_path")
+            if not ap or not Path(ap).exists():
+                continue
+            try:
+                audio_moments = _audio_moments_from_file(ap, m.end - m.start)
+                if audio_moments:
+                    # Boost the matching text moment with audio features
+                    # from the segment that overlaps its range.
+                    merged = _merge_text_and_audio_moments([m], audio_moments)
+                    if merged:
+                        m.audio_features = merged[0].audio_features
+                        m.signal_type = merged[0].signal_type
+                        m.score = merged[0].score
+            except Exception as e:
+                _bridge("audio_an", f"  audio analysis failed for seg {ap}: {e}")
+        _bridge("audio_an", "Audio features extracted for all segments", step=4, sub_progress=0.8)
+    except Exception as e:
+        _bridge("audio_an", f"Audio enrichment skipped: {e}", step=4, sub_progress=0.8)
+
     # 2. Try LLM taste select
     _bridge("taste", "Calling LLM with strict-JSON prompt...")
     picks = []
@@ -727,23 +780,187 @@ def _run_moment_pipeline(
     # LLM is a quick call within stage 4 (60-70%). Keep sub_progress at
     # 0.85 (≈68%) so the bar doesn't visually dip from surgical-complete.
     _bridge("taste", "Calling LLM with strict-JSON prompt...", step=4, sub_progress=0.85)
+
+    # Snapshot the cost before the LLM call so we can report the
+    # per-run cost in the final response.
+    cost_before_usd = 0.0
+    try:
+        from ..llm.cost_control import cost_status
+        cost_before_usd = float(cost_status().get("spent_today_usd", 0.0))
+    except Exception:
+        pass
+
     try:
         text, provider_used = call_with_fallback(prompt)
         if text:
             picks = parse_moment_response(text)
             _bridge("taste", f"LLM ({provider_used}) picked {len(picks)} moments",
                     step=4, sub_progress=0.95)
+
+            # ── NEW 2026-06-15: archetype + retention + post-check pre-pass ──
+            try:
+                from ..pipeline.archetype import detect_archetype
+                from ..pipeline.postcheck import post_check_picks
+                from ..pipeline.clip_design import design_clip
+
+                # Reconstruct a transcript dict from the moment snippets so
+                # archetype detection can run. Each moment's snippet is a
+                # 8-20 word window of the original transcript.
+                transcript_segments = []
+                # Use the original transcript from info if available, otherwise
+                # synthesize from moment snippets.
+                orig_transcript = info.get("transcript") or {}
+                if orig_transcript.get("segments"):
+                    transcript_segments = orig_transcript["segments"]
+                else:
+                    for m in moments:
+                        transcript_segments.append({
+                            "start": m.start,
+                            "end": m.end,
+                            "text": m.snippet,
+                        })
+                transcript_dict = {"segments": transcript_segments}
+
+                arch_result = detect_archetype(transcript_dict)
+                _bridge("taste",
+                        f"Archetype: {arch_result.primary} "
+                        f"(conf={arch_result.confidence:.2f})",
+                        step=4, sub_progress=0.96)
+
+                # Source-side clip design: snap picks to sentence boundaries
+                for p in picks:
+                    mid = int(p.get("moment_index", 0))
+                    m = moment_by_idx.get(mid)
+                    if not m:
+                        continue
+                    bounds = design_clip(
+                        start=float(m.start),
+                        end=float(m.end),
+                        transcript=transcript_dict,
+                        audio_features={},
+                        video_duration=video_duration_s,
+                    )
+                    p["start"] = bounds.start
+                    p["end"] = bounds.end
+                    p["_snap_reasons"] = {
+                        "start": bounds.snap_start_reason,
+                        "end": bounds.snap_end_reason,
+                    }
+
+                # Post-check: hook quality, title rewrite, time overlap
+                picks, _post_results = post_check_picks(
+                    picks, archetype=arch_result.primary, min_confidence=0.3,
+                )
+                rewrites = sum(len(r.rewrites_applied) for r in _post_results)
+                _bridge("taste",
+                        f"Post-check: {rewrites} rewrite(s) for "
+                        f"archetype={arch_result.primary}",
+                        step=4, sub_progress=0.97)
+            except Exception as e:
+                _bridge("taste", f"Archetype/retention pre-pass failed: {e}",
+                        step=4, sub_progress=0.96)
     except Exception as e:
         _bridge("taste", f"LLM failed: {e} — using moment-based fallback",
                 step=4, sub_progress=0.95)
 
+    # Compute the per-run LLM cost
+    cost_after_usd = cost_before_usd
+    try:
+        from ..llm.cost_control import cost_status
+        cost_after_usd = float(cost_status().get("spent_today_usd", 0.0))
+    except Exception:
+        pass
+    run_cost_usd = max(0.0, cost_after_usd - cost_before_usd)
+    _bridge("taste", f"LLM cost this run: ${run_cost_usd:.4f} (provider: {provider_used or 'none'})",
+            step=4, sub_progress=0.95)
+
     # 3. Map LLM picks to actual moments (using moment_index)
+    # Sort by confidence descending so the best pick is first
+    picks_sorted = sorted(
+        picks,
+        key=lambda p: float(p.get("confidence", 0.0)),
+        reverse=True,
+    )
     moment_by_idx = {m.index: m for m in moments}
+
+    # ── NEW 2026-06-15: archetype + retention + post-check pre-pass ──
+    try:
+        from ..pipeline.archetype import detect_archetype
+        from ..pipeline.postcheck import post_check_picks
+        from ..pipeline.clip_design import design_clip
+
+        # Reconstruct a transcript dict from the moment snippets so
+        # archetype detection can run. Each moment's snippet is a
+        # 8-20 word window of the original transcript.
+        transcript_segments = []
+        orig_transcript = info.get("transcript") or {}
+        if orig_transcript.get("segments"):
+            transcript_segments = orig_transcript["segments"]
+        else:
+            for m in moments:
+                transcript_segments.append({
+                    "start": m.start,
+                    "end": m.end,
+                    "text": m.snippet,
+                })
+        transcript_dict = {"segments": transcript_segments}
+
+        arch_result = detect_archetype(transcript_dict)
+        _bridge("taste",
+                f"Archetype: {arch_result.primary} "
+                f"(conf={arch_result.confidence:.2f})",
+                step=4, sub_progress=0.96)
+
+        # Source-side clip design: snap picks to sentence boundaries
+        for p in picks_sorted:
+            mid = int(p.get("moment_index", 0))
+            m = moment_by_idx.get(mid)
+            if not m:
+                continue
+            bounds = design_clip(
+                start=float(m.start),
+                end=float(m.end),
+                transcript=transcript_dict,
+                audio_features={},
+                video_duration=video_duration_s,
+            )
+            p["start"] = bounds.start
+            p["end"] = bounds.end
+            p["_snap_reasons"] = {
+                "start": bounds.snap_start_reason,
+                "end": bounds.snap_end_reason,
+            }
+
+        # Post-check: hook quality, title rewrite, time overlap
+        picks_sorted, _post_results = post_check_picks(
+            picks_sorted, archetype=arch_result.primary, min_confidence=0.3,
+        )
+        rewrites = sum(len(r.rewrites_applied) for r in _post_results)
+        _bridge("taste",
+                f"Post-check: {rewrites} rewrite(s) for "
+                f"archetype={arch_result.primary}",
+                step=4, sub_progress=0.97)
+    except Exception as e:
+        _bridge("taste", f"Archetype/retention pre-pass failed: {e}",
+                step=4, sub_progress=0.96)
+
     final_clips: List[Dict] = []
-    if picks:
-        for p in picks:
+    unverified_count = 0
+    if picks_sorted:
+        for p in picks_sorted:
             m = moment_by_idx.get(int(p.get("moment_index", 0)))
             if not m:
+                continue
+            conf = float(p.get("confidence", 0.0))
+            # Threshold: include if confidence >= 0.4 (worth showing).
+            # Below 0.4, skip — too much filler.
+            if conf < 0.4:
+                unverified_count += 1
+                _bridge(
+                    "filter",
+                    f"  skipping low-conf pick #{m.index} (conf={conf:.2f}): "
+                    f"{p.get('reason', '')[:50]}",
+                )
                 continue
             trim_s = float(p.get("trim_start", 0))
             trim_e = float(p.get("trim_end", 0))
@@ -767,10 +984,52 @@ def _run_moment_pipeline(
                 "reason": p.get("reason", m.snippet[:60]),
                 "signal_type": m.signal_type,
                 "llm_provider": provider_used or "fallback",
+                "confidence": round(conf, 3),
+                "verified": True,
+            })
+    if picks_sorted and unverified_count:
+        _bridge(
+            "filter",
+            f"LLM filtered out {unverified_count} low-conf pick(s); "
+            f"keeping {len(final_clips)} high-conf pick(s)",
+        )
+    if not final_clips and picks_sorted:
+        # ALL picks had confidence < 0.4 — fallback: take the top 1
+        # (best-effort) so the user gets something to look at, not nothing.
+        # Clearly mark it as "best effort" with confidence shown.
+        p = picks_sorted[0]
+        m = moment_by_idx.get(int(p.get("moment_index", 0)))
+        if m:
+            _bridge(
+                "filter",
+                f"All {len(picks_sorted)} picks had low confidence; "
+                f"returning top 1 (best effort) so user sees SOMETHING",
+            )
+            matching_seg = next(
+                (s for s in segments
+                 if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
+                None,
+            )
+            final_clips.append({
+                "start": round(m.start, 2),
+                "end": round(m.end, 2),
+                "source_start": matching_seg.get("source_start") if matching_seg else m.start,
+                "source_end": matching_seg.get("source_end") if matching_seg else m.end,
+                "audio_path": matching_seg.get("audio_path") if matching_seg else None,
+                "viral_title": p.get("viral_title", m.snippet[:40]),
+                "caption": p.get("caption", ""),
+                "hashtags": p.get("hashtags", "#shorts #viral"),
+                "reason": p.get("reason", m.snippet[:60]),
+                "signal_type": m.signal_type,
+                "llm_provider": provider_used or "fallback",
+                "confidence": round(float(p.get("confidence", 0.0)), 3),
+                "verified": False,
+                "best_effort": True,
             })
     if not final_clips:
-        # Fallback: take top 3 moments by score, synthesize viral_title
-        _bridge("taste", "Using moment-based fallback (top 3 by score)")
+        # LLM didn't return picks (network error, etc.) — fall back to top-3
+        # by score as a last resort so the user still gets SOMETHING.
+        _bridge("taste", "LLM didn't return picks — using moment-based fallback (top 3 by score)")
         for m in moments[:3]:
             matching_seg = next(
                 (s for s in segments
@@ -782,7 +1041,7 @@ def _run_moment_pipeline(
                 "valley": "THE AWKWARD PAUSE",
                 "density": "FAST FORWARD",
                 "silence": "WAIT FOR IT",
-            }.get(m.signal_type, "TOP MOMENT")
+            }.get((m.signal_type or "").split("+")[-1] if m.signal_type else "", "TOP MOMENT")
             final_clips.append({
                 "start": round(m.start, 2),
                 "end": round(m.end, 2),
@@ -795,7 +1054,44 @@ def _run_moment_pipeline(
                 "reason": f"signal={m.signal_type} score={m.score:.2f}",
                 "signal_type": m.signal_type,
                 "llm_provider": "fallback",
+                "verified": False,
             })
+
+    # 3b. Re-fetch VIDEO for the LLM-picked moments. The audio-only surgical
+    # pass above is great for cheap LLM scoring, but the renderer needs
+    # real video frames to make a watchable clip (otherwise it falls back
+    # to a still+audio composition which looks like static text).
+    _bridge("video_dl", f"Downloading {len(final_clips)} video segment(s) for rendering...",
+            step=4, sub_progress=0.97)
+
+    _vid_done = {"n": 0}
+
+    def _on_vid_done(idx: int, total: int, ok: bool) -> None:
+        _vid_done["n"] += 1
+        # The video download happens after step 4 is done; we just push
+        # the message and let the bar hover near 70% until we move to step 5.
+        _bridge(
+            "video_dl",
+            f"Downloaded {_vid_done['n']}/{total} video segments",
+            step=4,
+            sub_progress=0.99,
+        )
+
+    video_candidates = [
+        {
+            "start": c.get("source_start", c["start"]),
+            "end": c.get("source_end", c["end"]),
+        }
+        for c in final_clips
+    ]
+    video_segs = surgical_stage.surgical_download_video_youtube(
+        url, video_candidates, task_id,
+        log_fn=_bridge,
+        on_segment_done=_on_vid_done,
+    )
+    # Attach video_path to each clip (matched by source_start)
+    for clip, vs in zip(final_clips, video_segs):
+        clip["video_path"] = vs.get("video_path")
 
     # 4. Face detection (only on segments with audio)
     _bridge("face", "Detecting faces...", step=5, sub_progress=0.0)
@@ -814,29 +1110,54 @@ def _run_moment_pipeline(
             _bridge("face", f"  face {face_idx+1}/{len(final_clips)}",
                     step=5, sub_progress=(face_idx + 1) / max(1, len(final_clips)))
 
-    # 5. Render (uses the audio+still composition we wired in earlier)
+    # 5. Render — prefer the freshly-downloaded video segment if present,
+    # fall back to the audio file (renderer will compose still+audio).
     _bridge("render", f"Rendering {len(final_clips)} clip(s)...",
             step=6, sub_progress=0.0)
     rendered = []
     video_id = info.get("transcript", {}).get("video_id") if info.get("transcript") else None
     for i, clip in enumerate(final_clips):
         try:
+            # Use the actual video segment if we got one; otherwise fall
+            # back to the audio file (renderer will use still+audio).
+            source_for_renderer = (
+                clip.get("video_path")
+                or clip.get("audio_path")
+                or clip.get("source_start", url)
+            )
+            # Translate absolute source timestamps into offsets WITHIN the
+            # downloaded video segment. The segment file was downloaded
+            # with `[source_start - pad, source_end + pad]`, so the start
+            # of the file corresponds to (source_start - SURGICAL_BUFFER).
+            # The renderer's -ss is an offset into the file, not an
+            # absolute timestamp.
+            from ..utils.config import SURGICAL_BUFFER_SECONDS
+            seg_file_start = float(clip.get("source_start", 0)) - SURGICAL_BUFFER_SECONDS
+            clip_offset_start = max(0.0, float(clip.get("start", 0)) - seg_file_start)
+            clip_offset_end = max(clip_offset_start + 1, float(clip.get("end", 0)) - seg_file_start)
+            print(f"[DEBUG-render] clip {i}: src_start={clip.get('source_start')} start={clip.get('start')} end={clip.get('end')} → seg_file_start={seg_file_start} offsets=({clip_offset_start}, {clip_offset_end})")
+            # Build a render-friendly clip with the offset timestamps
+            render_clip = dict(clip)
+            render_clip["start"] = round(clip_offset_start, 2)
+            render_clip["end"] = round(clip_offset_end, 2)
             out = renderer_module.render_clip(
-                video_path=clip.get("audio_path") or clip.get("source_start", url),
-                clip=clip,
+                video_path=source_for_renderer,
+                clip=render_clip,
                 clip_index=i + 1,
                 video_id=video_id or "local",
                 task_id=task_id,
                 progress_callback=lambda m: _bridge("render", m),
             )
             if out:
+                # Put back the absolute timestamps in the response so the
+                # UI can display "from 46.5s in the source video"
+                out["start"] = clip.get("start")
+                out["end"] = clip.get("end")
+                out["source_start"] = clip.get("source_start")
+                out["source_end"] = clip.get("source_end")
                 rendered.append({
                     **clip,
-                    "clip_id": out.get("clip_id"),
-                    "file_path": out.get("file_path"),
-                    "file_size_mb": out.get("file_size_mb", 0),
-                    "duration_s": round(clip.get("end", 0) - clip.get("start", 0), 2),
-                    "created_at": datetime.utcnow().isoformat() + "Z",
+                    **out,
                 })
         except Exception as e:
             _bridge("render", f"  render failed for clip {i}: {e}")
@@ -850,12 +1171,20 @@ def _run_moment_pipeline(
     for c in rendered:
         clean = {k: v for k, v in c.items() if k not in ("face_data", "transcript")}
         clean_rendered.append(clean)
+    n_clips = max(1, len(clean_rendered))  # always show per-pick cost
     return {
         "clips": clean_rendered,
         "hooks": [m.__dict__ for m in moments],  # serialize dataclasses
         "video_meta": video_meta,
         "stages_run": [1, 2, 4, 5, 6, 7, 8],
         "task_id": task_id,
+        "llm_provider": provider_used or "fallback",
+        "llm_cost_usd": round(run_cost_usd, 6),
+        "cost_per_clip_usd": round(run_cost_usd / n_clips, 6),
+        "clips_requested": len(picks_sorted),
+        "clips_verified": sum(1 for c in clean_rendered if c.get("verified")),
+        "clips_unverified": sum(1 for c in clean_rendered if not c.get("verified")),
+        "best_effort_count": sum(1 for c in clean_rendered if c.get("best_effort")),
     }
 
 
@@ -865,6 +1194,9 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback):
         try:
             result = await run_youtube_orchestrator(task_id, url, callback)
             clips = result.get("clips", [])
+            cost_usd = result.get("llm_cost_usd", 0.0)
+            cpp = result.get("cost_per_clip_usd", 0.0)
+            llm_prov = result.get("llm_provider", "fallback")
             task_store.update_task(
                 task_id,
                 status=TaskStatus.COMPLETE,
@@ -872,9 +1204,27 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback):
                 step_number=6,
                 step_name="Complete",
                 clips=clips,
-                current_step=f"Complete - {len(clips)} clips generated",
+                current_step=(
+                    f"Complete - {len(clips)} clips · "
+                    f"${cost_usd:.4f} LLM (${cpp:.4f}/clip) · {llm_prov}"
+                ),
             )
-            callback(f"SUCCESS: {len(clips)} clips generated!", step=6, progress=100)
+            callback(
+                f"SUCCESS: {len(clips)} clips · ${cost_usd:.4f} LLM · ${cpp:.4f}/clip",
+                step=6, progress=100,
+            )
+            # Persist cost data in the task for the status endpoint
+            task_store.update_task(
+                task_id,
+                llm_cost_usd=cost_usd,
+                cost_per_clip_usd=cpp,
+                llm_provider=llm_prov,
+                clips_verified=result.get("clips_verified"),
+                clips_unverified=result.get("clips_unverified"),
+                clips_requested=result.get("clips_requested"),
+                honest_result=result.get("honest_result", False),
+                honest_message=result.get("honest_message"),
+            )
         except Exception as e:
             task_store.update_task(
                 task_id, status=TaskStatus.FAILED, error=str(e),
