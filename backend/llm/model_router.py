@@ -65,15 +65,18 @@ TIER_CONFIG = {
         "use_cache": True,  # critical for Haiku cost reduction
     },
     LLMTier.BUDGET: {
+        # V4-Flash is the workhorse; V4-Pro kept as quality-bump option
         "primary": "deepseek-v4-flash",
-        "fallback": ["deepseek-v4-flash", "gpt-oss-20b"],
-        "description": "Steady-state after calibration. ~10x cheaper than Haiku.",
+        "fallback": ["deepseek-v4-flash", "deepseek-v4-pro"],
+        "description": "Steady-state after calibration. ~10x cheaper than Haiku. V4-Pro available as quality bump.",
         "use_cache": True,
     },
     LLMTier.FALLBACK: {
-        "primary": "gpt-oss-20b",
-        "fallback": ["gpt-oss-20b"],
-        "description": "Always-on cheap fallback (Groq GPT OSS 20B).",
+        # MiniMax M3 is cheap + always-available safety net (per user request 2026-06-15)
+        # Replaces the earlier Groq GPT OSS 20B slot
+        "primary": "minimax-m3",
+        "fallback": ["minimax-m3", "deepseek-v4-flash"],
+        "description": "Always-on cheap fallback (MiniMax M3). Used when main providers fail or hard cap hit.",
         "use_cache": False,
     },
 }
@@ -93,7 +96,15 @@ COST_PER_MTOK = {
         "input": 0.435, "output": 0.87,
         "cache_read": 0.003625, "cache_write": 0.435,
     },
+    "minimax-m3": {
+        # MiniMax M3 (this session's active model). Pricing not publicly published
+        # yet — using conservative placeholder. Will be updated once known.
+        # Estimated: ~10x cheaper than Haiku based on size class.
+        "input": 0.10, "output": 0.40,
+        "cache_read": None, "cache_write": None,
+    },
     "gpt-oss-20b": {
+        # Legacy: kept in case someone has GROQ_API_KEY set
         "input": 0.075, "output": 0.30,
         "cache_read": None, "cache_write": None,
     },

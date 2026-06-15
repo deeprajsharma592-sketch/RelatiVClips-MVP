@@ -35,7 +35,7 @@ def test_budget_tier():
     import importlib
     importlib.reload(model_router)
     model, tier, cpp = model_router.pick_model()
-    assert "deepseek" in model or "gpt-oss" in model, f"Expected cheap model, got {model}"
+    assert "deepseek" in model or "minimax" in model, f"Expected cheap model, got {model}"
     assert tier == "budget", f"Expected budget, got {tier}"
     print(f"✓ budget tier → {model} (${cpp:.6f}/pick)")
 
@@ -45,7 +45,7 @@ def test_fallback_tier():
     import importlib
     importlib.reload(model_router)
     model, tier, cpp = model_router.pick_model()
-    assert "gpt-oss" in model, f"Expected gpt-oss, got {model}"
+    assert "minimax" in model, f"Expected minimax, got {model}"
     assert tier == "fallback", f"Expected fallback, got {tier}"
     print(f"✓ fallback tier → {model} (${cpp:.6f}/pick)")
 
@@ -76,16 +76,16 @@ def test_cost_estimation_deepseek_flash():
 
 
 def test_cost_estimation_gpt_oss():
-    """GPT OSS 20B: cheapest of all, $0.075 + $0.30"""
-    cost = estimate_pick_cost("gpt-oss-20b", 800, 200)
-    expected = (800/1_000_000 * 0.075) + (200/1_000_000 * 0.30)
+    """MiniMax M3: cheapest active provider, $0.10 + $0.40"""
+    cost = estimate_pick_cost("minimax-m3", 800, 200)
+    expected = (800/1_000_000 * 0.10) + (200/1_000_000 * 0.40)
     assert abs(cost - expected) < 1e-6
     print(f"✓ Groq GPT OSS 20B: 800/200 tokens = ${cost:.6f}")
 
 
 def test_picks_per_dollar():
     """$1 should buy us at least 500 picks on every tier."""
-    for model in ["claude-haiku-4-5-20251001", "deepseek-v4-flash", "gpt-oss-20b"]:
+    for model in ["claude-haiku-4-5-20251001", "deepseek-v4-flash", "minimax-m3"]:
         ppd = picks_per_dollar(model)
         assert ppd > 500, f"{model}: only {ppd} picks/$1"
         print(f"✓ {model}: {ppd} picks per $1")

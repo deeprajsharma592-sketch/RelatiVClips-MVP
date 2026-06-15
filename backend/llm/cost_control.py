@@ -54,7 +54,10 @@ _DEFAULT_COST = (1.0, 5.0)  # conservative default (Haiku 4.5)
 
 
 # ─── Configurable caps (env-driven) ────────────────────────────────────────
-LLM_MAX_OUTPUT_TOKENS = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "500"))
+# Tightened to 200 from 500 on 2026-06-15: the new system prompt asks for a
+# 4-5 word note + 1-sentence reason per pick, ~80 tokens total. 200 gives
+# headroom for 3 picks with formatting JSON.
+LLM_MAX_OUTPUT_TOKENS = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "200"))
 # Daily spend cap. 0.50 USD is a sensible default for a beta with $20 / month.
 LLM_DAILY_BUDGET_USD = float(os.getenv("LLM_DAILY_BUDGET_USD", "0.50"))
 # Soft warn at this fraction of daily budget

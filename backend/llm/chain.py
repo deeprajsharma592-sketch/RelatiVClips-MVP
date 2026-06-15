@@ -121,6 +121,14 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         max_out = cost_control.LLM_MAX_OUTPUT_TOKENS
         # Use the router to pick the model (and enable prompt caching for Haiku)
         model_name, tier, _ = model_router.pick_model()
+        # System prompt (user-defined 2026-06-15). Cached after first call so
+        # subsequent calls only pay $0.10/MTok for this ~50-token block.
+        system_prompt = (
+            "Analyze the audio and text data. Provide the timestamps for the "
+            "best clip, followed by a short, 4 to 5-word note explaining what "
+            "is happening, and a brief, single-sentence reason for why this "
+            "segment was selected."
+        )
         # Prompt caching: split into stable (cacheable) + variable parts.
         # Our ICL prompt is ~800 stable tokens, followed by per-request context.
         # Splitting at the last "---" line — the ICL ends with examples, the
@@ -144,15 +152,26 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                 "messages": [{"role": "user", "content": prompt}],
             }
             if use_cache:
+                # Build system array: system_prompt (stable, cached) +
+                # cacheable portion of user prompt (mostly-stable, cached)
                 payload["system"] = [
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    },
                     {
                         "type": "text",
                         "text": cacheable,
                         "cache_control": {"type": "ephemeral"},
-                    }
+                    },
                 ]
-                # Move the cacheable part to system; messages gets only variable
+                # Move the variable part of user prompt to messages
                 payload["messages"] = [{"role": "user", "content": variable}]
+            else:
+                # No cache (e.g. Sonnet) — system prompt still sent but
+                # billed at standard input rate
+                payload["system"] = system_prompt
             r = client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -203,6 +222,18 @@ def _build_groq_callable() -> Optional[Callable[[str], str]]:
     return _groq_generate
 
 
+def _build_minimax_callable() -> Optional[Callable[[str], str]]:
+    """Return a callable that calls MiniMax M3, or None if not configured.
+
+    MiniMax is the cheap-fallback tier — always-on safety net per user request
+    2026-06-15. OpenAI-compatible, so the same call pattern as Groq works.
+    """
+    if not os.getenv("MINIMAX_API_KEY", ""):
+        return None
+    from .minimax_client import generate as _minimax_generate
+    return _minimax_generate
+
+
 # --- The chain ---
 
 
@@ -215,6 +246,7 @@ def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
     groq = _build_groq_callable()
     claude = _build_claude_callable()
     deepseek = _build_deepseek_callable()
+    minimax = _build_minimax_callable()
 
     if LLM_PROVIDER == "claude":
         return [("claude", claude)] if claude else []
@@ -222,23 +254,30 @@ def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
         return [("deepseek", deepseek)] if deepseek else []
     if LLM_PROVIDER == "groq":
         return [("groq", groq)] if groq else []
+    if LLM_PROVIDER == "minimax":
+        return [("minimax", minimax)] if minimax else []
     if LLM_PROVIDER == "both":
         chain = []
         if claude:
             chain.append(("claude", claude))
         if deepseek:
             chain.append(("deepseek", deepseek))
+        if minimax:
+            chain.append(("minimax", minimax))
         if groq:
             chain.append(("groq", groq))
         return chain
-    # "auto" / default: groq (free, fast) > claude > deepseek > minimax
+    # "auto" / default: claude > deepseek > groq > minimax
+    # (MiniMax is the cheap-fallback safety net per user 2026-06-15)
     chain = []
-    if groq:
-        chain.append(("groq", groq))
     if claude:
         chain.append(("claude", claude))
     if deepseek:
         chain.append(("deepseek", deepseek))
+    if groq:
+        chain.append(("groq", groq))
+    if minimax:
+        chain.append(("minimax", minimax))
     return chain
 
 
@@ -275,12 +314,14 @@ def call_with_fallback(prompt: str) -> Tuple[Optional[str], Optional[str]]:
 def available_providers() -> List[str]:
     """Return the names of providers that are configured (ignoring breakers)."""
     names = []
-    if os.getenv("GROQ_API_KEY", ""):
-        names.append("groq")
     if ANTHROPIC_API_KEY:
         names.append("claude")
     if DEEPSEEK_API_KEY:
         names.append("deepseek")
+    if os.getenv("GROQ_API_KEY", ""):
+        names.append("groq")
+    if os.getenv("MINIMAX_API_KEY", ""):
+        names.append("minimax")
     return names
 
 
