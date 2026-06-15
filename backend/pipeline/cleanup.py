@@ -26,14 +26,16 @@ def cleanup_outputs() -> dict:
         dict: {deleted_count, deleted_files, errors}
     """
     from .renderer import cleanup_old_files
+    from .cache import cleanup_cache_files
 
     deleted_files = cleanup_old_files(OUTPUTS_DIR, FILE_RETENTION_HOURS)
     temp_deleted = cleanup_temp_files()
+    cache_cleaned = cleanup_cache_files(FILE_RETENTION_HOURS)
 
     return {
-        "deleted_count": len(deleted_files) + len(temp_deleted),
+        "deleted_count": len(deleted_files) + len(temp_deleted) + cache_cleaned["deleted_count"],
         "deleted_files": deleted_files + temp_deleted,
-        "errors": []
+        "errors": cache_cleaned.get("errors", []),
     }
 
 

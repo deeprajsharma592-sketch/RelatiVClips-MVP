@@ -57,6 +57,7 @@ services:
     volumes:
       - ./outputs:/app/outputs
       - ./temp:/app/temp
+      - ./cache:/app/cache
       - ./cookies.txt:/app/cookies.txt
     networks:
       - relativ_mesh

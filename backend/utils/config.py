@@ -7,9 +7,13 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 OUTPUTS_DIR = BASE_DIR / "outputs"
 TEMP_DIR = BASE_DIR / "temp"
+# NEW 2026-06-15: cache directory for URL-keyed result + segment caches.
+# Sibling to outputs/temp, persisted across restarts, 7d TTL.
+CACHE_DIR = BASE_DIR / "cache"
 
 OUTPUTS_DIR.mkdir(exist_ok=True)
 TEMP_DIR.mkdir(exist_ok=True)
+CACHE_DIR.mkdir(exist_ok=True)
 
 MAX_VRAM_GB = 8
 VRAM_BUFFER_GB = 5

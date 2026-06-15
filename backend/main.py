@@ -371,6 +371,54 @@ async def get_vram_status():
     return get_vram_usage()
 
 
+@app.get("/admin/cache")
+async def get_cache_stats():
+    """
+    NEW 2026-06-15: cache stats for monitoring.
+
+    Returns:
+        {results: {count, total_mb}, segments: {count, total_mb},
+         total_count, total_mb, oldest_age_hours, retention_hours}
+    """
+    from .pipeline.cache import get_cache_stats
+    stats = get_cache_stats()
+    stats["retention_hours"] = FILE_RETENTION_HOURS
+    return stats
+
+
+@app.post("/admin/cache/clear")
+async def clear_cache(target: Optional[str] = None):
+    """
+    NEW 2026-06-15: manually clear cache.
+
+    Args (query param): target = "results" | "segments" | None (both)
+
+    Returns: {deleted_count, deleted_mb}
+    """
+    from .pipeline.cache import cleanup_cache_files
+    if target == "results":
+        from .pipeline.cache import CACHE_DIR as _CACHE_DIR
+        n = 0; b = 0
+        for fp in (_CACHE_DIR / "youtube_results").glob("*"):
+            try:
+                b += fp.stat().st_size; fp.unlink(); n += 1
+            except Exception:
+                pass
+        return {"deleted_count": n, "deleted_mb": round(b / 1024 / 1024, 2)}
+    elif target == "segments":
+        from .pipeline.cache import CACHE_DIR as _CACHE_DIR
+        n = 0; b = 0
+        for fp in (_CACHE_DIR / "segments").glob("*"):
+            try:
+                b += fp.stat().st_size; fp.unlink(); n += 1
+            except Exception:
+                pass
+        return {"deleted_count": n, "deleted_mb": round(b / 1024 / 1024, 2)}
+    else:
+        result = cleanup_cache_files(0)  # 0 hours = delete everything
+        return {"deleted_count": result["deleted_count"], "deleted_mb": result["deleted_mb"]}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # File upload (powers /process/local — frontend drops a file, gets a path)
 # ─────────────────────────────────────────────────────────────────────────────

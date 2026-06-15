@@ -1199,17 +1199,49 @@ def _run_moment_pipeline(
              "end": c.get("source_end", c["end"])}
             for c in final_clips if c.get("_needs_video_download")
         ]
-        video_segs = surgical_stage.surgical_download_video_youtube(
-            url, video_candidates_to_fetch, task_id,
-            log_fn=_bridge,
-            on_segment_done=_on_vid_done,
-        )
-        # Attach video_path to each clip (in order)
-        for clip, vs in zip(
-            [c for c in final_clips if c.get("_needs_video_download")],
-            video_segs,
-        ):
-            clip["video_path"] = vs.get("video_path")
+        # NEW 2026-06-15: Segment cache (Option 3).
+        # Check cache for each needed segment. If hit, reuse; if miss, download.
+        from ..pipeline.cache import get_cached_segment, save_segment_cache
+        clips_needing_dl = [c for c in final_clips if c.get("_needs_video_download")]
+        cached_segs = []
+        to_download = []
+        seg_idx_map = []  # parallel to clips_needing_dl, holds index in download result
+        for i, (clip, cand) in enumerate(zip(clips_needing_dl, video_candidates_to_fetch)):
+            cached = get_cached_segment(url, cand["start"], cand["end"])
+            if cached is not None:
+                cached_segs.append((i, cached))
+                seg_idx_map.append(None)  # mark as cached
+                _bridge("video_dl", f"  segment {i+1} cache hit [{cand['start']:.1f}-{cand['end']:.1f}]",
+                        step=4, sub_progress=(i + 0.5) / len(clips_needing_dl))
+            else:
+                to_download.append(cand)
+                seg_idx_map.append(len(to_download) - 1)
+        if cached_segs:
+            n_cached = len(cached_segs)
+            n_to_dl = len(to_download)
+            _bridge("video_dl", f"Segment cache: {n_cached} hit, {n_to_dl} to download",
+                    step=4, sub_progress=0.5)
+        # Download only the missing segments
+        if to_download:
+            downloaded_segs = surgical_stage.surgical_download_video_youtube(
+                url, to_download, task_id,
+                log_fn=_bridge,
+                on_segment_done=_on_vid_done,
+            )
+            # Save freshly downloaded segments to cache
+            for cand, seg in zip(to_download, downloaded_segs):
+                seg_path = seg.get("video_path")
+                if seg_path and Path(seg_path).exists():
+                    save_segment_cache(url, cand["start"], cand["end"], Path(seg_path))
+        else:
+            downloaded_segs = []
+        # Stitch together: for each clip, use cached or downloaded
+        for i, (clip, dl_idx) in enumerate(zip(clips_needing_dl, seg_idx_map)):
+            if dl_idx is None:
+                # Use cached path
+                clip["video_path"] = str(cached_segs[next(j for j, (k, _) in enumerate(cached_segs) if k == i)][1])
+            else:
+                clip["video_path"] = downloaded_segs[dl_idx].get("video_path")
             clip.pop("_needs_video_download", None)
         # Mark non-downloaded clips as done
         for c in final_clips:
@@ -1329,6 +1361,49 @@ def _run_moment_pipeline(
 
 
 async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform: str = "tiktok"):
+    # NEW 2026-06-15: Result cache check (Option 1).
+    # If we've processed this (url, platform) recently, return instantly
+    # without burning LLM cost or download bandwidth.
+    try:
+        from ..pipeline.cache import get_cached_result
+        cached = get_cached_result(url, platform)
+        if cached and cached.get("clips"):
+            clips = cached.get("clips", [])
+            task_store.update_task(
+                task_id,
+                status=TaskStatus.COMPLETE,
+                progress=100,
+                step_number=6,
+                step_name="Complete",
+                clips=clips,
+                current_step=(
+                    f"Cache hit · {len(clips)} clips · "
+                    f"${cached.get('_cache_savings_usd', 0):.4f} saved · "
+                    f"age {cached.get('_cache_age_hours', 0):.1f}h"
+                ),
+            )
+            callback(
+                f"CACHE HIT: {len(clips)} clips returned from cache "
+                f"(${cached.get('_cache_savings_usd', 0):.4f} saved, "
+                f"age {cached.get('_cache_age_hours', 0):.1f}h)",
+                step=6, progress=100,
+            )
+            task_store.update_task(
+                task_id,
+                llm_cost_usd=0.0,
+                cost_per_clip_usd=0.0,
+                llm_provider="cache",
+                cache_hit=True,
+                cache_age_hours=cached.get("_cache_age_hours"),
+                cache_savings_usd=cached.get("_cache_savings_usd"),
+            )
+            _active_tasks.pop(task_id, None)
+            task_store.try_promote_queued()
+            return
+    except Exception as e:
+        # Cache must never break the pipeline — log and continue
+        print(f"[CACHE] Result cache check failed (continuing): {e}")
+
     if PIPELINE_VERSION == 2:
         # Delegate to the new orchestrator.
         try:
@@ -1365,6 +1440,15 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
                 honest_result=result.get("honest_result", False),
                 honest_message=result.get("honest_message"),
             )
+            # NEW 2026-06-15: Save result cache (Option 1) on success.
+            # Cache = same (url, platform) → same LLM picks, instant re-runs.
+            # Only cache when we actually got clips (no point caching failures).
+            if clips and clips[0].get("file_path"):
+                try:
+                    from ..pipeline.cache import save_result_cache
+                    save_result_cache(url, platform, result)
+                except Exception as e:
+                    print(f"[CACHE] Result cache save failed (continuing): {e}")
         except Exception as e:
             task_store.update_task(
                 task_id, status=TaskStatus.FAILED, error=str(e),
