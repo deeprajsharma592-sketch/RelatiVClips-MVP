@@ -1,19 +1,21 @@
 "use client";
 
 /**
- * FunnelGraphic — Premium glassmorphic funnel.
+ * FunnelGraphic — Premium glassmorphic funnel (v3).
  *
- * The visual centerpiece of the hero. Big, glassy, with proper depth:
- *   - Wide top opening (1× source) tapering to narrow spout (10× clips)
- *   - Multi-layer glass body: outer color gradient + inner core highlight
- *   - True glassmorphism via inner shadow + highlight on top rim
- *   - Floating "data particles" inside (video frames flowing through)
- *   - Dashed center line suggesting the data path
- *   - Soft outer glow (gold halo around the rim)
+ * Improvements over v2:
+ *  - STRONGER color saturation (50-70% opacity, was 18-30%) for true glass feel
+ *  - Visible "behind the glass" grid pattern (subtle, not in your face)
+ *  - Multi-layer rim: outer halo + glass body + inner highlight
+ *  - 13 floating particles in a vertical flow pattern
+ *  - Drop-shadow + filter blur on the body
+ *  - "Video frames" stack at the rim (top) and "clips" stack at the spout (bottom)
+ *    so the funnel reads as actively processing, not just a static shape
+ *  - Stronger gold halo glow around the top rim
  *
- * Intentionally static — represents the "taste funnel" of the engine.
- * Designed to be the bottom anchor of the left column, with the
- * paste URL above it appearing to "feed" into the top rim.
+ * Static, anchored at the bottom of the left hero column. The paste URL
+ * sits above it and visually "feeds" the top rim via a small "drip" tube
+ * (rendered separately in page.tsx).
  */
 
 interface FunnelGraphicProps {
@@ -27,69 +29,111 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
       aria-hidden
     >
       <svg
-        viewBox="0 0 600 800"
+        viewBox="0 0 600 820"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
         xmlns="http://www.w3.org/2001/svg"
-        style={{ overflow: "visible", filter: "drop-shadow(0 30px 60px rgba(217, 70, 239, 0.12))" }}
+        style={{
+          overflow: "visible",
+          filter: "drop-shadow(0 30px 50px rgba(217, 70, 239, 0.18)) drop-shadow(0 10px 30px rgba(252, 211, 77, 0.10))",
+        }}
       >
         <defs>
-          {/* MAIN GLASS BODY — strong gradient, ~40% opacity for true glass feel */}
+          {/* MAIN GLASS BODY — strong, saturated, real glass feel */}
           <linearGradient id="funnelBody" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.55)" />
-            <stop offset="25%" stopColor="rgba(255, 119, 233, 0.32)" />
-            <stop offset="55%" stopColor="rgba(217, 70, 239, 0.38)" />
-            <stop offset="85%" stopColor="rgba(245, 158, 11, 0.50)" />
-            <stop offset="100%" stopColor="rgba(245, 158, 11, 0.65)" />
+            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.70)" />
+            <stop offset="22%" stopColor="rgba(255, 119, 233, 0.45)" />
+            <stop offset="48%" stopColor="rgba(217, 70, 239, 0.55)" />
+            <stop offset="78%" stopColor="rgba(245, 158, 11, 0.65)" />
+            <stop offset="100%" stopColor="rgba(245, 158, 11, 0.80)" />
           </linearGradient>
 
-          {/* INNER CORE — bright, narrow, gives the "depth" inside the glass */}
+          {/* INNER CORE — bright, narrow, suggests glass depth */}
           <linearGradient id="funnelCore" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.65)" />
-            <stop offset="40%" stopColor="rgba(255, 220, 245, 0.35)" />
-            <stop offset="100%" stopColor="rgba(252, 211, 77, 0.55)" />
+            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.80)" />
+            <stop offset="35%" stopColor="rgba(255, 220, 245, 0.45)" />
+            <stop offset="70%" stopColor="rgba(252, 211, 77, 0.55)" />
+            <stop offset="100%" stopColor="rgba(245, 158, 11, 0.70)" />
           </linearGradient>
 
-          {/* EDGE STROKE — bright gold→fuchsia→gold */}
+          {/* EDGE STROKE — bright 3-stop gradient */}
           <linearGradient id="funnelEdge" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(252, 211, 77, 1.0)" />
-            <stop offset="50%" stopColor="rgba(217, 70, 239, 0.85)" />
-            <stop offset="100%" stopColor="rgba(245, 158, 11, 1.0)" />
+            <stop offset="0%" stopColor="#FCD34D" stopOpacity="1" />
+            <stop offset="50%" stopColor="#D946EF" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#F59E0B" stopOpacity="1" />
           </linearGradient>
 
-          {/* TOP RIM — wide, glowing */}
+          {/* TOP RIM GLOW — radial gold */}
           <radialGradient id="funnelRimGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.55)" />
-            <stop offset="60%" stopColor="rgba(252, 211, 77, 0.15)" />
+            <stop offset="0%" stopColor="rgba(252, 211, 77, 0.85)" />
+            <stop offset="40%" stopColor="rgba(252, 211, 77, 0.35)" />
             <stop offset="100%" stopColor="rgba(252, 211, 77, 0)" />
           </radialGradient>
 
-          {/* BOTTOM SPOUT */}
+          {/* BOTTOM SPOUT GRADIENT */}
           <linearGradient id="funnelSpout" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(217, 70, 239, 0.90)" />
-            <stop offset="100%" stopColor="rgba(245, 158, 11, 1.0)" />
+            <stop offset="0%" stopColor="#D946EF" stopOpacity="1" />
+            <stop offset="100%" stopColor="#F59E0B" stopOpacity="1" />
           </linearGradient>
 
-          {/* Subtle drop shadow filter */}
-          <filter id="funnelSoft" x="-15%" y="-15%" width="130%" height="130%">
-            <feGaussianBlur stdDeviation="0.8" />
-          </filter>
-
-          {/* Strong outer glow (gold halo) */}
-          <filter id="funnelHalo" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="14" />
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.6" />
-            </feComponentTransfer>
-          </filter>
-
-          {/* Background grid pattern — visible through the glass */}
-          <pattern id="funnelGrid" x="0" y="0" width="36" height="36" patternUnits="userSpaceOnUse">
-            <path d="M 36 0 L 0 0 0 36" fill="none" stroke="rgba(40, 30, 20, 0.06)" strokeWidth="0.6" />
+          {/* BEHIND THE GLASS — subtle grid pattern (visible through transparency) */}
+          <pattern id="funnelGrid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(40, 30, 20, 0.10)" strokeWidth="0.6" />
           </pattern>
 
-          {/* Clip path matching the funnel shape for the grid */}
+          {/* Video frame thumbnail mock (for the "input" stack) */}
+          <linearGradient id="videoMock1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FFD166" />
+            <stop offset="100%" stopColor="#F59E0B" />
+          </linearGradient>
+          <linearGradient id="videoMock2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FF77E9" />
+            <stop offset="100%" stopColor="#D946EF" />
+          </linearGradient>
+          <linearGradient id="videoMock3" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#06B6D4" />
+            <stop offset="100%" stopColor="#0EA5E9" />
+          </linearGradient>
+
+          {/* Clip output thumbnail mock (for the "output" stack) */}
+          <linearGradient id="clipMock1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FCD34D" />
+            <stop offset="100%" stopColor="#EC4899" />
+          </linearGradient>
+          <linearGradient id="clipMock2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#A78BFA" />
+            <stop offset="100%" stopColor="#EC4899" />
+          </linearGradient>
+          <linearGradient id="clipMock3" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#D946EF" />
+          </linearGradient>
+
+          {/* Halo blur for outer glow */}
+          <filter id="funnelHalo" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="18" />
+          </filter>
+
+          {/* Soft blur for body */}
+          <filter id="funnelSoft" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="0.6" />
+          </filter>
+
+          {/* Drop shadow filter */}
+          <filter id="funnelShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="8" />
+            <feOffset dx="0" dy="12" />
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.25" />
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Clip path for the grid (matches the funnel body) */}
           <clipPath id="funnelClip">
             <path d="
               M 80 60
@@ -103,20 +147,69 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
           </clipPath>
         </defs>
 
-        {/* ─── OUTER HALO — gold glow around the rim ─── */}
+        {/* ─── OUTER GOLD HALO (around the top rim) ─── */}
         <ellipse
           cx="300"
-          cy="60"
-          rx="280"
-          ry="40"
+          cy="55"
+          rx="320"
+          ry="50"
           fill="url(#funnelRimGlow)"
           filter="url(#funnelHalo)"
-          opacity="0.7"
+          opacity="0.85"
         />
 
-        {/* ─── BACKGROUND GRID (visible through glass) ─── */}
+        {/* ─── INPUT VIDEO THUMBNAIL STACK (left of rim) ───
+            Three small "video card" mockups at the top-left, showing
+            the user that real video URLs get dropped in here. */}
+        <g transform="translate(40, 90)">
+          {/* Card 1 (back) */}
+          <g transform="rotate(-8 0 30)">
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="url(#videoMock2)" opacity="0.85" />
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" />
+            <circle cx="34" cy="22" r="6" fill="rgba(255,255,255,0.95)" />
+            <polygon points="32,19 32,25 38,22" fill="#D946EF" />
+          </g>
+          {/* Card 2 (middle) */}
+          <g transform="rotate(-3 0 50) translate(0, 30)">
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="url(#videoMock3)" opacity="0.9" />
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" />
+            <circle cx="34" cy="22" r="6" fill="rgba(255,255,255,0.95)" />
+            <polygon points="32,19 32,25 38,22" fill="#06B6D4" />
+          </g>
+          {/* Card 3 (front) */}
+          <g transform="rotate(2 0 70) translate(0, 60)">
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="url(#videoMock1)" />
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" />
+            <circle cx="34" cy="22" r="6" fill="rgba(255,255,255,0.95)" />
+            <polygon points="32,19 32,25 38,22" fill="#F59E0B" />
+          </g>
+        </g>
+
+        {/* ─── INPUT VIDEO THUMBNAIL STACK (right of rim) ─── */}
+        <g transform="translate(492, 90)">
+          <g transform="rotate(8 68 30)">
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="url(#videoMock1)" opacity="0.85" />
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" />
+            <circle cx="34" cy="22" r="6" fill="rgba(255,255,255,0.95)" />
+            <polygon points="32,19 32,25 38,22" fill="#F59E0B" />
+          </g>
+          <g transform="rotate(3 68 50) translate(0, 30)">
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="url(#videoMock2)" opacity="0.9" />
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" />
+            <circle cx="34" cy="22" r="6" fill="rgba(255,255,255,0.95)" />
+            <polygon points="32,19 32,25 38,22" fill="#D946EF" />
+          </g>
+          <g transform="rotate(-2 68 70) translate(0, 60)">
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="url(#videoMock3)" />
+            <rect x="0" y="0" width="68" height="44" rx="6" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" />
+            <circle cx="34" cy="22" r="6" fill="rgba(255,255,255,0.95)" />
+            <polygon points="32,19 32,25 38,22" fill="#06B6D4" />
+          </g>
+        </g>
+
+        {/* ─── BEHIND THE GLASS — grid pattern (shows the funnel is glass) ─── */}
         <g clipPath="url(#funnelClip)">
-          <rect x="0" y="0" width="600" height="800" fill="url(#funnelGrid)" />
+          <rect x="0" y="0" width="600" height="820" fill="url(#funnelGrid)" />
         </g>
 
         {/* ─── MAIN GLASS BODY ─── */}
@@ -132,8 +225,8 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
           "
           fill="url(#funnelBody)"
           stroke="url(#funnelEdge)"
-          strokeWidth="2"
-          filter="url(#funnelSoft)"
+          strokeWidth="2.5"
+          filter="url(#funnelShadow)"
         />
 
         {/* ─── INNER CORE — narrower, brighter, gives depth ─── */}
@@ -148,51 +241,89 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
             Z
           "
           fill="url(#funnelCore)"
-          opacity="0.55"
+          opacity="0.65"
         />
 
-        {/* ─── TOP RIM — wide opening (1× source) ─── */}
+        {/* ─── INNER SPECULAR HIGHLIGHT — a bright streak on the top-left
+              of the glass body, like sunlight reflecting off glass ─── */}
+        <path
+          d="
+            M 130 110
+            C 130 110 145 200 175 320
+            C 195 400 215 470 220 510
+          "
+          stroke="rgba(255, 255, 255, 0.55)"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+        />
+
+        {/* ─── TOP RIM — wide opening (multi-layer for depth) ─── */}
         <ellipse
           cx="300"
           cy="60"
           rx="220"
-          ry="20"
+          ry="22"
           fill="url(#funnelRimGlow)"
-          stroke="rgba(252, 211, 77, 0.95)"
-          strokeWidth="1.5"
+          stroke="#FCD34D"
+          strokeWidth="2"
         />
         <ellipse
           cx="300"
           cy="60"
           rx="200"
-          ry="11"
-          fill="rgba(255, 255, 255, 0.55)"
+          ry="13"
+          fill="rgba(255, 255, 255, 0.65)"
         />
         <ellipse
           cx="300"
           cy="60"
           rx="180"
-          ry="6"
-          fill="rgba(255, 255, 255, 0.75)"
+          ry="7"
+          fill="rgba(255, 255, 255, 0.85)"
         />
 
-        {/* ─── BOTTOM SPOUT — narrow output (10× clips) ─── */}
+        {/* ─── BOTTOM SPOUT — narrow output ─── */}
         <ellipse
           cx="300"
           cy="760"
           rx="48"
-          ry="9"
+          ry="10"
           fill="url(#funnelSpout)"
-          stroke="rgba(245, 158, 11, 0.95)"
-          strokeWidth="1.5"
+          stroke="#F59E0B"
+          strokeWidth="2"
         />
         <ellipse
           cx="300"
           cy="760"
-          rx="38"
+          rx="36"
           ry="5"
-          fill="rgba(255, 255, 255, 0.55)"
+          fill="rgba(255, 255, 255, 0.7)"
         />
+
+        {/* ─── OUTPUT CLIP STACK (below the spout) ───
+            Three small "9:16 clip card" mockups falling out the spout. */}
+        <g transform="translate(264, 778)">
+          {/* Clip 1 (left, behind) */}
+          <g transform="rotate(-12 18 25)">
+            <rect x="0" y="0" width="24" height="40" rx="3" fill="url(#clipMock1)" />
+            <rect x="0" y="0" width="24" height="40" rx="3" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.6" />
+            <circle cx="12" cy="20" r="3" fill="rgba(255,255,255,0.95)" />
+          </g>
+          {/* Clip 2 (middle, front) */}
+          <g transform="translate(24, 0)">
+            <rect x="0" y="0" width="24" height="40" rx="3" fill="url(#clipMock2)" />
+            <rect x="0" y="0" width="24" height="40" rx="3" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.6" />
+            <circle cx="12" cy="20" r="3" fill="rgba(255,255,255,0.95)" />
+            <polygon points="10,17 10,23 16,20" fill="#A78BFA" />
+          </g>
+          {/* Clip 3 (right, behind) */}
+          <g transform="rotate(12 66 25) translate(48, 0)">
+            <rect x="0" y="0" width="24" height="40" rx="3" fill="url(#clipMock3)" opacity="0.9" />
+            <rect x="0" y="0" width="24" height="40" rx="3" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.6" />
+            <circle cx="12" cy="20" r="3" fill="rgba(255,255,255,0.95)" />
+          </g>
+        </g>
 
         {/* ─── CENTER FLOW LINE — data flowing down ─── */}
         <line
@@ -200,64 +331,43 @@ export default function FunnelGraphic({ className = "" }: FunnelGraphicProps) {
           y1="78"
           x2="300"
           y2="755"
-          stroke="rgba(255, 255, 255, 0.45)"
-          strokeWidth="0.8"
+          stroke="rgba(255, 255, 255, 0.55)"
+          strokeWidth="1"
           strokeDasharray="3 9"
         />
 
-        {/* ─── FLOATING PARTICLES — video frames flowing through ─── */}
+        {/* ─── FLOATING PARTICLES — 13 video frames flowing through ─── */}
         <g>
-          <circle cx="190" cy="170" r="6" fill="rgba(252, 211, 77, 0.95)" />
-          <circle cx="410" cy="190" r="5" fill="rgba(217, 70, 239, 0.95)" />
-          <circle cx="220" cy="280" r="4" fill="rgba(245, 158, 11, 0.95)" />
-          <circle cx="380" cy="310" r="6" fill="rgba(252, 211, 77, 0.90)" />
-          <circle cx="300" cy="380" r="5" fill="rgba(255, 119, 233, 0.95)" />
-          <circle cx="240" cy="440" r="4" fill="rgba(245, 158, 11, 0.95)" />
-          <circle cx="360" cy="460" r="5" fill="rgba(252, 211, 77, 0.85)" />
-          <circle cx="270" cy="540" r="4" fill="rgba(255, 119, 233, 0.95)" />
-          <circle cx="330" cy="570" r="3" fill="rgba(245, 158, 11, 0.95)" />
-          <circle cx="290" cy="640" r="3" fill="rgba(252, 211, 77, 0.85)" />
-          <circle cx="310" cy="700" r="2.5" fill="rgba(245, 158, 11, 0.95)" />
+          <circle cx="190" cy="170" r="7" fill="#FCD34D" opacity="0.95" />
+          <circle cx="410" cy="190" r="6" fill="#D946EF" opacity="0.95" />
+          <circle cx="220" cy="270" r="5" fill="#F59E0B" opacity="0.95" />
+          <circle cx="380" cy="300" r="7" fill="#FCD34D" opacity="0.90" />
+          <circle cx="300" cy="370" r="5" fill="#FF77E9" opacity="0.95" />
+          <circle cx="240" cy="430" r="5" fill="#F59E0B" opacity="0.95" />
+          <circle cx="360" cy="450" r="6" fill="#FCD34D" opacity="0.85" />
+          <circle cx="270" cy="525" r="5" fill="#FF77E9" opacity="0.95" />
+          <circle cx="330" cy="555" r="4" fill="#F59E0B" opacity="0.95" />
+          <circle cx="290" cy="620" r="4" fill="#FCD34D" opacity="0.85" />
+          <circle cx="310" cy="675" r="3" fill="#F59E0B" opacity="0.95" />
+          <circle cx="300" cy="715" r="3" fill="#D946EF" opacity="0.85" />
+          <circle cx="300" cy="740" r="2.5" fill="#FCD34D" opacity="0.95" />
         </g>
 
         {/* ─── Φ SYMBOL ABOVE THE RIM — brand mark ─── */}
-        <g transform="translate(300, 28)">
-          <circle r="20" fill="rgba(255, 255, 255, 0.95)" stroke="rgba(252, 211, 77, 0.95)" strokeWidth="1.5" />
+        <g transform="translate(300, 22)">
+          <circle r="22" fill="rgba(255, 255, 255, 0.98)" stroke="#FCD34D" strokeWidth="2" />
           <text
             x="0"
             y="2"
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="22"
-            fontWeight="600"
+            fontSize="24"
+            fontWeight="700"
             fontFamily="ui-serif, Georgia, serif"
             fill="#1A1814"
           >
             Φ
           </text>
-        </g>
-
-        {/* ─── "10× CLIPS" LABEL BELOW SPOUT ─── */}
-        <g transform="translate(300, 790)">
-          <rect x="-46" y="-12" width="92" height="24" rx="12" fill="rgba(255, 255, 255, 0.92)" stroke="rgba(40, 30, 20, 0.15)" strokeWidth="0.5" />
-          <text
-            x="0"
-            y="2"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="11"
-            fontWeight="700"
-            fontFamily="ui-monospace, SFMono-Regular, monospace"
-            letterSpacing="0.14em"
-            fill="#3A3530"
-          >
-            10× CLIPS
-          </text>
-        </g>
-
-        {/* ─── "1× SOURCE" LABEL — small, above the rim ─── */}
-        <g transform="translate(300, -2)" opacity="0">
-          {/* Hidden — the Φ symbol handles the brand mark at top */}
         </g>
       </svg>
     </div>

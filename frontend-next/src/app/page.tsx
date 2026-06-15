@@ -31,7 +31,6 @@ import { ArrowRight, Sparkles, Brain, Wand2, Mic } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
-import ScrollProgress from "@/components/ScrollProgress";
 import StickyInputBar from "@/components/StickyInputBar";
 import FunnelGraphic from "@/components/FunnelGraphic";
 import PasteLinkInput from "@/components/PasteLinkInput";
@@ -62,7 +61,6 @@ const PILLARS = [
 export default function HomePage() {
   return (
     <>
-      <ScrollProgress />
       <Header />
       <StickyInputBar />
 

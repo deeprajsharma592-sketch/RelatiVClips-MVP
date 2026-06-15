@@ -1,113 +1,124 @@
 "use client";
 
 /**
- * MovingClipsGrid — The lower section of the new landing page.
+ * MovingClipsGrid — The lower section of the landing page (v2).
  *
- * Multiple smaller, auto-playing short clips in a masonry-ish grid.
- * Each "clip" is a 9:16 vertical card with:
- *   - A still thumbnail as the base
- *   - A subtle CSS keyframe "moving" animation (slow pan + zoom)
- *   - A play icon overlay to suggest it's a video
- *   - Title + duration + fake "viral" stat
+ * 6 9:16 vertical "moving clip" cards in a responsive grid.
  *
- * The animation gives the impression of "moving clips" without
- * requiring actual video files (which would slow page load).
+ * v2 improvements:
+ *  - Uses real video files (Google CDN sample MP4s) inside <video> tags
+ *    with muted+autoplay+loop+playsInline. Falls back to a CSS
+ *    animated gradient if the video fails to load.
+ *  - Removes fake "X views" labels — replaces with real "9:16" aspect
+ *    marker + a tasteful "auto-clipped" tag.
+ *  - Adds accent stripe at top + duration pill + subtle reflection.
+ *  - Hover state: slight scale-up + glow.
+ *
+ * Each card is a "sample output" — in production these would be actual
+ * clips from the engine (in /app/outputs/*.mp4).
  */
 
 import { motion } from "framer-motion";
 import { Play } from "lucide-react";
 
 interface ClipItem {
-  videoId: string;
-  title: string;
-  duration: string;
-  views: string;
+  /** Background color shown while video is loading or if it fails. */
+  fallback: string;
+  /** Accent color for the top stripe. */
   accent: string;
-  // Different animation profiles for visual variety
-  motion: "pan-zoom-in" | "pan-zoom-out" | "pan-left" | "pan-right";
+  /** Title shown at the bottom. */
+  title: string;
+  /** Duration label. */
+  duration: string;
+  /** Optional video src — Google CDN sample MP4s, royalty-free. */
+  videoSrc?: string;
+  /** Motion profile for the fallback gradient animation. */
+  motion: "pan-zoom-in" | "pan-zoom-out" | "pan-left" | "pan-right" | "rotate-slow";
 }
 
 const CLIPS: ClipItem[] = [
   {
-    videoId: "jNQXAC9IVRw",
-    title: "The first YouTube moment",
-    duration: "0:14",
-    views: "1.2M",
+    fallback: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D946EF 100%)",
     accent: "#FCD34D",
+    title: "Hook · first 3s",
+    duration: "0:14",
+    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
     motion: "pan-zoom-in",
   },
   {
-    videoId: "dQw4w9WgXcQ",
-    title: "Never gonna give you up…",
-    duration: "0:11",
-    views: "847K",
+    fallback: "linear-gradient(135deg, #FF77E9 0%, #D946EF 50%, #A78BFA 100%)",
     accent: "#D946EF",
+    title: "Viral opener",
+    duration: "0:11",
+    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     motion: "pan-right",
   },
   {
-    videoId: "9bZkp7q19f0",
-    title: "Oppa is Gangnam style",
-    duration: "0:13",
-    views: "412K",
+    fallback: "linear-gradient(135deg, #F59E0B 0%, #EC4899 50%, #8B5CF6 100%)",
     accent: "#F59E0B",
+    title: "Energy spike",
+    duration: "0:13",
+    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
     motion: "pan-zoom-out",
   },
   {
-    videoId: "kJQP7kiw5Fk",
-    title: "Despacito — the hook",
-    duration: "0:15",
-    views: "2.1M",
+    fallback: "linear-gradient(135deg, #06B6D4 0%, #0EA5E9 50%, #6366F1 100%)",
     accent: "#06B6D4",
+    title: "Pause + payoff",
+    duration: "0:15",
+    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
     motion: "pan-left",
   },
   {
-    videoId: "jNQXAC9IVRw",
-    title: "Zoo chit-chat goes viral",
-    duration: "0:12",
-    views: "688K",
+    fallback: "linear-gradient(135deg, #FCD34D 0%, #EC4899 50%, #A78BFA 100%)",
     accent: "#FF77E9",
+    title: "Tag-worthy moment",
+    duration: "0:12",
+    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
     motion: "pan-zoom-in",
   },
   {
-    videoId: "dQw4w9WgXcQ",
-    title: "Astley's opening verse",
+    fallback: "linear-gradient(135deg, #A78BFA 0%, #EC4899 50%, #F59E0B 100%)",
+    accent: "#A78BFA",
+    title: "Caption-ready",
     duration: "0:10",
-    views: "1.5M",
-    accent: "#FCD34D",
+    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     motion: "pan-right",
   },
 ];
 
-const thumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-
-// CSS keyframes injected once at module scope — moves the background image
-// so it looks like a video is playing, without the bandwidth of a real video.
+// CSS keyframes for the fallback animation (if video fails to load)
 const motionKeyframes = `
 @keyframes pan-zoom-in {
   0%   { transform: scale(1.05) translate(0, 0); }
-  50%  { transform: scale(1.12) translate(-1.5%, -1%); }
+  50%  { transform: scale(1.18) translate(-1.5%, -1%); }
   100% { transform: scale(1.05) translate(0, 0); }
 }
 @keyframes pan-zoom-out {
-  0%   { transform: scale(1.18) translate(0, 0); }
+  0%   { transform: scale(1.25) translate(0, 0); }
   50%  { transform: scale(1.08) translate(1.5%, 1%); }
-  100% { transform: scale(1.18) translate(0, 0); }
+  100% { transform: scale(1.25) translate(0, 0); }
 }
 @keyframes pan-left {
-  0%   { transform: scale(1.15) translateX(2%); }
-  50%  { transform: scale(1.15) translateX(-2%); }
-  100% { transform: scale(1.15) translateX(2%); }
+  0%   { transform: scale(1.20) translateX(2%); }
+  50%  { transform: scale(1.20) translateX(-2%); }
+  100% { transform: scale(1.20) translateX(2%); }
 }
 @keyframes pan-right {
-  0%   { transform: scale(1.15) translateX(-2%); }
-  50%  { transform: scale(1.15) translateX(2%); }
-  100% { transform: scale(1.15) translateX(-2%); }
+  0%   { transform: scale(1.20) translateX(-2%); }
+  50%  { transform: scale(1.20) translateX(2%); }
+  100% { transform: scale(1.20) translateX(-2%); }
+}
+@keyframes rotate-slow {
+  0%   { transform: scale(1.15) rotate(0deg); }
+  50%  { transform: scale(1.20) rotate(2deg); }
+  100% { transform: scale(1.15) rotate(0deg); }
 }
 `;
 
-if (typeof document !== "undefined" && !document.getElementById("moving-clips-keyframes")) {
+if (typeof document !== "undefined" && !document.getElementById("moving-clips-keyframes-v2")) {
   const el = document.createElement("style");
-  el.id = "moving-clips-keyframes";
+  el.id = "moving-clips-keyframes-v2";
   el.textContent = motionKeyframes;
   document.head.appendChild(el);
 }
@@ -171,7 +182,7 @@ export default function MovingClipsGrid() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 max-w-7xl mx-auto">
         {CLIPS.map((c, i) => (
           <motion.div
-            key={`${c.videoId}-${i}`}
+            key={`${c.title}-${i}`}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
@@ -179,7 +190,7 @@ export default function MovingClipsGrid() {
             className="relative group"
           >
             <div
-              className="relative aspect-[9/16] rounded-2xl overflow-hidden"
+              className="relative aspect-[9/16] rounded-2xl overflow-hidden transition-transform duration-300 group-hover:scale-[1.03]"
               style={{
                 background: "var(--color-surface)",
                 border: "1px solid var(--color-border)",
@@ -187,16 +198,31 @@ export default function MovingClipsGrid() {
                   "0 8px 24px rgba(40, 30, 20, 0.10), 0 2px 6px rgba(40, 30, 20, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
               }}
             >
-              {/* Background image with motion animation */}
+              {/* Background — animated gradient (always animates as fallback) */}
               <div
                 aria-hidden
-                className="absolute inset-0 bg-cover bg-center"
+                className="absolute inset-0"
                 style={{
-                  backgroundImage: `url(${thumb(c.videoId)})`,
-                  animation: `${c.motion} ${10 + i * 1.2}s ease-in-out infinite`,
+                  background: c.fallback,
+                  animation: `${c.motion} ${11 + i * 1.3}s ease-in-out infinite`,
                   willChange: "transform",
                 }}
               />
+
+              {/* Real video on top of the gradient — muted, autoplay, loop */}
+              {c.videoSrc && (
+                <video
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ mixBlendMode: "overlay", opacity: 0.6 }}
+                  src={c.videoSrc}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  aria-hidden
+                />
+              )}
 
               {/* Color grade overlay (subtle, to unify the cards) */}
               <div
@@ -204,19 +230,19 @@ export default function MovingClipsGrid() {
                 className="absolute inset-0"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(15, 13, 10, 0.0) 0%, rgba(15, 13, 10, 0.25) 60%, rgba(15, 13, 10, 0.85) 100%)",
+                    "linear-gradient(180deg, rgba(15, 13, 10, 0.0) 0%, rgba(15, 13, 10, 0.30) 60%, rgba(15, 13, 10, 0.85) 100%)",
                 }}
               />
 
               {/* Top accent stripe */}
               <div
-                className="absolute top-0 left-0 right-0 h-1"
+                className="absolute top-0 left-0 right-0 h-1 z-10"
                 style={{ background: c.accent }}
               />
 
               {/* Play icon overlay (top-right) */}
               <div
-                className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center"
+                className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center z-10"
                 style={{
                   background: "rgba(15, 13, 10, 0.55)",
                   backdropFilter: "blur(8px)",
@@ -228,7 +254,7 @@ export default function MovingClipsGrid() {
 
               {/* Duration pill (top-left) */}
               <div
-                className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold"
+                className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold z-10"
                 style={{
                   background: "rgba(15, 13, 10, 0.55)",
                   backdropFilter: "blur(8px)",
@@ -239,21 +265,24 @@ export default function MovingClipsGrid() {
                 {c.duration}
               </div>
 
-              {/* Bottom info: title + views */}
-              <div className="absolute bottom-0 left-0 right-0 p-3">
+              {/* Bottom info: title + "auto-clipped" tag */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 z-10">
                 <p
-                  className="text-[12px] font-semibold leading-snug line-clamp-2 mb-1"
+                  className="text-[12px] font-semibold leading-snug line-clamp-2 mb-1.5"
                   style={{ color: "#FFFFFF" }}
                 >
                   {c.title}
                 </p>
-                <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                <div className="flex items-center gap-1.5">
                   <span
                     className="inline-block w-1 h-1 rounded-full"
                     style={{ background: c.accent }}
                   />
-                  <span style={{ color: "rgba(255, 255, 255, 0.75)" }}>
-                    {c.views} views
+                  <span
+                    className="text-[9px] font-mono uppercase tracking-wider"
+                    style={{ color: "rgba(255, 255, 255, 0.75)" }}
+                  >
+                    9:16 · auto-clipped
                   </span>
                 </div>
               </div>
