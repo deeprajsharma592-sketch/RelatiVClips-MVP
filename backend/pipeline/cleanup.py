@@ -39,25 +39,36 @@ def cleanup_outputs() -> dict:
 
 def cleanup_temp_files() -> list:
     """
-    Clean up all temporary files.
+    Clean up temporary files.
 
     WHY THIS IS NEEDED:
-    - temp/ holds WAV files, transcripts, .ass subtitles
-    - These can be 50-100MB per task
-    - Keep temp/ clean for next tasks
+    - temp/ holds WAV files, transcripts, downloaded video segments
+    - These can be 50-100MB per task (especially vidseg + specvid)
+    - Stale segments from crashed tasks pile up (saw 226MB once)
+
+    BUGFIX 2026-06-15: previously deleted EVERYTHING in temp/ every hour,
+    which wiped in-flight downloads (renderer or surgical.py mid-write).
+    Now: only delete files older than 2 hours, so in-flight work is safe.
+    With CLEANUP_INTERVAL_HOURS=6 and 2h grace = max 8h lifetime for
+    a stale file (vs 1h before, which was destructive).
 
     Returns:
         List of deleted file paths
     """
+    from datetime import datetime, timedelta
     deleted = []
+    cutoff = datetime.now() - timedelta(hours=2)
 
     for file_path in TEMP_DIR.glob("*"):
-        if file_path.is_file():
-            try:
+        if not file_path.is_file():
+            continue
+        try:
+            mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+            if mtime < cutoff:
                 file_path.unlink()
                 deleted.append(str(file_path))
-            except Exception:
-                pass
+        except Exception:
+            pass
 
     return deleted
 

@@ -110,8 +110,12 @@ FFMPEG_PRESET = "p5"
 FFMPEG_CQ = 28
 FFMPEG_AUDIO_BITRATE = "128k"
 
-FILE_RETENTION_HOURS = 24
-CLEANUP_INTERVAL_HOURS = 1
+# BUGFIX 2026-06-15: 24h was too short — users come back to "download my
+# clips" pages and find them gone. 7d is the sweet spot for a free tier
+# (≈30MB × 20 runs/day × 7d = 4.2GB max). For paid tier or beyond 7d,
+# use S3/Backblaze B2 cold storage (see docs/caching-strategy.md).
+FILE_RETENTION_HOURS = 24 * 7  # 7 days
+CLEANUP_INTERVAL_HOURS = 6    # 4×/day check is enough (was hourly = CPU waste)
 
 YTDLP_FORMAT = "best[height>=720]/best"
 

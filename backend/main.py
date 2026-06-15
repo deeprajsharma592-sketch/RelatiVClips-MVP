@@ -31,7 +31,7 @@ from .routers import (
     clips_router,
     verification_router,
 )
-from .utils.config import OUTPUTS_DIR, TEMP_DIR
+from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
 from .utils.task_store import set_event_loop, task_store
 
 # Upload directory — sibling to TEMP_DIR, holds raw uploads before pipeline run
@@ -323,6 +323,45 @@ async def download_clip(clip_id: str):
             media_type="video/mp4",
         )
     raise HTTPException(status_code=404, detail="Clip not found")
+
+
+@app.get("/clips")
+async def list_clips(task_prefix: Optional[str] = None, limit: int = 50):
+    """
+    List available clips, optionally filtered by task_id prefix.
+
+    NEW 2026-06-15: lets users re-discover their clips instead of
+    relying on the in-memory task response (which vanishes on restart).
+
+    Examples:
+      GET /clips                          → latest 50 clips
+      GET /clips?task_prefix=9837a8ae     → clips for that YouTube task
+      GET /clips?limit=200                → 200 most recent
+
+    Returns:
+        {clips: [{name, size_mb, age_hours, url}, ...], total_count, total_mb}
+    """
+    from datetime import datetime as _dt
+    clips = []
+    files = sorted(OUTPUTS_DIR.glob("*.mp4"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for fp in files:
+        if task_prefix and not fp.stem.startswith(task_prefix):
+            continue
+        age_s = (_dt.now() - _dt.fromtimestamp(fp.stat().st_mtime)).total_seconds()
+        clips.append({
+            "name": fp.name,
+            "size_mb": round(fp.stat().st_size / (1024 * 1024), 2),
+            "age_hours": round(age_s / 3600, 1),
+            "url": f"/download/{fp.stem}",
+        })
+        if len(clips) >= limit:
+            break
+    return {
+        "clips": clips,
+        "total_count": len(clips),
+        "total_mb": round(sum(c["size_mb"] for c in clips), 2),
+        "retention_hours": FILE_RETENTION_HOURS,
+    }
 
 
 @app.get("/vram")

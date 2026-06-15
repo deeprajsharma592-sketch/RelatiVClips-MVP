@@ -1241,7 +1241,17 @@ def _run_moment_pipeline(
     _bridge("render", f"Rendering {len(final_clips)} clip(s)...",
             step=6, sub_progress=0.0)
     rendered = []
-    video_id = info.get("transcript", {}).get("video_id") if info.get("transcript") else None
+    # BUGFIX 2026-06-15: video_id was None → fell back to "local" → filename
+    # collision with local uploads (surgical clips overwrote each other and
+    # got reported as "local_1_*.mp4" in API responses). Use the YouTube
+    # video ID when available, else the task_id (unique per request) so each
+    # task gets its own filename namespace and clips are discoverable by
+    # task_id (e.g. /download/{task_id[:8]}_1_42s.mp4).
+    video_id = (
+        info.get("transcript", {}).get("video_id")
+        if info.get("transcript")
+        else None
+    ) or f"yt_{task_id[:12]}"
     for i, clip in enumerate(final_clips):
         try:
             # Use the actual video segment if we got one; otherwise fall
