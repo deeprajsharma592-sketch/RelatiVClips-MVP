@@ -116,7 +116,9 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
     # select_clips_with_claude's internal httpx call pattern is heavy; instead
     # we build a simpler "send prompt, return text" wrapper here.
     def _call(prompt: str) -> str:
+        from . import cost_control
         import httpx
+        max_out = cost_control.LLM_MAX_OUTPUT_TOKENS
         with httpx.Client(timeout=120.0) as client:
             r = client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -127,7 +129,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                 },
                 json={
                     "model": config.CLAUDE_MODEL,
-                    "max_tokens": 2048,
+                    "max_tokens": max_out,
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )
@@ -136,6 +138,12 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                 f"Claude API error {r.status_code}: {r.text[:300]}"
             )
         body = r.json()
+        # Record real token usage from the response
+        usage = body.get("usage", {})
+        in_tok = int(usage.get("input_tokens", 0))
+        out_tok = int(usage.get("output_tokens", 0))
+        if in_tok or out_tok:
+            cost_control.record_call(config.CLAUDE_MODEL, in_tok, out_tok)
         for block in body.get("content", []):
             if block.get("type") == "text":
                 return block.get("text", "")

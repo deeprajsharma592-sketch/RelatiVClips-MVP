@@ -87,6 +87,22 @@ VALLEY_MIN_DURATION_S = 1.0
 # Padding around a valley to form a clip window (so the valley has context)
 VALLEY_CONTEXT_PADDING_S = 4.0
 
+# ─── STEEP EVENT DETECTION (NEW) ─────────────────────────────────────────
+# A "steep" event is a sudden TRANSITION in energy, not a sustained region.
+# It catches "wait for it" beats:
+#   [loud] "I lost everything..." [DROP] [quiet] "...then made 10 Cr" [JUMP] [loud]
+#
+# These are different from peaks/valleys (which are sustained regions):
+#   peak    = 1.5× mean energy for >1s
+#   valley  = <0.5× mean energy for >1s
+#   steep   = 0.3× mean energy DROP or RISE in <1s
+#
+# Lower values = more sensitive (catches smaller transitions). Default 0.3
+# works well for podcast content; lower to 0.2 for music, raise to 0.5 for
+# monotone content.
+STEEP_MIN_RELATIVE_DROP = float(os.getenv("STEEP_MIN_RELATIVE_DROP", "0.3"))
+STEEP_MIN_RELATIVE_RISE = float(os.getenv("STEEP_MIN_RELATIVE_RISE", "0.3"))
+
 CROP_WIDTH = 608
 CROP_HEIGHT = 1080
 
@@ -128,6 +144,10 @@ SURGICAL_TOP_N_CANDIDATES = 5
 MAX_DISK_USAGE_MB = 150
 AUDIO_ONLY_BITRATE = "128k"
 MAX_SURGICAL_SEGMENTS = 3
+# Number of concurrent yt-dlp workers for parallel segment download.
+# 3 = 3 segments in parallel = ~3× speedup on the audio phase.
+# Bounded by proxy pool size + outgoing socket count on the host.
+PARALLEL_SURGICAL_WORKERS = int(os.getenv("PARALLEL_SURGICAL_WORKERS", "3"))
 AUDIO_FALLBACK_LIMIT_MB = 50
 SURGICAL_BUFFER_SECONDS = 10
 

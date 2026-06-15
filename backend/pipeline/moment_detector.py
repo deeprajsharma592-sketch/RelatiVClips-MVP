@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 import logging
 import re
+from pathlib import Path
 
 from ..taste.icl import Moment  # canonical type — defined in taste/icl.py
 
@@ -260,14 +261,18 @@ def _audio_moments_from_file(
     video_duration_s: float,
 ) -> List[Moment]:
     """
-    Detect candidate moments from audio alone — peaks AND valleys via librosa.
-    Used when YouTube captions are unavailable.
+    Detect candidate moments from audio alone — peaks, valleys, AND steep
+    transitions. Used when YouTube captions are unavailable.
+
+    All four signal types are returned, ranked by score, deduped by
+    window overlap (higher score wins). The LLM/fallback picks from
+    the unified list.
     """
     result = audio_analysis.analyze_audio_peaks_and_valleys(audio_path)
     moments: List[Moment] = []
 
-    # Top 10 peaks
-    for i, p in enumerate(result.get("peaks", [])[:10], 1):
+    # Top 8 sustained peaks
+    for i, p in enumerate(result.get("peaks", [])[:8], 1):
         start = max(0, p["timestamp"] - 5.0)
         end = min(video_duration_s, start + 15.0)
         moments.append(Moment(
@@ -276,13 +281,13 @@ def _audio_moments_from_file(
             end=round(end, 2),
             signal_type="peak",
             score=min(1.0, p["relative_to_mean"] / 3.0),
-            snippet="[audio peak — no caption text available]",
+            snippet="[audio peak — loud sustained moment]",
             source="audio_peak",
             story_position=start / max(1.0, video_duration_s),
         ))
 
-    # Top 10 valleys
-    for j, v in enumerate(result.get("valleys", [])[:10], 11):
+    # Top 5 sustained valleys
+    for j, v in enumerate(result.get("valleys", [])[:5], 100):
         moments.append(Moment(
             index=j,
             start=v["start"],
@@ -294,13 +299,134 @@ def _audio_moments_from_file(
             story_position=v["start"] / max(1.0, video_duration_s),
         ))
 
+    # Top 8 STEEP PEAKS — sudden loud transitions
+    for k, sp in enumerate(result.get("steep_peaks", [])[:8], 200):
+        moments.append(Moment(
+            index=k,
+            start=sp["start"],
+            end=sp["end"],
+            signal_type="steep_peak",
+            score=sp["score"],
+            snippet=f"[STEEP PEAK — sudden loud at {sp['peak_s']:.1f}s, +{sp['relative_rise']:.2f}× mean energy]",
+            source="audio_steep_peak",
+            story_position=sp["start"] / max(1.0, video_duration_s),
+        ))
+
+    # Top 8 STEEP VALLEYS — sudden quiet transitions (the "wait for it" beats)
+    for m, sv in enumerate(result.get("steep_valleys", [])[:8], 300):
+        moments.append(Moment(
+            index=m,
+            start=sv["start"],
+            end=sv["end"],
+            signal_type="steep_valley",
+            score=sv["score"],
+            snippet=f"[STEEP VALLEY — sudden quiet at {sv['trough_s']:.1f}s, -{sv['relative_drop']:.2f}× mean energy]",
+            source="audio_steep_valley",
+            story_position=sv["start"] / max(1.0, video_duration_s),
+        ))
+
+    # Dedupe overlapping moments — keep highest score
+    moments = _dedupe_overlapping(moments, overlap_frac=0.5)
     moments.sort(key=lambda m: m.score, reverse=True)
+
     # Pad with temporal candidates if too few real audio moments
     moments = _pad_with_temporal_candidates(moments, video_duration_s, target_count=3)
     # Re-index
     for i, m in enumerate(moments[:20], 1):
         m.index = i
     return moments[:20]
+
+
+def _dedupe_overlapping(
+    moments: List["Moment"],
+    overlap_frac: float = 0.5,
+) -> List["Moment"]:
+    """Drop moments that overlap >overlap_frac with a higher-scored moment.
+
+    Without this, the LLM gets 4× moments all pointing to the same punchline
+    (one from text, one from peak, one from steep_peak, one from valley).
+
+    `overlap_frac` is the fraction of the smaller window that must overlap
+    with a higher-scored window for it to be dropped. 0.5 = generous,
+    0.3 = strict.
+    """
+    if not moments:
+        return []
+    moments = sorted(moments, key=lambda m: m.score, reverse=True)
+    kept: List["Moment"] = []
+    for m in moments:
+        m_dur = max(0.001, m.end - m.start)
+        drop = False
+        for k in kept:
+            k_dur = max(0.001, k.end - k.start)
+            # intersection
+            inter = max(0.0, min(m.end, k.end) - max(m.start, k.start))
+            # smaller of the two
+            smaller = min(m_dur, k_dur)
+            if inter / smaller >= overlap_frac:
+                drop = True
+                break
+        if not drop:
+            kept.append(m)
+    return kept
+
+
+def _merge_text_and_audio_moments(
+    text_moments: List["Moment"],
+    audio_moments: List["Moment"],
+) -> List["Moment"]:
+    """Combine text-based and audio-based moment lists, dedupe overlap, boost
+    moments detected by BOTH sources (high confidence).
+
+    A moment detected by both text AND audio is far more likely to be a real
+    viral moment than one detected by only one source. We boost such moments
+    by +0.15 (capped at 1.0) so the LLM/fallback ranks them higher.
+
+    Returns a merged, deduped, sorted list of up to 20 moments.
+    """
+    if not audio_moments:
+        return text_moments
+    if not text_moments:
+        return audio_moments
+
+    # Tag each moment with which source type it is
+    text_set = set(id(m) for m in text_moments)
+    audio_set = set(id(m) for m in audio_moments)
+
+    # Detect overlap between text and audio moments (any overlap = "both")
+    def _overlaps(m, others):
+        for o in others:
+            if not (m.end <= o.start or m.start >= o.end):
+                return True
+        return False
+
+    # Build combined list with dedupe
+    all_moments = text_moments + audio_moments
+    deduped = _dedupe_overlapping(all_moments, overlap_frac=0.4)
+
+    # Boost moments that have BOTH text and audio support
+    boosted: List["Moment"] = []
+    for m in deduped:
+        m_text = m in text_moments or _overlaps(m, text_moments)
+        m_audio = m in audio_moments or _overlaps(m, audio_moments)
+        if m_text and m_audio:
+            # Both sources confirm this moment — boost
+            boosted_m = Moment(
+                index=m.index,
+                start=m.start,
+                end=m.end,
+                signal_type=f"text+{m.signal_type}",
+                score=min(1.0, m.score + 0.15),
+                snippet=m.snippet,
+                source="merged_text_audio",
+                story_position=m.story_position,
+            )
+            boosted.append(boosted_m)
+        else:
+            boosted.append(m)
+
+    boosted.sort(key=lambda m: m.score, reverse=True)
+    return boosted[:20]
 
 
 # ---------------------------------------------------------------------------
@@ -313,12 +439,13 @@ def detect_moments(
     task_id: str,
     precomputed_transcript: Optional[dict] = None,
     log: Optional[Callable] = None,
+    precomputed_audio_path: Optional[str] = None,
 ) -> Tuple[List[Moment], dict]:
     """
     Detect candidate moments for the LLM. Returns (moments, info).
 
     info contains:
-      - source: "captions" | "audio" | "none"
+      - source: "captions" | "audio" | "merged" | "none"
       - transcript: optional, the transcript used
       - audio_path: optional, the local audio file (if downloaded)
       - duration_s: video duration
@@ -343,15 +470,73 @@ def detect_moments(
         # Estimate duration from the last caption
         segs = transcript["segments"]
         info["duration_s"] = float(segs[-1].get("end", 0))
-        moments = _caption_moments_from_transcript(transcript, info["duration_s"])
-        # Pad with temporal candidates if too few real moments were found
-        # (guarantees NUM_CLIPS_YOUTUBE clips even for monotonous videos)
-        moments = _pad_with_temporal_candidates(moments, info["duration_s"], target_count=3)
-        log(f"  Built {len(moments)} candidate moments from captions (no audio download)")
+        text_moments = _caption_moments_from_transcript(transcript, info["duration_s"])
+        text_moments = _pad_with_temporal_candidates(text_moments, info["duration_s"], target_count=3)
+        log(f"  Built {len(text_moments)} text candidate moments from captions")
+        moments = text_moments
+
+        # ── If we already have an audio file (caller passed precomputed_audio_path),
+        # do the audio analysis and MERGE. This is the "nail in the coffin" path:
+        # text-only detection + audio-only detection, merged, boosted for overlap.
+        if precomputed_audio_path and Path(precomputed_audio_path).exists():
+            try:
+                log("  Audio already present — running combined analysis for merging...")
+                audio_info = audio_analysis.analyze_audio_peaks_and_valleys(precomputed_audio_path)
+                audio_moments = _audio_moments_from_file(precomputed_audio_path, info["duration_s"])
+                log(f"  Built {len(audio_moments)} audio candidate moments "
+                    f"({len(audio_info.get('steep_peaks', []))} steep peaks, "
+                    f"{len(audio_info.get('steep_valleys', []))} steep valleys)")
+                # Build a synthetic Moment list from the audio analysis so we can merge
+                # (without going through the moment_conversion)
+                synth_audio_moments: List[Moment] = []
+                for sp in audio_info.get("steep_peaks", [])[:8]:
+                    synth_audio_moments.append(Moment(
+                        index=0,
+                        start=sp["start"],
+                        end=sp["end"],
+                        signal_type="steep_peak",
+                        score=sp["score"],
+                        snippet=f"[STEEP PEAK at {sp['peak_s']:.1f}s, +{sp['relative_rise']:.2f}×]",
+                        source="audio_steep_peak",
+                        story_position=sp["start"] / max(1.0, info["duration_s"]),
+                    ))
+                for sv in audio_info.get("steep_valleys", [])[:8]:
+                    synth_audio_moments.append(Moment(
+                        index=0,
+                        start=sv["start"],
+                        end=sv["end"],
+                        signal_type="steep_valley",
+                        score=sv["score"],
+                        snippet=f"[STEEP VALLEY at {sv['trough_s']:.1f}s, -{sv['relative_drop']:.2f}×]",
+                        source="audio_steep_valley",
+                        story_position=sv["start"] / max(1.0, info["duration_s"]),
+                    ))
+                for p in audio_info.get("peaks", [])[:5]:
+                    synth_audio_moments.append(Moment(
+                        index=0,
+                        start=max(0, p["timestamp"] - 5.0),
+                        end=min(info["duration_s"], p["timestamp"] + 10.0),
+                        signal_type="peak",
+                        score=min(1.0, p["relative_to_mean"] / 3.0),
+                        snippet=f"[PEAK at {p['timestamp']:.1f}s, {p['relative_to_mean']:.2f}×]",
+                        source="audio_peak",
+                        story_position=p["timestamp"] / max(1.0, info["duration_s"]),
+                    ))
+                moments = _merge_text_and_audio_moments(text_moments, synth_audio_moments)
+                info["source"] = "merged"
+                info["audio_analysis"] = audio_info
+                log(f"  Merged to {len(moments)} final moments "
+                    f"(text + audio, boosted for overlap)")
+            except Exception as e:
+                log(f"  Audio merge failed, keeping text-only moments: {e}")
+
+        # Re-index
+        for i, m in enumerate(moments[:20], 1):
+            m.index = i
         return moments, info
 
-    # --- PATH 2: Audio fallback (librosa peaks + valleys) ---
-    log("  Captions unavailable — downloading audio for librosa peaks+valleys only")
+    # --- PATH 2: Audio fallback (librosa peaks + valleys + steep) ---
+    log("  Captions unavailable — downloading audio for librosa peaks+valleys+steep")
     audio_path = _download_audio(source, task_id, log)
     if not audio_path:
         log("  Audio download also failed — returning empty moments")
@@ -368,5 +553,5 @@ def detect_moments(
         info["duration_s"] = 0.0
 
     moments = _audio_moments_from_file(audio_path, info["duration_s"])
-    log(f"  Built {len(moments)} candidate moments from audio (peaks + valleys)")
+    log(f"  Built {len(moments)} candidate moments from audio (peaks + valleys + steep)")
     return moments, info

@@ -160,8 +160,58 @@ def _run_stage_6_taste_select(
     progress: ProgressCallback,
     llm_callable: Optional[Callable[[str], str]] = None,
 ) -> List[Dict]:
-    """Stage 6: build ICL prompt, call LLM, parse, rank, filter."""
+    """Stage 6: build ICL prompt, call LLM, parse, rank, filter.
+
+    COST CONTROL — three layers, in order:
+      1. Smart-skip: if we have 3+ high-confidence moments, skip the LLM
+         entirely. Saves the ~$0.003 per call on "obvious" requests.
+      2. Budget check: if daily budget is exhausted, skip the LLM and use
+         lexical fallback. Prevents a runaway prompt from blowing the cap.
+      3. Normal LLM call with strict token caps.
+    """
+    from ..llm import cost_control
+
     _emit(progress, "taste", "Selecting clips with taste-aware AI...")
+
+    # ── LAYER 1: smart-skip ────────────────────────────────────────────
+    # If we have 3+ moments with score >= SMART_SKIP_MIN_SCORE, the detection
+    # has done its job and the LLM is not needed for selection. We still use
+    # the orchestrator's rank_candidates to produce the final shape.
+    smart_skip, skip_reason = cost_control.should_smart_skip(candidates)
+    if smart_skip:
+        cost_control.record_skipped_smart()
+        _emit(progress, "taste",
+              f"Smart-skip: {skip_reason}. Using top-3 by score (LLM not called).")
+        # Use top-N by score as the "picks" — no LLM, no cost
+        sorted_c = sorted(candidates, key=lambda c: c.get("score", 0), reverse=True)
+        # Build a synthetic llm_response so rank_candidates does the right thing
+        synthetic_picks = []
+        for i, c in enumerate(sorted_c[:3], 1):
+            snippet = (c.get("snippet") or c.get("text") or c.get("reason") or "").strip()
+            words = snippet.split()[:5] if snippet else ["WATCH", "THIS"]
+            default_title = " ".join(w.upper() for w in words if w.isalnum())[:40] or "WATCH THIS"
+            synthetic_picks.append({
+                "moment_index": i,
+                "trim_start": 0.0,
+                "trim_end": 0.0,
+                "viral_title": default_title,
+                "caption": snippet[:100] or "(no caption)",
+                "hashtags": "#shorts #viral",
+                "reason": f"Smart-skip: score={c.get('score', 0):.2f} (LLM not called)",
+            })
+        return taste_selector.rank_candidates(
+            candidates, synthetic_picks, video_duration=video_meta.get("duration_s", 0),
+        )
+
+    # ── LAYER 2: budget check ──────────────────────────────────────────
+    if cost_control.budget_exceeded():
+        cost_control.record_skipped_budget()
+        _emit(progress, "taste",
+              f"LLM daily budget (${cost_control.LLM_DAILY_BUDGET_USD:.2f}) "
+              f"exhausted. Using energy-peak fallback.")
+        return taste_selector.rank_candidates(
+            candidates, None, video_duration=video_meta.get("duration_s", 0),
+        )
 
     history = []
     if creator_id and taste_store.creator_exists(creator_id):

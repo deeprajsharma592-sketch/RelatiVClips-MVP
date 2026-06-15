@@ -159,7 +159,18 @@ async def llm_status():
         from .llm.chain import chain_status
         return chain_status()
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "providers_configured": [], "circuit_breakers": {}}
+
+
+@app.get("/cost-status")
+async def cost_status():
+    """LLM cost tracker — daily spend, budget remaining, smart-skip count.
+
+    Use this to monitor the LLM budget in real time. Smart-skip calls are
+    free (no LLM), so the daily_spend_usd will be lower than total call count.
+    """
+    from .llm import cost_control
+    return cost_control.cost_status()
 
 
 @app.get("/proxy-status")

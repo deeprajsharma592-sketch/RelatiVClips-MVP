@@ -1,5 +1,5 @@
 """
-Audio signal analysis: BOTH peaks AND valleys.
+Audio signal analysis: peaks, valleys, AND steep events (transitions).
 
 Why valleys:
   - A "valley" is a sudden DECREASE in energy (RMS drops below mean × factor).
@@ -8,6 +8,14 @@ Why valleys:
     what makes a joke / reveal / callback land.
   - Detecting both gives the LLM candidates from the WHOLE story arc, not
     just the loudest moments.
+
+Why steep events (NEW):
+  - A "steep valley" is a TRANSITION — energy drops suddenly over <1s.
+    Catches "I lost everything..." [DROP] "...then made 10 Cr" beats.
+  - A "steep peak" is a sudden LOUD — emphasis, applause burst, laugh.
+  - These are different from sustained peaks/valleys: they are the EDGES,
+    not the regions. The combination of steep-valley → steep-peak is the
+    most viral structural pattern in short-form content.
 
 The "valley" is the hook the energy-based peak detector misses:
   - "I lost everything..." (3s valley, low energy)
@@ -23,6 +31,8 @@ from ..utils.config import (
     VALLEY_THRESHOLD_MULTIPLIER,
     VALLEY_MIN_DURATION_S,
     VALLEY_CONTEXT_PADDING_S,
+    STEEP_MIN_RELATIVE_DROP,
+    STEEP_MIN_RELATIVE_RISE,
 )
 
 
@@ -163,31 +173,7 @@ def analyze_audio_valleys(
     min_duration_s: float = VALLEY_MIN_DURATION_S,
     context_padding_s: float = VALLEY_CONTEXT_PADDING_S,
 ) -> dict:
-    """
-    Detect ENERGY VALLEYS — moments where the audio suddenly drops to a
-    low-energy state for >= min_duration_s. These are awkward silences,
-    dramatic pauses, the moment right before a punchline. The CONTRAST
-    with the surrounding energy is what makes them hook.
-
-    Algorithm:
-      1. Load audio + compute RMS energy per frame (same as peak detector)
-      2. Compute mean RMS
-      3. Mark frames where RMS < mean × VALLEY_THRESHOLD_MULTIPLIER
-      4. Group consecutive low frames into regions >= min_duration_s
-      5. For each region: extend by ±context_padding_s to form a clip
-         window (the valley + the peaks on either side = the hook)
-
-    Returns:
-        dict: {
-            valleys: [{
-                start, end,         # the clip window (with padding)
-                valley_start, valley_end,  # the actual low-energy region
-                depth,              # how far below mean the valley went (relative)
-                score,              # overall score (depth × duration)
-            }, ...],
-            mean_energy, threshold, duration_s
-        }
-    """
+    """Detect sustained ENERGY VALLEYS — see module docstring for details."""
     if progress_callback:
         progress_callback("Loading audio for valley analysis...")
 
@@ -198,10 +184,9 @@ def analyze_audio_valleys(
     mean_energy = float(np.mean(rms))
     threshold = mean_energy * VALLEY_THRESHOLD_MULTIPLIER
 
-    frame_dur = hop_length / sr  # seconds per frame
+    frame_dur = hop_length / sr
     min_frames = max(1, int(min_duration_s / frame_dur))
 
-    # Find low-energy regions
     low_mask = rms < threshold
     valleys: List[dict] = []
 
@@ -222,11 +207,10 @@ def analyze_audio_valleys(
                 valley_end_frame = i
                 valley_dur = (valley_end_frame - valley_start_frame) * frame_dur
                 if valley_dur >= min_duration_s:
-                    depth = (mean_energy - valley_min_energy) / mean_energy  # 0-1
-                    score = depth * (valley_dur / 10.0)  # weight duration
+                    depth = (mean_energy - valley_min_energy) / mean_energy
+                    score = depth * (valley_dur / 10.0)
                     valley_start_s = valley_start_frame * frame_dur
                     valley_end_s = valley_end_frame * frame_dur
-                    # Pad both sides to capture the surrounding peaks
                     clip_start = max(0, valley_start_s - context_padding_s)
                     clip_end = valley_end_s + context_padding_s
                     valleys.append({
@@ -241,7 +225,6 @@ def analyze_audio_valleys(
                 in_valley = False
                 valley_min_energy = 1e9
 
-    # Handle valley that extends to end of audio
     if in_valley:
         valley_end_frame = len(low_mask)
         valley_dur = (valley_end_frame - valley_start_frame) * frame_dur
@@ -279,17 +262,115 @@ def analyze_audio_valleys(
     }
 
 
+def _detect_steep_events(
+    rms: np.ndarray,
+    mean_energy: float,
+    frame_dur: float,
+) -> Tuple[List[dict], List[dict]]:
+    """Detect sudden energy TRANSITIONS — steep valleys and steep peaks.
+
+    A "steep valley" is a moment where the smoothed RMS energy DROPS rapidly
+    (over < 1 second) by at least STEEP_MIN_RELATIVE_DROP × mean_energy. This
+    catches "I lost everything..." [drop] "...then made 10 Cr" beats.
+
+    A "steep peak" is the opposite — a rapid RISE. Catches emphasis, applause
+    bursts, music swells, "BOOM" moments.
+
+    Args:
+        rms: 1-D array of per-frame RMS values (already computed once).
+        mean_energy: Mean RMS across the whole clip (for normalization).
+        frame_dur: Seconds per frame.
+
+    Returns:
+        (steep_valleys, steep_peaks) — each is a list of dicts with start,
+        end, transition timestamp, magnitude, and score.
+    """
+    STEEP_WINDOW = 8  # ~0.25s smoothing window at 16kHz / hop=512
+    drop_threshold = mean_energy * STEEP_MIN_RELATIVE_DROP
+    rise_threshold = mean_energy * STEEP_MIN_RELATIVE_RISE
+
+    # Smooth the RMS to remove per-frame noise
+    kernel = np.ones(STEEP_WINDOW) / STEEP_WINDOW
+    rms_smooth = np.convolve(rms, kernel, mode="same")
+    # First-order delta (rate of change per frame)
+    delta = np.diff(rms_smooth, prepend=rms_smooth[0])
+
+    steep_valleys: List[dict] = []
+    steep_peaks: List[dict] = []
+
+    i = STEEP_WINDOW
+    n = len(delta)
+    while i < n - STEEP_WINDOW:
+        d = delta[i]
+        if d < -drop_threshold:
+            # Walk through the drop region to find the trough
+            region_end = i
+            while region_end < n and delta[region_end] < 0:
+                region_end += 1
+            trough_idx = i + int(np.argmin(delta[i:region_end]))
+            trough_s = float(trough_idx * frame_dur)
+            drop_magnitude = float(max(0.0, rms_smooth[i - 1] - rms_smooth[trough_idx]))
+            relative_drop = drop_magnitude / max(mean_energy, 1e-6)
+            steep_valleys.append({
+                "start": round(max(0.0, trough_s - 2.0), 2),
+                "end": round(trough_s + 2.0, 2),
+                "trough_s": round(trough_s, 2),
+                "drop_magnitude": round(drop_magnitude, 4),
+                "relative_drop": round(relative_drop, 3),
+                "score": round(min(1.0, relative_drop / 0.5), 3),
+            })
+            i = region_end
+        elif d > rise_threshold:
+            region_end = i
+            while region_end < n and delta[region_end] > 0:
+                region_end += 1
+            peak_idx = i + int(np.argmax(delta[i:region_end]))
+            peak_s = float(peak_idx * frame_dur)
+            rise_magnitude = float(max(0.0, rms_smooth[peak_idx] - rms_smooth[i - 1]))
+            relative_rise = rise_magnitude / max(mean_energy, 1e-6)
+            steep_peaks.append({
+                "start": round(max(0.0, peak_s - 2.0), 2),
+                "end": round(peak_s + 2.0, 2),
+                "peak_s": round(peak_s, 2),
+                "rise_magnitude": round(rise_magnitude, 4),
+                "relative_rise": round(relative_rise, 3),
+                "score": round(min(1.0, relative_rise / 0.5), 3),
+            })
+            i = region_end
+        else:
+            i += 1
+
+    # Dedupe overlapping events (keep highest score)
+    def _dedupe(events: List[dict]) -> List[dict]:
+        if not events:
+            return []
+        events = sorted(events, key=lambda e: e["score"], reverse=True)
+        kept: List[dict] = []
+        for e in events:
+            if any(not (e["end"] < k["start"] or e["start"] > k["end"]) for k in kept):
+                continue
+            kept.append(e)
+        return kept
+
+    return _dedupe(steep_valleys), _dedupe(steep_peaks)
+
+
 def analyze_audio_peaks_and_valleys(
     audio_path: str, progress_callback=None
 ) -> dict:
-    """
-    One-shot: load the audio once, return both peaks and valleys.
+    """One-shot: load the audio once, return peaks + valleys + steep events.
 
     This is the entry point the moment_detector uses. Avoids loading the
     same audio file twice (which would be 2x the I/O + decode time).
+
+    The four signal types returned:
+      - peaks:        sustained high-energy regions
+      - valleys:      sustained low-energy regions
+      - steep_peaks:  sudden LOUD transitions (emphasis, applause, BOOM)
+      - steep_valleys: sudden QUIET transitions (dramatic drops, "wait for it")
     """
     if progress_callback:
-        progress_callback("Loading audio for combined peak + valley analysis...")
+        progress_callback("Loading audio for combined peak + valley + steep analysis...")
 
     y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
     hop_length = 512
@@ -373,16 +454,24 @@ def analyze_audio_peaks_and_valleys(
 
     valleys.sort(key=lambda v: v["score"], reverse=True)
 
+    # ── STEEP EVENTS (NEW) ─────────────────────────────────────────────
+    steep_valleys, steep_peaks = _detect_steep_events(rms, mean_energy, frame_dur)
+    steep_valleys.sort(key=lambda v: v["score"], reverse=True)
+    steep_peaks.sort(key=lambda v: v["score"], reverse=True)
+
     duration = float(len(y)) / sr
 
     if progress_callback:
         progress_callback(
-            f"Found {len(peaks)} peaks + {len(valleys)} valleys over {duration:.1f}s"
+            f"Found {len(peaks)} peaks + {len(valleys)} valleys + "
+            f"{len(steep_peaks)} steep peaks + {len(steep_valleys)} steep valleys over {duration:.1f}s"
         )
 
     return {
         "peaks": peaks,
         "valleys": valleys,
+        "steep_peaks": steep_peaks,
+        "steep_valleys": steep_valleys,
         "mean_energy": round(mean_energy, 4),
         "peak_threshold": round(peak_threshold, 4),
         "valley_threshold": round(valley_threshold, 4),
