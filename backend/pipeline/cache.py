@@ -1,12 +1,16 @@
 """
-Pipeline cache (Option 1: URL-keyed result cache + Option 3: Source segment cache).
+Pipeline cache (URL-keyed result cache + Source segment cache).
 
-NEW 2026-06-15: shipped to cut repeat-request compute by 40-50%.
+SIMPLIFIED 2026-06-15:
+  - Dropped `platform` from result cache key — all platforms (TikTok/Reels/Shorts)
+    now produce the same universal 9:16 22-30s clip, so same URL = same cache
+    entry. Cache hit rate triples vs the old (url, platform) key.
+  - Kept segment cache as-is (it was always URL-based).
 
 Two caches, both file-based (no Redis needed at this scale):
 
-  1. RESULT CACHE  — same URL+platform → same LLM picks → no re-processing
-     Key:   cache/youtube_results/{sha256(url+platform)[:16]}.json
+  1. RESULT CACHE  — same URL → same LLM picks → no re-processing
+     Key:   cache/youtube_results/{sha256(url)[:16]}.json
      Value: full clip list (metadata only, no file_path) + LLM cost data
      TTL:   7 days (FILE_RETENTION_HOURS)
      Saved: at end of successful run
@@ -20,20 +24,15 @@ Two caches, both file-based (no Redis needed at this scale):
      Hit:   before each surgical segment download
 
 Why this works for re-renders:
-  - User requests TikTok → 3 surgical segments downloaded + cached
+  - User requests TikTok → 3 surgical segments downloaded + cached, result cached
   - User then requests Reels for same video:
-    - Result cache: MISS (different platform key) → LLM runs
-    - Segment cache: HIT × 3 → 0 re-downloads
-    - Net savings: 30-50% of compute (skipping yt-dlp segment downloads)
-  - User then re-requests TikTok (same params):
-    - Result cache: HIT → 0 LLM, 0 download, instant return
-    - Net savings: 100% of compute
+    - Result cache: HIT → 0 LLM cost, 0 download, instant return
+  - User then requests Shorts for same video:
+    - Result cache: HIT → 0 LLM cost, 0 download, instant return
 
 Storage math:
-  - 100 runs/day × 30MB/result + 100MB/segments × 7d = ~91GB max
-  - Hetzner 150GB VPS: 60% used → 91GB cache would push to 150% (over)
-  - Mitigation: 50% cache hit rate in steady state means 50% of that = 45GB
-  - Aggressive cleanup: only keep last 3 days hot, evict older
+  - 100 runs/day × 50KB/result + 100MB/segments × 7d = ~91GB max
+  - Aggressive cleanup: only keep last 7 days, evict older
 
 Cleaned by: cleanup_cache_files() — same 2h grace + 7d TTL pattern as temp/outputs.
 """
@@ -68,28 +67,24 @@ def segment_hash(url: str, start: float, end: float) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# RESULT CACHE (Option 1)
+# RESULT CACHE (URL-only key, all platforms share the same entry)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def result_cache_path(url: str, platform: str) -> Path:
-    """Path to the cached result JSON for (url, platform)."""
-    payload = f"{url}|{platform}"
-    key = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
-    return CACHE_DIR / "youtube_results" / f"{key}.json"
+def result_cache_path(url: str) -> Path:
+    """Path to the cached result JSON for URL."""
+    return CACHE_DIR / "youtube_results" / f"{url_hash(url)}.json"
 
 
 def get_cached_result(
     url: str,
-    platform: str,
     max_age_hours: int = FILE_RETENTION_HOURS,
     verify_files: bool = True,
 ) -> Optional[dict]:
     """
-    Get cached result for (url, platform) if fresh AND files still exist.
+    Get cached result for URL if fresh AND files still exist.
 
     Args:
         url: YouTube URL
-        platform: "tiktok" | "reels" | "shorts"
         max_age_hours: TTL in hours (default FILE_RETENTION_HOURS = 7d)
         verify_files: if True, also check that referenced files still exist on disk
 
@@ -97,7 +92,7 @@ def get_cached_result(
         Cached result dict with _cache_hit=True, _cache_age_hours=N, _cache_savings_usd=X
         or None if cache miss / stale / files missing.
     """
-    path = result_cache_path(url, platform)
+    path = result_cache_path(url)
     if not path.exists():
         return None
 
@@ -114,16 +109,12 @@ def get_cached_result(
         return None
 
     if verify_files:
-        # Check that the referenced clip files still exist on disk
         clips = data.get("clips", [])
         for c in clips:
-            url_path = c.get("url", "")
-            if url_path and not Path(url_path.replace("/download/", str(Path(__file__).parent.parent.parent / "outputs") + "/")).exists():
-                # Try the actual disk path
-                file_path = c.get("file_path")
-                if file_path and not Path(file_path).exists():
-                    log.debug(f"[CACHE] Result references missing file {file_path}, invalidating")
-                    return None
+            file_path = c.get("file_path")
+            if file_path and not Path(file_path).exists():
+                log.debug(f"[CACHE] Result references missing file {file_path}, invalidating")
+                return None
 
     # Annotate hit metadata
     data["_cache_hit"] = True
@@ -132,13 +123,13 @@ def get_cached_result(
     data["llm_cost_usd"] = 0.0  # Cost is 0 on hit
     data["cost_per_clip_usd"] = 0.0
     log.info(
-        f"[CACHE] HIT result: {url[:50]}... ({platform}) "
+        f"[CACHE] HIT result: {url[:50]}... "
         f"age={age_h:.1f}h saved=${data['_cache_savings_usd']:.4f}"
     )
     return data
 
 
-def save_result_cache(url: str, platform: str, result: dict) -> bool:
+def save_result_cache(url: str, result: dict) -> bool:
     """
     Save a successful pipeline result to cache.
 
@@ -148,11 +139,10 @@ def save_result_cache(url: str, platform: str, result: dict) -> bool:
     Returns:
         True if saved, False on error.
     """
-    path = result_cache_path(url, platform)
+    path = result_cache_path(url)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Build a cacheable subset
         cacheable = {
             "clips": [],
             "llm_cost_usd": result.get("llm_cost_usd", 0.0),
@@ -160,7 +150,6 @@ def save_result_cache(url: str, platform: str, result: dict) -> bool:
             "llm_provider": result.get("llm_provider"),
             "llm_model": result.get("llm_model"),
             "archetype": result.get("archetype"),
-            "platform": platform,
             "n_clips": len(result.get("clips", [])),
             "cached_at": time.time(),
             "cached_url_hash": url_hash(url),
@@ -168,17 +157,16 @@ def save_result_cache(url: str, platform: str, result: dict) -> bool:
         for c in result.get("clips", []):
             cacheable_clip = {
                 k: v for k, v in c.items()
-                if k not in ("file_path",)  # strip disk path
+                if k not in ("file_path",)
             }
             cacheable["clips"].append(cacheable_clip)
 
-        # Write atomically: write to .tmp then rename
         tmp = path.with_suffix(".tmp")
         with open(tmp, "w") as f:
             json.dump(cacheable, f, default=str, indent=2)
         tmp.rename(path)
         log.info(
-            f"[CACHE] Saved result: {url[:50]}... ({platform}) "
+            f"[CACHE] Saved result: {url[:50]}... "
             f"→ {path.name} ({len(cacheable['clips'])} clips, ${cacheable['llm_cost_usd']:.4f})"
         )
         return True
@@ -188,7 +176,7 @@ def save_result_cache(url: str, platform: str, result: dict) -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SEGMENT CACHE (Option 3)
+# SEGMENT CACHE (URL + time-range key)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def segment_cache_path(url: str, start: float, end: float) -> Path:
@@ -231,7 +219,6 @@ def save_segment_cache(url: str, start: float, end: float, segment_path: Path) -
     target = segment_cache_path(url, start, end)
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    # Don't overwrite a fresher cache
     if target.exists():
         age_h = (time.time() - target.stat().st_mtime) / 3600
         if age_h < FILE_RETENTION_HOURS:
@@ -260,7 +247,6 @@ def cleanup_cache_files(max_age_hours: int = FILE_RETENTION_HOURS) -> dict:
     Returns:
         {deleted_count, deleted_mb, errors}
     """
-    from datetime import datetime, timedelta
     cutoff = time.time() - (max_age_hours * 3600)
     deleted = 0
     deleted_bytes = 0

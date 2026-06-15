@@ -558,9 +558,12 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     from ..pipeline.orchestrator import run_new_pipeline
     from ..pipeline.moment_detector import detect_moments, Moment
     from ..taste.icl import build_moment_prompt, build_archetype_aware_prompt, parse_moment_response
+    # SIMPLIFIED 2026-06-15: dropped PLATFORMS dict + per-platform functions.
+    # Universal format (single 9:16 22-30s spec) — see platforms.py.
     from ..pipeline.platforms import (
-        get_platform, adjust_clip_for_platform, platform_prompt_guidance,
-        limit_hashtags, style_caption, PLATFORMS,
+        prompt_guidance as platform_prompt_guidance,
+        adjust_clip_to_format as adjust_clip_for_platform,
+        style_caption, limit_hashtags,
     )
 
     def _bridge(stage: str, msg: str) -> None:
@@ -631,10 +634,8 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     # Build the prompt. Use the new archetype-aware prompt (2026-06-15) when
     # we have enough moments to give the LLM context. Fall back to the legacy
     # moment prompt for edge cases.
-    # ALSO inject platform guidance (TikTok/Reels/Shorts) so the LLM writes
-    # platform-native copy, not generic copy. (2026-06-15)
-    platform_spec = get_platform(platform)
-    platform_guidance = platform_prompt_guidance(platform_spec)
+    # SIMPLIFIED 2026-06-15: dropped per-platform prompt guidance. All platforms
+    # (TikTok/Reels/Shorts) now share the same universal 9:16 22-30s format.
     try:
         # Quick archetype detection (fast, no LLM)
         from ..pipeline.archetype import detect_archetype
@@ -655,8 +656,6 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
             )
         else:
             prompt = build_moment_prompt(moments, video_meta, max_picks=3)
-        # Inject platform guidance at the end of the prompt
-        prompt = f"{prompt}\n\n{platform_guidance}"
     except Exception:
         # Fall back to legacy prompt on any error
         prompt = build_moment_prompt(moments, video_meta, max_picks=3)
@@ -705,17 +704,17 @@ def _run_moment_pipeline(
     from ..pipeline import face_detection as face_stage
     from ..pipeline import renderer as renderer_module
     from ..pipeline.platforms import (
-        get_platform, adjust_clip_for_platform, style_caption, limit_hashtags,
+        adjust_clip_to_format as adjust_clip_for_platform,
+        style_caption, limit_hashtags,
     )
     from datetime import datetime
     from ..llm.chain import call_with_fallback
     from ..taste.icl import parse_moment_response
 
-    # NEW 2026-06-15: Resolve the platform spec once. Used for:
-    #   - adjusting final clip duration to platform sweet spot
-    #   - styling caption (ALL CAPS for TikTok, mixed for Reels/Shorts)
-    #   - limiting hashtag count to platform's max
-    _platform_spec = get_platform(platform)
+    # SIMPLIFIED 2026-06-15: All platforms (TikTok/Reels/Shorts) now share the
+    # same universal 9:16 22-30s format. The `platform` param is kept for
+    # analytics logging but doesn't change output. The functions above are
+    # aliased to the universal format variants.
 
     def _bridge(stage_or_msg: str, msg: str = None, step: int = None, sub_progress: float = None) -> None:
         """Bridge accepts (stage, msg) or just (msg) — the renderer uses a
@@ -1106,31 +1105,28 @@ def _run_moment_pipeline(
                 "verified": False,
             })
 
-    # 3a. Apply per-platform adjustments (NEW 2026-06-15)
-    #      TikTok/Reels/Shorts each have different sweet-spot durations.
-    #      A clip that works for Shorts (35s) is too long for Reels (30s).
-    #      We adjust [start, end] to fit the target platform.
+    # 3a. Apply universal format adjustments (SIMPLIFIED 2026-06-15)
+    #      Single 22-30s sweet spot for all platforms. Stretches short clips
+    #      to 26s, trims long ones. Always delivers in_target_range.
     try:
-        _bridge("platform", f"Applying {_platform_spec.name} adjustments "
-                            f"({_platform_spec.min_duration_s:.0f}-{_platform_spec.max_duration_s:.0f}s, "
-                            f"target {_platform_spec.target_duration_s:.0f}s)")
+        _bridge("platform", f"Applying universal format adjustments "
+                            f"(22-30s, target 26s)")
         adjusted = []
         for clip in final_clips:
             new_start, new_end, reason = adjust_clip_for_platform(
                 float(clip.get("start", 0)),
                 float(clip.get("end", 0)),
-                _platform_spec,
             )
             clip["start"] = round(new_start, 2)
             clip["end"] = round(new_end, 2)
             clip["_platform_adjustment"] = reason
-            # Apply platform-specific caption styling + hashtag limit
-            clip["caption"] = style_caption(clip.get("caption", ""), _platform_spec)
-            clip["hashtags"] = limit_hashtags(clip.get("hashtags", ""), _platform_spec)
+            # Apply universal caption styling + hashtag limit
+            clip["caption"] = style_caption(clip.get("caption", ""))
+            clip["hashtags"] = limit_hashtags(clip.get("hashtags", ""))
             adjusted.append(clip)
         final_clips = adjusted
     except Exception as e:
-        _bridge("platform", f"Platform adjustment skipped: {e}")
+        _bridge("platform", f"Format adjustment skipped: {e}")
 
     # 3b. Re-fetch VIDEO for the LLM-picked moments. The audio-only surgical
     # pass above is great for cheap LLM scoring, but the renderer needs
@@ -1338,9 +1334,9 @@ def _run_moment_pipeline(
     clean_rendered = []
     for c in rendered:
         clean = {k: v for k, v in c.items() if k not in ("face_data", "transcript")}
-        # NEW 2026-06-15: Tag every clip with the platform it was
-        # optimised for, so the UI/response can show it.
-        clean["platform"] = _platform_spec.name
+        # SIMPLIFIED 2026-06-15: `platform` is now cosmetic/analytics-only.
+        # All clips are the same universal 9:16 22-30s format.
+        clean["platform"] = "universal"
         clean_rendered.append(clean)
     n_clips = max(1, len(clean_rendered))  # always show per-pick cost
     return {
@@ -1356,17 +1352,18 @@ def _run_moment_pipeline(
         "clips_verified": sum(1 for c in clean_rendered if c.get("verified")),
         "clips_unverified": sum(1 for c in clean_rendered if not c.get("verified")),
         "best_effort_count": sum(1 for c in clean_rendered if c.get("best_effort")),
-        "platform": _platform_spec.name,  # NEW 2026-06-15
+        "platform": "universal",  # SIMPLIFIED 2026-06-15
     }
 
 
 async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform: str = "tiktok"):
-    # NEW 2026-06-15: Result cache check (Option 1).
-    # If we've processed this (url, platform) recently, return instantly
-    # without burning LLM cost or download bandwidth.
+    # NEW 2026-06-15: Result cache check (Option 1, SIMPLIFIED to URL-only key).
+    # All platforms now produce the same universal 9:16 22-30s clip, so
+    # `platform` is purely cosmetic (kept for analytics logging).
+    # Same URL = same cache entry = 3x hit rate vs the old (url, platform) key.
     try:
         from ..pipeline.cache import get_cached_result
-        cached = get_cached_result(url, platform)
+        cached = get_cached_result(url)
         if cached and cached.get("clips"):
             clips = cached.get("clips", [])
             task_store.update_task(
@@ -1441,12 +1438,12 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
                 honest_message=result.get("honest_message"),
             )
             # NEW 2026-06-15: Save result cache (Option 1) on success.
-            # Cache = same (url, platform) → same LLM picks, instant re-runs.
+            # Universal cache key (URL only) — all platforms share the entry.
             # Only cache when we actually got clips (no point caching failures).
             if clips and clips[0].get("file_path"):
                 try:
                     from ..pipeline.cache import save_result_cache
-                    save_result_cache(url, platform, result)
+                    save_result_cache(url, result)
                 except Exception as e:
                     print(f"[CACHE] Result cache save failed (continuing): {e}")
         except Exception as e:
@@ -1495,11 +1492,11 @@ async def process_youtube_url(request: dict):
     url = request.get("url")
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
-    # NEW 2026-06-15: per-platform output (TikTok/Reels/Shorts).
-    # Default = "tiktok" (most popular, most platform-native).
-    platform = (request.get("platform") or "tiktok").lower().strip()
-    if platform not in ("tiktok", "reels", "shorts"):
-        platform = "tiktok"
+    # SIMPLIFIED 2026-06-15: `platform` is now cosmetic/analytics-only.
+    # All platforms (TikTok/Reels/Shorts) produce the same universal 9:16 22-30s
+    # clip. We keep the param for downstream analytics/logging, but no longer
+    # differentiate output. Default = "universal" for clarity.
+    platform = (request.get("platform") or "universal").lower().strip() or "universal"
 
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}")
 
