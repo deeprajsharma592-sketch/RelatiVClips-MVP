@@ -81,10 +81,28 @@ export default function Header() {
               }}
             />
           </motion.div>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-2">
             <span className="font-display text-lg font-semibold tracking-tight" style={{ color: "var(--color-text-primary)" }}>
               Relati<span className="text-gradient-sunset">V</span>
             </span>
+            {/* BETA pill — site-wide product status marker, links to /beta */}
+            <Link
+              href="/beta"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold uppercase tracking-wider transition-all hover:scale-105"
+              style={{
+                background: "linear-gradient(135deg, rgba(252, 211, 77, 0.18) 0%, rgba(255, 119, 233, 0.18) 100%)",
+                border: "1px solid rgba(252, 211, 77, 0.35)",
+                color: "var(--color-text-primary)",
+                letterSpacing: "0.08em",
+              }}
+              title="RelatiV is in public beta — learn more"
+            >
+              <span
+                className="inline-block w-1 h-1 rounded-full"
+                style={{ background: "#FCD34D" }}
+              />
+              Beta
+            </Link>
             {pathname === "/" && (
               <span className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
                 [Φ]

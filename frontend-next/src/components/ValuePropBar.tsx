@@ -20,7 +20,7 @@ import { Rocket, Code2, Sparkles, ArrowUpRight } from "lucide-react";
 const ITEMS = [
   { icon: Rocket, label: "v2.0 just shipped" },
   { icon: Code2, label: "open codebase" },
-  { icon: Sparkles, label: "private beta" },
+  { icon: Sparkles, label: "public beta" },
 ];
 
 export default function ValuePropBar() {

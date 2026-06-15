@@ -112,9 +112,40 @@ app.include_router(clips_router.router)
 app.include_router(verification_router.router)
 
 
+# ─── App identity ───────────────────────────────────────────────────────────
+# RelatiV is in public beta. Single source of truth for the version + status
+# so the frontend, JSON-LD, /health, and /version endpoints all stay in sync.
+APP_NAME = "RelatiV"
+APP_VERSION = "2.0.0"
+APP_STAGE = "beta"   # beta | rc | stable
+APP_BUILT_AT = "2026-06-15"
+
+
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "version": "2.0.0"}
+    return {
+        "status": "healthy",
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "stage": APP_STAGE,
+    }
+
+
+@app.get("/version")
+async def version_info():
+    """Public version + lifecycle marker. Used by the frontend footer/metadata.
+
+    Keep this in sync with APP_VERSION + APP_STAGE above and the JSON-LD
+    applicationStatus in frontend-next/src/app/layout.tsx.
+    """
+    return {
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "stage": APP_STAGE,
+        "built_at": APP_BUILT_AT,
+        "is_beta": APP_STAGE in ("beta", "rc"),
+        "support_url": "https://discord.gg/relativ",
+    }
 
 
 @app.get("/llm-status")

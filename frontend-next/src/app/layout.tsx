@@ -45,9 +45,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "RelatiV — Viral clips, picked by AI, finished in minutes",
+  title: "RelatiV (Beta) — Viral clips, picked by AI, finished in minutes",
   description:
-    "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship.",
+    "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship. Now in public beta.",
   metadataBase: new URL("https://relativclips.com"),
   alternates: {
     canonical: "/",
@@ -56,24 +56,24 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://relativclips.com",
     siteName: "RelatiV",
-    title: "RelatiV — Turn one video into ten viral clips in 60 seconds",
+    title: "RelatiV (Beta) — Turn one video into ten viral clips in 60 seconds",
     description:
-      "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship.",
+      "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship. Now in public beta.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "RelatiV — viral clip engine. Turn one video into ten viral clips in 60 seconds.",
+        alt: "RelatiV (Beta) — viral clip engine. Turn one video into ten viral clips in 60 seconds.",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RelatiV — Turn one video into ten viral clips in 60 seconds",
+    title: "RelatiV (Beta) — Turn one video into ten viral clips in 60 seconds",
     description:
-      "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors.",
+      "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors. Now in public beta.",
     images: ["/twitter-card.png"],
     creator: "@relativclips",
     site: "@relativclips",
@@ -133,15 +133,18 @@ const APP_JSON_LD = {
   name: "RelatiV",
   applicationCategory: "MultimediaApplication",
   applicationSubCategory: "Video Editing Software",
+  applicationStatus: "https://schema.org/Beta",  // ← BETA marker for SEO
+  softwareVersion: "2.0.0-beta",
   operatingSystem: "Web",
   url: "https://relativclips.com",
   description:
-    "Paste a YouTube link. Get 10 ready-to-post short-form clips in 5 minutes. Taste-based AI selection, designer captions, your brand colors. 3-sided marketplace for creators, brands, and clippers.",
+    "Paste a YouTube link. Get 10 ready-to-post short-form clips in 5 minutes. Taste-based AI selection, designer captions, brand colors. 3-sided marketplace for creators, brands, and clippers. Currently in public beta.",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
     description: "Free tier with pay-as-you-go marketplace + Pro/Elite plans",
+    availability: "https://schema.org/PreOrder",
   },
   featureList: [
     "Taste-based AI clip selection",

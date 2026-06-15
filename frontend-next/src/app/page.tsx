@@ -236,7 +236,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
             <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#10B981" }} />
             <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: "#10B981" }} />
           </span>
-          <span>Now in private beta</span>
+          <span>Now in public beta</span>
           <span style={{ color: "var(--color-text-faint)" }}>·</span>
           <span className="font-mono">Φ = taste, not length</span>
         </motion.div>
@@ -461,7 +461,7 @@ function RealProductPreview() {
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-cool-cyan)" }} />
-            <span>private beta — DM to join</span>
+            <span>public beta — sign up to start</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-gold-500)" }} />

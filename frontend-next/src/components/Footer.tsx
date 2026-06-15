@@ -129,10 +129,21 @@ export default function Footer() {
                 All systems operational
               </span>
               <span
-                className="text-[10px] font-mono"
+                className="text-[10px] font-mono inline-flex items-center gap-1"
                 style={{ color: "var(--color-text-muted)" }}
               >
-                · v2.0
+                <span
+                  className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold"
+                  style={{
+                    background: "rgba(252, 211, 77, 0.12)",
+                    border: "1px solid rgba(252, 211, 77, 0.30)",
+                    color: "#FCD34D",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  BETA
+                </span>
+                · v2.0.0
               </span>
             </div>
           </div>

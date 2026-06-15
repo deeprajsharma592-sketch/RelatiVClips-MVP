@@ -221,6 +221,24 @@ export default function DashboardShell({
             >
               ← Back to public site
             </Link>
+            <div
+              className="text-center text-[9px] font-mono pt-1 flex items-center justify-center gap-1"
+              style={{ color: "var(--color-text-faint)" }}
+              title="RelatiV is in public beta — your feedback shapes the product"
+            >
+              <span
+                className="px-1 py-0.5 rounded-full text-[8px] font-semibold"
+                style={{
+                  background: "rgba(252, 211, 77, 0.10)",
+                  border: "1px solid rgba(252, 211, 77, 0.30)",
+                  color: "#FCD34D",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                BETA
+              </span>
+              <span>v2.0.0</span>
+            </div>
           </div>
         </aside>
 
