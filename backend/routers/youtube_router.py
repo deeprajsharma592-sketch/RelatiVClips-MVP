@@ -537,7 +537,7 @@ def create_progress_callback(task_id: str):
     return callback
 
 
-async def run_youtube_orchestrator(task_id: str, url: str, callback):
+async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: str = "tiktok"):
     """New pipeline path (PIPELINE_VERSION=2) — caption-first, audio-only-for-librosa.
 
     Flow (the "v3" pipeline):
@@ -547,14 +547,21 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
          build candidate moments from those
       4. Run the rest of the pipeline (surgical, render) on top moments
       5. LLM (claude/deepseek) picks 2-5 with strict JSON, low token cost
+      6. Apply platform-specific duration + caption style (NEW 2026-06-15)
 
     Audio is NEVER used as input to the LLM. Audio is ONLY used for librosa
     energy analysis when captions aren't available. Captions are 80%+ of the
     pipeline; audio is the fallback.
+
+    `platform` is one of "tiktok" | "reels" | "shorts". Default = "tiktok".
     """
     from ..pipeline.orchestrator import run_new_pipeline
     from ..pipeline.moment_detector import detect_moments, Moment
     from ..taste.icl import build_moment_prompt, build_archetype_aware_prompt, parse_moment_response
+    from ..pipeline.platforms import (
+        get_platform, adjust_clip_for_platform, platform_prompt_guidance,
+        limit_hashtags, style_caption, PLATFORMS,
+    )
 
     def _bridge(stage: str, msg: str) -> None:
         try:
@@ -624,6 +631,10 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
     # Build the prompt. Use the new archetype-aware prompt (2026-06-15) when
     # we have enough moments to give the LLM context. Fall back to the legacy
     # moment prompt for edge cases.
+    # ALSO inject platform guidance (TikTok/Reels/Shorts) so the LLM writes
+    # platform-native copy, not generic copy. (2026-06-15)
+    platform_spec = get_platform(platform)
+    platform_guidance = platform_prompt_guidance(platform_spec)
     try:
         # Quick archetype detection (fast, no LLM)
         from ..pipeline.archetype import detect_archetype
@@ -644,6 +655,8 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
             )
         else:
             prompt = build_moment_prompt(moments, video_meta, max_picks=3)
+        # Inject platform guidance at the end of the prompt
+        prompt = f"{prompt}\n\n{platform_guidance}"
     except Exception:
         # Fall back to legacy prompt on any error
         prompt = build_moment_prompt(moments, video_meta, max_picks=3)
@@ -664,6 +677,7 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback):
             video_duration_s=info.get("duration_s", 0),
             callback=callback,
             info=info,
+            platform=platform,
         ),
     )
     return final_clips
@@ -679,6 +693,7 @@ def _run_moment_pipeline(
     video_duration_s: float,
     callback,
     info: dict,
+    platform: str = "tiktok",
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
 
@@ -689,9 +704,18 @@ def _run_moment_pipeline(
     from ..pipeline import surgical as surgical_stage
     from ..pipeline import face_detection as face_stage
     from ..pipeline import renderer as renderer_module
+    from ..pipeline.platforms import (
+        get_platform, adjust_clip_for_platform, style_caption, limit_hashtags,
+    )
     from datetime import datetime
     from ..llm.chain import call_with_fallback
     from ..taste.icl import parse_moment_response
+
+    # NEW 2026-06-15: Resolve the platform spec once. Used for:
+    #   - adjusting final clip duration to platform sweet spot
+    #   - styling caption (ALL CAPS for TikTok, mixed for Reels/Shorts)
+    #   - limiting hashtag count to platform's max
+    _platform_spec = get_platform(platform)
 
     def _bridge(stage_or_msg: str, msg: str = None, step: int = None, sub_progress: float = None) -> None:
         """Bridge accepts (stage, msg) or just (msg) — the renderer uses a
@@ -772,6 +796,31 @@ def _run_moment_pipeline(
         _bridge("audio_an", "Audio features extracted for all segments", step=4, sub_progress=0.8)
     except Exception as e:
         _bridge("audio_an", f"Audio enrichment skipped: {e}", step=4, sub_progress=0.8)
+
+    # 1c. NEW 2026-06-15 (A1+A3): Speculative video download for top-3
+    #     candidates in PARALLEL with the LLM call. If LLM picks one of
+    #     the top-3, the video is already on disk and we skip the
+    #     expensive re-download step (saves ~35s).
+    #     Risk: 3 video downloads even if LLM picks none of them (~1.5MB
+    #     extra bandwidth). Win: 35s faster on the common case.
+    spec_results: Dict[int, Dict] = {}
+    try:
+        from ..pipeline.speculative import speculative_video_download
+        _bridge("video_dl", "Pre-fetching video for top-3 candidates (speculative, in parallel with LLM)...",
+                step=4, sub_progress=0.82)
+        spec_results = speculative_video_download(
+            url=url,
+            top_candidates=moment_dicts,  # 0-indexed list, same order as top_for_surgery
+            task_id=task_id,
+            log_fn=_bridge,
+            max_workers=2,
+        )
+        n_spec_ok = sum(1 for v in spec_results.values() if v.get("video_path"))
+        _bridge("video_dl", f"Speculative video: {n_spec_ok}/{len(spec_results)} ready",
+                step=4, sub_progress=0.84)
+    except Exception as e:
+        _bridge("video_dl", f"Speculative video download failed: {e}",
+                step=4, sub_progress=0.84)
 
     # 2. Try LLM taste select
     _bridge("taste", "Calling LLM with strict-JSON prompt...")
@@ -1057,6 +1106,32 @@ def _run_moment_pipeline(
                 "verified": False,
             })
 
+    # 3a. Apply per-platform adjustments (NEW 2026-06-15)
+    #      TikTok/Reels/Shorts each have different sweet-spot durations.
+    #      A clip that works for Shorts (35s) is too long for Reels (30s).
+    #      We adjust [start, end] to fit the target platform.
+    try:
+        _bridge("platform", f"Applying {_platform_spec.name} adjustments "
+                            f"({_platform_spec.min_duration_s:.0f}-{_platform_spec.max_duration_s:.0f}s, "
+                            f"target {_platform_spec.target_duration_s:.0f}s)")
+        adjusted = []
+        for clip in final_clips:
+            new_start, new_end, reason = adjust_clip_for_platform(
+                float(clip.get("start", 0)),
+                float(clip.get("end", 0)),
+                _platform_spec,
+            )
+            clip["start"] = round(new_start, 2)
+            clip["end"] = round(new_end, 2)
+            clip["_platform_adjustment"] = reason
+            # Apply platform-specific caption styling + hashtag limit
+            clip["caption"] = style_caption(clip.get("caption", ""), _platform_spec)
+            clip["hashtags"] = limit_hashtags(clip.get("hashtags", ""), _platform_spec)
+            adjusted.append(clip)
+        final_clips = adjusted
+    except Exception as e:
+        _bridge("platform", f"Platform adjustment skipped: {e}")
+
     # 3b. Re-fetch VIDEO for the LLM-picked moments. The audio-only surgical
     # pass above is great for cheap LLM scoring, but the renderer needs
     # real video frames to make a watchable clip (otherwise it falls back
@@ -1084,14 +1159,65 @@ def _run_moment_pipeline(
         }
         for c in final_clips
     ]
-    video_segs = surgical_stage.surgical_download_video_youtube(
-        url, video_candidates, task_id,
-        log_fn=_bridge,
-        on_segment_done=_on_vid_done,
-    )
-    # Attach video_path to each clip (matched by source_start)
-    for clip, vs in zip(final_clips, video_segs):
-        clip["video_path"] = vs.get("video_path")
+
+    # NEW 2026-06-15 (A3): Try to use the speculative video cache first.
+    # If a LLM pick matches one of the top-3 pre-fetched videos, use it
+    # directly. Only fall back to the re-download for picks NOT in the
+    # speculative cache. This is the 35s speedup.
+    n_from_spec = 0
+    n_need_download = 0
+    final_clips_with_video = []
+    for c in final_clips:
+        # Try speculative match
+        c_src_start = float(c.get("source_start", c.get("start", 0)))
+        spec_match = None
+        for spec in spec_results.values():
+            if not spec.get("video_path"):
+                continue
+            spec_start = float(spec.get("source_start", 0))
+            if abs(spec_start - c_src_start) < 0.5:
+                spec_match = spec
+                break
+        if spec_match:
+            c["video_path"] = spec_match["video_path"]
+            n_from_spec += 1
+            final_clips_with_video.append(c)
+        else:
+            c["_needs_video_download"] = True
+            final_clips_with_video.append(c)
+            n_need_download += 1
+    final_clips = final_clips_with_video
+
+    if n_from_spec > 0:
+        _bridge("video_dl", f"Using {n_from_spec} pre-fetched video(s) from speculative cache",
+                step=4, sub_progress=0.97)
+
+    if n_need_download > 0:
+        # Only download the ones we couldn't pre-fetch
+        video_candidates_to_fetch = [
+            {"start": c.get("source_start", c["start"]),
+             "end": c.get("source_end", c["end"])}
+            for c in final_clips if c.get("_needs_video_download")
+        ]
+        video_segs = surgical_stage.surgical_download_video_youtube(
+            url, video_candidates_to_fetch, task_id,
+            log_fn=_bridge,
+            on_segment_done=_on_vid_done,
+        )
+        # Attach video_path to each clip (in order)
+        for clip, vs in zip(
+            [c for c in final_clips if c.get("_needs_video_download")],
+            video_segs,
+        ):
+            clip["video_path"] = vs.get("video_path")
+            clip.pop("_needs_video_download", None)
+        # Mark non-downloaded clips as done
+        for c in final_clips:
+            c.pop("_needs_video_download", None)
+    else:
+        # All clips already have video. Fake the progress callback.
+        for i in range(len(final_clips)):
+            _on_vid_done(i, len(final_clips), True)
 
     # 4. Face detection (only on segments with audio)
     _bridge("face", "Detecting faces...", step=5, sub_progress=0.0)
@@ -1170,6 +1296,9 @@ def _run_moment_pipeline(
     clean_rendered = []
     for c in rendered:
         clean = {k: v for k, v in c.items() if k not in ("face_data", "transcript")}
+        # NEW 2026-06-15: Tag every clip with the platform it was
+        # optimised for, so the UI/response can show it.
+        clean["platform"] = _platform_spec.name
         clean_rendered.append(clean)
     n_clips = max(1, len(clean_rendered))  # always show per-pick cost
     return {
@@ -1185,14 +1314,15 @@ def _run_moment_pipeline(
         "clips_verified": sum(1 for c in clean_rendered if c.get("verified")),
         "clips_unverified": sum(1 for c in clean_rendered if not c.get("verified")),
         "best_effort_count": sum(1 for c in clean_rendered if c.get("best_effort")),
+        "platform": _platform_spec.name,  # NEW 2026-06-15
     }
 
 
-async def run_youtube_pipeline_async(task_id: str, url: str, callback):
+async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform: str = "tiktok"):
     if PIPELINE_VERSION == 2:
         # Delegate to the new orchestrator.
         try:
-            result = await run_youtube_orchestrator(task_id, url, callback)
+            result = await run_youtube_orchestrator(task_id, url, callback, platform=platform)
             clips = result.get("clips", [])
             cost_usd = result.get("llm_cost_usd", 0.0)
             cpp = result.get("cost_per_clip_usd", 0.0)
@@ -1271,15 +1401,21 @@ async def process_youtube_url(request: dict):
     url = request.get("url")
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
+    # NEW 2026-06-15: per-platform output (TikTok/Reels/Shorts).
+    # Default = "tiktok" (most popular, most platform-native).
+    platform = (request.get("platform") or "tiktok").lower().strip()
+    if platform not in ("tiktok", "reels", "shorts"):
+        platform = "tiktok"
 
-    task = task_store.create_task(f"YouTube: {url[:50]}")
+    task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}")
 
     loop = asyncio.get_event_loop()
     _active_tasks[task["task_id"]] = loop.create_task(
         run_youtube_pipeline_async(
             task["task_id"],
             url,
-            create_progress_callback(task["task_id"])
+            create_progress_callback(task["task_id"]),
+            platform=platform,
         )
     )
 
