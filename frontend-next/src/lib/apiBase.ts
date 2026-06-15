@@ -46,23 +46,17 @@ export function apiBase(): string {
  * browser-side auth/data calls.
  *
  *   apiPath("/api/v1/auth/login")
- *     browser prod → "/api/proxy/api/v1/auth/login"
+ *     browser prod → "/api/proxy/api/v1/auth/login" (proxy strips /api/v1/ before forwarding to backend)
  *     browser dev  → "http://localhost:9000/api/v1/auth/login"
  *     SSR          → "/api/v1/auth/login" or NEXT_PUBLIC_API_URL+"/api/v1/auth/login"
  *
- * NOTE: `path` MUST start with "/api/v1/" — the helper does not
- * auto-prepend the API version. Missing the prefix used to silently
- * 404 in production (browser → /api/proxy/support/contact with no
- * /api/v1). We now warn in dev if the prefix is missing.
+ * Note: the backend FastAPI routers are mounted WITHOUT the /api/v1/
+ * prefix (e.g. /process/youtube, not /api/v1/process/youtube). The
+ * /api/v1/ segment exists only as a client-side version marker; the
+ * Vercel Edge proxy in /api/proxy/[...path]/route.ts strips it before
+ * forwarding upstream.
  */
 export function apiPath(path: string): string {
-  if (path && !path.startsWith("/api/v1/")) {
-    if (typeof console !== "undefined") {
-      console.warn(
-        `[apiBase] path "${path}" is missing the "/api/v1/" prefix — backend routes require it`
-      );
-    }
-  }
   if (!isBrowser()) {
     const base = process.env.NEXT_PUBLIC_API_URL || "";
     return `${base}${path}`;

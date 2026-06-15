@@ -18,7 +18,19 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const { path } = await ctx.params;
   const pathStr = path.join("/");
   const search = req.nextUrl.search;
-  const targetUrl = `${BACKEND_BASE}/${pathStr}${search}`;
+
+  // The frontend calls /api/proxy/api/v1/<path> but the backend FastAPI
+  // routers are mounted WITHOUT the /api/v1/ prefix (e.g. /process/youtube,
+  // not /api/v1/process/youtube). Strip the prefix before forwarding so
+  // /api/proxy/api/v1/process/youtube → ${BACKEND_BASE}/process/youtube.
+  let cleanedPath = pathStr;
+  const apiV1Prefix = "api/v1/";
+  if (cleanedPath === "api/v1" || cleanedPath.startsWith(apiV1Prefix)) {
+    cleanedPath = cleanedPath.slice(apiV1Prefix.length);
+    if (cleanedPath === "") cleanedPath = ""; // root → just /, not //
+  }
+
+  const targetUrl = `${BACKEND_BASE}/${cleanedPath}${search}`;
 
   // Stream-friendly headers
   const headers = new Headers(req.headers);
