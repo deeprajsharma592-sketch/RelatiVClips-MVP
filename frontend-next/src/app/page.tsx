@@ -314,9 +314,8 @@ export default function HomePage() {
                 <motion.div
                   key={p.title}
                   initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.1, duration: 0.5 }}
                   className="relative p-7 rounded-3xl overflow-hidden"
                   style={{
                     background: "var(--glass-light-strong)",
@@ -380,8 +379,7 @@ export default function HomePage() {
           <div className="relative max-w-4xl mx-auto px-6 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
               <div

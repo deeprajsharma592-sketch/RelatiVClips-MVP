@@ -184,9 +184,8 @@ export default function MovingClipsGrid() {
           <motion.div
             key={`${c.title}-${i}`}
             initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ delay: i * 0.06, duration: 0.5, ease: "easeOut" }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.06, duration: 0.5, ease: "easeOut" }}
             className="relative group"
           >
             <div
