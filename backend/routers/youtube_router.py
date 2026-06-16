@@ -1200,107 +1200,87 @@ def _run_moment_pipeline(
         from ..pipeline.cache import get_cached_segment, save_segment_cache
         clips_needing_dl = [c for c in final_clips if c.get("_needs_video_download")]
         cached_segs = []
-        to_download = []
-        seg_idx_map = []  # parallel to clips_needing_dl, holds index in download result
+        to_download = []  # list of (clip_index_in_final_clips, cand_dict)
         for i, (clip, cand) in enumerate(zip(clips_needing_dl, video_candidates_to_fetch)):
             cached = get_cached_segment(url, cand["start"], cand["end"])
             if cached is not None:
-                cached_segs.append((i, cached))
-                seg_idx_map.append(None)  # mark as cached
+                clip["video_path"] = str(cached)
+                clip.pop("_needs_video_download", None)
+                cached_segs.append(clip)
                 _bridge("video_dl", f"  segment {i+1} cache hit [{cand['start']:.1f}-{cand['end']:.1f}]",
                         step=4, sub_progress=(i + 0.5) / len(clips_needing_dl))
             else:
-                to_download.append(cand)
-                seg_idx_map.append(len(to_download) - 1)
+                to_download.append((clip, cand))
         if cached_segs:
             n_cached = len(cached_segs)
             n_to_dl = len(to_download)
             _bridge("video_dl", f"Segment cache: {n_cached} hit, {n_to_dl} to download",
                     step=4, sub_progress=0.5)
-        # Download only the missing segments
-        if to_download:
-            downloaded_segs = surgical_stage.surgical_download_video_youtube(
-                url, to_download, task_id,
-                log_fn=_bridge,
-                on_segment_done=_on_vid_done,
-            )
-            # Save freshly downloaded segments to cache
-            for cand, seg in zip(to_download, downloaded_segs):
-                seg_path = seg.get("video_path")
-                if seg_path and Path(seg_path).exists():
-                    save_segment_cache(url, cand["start"], cand["end"], Path(seg_path))
-        else:
-            downloaded_segs = []
-        # Stitch together: for each clip, use cached or downloaded
-        for i, (clip, dl_idx) in enumerate(zip(clips_needing_dl, seg_idx_map)):
-            if dl_idx is None:
-                # Use cached path
-                clip["video_path"] = str(cached_segs[next(j for j, (k, _) in enumerate(cached_segs) if k == i)][1])
-            else:
-                clip["video_path"] = downloaded_segs[dl_idx].get("video_path")
-            clip.pop("_needs_video_download", None)
-        # Mark non-downloaded clips as done
-        for c in final_clips:
-            c.pop("_needs_video_download", None)
-    else:
-        # All clips already have video. Fake the progress callback.
-        for i in range(len(final_clips)):
-            _on_vid_done(i, len(final_clips), True)
+        # Mark non-downloaded clips as already done in the counter
+        for _ in cached_segs:
+            _on_vid_done(0, len(final_clips), True)
 
-    # 4. Face detection (only on segments with audio)
-    _bridge("face", "Detecting faces...", step=5, sub_progress=0.0)
-    for face_idx, clip in enumerate(final_clips):
-        ap = clip.get("audio_path")
-        if ap and Path(ap).exists():
-            try:
-                face_data = face_stage.get_batch_face_data(ap, [clip])
-                clip["face_data"] = face_data[0] if face_data else None
-            except Exception as e:
-                _bridge("face", f"  face detection failed: {e}")
-                clip["face_data"] = None
-        else:
-            clip["face_data"] = None
-        if final_clips:
-            _bridge("face", f"  face {face_idx+1}/{len(final_clips)}",
-                    step=5, sub_progress=(face_idx + 1) / max(1, len(final_clips)))
-
-    # 5. Render — prefer the freshly-downloaded video segment if present,
-    # fall back to the audio file (renderer will compose still+audio).
-    _bridge("render", f"Rendering {len(final_clips)} clip(s)...",
+    # All clips either have video_path now, or are about to be downloaded.
+    # NEW 2026-06-16: STREAMING RENDER. Instead of downloading ALL segments
+    # then rendering all, do download+face+render as a per-clip pipeline.
+    # Each clip is fully independent — the slowest download no longer blocks
+    # the fastest render. Expected saving: 30-90s on a 3-clip run.
+    _bridge("render", f"Streaming {len(final_clips)} clip(s) — download+face+render in parallel...",
             step=6, sub_progress=0.0)
     rendered = []
-    # BUGFIX 2026-06-15: video_id was None → fell back to "local" → filename
-    # collision with local uploads (surgical clips overwrote each other and
-    # got reported as "local_1_*.mp4" in API responses). Use the YouTube
-    # video ID when available, else the task_id (unique per request) so each
-    # task gets its own filename namespace and clips are discoverable by
-    # task_id (e.g. /download/{task_id[:8]}_1_42s.mp4).
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from ..utils.config import SURGICAL_BUFFER_SECONDS
     video_id = (
         info.get("transcript", {}).get("video_id")
         if info.get("transcript")
         else None
     ) or f"yt_{task_id[:12]}"
-    for i, clip in enumerate(final_clips):
+
+    def _process_clip(i: int, clip: dict) -> Optional[Dict]:
+        """Full per-clip pipeline: download (if needed) → face → render.
+        Each clip runs independently in its own thread.
+        """
         try:
-            # Use the actual video segment if we got one; otherwise fall
-            # back to the audio file (renderer will use still+audio).
+            # 1. If we still need to download, do it now (in parallel with others)
+            if clip.get("_needs_video_download") or not clip.get("video_path"):
+                cand = {"start": clip.get("source_start", clip["start"]),
+                        "end": clip.get("source_end", clip["end"])}
+                dl_result = surgical_stage.surgical_download_video_youtube(
+                    url, [cand], task_id,
+                    log_fn=_bridge,
+                    on_segment_done=_on_vid_done,
+                )
+                if dl_result and dl_result[0].get("video_path"):
+                    clip["video_path"] = dl_result[0]["video_path"]
+                    from ..pipeline.cache import save_segment_cache
+                    seg_path = Path(clip["video_path"])
+                    if seg_path.exists():
+                        save_segment_cache(url, cand["start"], cand["end"], seg_path)
+                _on_vid_done(i, len(final_clips), True)
+
+            # 2. Face detection (fast, ~1s)
+            ap = clip.get("audio_path")
+            if ap and Path(ap).exists():
+                try:
+                    face_data = face_stage.get_batch_face_data(ap, [clip])
+                    clip["face_data"] = face_data[0] if face_data else None
+                except Exception as e:
+                    _bridge("face", f"  face {i+1} failed: {e}")
+                    clip["face_data"] = None
+            else:
+                clip["face_data"] = None
+
+            # 3. Render (~5s)
             source_for_renderer = (
                 clip.get("video_path")
                 or clip.get("audio_path")
                 or clip.get("source_start", url)
             )
-            # Translate absolute source timestamps into offsets WITHIN the
-            # downloaded video segment. The segment file was downloaded
-            # with `[source_start - pad, source_end + pad]`, so the start
-            # of the file corresponds to (source_start - SURGICAL_BUFFER).
-            # The renderer's -ss is an offset into the file, not an
-            # absolute timestamp.
-            from ..utils.config import SURGICAL_BUFFER_SECONDS
             seg_file_start = float(clip.get("source_start", 0)) - SURGICAL_BUFFER_SECONDS
             clip_offset_start = max(0.0, float(clip.get("start", 0)) - seg_file_start)
             clip_offset_end = max(clip_offset_start + 1, float(clip.get("end", 0)) - seg_file_start)
             print(f"[DEBUG-render] clip {i}: src_start={clip.get('source_start')} start={clip.get('start')} end={clip.get('end')} → seg_file_start={seg_file_start} offsets=({clip_offset_start}, {clip_offset_end})")
-            # Build a render-friendly clip with the offset timestamps
             render_clip = dict(clip)
             render_clip["start"] = round(clip_offset_start, 2)
             render_clip["end"] = round(clip_offset_end, 2)
@@ -1313,21 +1293,32 @@ def _run_moment_pipeline(
                 progress_callback=lambda m: _bridge("render", m),
             )
             if out:
-                # Put back the absolute timestamps in the response so the
-                # UI can display "from 46.5s in the source video"
                 out["start"] = clip.get("start")
                 out["end"] = clip.get("end")
                 out["source_start"] = clip.get("source_start")
                 out["source_end"] = clip.get("source_end")
-                rendered.append({
-                    **clip,
-                    **out,
-                })
+                return {**clip, **out}
         except Exception as e:
-            _bridge("render", f"  render failed for clip {i}: {e}")
-        if final_clips:
-            _bridge("render", f"Rendered {i+1}/{len(final_clips)} clips",
-                    step=6, sub_progress=(i + 1) / max(1, len(final_clips)))
+            _bridge("render", f"  clip {i+1} failed: {e}")
+        return None
+
+    # Run all clips as independent streaming pipelines. as_completed yields
+    # results in the order they finish — so the fastest clip's render can
+    # complete and be returned before the slowest download even finishes.
+    with ThreadPoolExecutor(max_workers=min(3, len(final_clips)), thread_name_prefix="stream") as pool:
+        futures = {pool.submit(_process_clip, i, c): i for i, c in enumerate(final_clips)}
+        completed_count = 0
+        for fut in as_completed(futures, timeout=240):
+            i = futures[fut]
+            try:
+                out = fut.result(timeout=240)
+                if out:
+                    rendered.append(out)
+            except Exception as e:
+                _bridge("render", f"  clip {i+1} worker crashed: {e}")
+            completed_count += 1
+            _bridge("render", f"Rendered {completed_count}/{len(final_clips)} clips",
+                    step=6, sub_progress=completed_count / max(1, len(final_clips)))
 
     _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
     # Strip non-serializable / circular fields before returning
