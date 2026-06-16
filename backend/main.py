@@ -265,7 +265,9 @@ async def cookie_status():
         for n, e in sorted(yt, key=lambda x: -x[1])[:25]
     ]
     out["earliest_youtube_expiry_days"] = (
-        round((min(e for _, e in yt) - now) / 86400) if yt else None
+        # Filter out session cookies (e=0) so we don't report "1970 expiry"
+        # as a giant negative number. BUGFIX 2026-06-16.
+        round((min(e for _, e in yt if e) - now) / 86400) if any(e for _, e in yt) else None
     )
     return out
 
