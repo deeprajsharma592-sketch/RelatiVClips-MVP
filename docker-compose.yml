@@ -21,6 +21,10 @@ services:
 
   # FastAPI Core Engine
   backend:
+    # NEW 2026-06-16: pin to b8e image (streaming render — per-clip
+    # download+face+render pipeline, 31% faster cold runs). Bump tag
+    # when making source changes.
+    image: relativ-backend:b8e
     build:
       context: ./backend
       dockerfile: Dockerfile
