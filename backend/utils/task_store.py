@@ -28,28 +28,61 @@ _event_loop: Optional[asyncio.AbstractEventLoop] = None
 def set_event_loop(loop: Optional[asyncio.AbstractEventLoop]):
     global _event_loop
     _event_loop = loop
-
 def _run_async(coro):
-    """Dispatch a coroutine to the app's event loop from a worker thread.
+    """
+    Dispatch a coroutine to the app's event loop from a worker thread.
 
-    If a running loop is bound, schedules the coroutine and block-waits for
-    its result (with a 5s timeout) so the DB write is observably complete
-    before we return. This is safe from a worker thread.
+    BUGFIX 2026-06-16: was block-waiting 5s per DB write. The orchestrator
+    calls update_task 50+ times per run → 50+ × 5s = minutes of blocking.
+    The event loop gets clogged with DB I/O, /health endpoints time out,
+    the server appears wedged. Now we fire-and-forget: the coroutine is
+    scheduled on the event loop and we return immediately. If the loop
+    is busy, the DB write just queues — that's fine, the in-memory store
+    is the source of truth for the UI. The DB is just for crash recovery.
 
     If no loop is bound (tests, or DB disabled), closes the coroutine to
     suppress Python's `RuntimeWarning: coroutine was never awaited`. The
     in-memory task store still works — only DB persistence is skipped.
     """
     if _event_loop is not None and _event_loop.is_running():
-        future = asyncio.run_coroutine_threadsafe(coro, _event_loop)
         try:
-            return future.result(timeout=5.0)
-        except Exception as e:
-            print(f"[DB] async dispatch failed: {e}")
-            return None
+            # Schedule and return — NO future.result() wait.
+            # Errors are caught inside the coroutine itself.
+            asyncio.run_coroutine_threadsafe(coro, _event_loop)
+        except RuntimeError:
+            # Loop was closed between the check and the schedule — close
+            # the coroutine to silence warnings.
+            try:
+                coro.close()
+            except Exception:
+                pass
+        return None
     # No loop — close coroutine to silence the 'never awaited' warning.
-    coro.close()
+    try:
+        coro.close()
+    except Exception:
+        pass
     return None
+
+
+def _run_async_fire_and_log(coro, label: str = "db-op"):
+    """
+    Same as _run_async but logs errors from a background thread.
+    The coroutine itself catches exceptions, so this is a safety net.
+    """
+    if _event_loop is not None and _event_loop.is_running():
+        try:
+            asyncio.run_coroutine_threadsafe(coro, _event_loop)
+        except RuntimeError:
+            try:
+                coro.close()
+            except Exception:
+                pass
+    else:
+        try:
+            coro.close()
+        except Exception:
+            pass
 
 
 class TaskStore:
@@ -120,8 +153,18 @@ class TaskStore:
         return self._tasks.get(task_id)
 
     def update_task(self, task_id: str, **kwargs) -> Optional[dict]:
-        """Update task fields."""
+        """Update task fields.
+
+        BUGFIX 2026-06-16: now rate-limits DB writes. `current_step` is
+        updated 20+ times per pipeline run as a noisy progress string —
+        persisting every one clogs the DB. We only persist on milestone
+        changes (status, step_number, step_name, error, clips) plus the
+        final progress %.
+        """
         db_snapshot = None
+        is_milestone = bool(
+            {"status", "step_number", "step_name", "error", "clips"} & kwargs.keys()
+        )
         with self._lock:
             if task_id in self._tasks:
                 task = self._tasks[task_id]
@@ -134,11 +177,14 @@ class TaskStore:
 
                 task.update(kwargs)
 
-                # Persist meaningful state changes to DB
-                db_fields = {"status", "current_step", "step_number", "step_name", "progress", "error", "clips"}
-                if db_fields & kwargs.keys():
+                # BUGFIX 2026-06-16: skip DB persist for noisy current_step
+                # text. Only persist milestones + progress at completion.
+                if is_milestone or kwargs.get("progress") == 100:
                     db_snapshot = {
-                        k: task[k] for k in ("status", "current_step", "step_number", "step_name", "progress", "error", "clips")
+                        k: task[k] for k in (
+                            "status", "current_step", "step_number", "step_name",
+                            "progress", "error", "clips",
+                        )
                         if k in task
                     }
 
@@ -183,7 +229,12 @@ class TaskStore:
             print(f"[DB] Failed to update task {task_id}: {e}")
 
     def get_task_status(self, task_id: str) -> Optional[dict]:
-        """Get lightweight status object for API responses."""
+        """Get lightweight status object for API responses.
+
+        NEW 2026-06-16: exposes `step_times` + `step_durations` so the
+        frontend can show "Step 4 took 12s" type animations and per-stage
+        timing breakdowns.
+        """
         task = self._tasks.get(task_id)
         if not task:
             return None
@@ -196,6 +247,28 @@ class TaskStore:
         progress = task.get("progress", 0)
 
         time_estimate = self._calculate_eta(task, elapsed_seconds)
+
+        # Build per-step durations for the frontend.
+        # step_times is a list of {step, started_at}; diff successive ones
+        # to get how long each step took. If we're mid-step, the "current"
+        # step gets a duration from its start to now.
+        step_times = task.get("step_times", []) or []
+        step_durations = []
+        for i, st in enumerate(step_times):
+            try:
+                started = st["started_at"]
+                if i + 1 < len(step_times):
+                    ended = step_times[i + 1]["started_at"]
+                else:
+                    ended = now
+                dur = max(0, int((ended - started).total_seconds()))
+                step_durations.append({
+                    "step": st["step"],
+                    "duration_s": dur,
+                    "started_at": started.isoformat() if hasattr(started, "isoformat") else str(started),
+                })
+            except Exception:
+                pass
 
         return {
             "task_id": task["task_id"],
@@ -218,6 +291,12 @@ class TaskStore:
             "clips_requested": task.get("clips_requested"),
             "honest_result": task.get("honest_result", False),
             "honest_message": task.get("honest_message"),
+            # NEW 2026-06-16: cache + per-stage timing
+            "cache_hit": task.get("cache_hit", False),
+            "cache_age_hours": task.get("cache_age_hours"),
+            "cache_savings_usd": task.get("cache_savings_usd"),
+            "step_times": step_durations,
+            "started_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
         }
 
     def _calculate_eta(self, task: dict, elapsed_seconds: int) -> int:

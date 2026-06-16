@@ -38,4 +38,27 @@ export interface StatusResponse {
   time_estimate_seconds?: number | null;
   clips?: Clip[] | null;
   error?: string | null;
+  // Cost (NEW 2026-06-16)
+  llm_cost_usd?: number | null;
+  cost_per_clip_usd?: number | null;
+  llm_provider?: string | null;
+  clips_verified?: number | null;
+  clips_unverified?: number | null;
+  clips_requested?: number | null;
+  // Cache (NEW 2026-06-16)
+  cache_hit?: boolean | null;
+  cache_age_hours?: number | null;
+  cache_savings_usd?: number | null;
+  // Per-stage timing (NEW 2026-06-16)
+  step_times?: Array<{ step: number; duration_s: number; started_at: string }> | null;
+  started_at?: string | null;
+}
+
+export interface PipelineStep {
+  number: number;
+  label: string;
+  sub: string;
+  icon: string;  // emoji or icon name
+  /** Visual "vibe" key — drives the per-stage animation */
+  vibe: "fetch" | "audio" | "transcribe" | "llm" | "face" | "render";
 }

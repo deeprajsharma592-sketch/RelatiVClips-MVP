@@ -114,6 +114,21 @@ class StatusResponse(BaseModel):
     # we already log the full clip dict in /logs if details are needed.
     clips: Optional[List[dict]] = None
     error: Optional[str] = None
+    # NEW 2026-06-16: cost + cache + per-stage timing for richer UI
+    llm_cost_usd: Optional[float] = None
+    cost_per_clip_usd: Optional[float] = None
+    llm_provider: Optional[str] = None
+    clips_verified: Optional[int] = None
+    clips_unverified: Optional[int] = None
+    clips_requested: Optional[int] = None
+    honest_result: Optional[bool] = None
+    honest_message: Optional[str] = None
+    cache_hit: Optional[bool] = None
+    cache_age_hours: Optional[float] = None
+    cache_savings_usd: Optional[float] = None
+    # Per-stage timing breakdown [{step, duration_s, started_at}, ...]
+    step_times: Optional[List[dict]] = None
+    started_at: Optional[str] = None
 
 
 class ContactMessage(BaseModel):
