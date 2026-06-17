@@ -1,17 +1,13 @@
 // Vercel Edge Function — proxies backend calls to Hetzner over the public internet.
-// This sidesteps the Vercel->Hetzner HTTP-rewrite timeout issue by giving us
-// proper error handling, timeouts, and streaming.
 //
 // Path convention: /api/proxy/<original-path>  →  <BACKEND_BASE>/<original-path>
 //
-// BACKEND_BASE comes from the BACKEND_BASE_URL env var (set in Vercel).
-// Fallback to the last known good Cloudflare Quick Tunnel URL.
-// To regenerate a tunnel: ssh hetzner "bash /root/.vercel-tmp/start-tunnel.sh"
-// then update the BACKEND_BASE_URL env var on Vercel (no code change needed).
+// BACKEND_BASE comes from the BACKEND_BASE_URL env var (set in Vercel dashboard).
+// Fallback uses HTTP on the Hetzner IP (Caddy handles HTTPS termination).
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_BASE = process.env.BACKEND_BASE_URL
-  || "https://retro-turned-outlined-decorative.trycloudflare.com";
+  || "http://91.98.144.72";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
