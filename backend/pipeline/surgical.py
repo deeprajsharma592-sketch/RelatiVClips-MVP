@@ -99,10 +99,21 @@ def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
     e_str = str(timedelta(seconds=int(e)))
     cmd = [
         YTDLP_PATH,
-        "-f", "best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best",
+        # Format 18 = H.264 360p + AAC combined (mp4). Always H.264
+        # with excellent keyframe placement — reliable seeking for surgical
+        # sections. Higher-res combined H.264 formats (93, 94, 95) as fallback.
+        "-f", (
+            "18/"          # H.264 360p + AAC combined
+            "93/"           # H.264 360p + AAC combined (alt)
+            "94/"           # H.264 480p + AAC combined
+            "95/"           # H.264 720p + AAC combined
+            "best[height<=720]"  # last resort — may be VP9/MPEG-2
+        ),
         "--download-sections", f"*{s_str}-{e_str}",
-        "--force-keyframes-at-cuts",
-        "--merge-output-format", "mp4",
+        # NOTE: --force-keyframes-at-cuts is intentionally omitted. Adding it
+        # causes FFmpeg to re-encode the stream (H.264→MPEG-2→H.264) which
+        # is slow and destroys quality. The H.264 keyframe structure of format
+        # 18 segments is dense enough for accurate FFmpeg seeking.
         "-o", "-",  # stdout
         "--no-warnings",
         "--no-check-certificates",
@@ -318,8 +329,10 @@ def _download_one_video_segment(
 ) -> Dict:
     """Download a single VIDEO segment (with audio) — used AFTER the LLM
     picks the winning moments. The renderer needs real video frames to
-    compose a watchable clip, so we re-fetch the picked ranges as mp4
-    instead of audio-only m4a.
+    compose a watchable clip.
+
+    Uses Deepraj's Windows laptop (via ngrok tunnel) as primary downloader
+    because Hetzner datacenter IPs are blocked by YouTube CDN.
     """
     if video_path.exists():
         try:
@@ -327,7 +340,10 @@ def _download_one_video_segment(
         except Exception:
             pass
 
-    cmd = _ytdlp_video_section_url(url, start, end)
+    # Compute actual download range (padded so renderer has head/tail buffer)
+    pad = SURGICAL_BUFFER_SECONDS
+    s = max(0.0, start - pad)
+    e = end + pad
 
     def _log(msg: str) -> None:
         with log_lock:
@@ -335,9 +351,15 @@ def _download_one_video_segment(
 
     _log(f"  Downloading video segment {seg_idx + 1}/{total} [{start:.1f}s - {end:.1f}s]...")
 
-    result = None
     final_ok = False
+    # Try residential downloader first (laptop's residential IP)
     try:
+        from ..utils.residential_downloader import download_video as resi_download
+        resi_download(str(url), str(video_path), start=s, end=e)
+        final_ok = True
+    except Exception as resi_err:
+        _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
+        cmd = _ytdlp_video_section_url(url, start, end)
         for seg_attempt in range(1, 4):
             try:
                 with open(video_path, "wb") as f:
@@ -346,10 +368,6 @@ def _download_one_video_segment(
                     )
                 if (result.returncode == 0 and video_path.exists()
                         and video_path.stat().st_size > 1024):
-                    # Verify it actually has a video stream (not just audio
-                    # mistakenly returned by the format selector).
-                    # Quick ffprobe check via subprocess — cheaper than
-                    # importing a helper module.
                     try:
                         probe = subprocess.run(
                             ["ffprobe", "-v", "error", "-select_streams", "v",
@@ -361,7 +379,6 @@ def _download_one_video_segment(
                             final_ok = True
                             break
                     except Exception:
-                        # ffprobe failed — trust returncode
                         final_ok = True
                         break
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
@@ -372,19 +389,18 @@ def _download_one_video_segment(
                 _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 crashed: {e}")
             if seg_attempt < 3:
                 time.sleep(2 * seg_attempt)
+
+    try:
         if on_segment_done is not None:
-            try:
-                on_segment_done(seg_idx, total, final_ok)
-            except Exception:
-                pass
-        if not final_ok:
-            _log(f"  Video segment {seg_idx + 1} download failed")
-            return {"video_path": None, "source_start": start, "source_end": end}
-        _log(f"  Video segment {seg_idx + 1} ready ({video_path.stat().st_size / 1024:.0f} KB)")
-        return {"video_path": str(video_path), "source_start": start, "source_end": end}
-    except Exception as e:
-        _log(f"  Video segment {seg_idx + 1} error: {str(e)[:80]}")
+            on_segment_done(seg_idx, total, final_ok)
+    except Exception:
+        pass
+
+    if not final_ok:
+        _log(f"  Video segment {seg_idx + 1} download failed")
         return {"video_path": None, "source_start": start, "source_end": end}
+    _log(f"  Video segment {seg_idx + 1} ready ({video_path.stat().st_size / 1024:.0f} KB)")
+    return {"video_path": str(video_path), "source_start": s, "source_end": e}
 
 
 def surgical_download_video_youtube(

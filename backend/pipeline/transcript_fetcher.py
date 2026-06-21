@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional, Callable
 
@@ -19,38 +20,44 @@ def _extract_video_id(url: str) -> str:
 
 
 def _parse_vtt(vtt_path: str) -> list:
-    segments = []
+    """Parse VTT file from path."""
     try:
         with open(vtt_path, "r", encoding="utf-8") as f:
             content = f.read()
     except Exception:
         return []
+    return _parse_vtt_content(content)
 
+
+def _parse_vtt_content(content: str) -> list:
+    """Parse VTT string (used for in-memory subtitle data from laptop proxy)."""
     blocks = re.split(r"\n\s*\n", content)
+    segments = []
     for block in blocks:
         lines = block.strip().split("\n")
-        if not lines:
+        if len(lines) < 2:
             continue
-        time_match = None
-        text_start = 0
+        if lines[0].startswith("WEBVTT"):
+            lines = lines[1:]
+        timing_line = None
+        text_lines = []
         for i, line in enumerate(lines):
-            m = re.match(
-                r"(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})",
-                line,
-            )
-            if m:
-                time_match = m
-                text_start = i + 1
+            if "-->" in line:
+                timing_line = line
+                text_lines = lines[i + 1:]
                 break
-        if not time_match:
+        if not timing_line:
             continue
-        parts = [int(x) for x in time_match.groups()]
-        start = parts[0] * 3600 + parts[1] * 60 + parts[2] + parts[3] / 1000
-        end = parts[4] * 3600 + parts[5] * 60 + parts[6] + parts[7] / 1000
-        text = " ".join(lines[text_start:]).strip()
-        text = re.sub(r"<[^>]+>", "", text).strip()
-        if text:
-            segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
+        try:
+            start_str = timing_line.split("-->")[0].strip().replace(",", ".")
+            end_str = timing_line.split("-->")[1].split()[0].strip().replace(",", ".")
+            start = sum(float(x) * mult for x, mult in zip(start_str.split(":"), [3600, 60, 1]))
+            end = sum(float(x) * mult for x, mult in zip(end_str.split(":"), [3600, 60, 1]))
+            text = re.sub(r"<[^>]+>", "", " ".join(text_lines)).strip()
+            if text and start < end:
+                segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
+        except Exception:
+            continue
     return segments
 
 
@@ -61,7 +68,6 @@ def _parse_srt(srt_path: str) -> list:
             content = f.read()
     except Exception:
         return []
-
     blocks = re.split(r"\n\s*\n", content.strip())
     for block in blocks:
         lines = block.strip().split("\n")
@@ -76,17 +82,50 @@ def _parse_srt(srt_path: str) -> list:
         parts = [int(x) for x in time_match.groups()]
         start = parts[0] * 3600 + parts[1] * 60 + parts[2] + parts[3] / 1000
         end = parts[4] * 3600 + parts[5] * 60 + parts[6] + parts[7] / 1000
-        text = " ".join(lines[2:]).strip()
-        text = re.sub(r"<[^>]+>", "", text).strip()
+        text = re.sub(r"<[^>]+>", "", " ".join(lines[2:]).strip())
         if text:
             segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
     return segments
 
 
 def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dict]:
-    """Try to fetch transcript via yt-dlp's subtitle download."""
-    log("  Downloading auto-generated subtitles via yt-dlp...")
+    """
+    Try to get transcript via yt-dlp auto-generated subtitles.
+    Routes through Deepraj's laptop (residential IP) first, then falls back
+    to direct server download.
 
+    Returns segments dict or None if unavailable.
+    """
+    import requests as _requests
+    from ..utils.config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT
+
+    # --- Step 1: Try laptop (residential IP) ---
+    try:
+        laptop_url = f"{RESIDENTIAL_DOWNLOAD_URL.rstrip('/')}/subtitles"
+        log(f"  Fetching subtitles via laptop proxy: {laptop_url}")
+        resp = _requests.get(
+            laptop_url,
+            params={"url": url, "lang": "en"},
+            timeout=RESIDENTIAL_DOWNLOAD_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            vtt = data.get("vtt", "")
+            if vtt and len(vtt) > 50:
+                segments = _parse_vtt_content(vtt)
+                if segments:
+                    log(f"  Laptop proxy subtitles: {len(segments)} segments")
+                    return {"segments": segments, "language": "en", "source": "ytdlp_vtt"}
+        elif resp.status_code == 404:
+            log("  Laptop proxy: no subtitles for this video")
+        else:
+            log(f"  Laptop proxy error {resp.status_code}: {resp.text[:100]}")
+    except _requests.exceptions.ConnectionError:
+        log("  Laptop proxy unreachable — trying direct download")
+    except Exception as e:
+        log(f"  Laptop proxy error: {e}")
+
+    # --- Step 2: Fall back to direct server download ---
     subs_base = TEMP_DIR / f"{task_id}_subs"
     subs_vtt = subs_base.with_suffix(".en.vtt")
     subs_srt = subs_base.with_suffix(".en.srt")
@@ -108,12 +147,10 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        # EJS challenge solver + node runtime — required for 2025+ YouTube
         "--js-runtimes", "node",
         "--remote-components", "ejs:github",
     ]
 
-    # Copy cookies to /tmp to avoid yt-dlp's save_cookies corrupting the source
     _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
@@ -130,34 +167,51 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
 
     cmd.append(url)
 
-    try:
-        result = _run_with_retry(cmd, log, label="subtitle download", max_attempts=4, timeout=120)
-        if result is None or result.returncode != 0:
-            log("  yt-dlp subtitle download failed after retries")
-            return None
+    last_stderr = ""
+    success = False
+    max_attempts = 4
+    timeout = 180
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            last_stderr = result.stderr or ""
+            if result.returncode == 0:
+                success = True
+                break
+            err_snippet = last_stderr[:150].replace("\n", " ")
+            log(f"  [subtitle direct] attempt {attempt}/{max_attempts} failed (rc={result.returncode}): {err_snippet}")
+        except subprocess.TimeoutExpired:
+            log(f"  [subtitle direct] attempt {attempt}/{max_attempts} timed out after {timeout}s")
+        except Exception as e:
+            log(f"  [subtitle direct] attempt {attempt}/{max_attempts} crashed: {e}")
+        if attempt < max_attempts:
+            time.sleep(3 * attempt)
 
-        segments = []
-        source = None
+    if not success:
+        combined = last_stderr.lower()
+        if "sign in" in combined or "cookies" in combined or "not a bot" in combined:
+            log("  Auth/cookie error — returning auth_error flag")
+            return {"segments": [], "auth_error": True}
+        log("  yt-dlp subtitle download failed after retries")
+        return None
 
-        if subs_vtt.exists() and subs_vtt.stat().st_size > 0:
-            log(f"  VTT subtitles found ({subs_vtt.stat().st_size} bytes)")
-            segments = _parse_vtt(str(subs_vtt))
-            source = "ytdlp_vtt"
-        elif subs_srt.exists() and subs_srt.stat().st_size > 0:
-            log(f"  SRT subtitles found ({subs_srt.stat().st_size} bytes)")
-            segments = _parse_srt(str(subs_srt))
-            source = "ytdlp_srt"
+    segments = []
+    source = None
 
-        if segments:
-            log(f"  Parsed {len(segments)} subtitle segments")
-            return {"segments": segments, "language": "en", "source": source}
+    if subs_vtt.exists() and subs_vtt.stat().st_size > 0:
+        log(f"  VTT subtitles found ({subs_vtt.stat().st_size} bytes)")
+        segments = _parse_vtt(str(subs_vtt))
+        source = "ytdlp_vtt"
+    elif subs_srt.exists() and subs_srt.stat().st_size > 0:
+        log(f"  SRT subtitles found ({subs_srt.stat().st_size} bytes)")
+        segments = _parse_srt(str(subs_srt))
+        source = "ytdlp_srt"
 
-        log("  Subtitles file empty or unparseable")
-    except subprocess.TimeoutExpired:
-        log("  yt-dlp subtitle download timed out")
-    except Exception as e:
-        log(f"  yt-dlp subtitle error: {str(e)[:100]}")
+    if segments:
+        log(f"  Parsed {len(segments)} subtitle segments")
+        return {"segments": segments, "language": "en", "source": source}
 
+    log("  Subtitles file empty or unparseable")
     return None
 
 
@@ -224,7 +278,6 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         url,
     ]
 
-    # Copy cookies to /tmp to avoid yt-dlp's save_cookies corrupting the source
     _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
@@ -243,7 +296,7 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         log("  Downloading audio...")
         result = _run_with_retry(cmd, log, label="audio download", max_attempts=4, timeout=600)
         if result is None or result.returncode != 0:
-            log(f"  Audio download failed after retries")
+            log("  Audio download failed after retries")
             return None
 
         if audio_path.exists() and audio_path.stat().st_size > 0:
@@ -268,18 +321,11 @@ def fetch_transcript(
     Fetch transcript for a video URL with automatic fallback.
 
     Priority:
-    1. yt-dlp auto-generated subtitles (fast, no GPU needed)
-    2. faster-whisper on downloaded audio (GPU, fallback)
+    1. yt-dlp auto-generated subtitles via laptop residential IP (fast)
+    2. yt-dlp direct server download (fallback)
+    3. faster-whisper on downloaded audio (GPU, fallback)
 
-    Args:
-        url: Video URL (YouTube or direct)
-        task_id: Unique task identifier
-        log: Optional progress callback
-
-    Returns:
-        dict with keys: segments, language, source
-        segments is list of {start, end, text}
-        source is "ytdlp_vtt", "ytdlp_srt", "whisper", or None
+    Returns dict with keys: segments, language, source
     """
     if log is None:
         log = lambda m: None
@@ -297,7 +343,6 @@ def fetch_transcript(
 
     transcript = _try_whisper_transcript(audio_path, task_id, log)
 
-    # Clean up audio file
     try:
         if audio_path and os.path.exists(audio_path):
             os.remove(audio_path)
@@ -309,13 +354,9 @@ def fetch_transcript(
 
     return {"segments": [], "language": "en", "source": None}
 
-def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, timeout: int = 120):
-    """Run a yt-dlp command with retries on transient failures (rc=1, bot blocks).
 
-    YouTube's anti-bot sometimes returns rc=1 for specific Webshare rotating-proxy
-    IPs. A different IP on the next call often works. We retry with exponential backoff.
-    """
-    import time
+def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, timeout: int = 120):
+    """Run a yt-dlp command with retries on transient failures."""
     for attempt in range(1, max_attempts + 1):
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -331,6 +372,5 @@ def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, t
             if log_fn:
                 log_fn(f"  [{label}] attempt {attempt}/{max_attempts} crashed: {e}")
         if attempt < max_attempts:
-            backoff = 3 * attempt
-            time.sleep(backoff)
+            time.sleep(3 * attempt)
     return None

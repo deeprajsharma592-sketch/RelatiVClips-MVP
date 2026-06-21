@@ -167,16 +167,27 @@ def picks_per_dollar(model: str, cache_hit_ratio: float = 0.0) -> int:
 
 
 def _determine_smart_tier() -> str:
-    """Smart-mode decision: calibration until threshold, then budget."""
+    """Smart-mode decision: calibration until threshold, then budget.
+
+    Priority order:
+      1. Picks threshold — the PRIMARY signal for tier phase.
+         "First 2000 picks = calibration to build taste dataset."
+      2. Hard budget — emergency safety net, checked AFTER threshold.
+         "If cost > LLM_HARD_BUDGET_USD, don't call LLM at all."
+      This order lets calibration complete even if cost is climbing,
+      because budget_exceeded() is a separate guard the orchestrator
+      checks before making an LLM call.
+    """
     with _state_lock:
         picks = _state["total_picks"]
         cost = _state["total_cost_usd"]
-    # If we've burned too much today, fall back
-    if cost >= LLM_HARD_BUDGET_USD:
-        return LLMTier.FALLBACK.value
-    # Calibration phase: first 2000 picks (or until budget tightens)
-    if picks < LLM_SMART_THRESHOLD and cost < LLM_HARD_BUDGET_USD * 0.5:
+    # 1. Picks threshold — primary phase signal
+    if picks < LLM_SMART_THRESHOLD:
+        # 2. Hard budget as emergency override (even during calibration phase)
+        if cost >= LLM_HARD_BUDGET_USD:
+            return LLMTier.FALLBACK.value
         return LLMTier.CALIBRATION.value
+    # Post-threshold: always budget (hard budget still checked by orchestrator)
     return LLMTier.BUDGET.value
 
 

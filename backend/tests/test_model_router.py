@@ -14,8 +14,8 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from llm import cost_control, model_router
-from llm.model_router import LLMTier, estimate_pick_cost, picks_per_dollar
+from backend.llm import cost_control, model_router
+from backend.llm.model_router import LLMTier, estimate_pick_cost, picks_per_dollar
 
 
 def test_calibration_tier_default():
@@ -96,13 +96,16 @@ def test_budget_enforcement():
     os.environ["LLM_TIER"] = "smart"
     import importlib
     importlib.reload(model_router)
+    # Use a small per-pick cost so 2000 picks stays well under the $1.00 hard
+    # budget. 2000 * $0.0002 = $0.40 which is < $1.00.
+    cost_per_pick = 0.0002
     # Simulate 1999 picks (just under threshold)
     for _ in range(1999):
-        model_router.record_pick("claude-haiku-4-5-20251001", 0.001)
+        model_router.record_pick("claude-haiku-4-5-20251001", cost_per_pick)
     model, tier, cpp = model_router.pick_model()
     assert tier == "calibration", f"Expected calibration at 1999 picks, got {tier}"
     # Bump to threshold
-    model_router.record_pick("claude-haiku-4-5-20251001", 0.001)
+    model_router.record_pick("claude-haiku-4-5-20251001", cost_per_pick)
     model, tier, cpp = model_router.pick_model()
     assert tier == "budget", f"Expected budget at 2000 picks, got {tier}"
     print(f"✓ smart mode: 1999 picks → calibration, 2000+ → budget ({tier})")

@@ -1,13 +1,16 @@
-# RelatiV API. Caddy auto-issues Let's Encrypt cert for api.relativclips.com.
-# Catch-all on :80 handles LE HTTP-01 ACME challenges + any legacy HTTP traffic.
-# CORS is handled by FastAPI (see backend/main.py) — Caddy just proxies.
+# RelatiV API Server
+# Port 443 = HTTPS (api.relativclips.com)
+# Port 80 = HTTP (ACME challenges)
+# Port 8080 = HTTP (backup API for cloud IPs like Vercel)
 
-# Primary site: api.relativclips.com with auto-HTTPS
 api.relativclips.com {
     reverse_proxy backend:9000
 }
 
-# Catch-all HTTP site: handles ACME challenges and any non-https traffic
 :80 {
+    reverse_proxy backend:9000
+}
+
+:8080 {
     reverse_proxy backend:9000
 }

@@ -160,6 +160,7 @@ def _run_stage_6_taste_select(
     progress: ProgressCallback,
     llm_callable: Optional[Callable[[str], str]] = None,
     audio_features: Optional[Dict] = None,
+    taste_profile: Optional[Dict] = None,
 ) -> List[Dict]:
     """Stage 6: build ICL prompt, call LLM, parse, rank, filter.
 
@@ -172,6 +173,10 @@ def _run_stage_6_taste_select(
 
     audio_features (NEW 2026-06-15): dict with {peaks, valleys} from
     stage 2. Used by retention scoring + clip design.
+
+    taste_profile (2026-06-21): creator's DB taste preferences. If not
+    provided, loaded from the DB using creator_id. This drives the ICL
+    prompt's hard constraints (niche, hook style, audience, avoid topics).
     """
     from ..llm import cost_control
 
@@ -226,6 +231,20 @@ def _run_stage_6_taste_select(
     history = []
     if creator_id and taste_store.creator_exists(creator_id):
         history = taste_store.load_history(creator_id, limit=10)
+
+    # ── TASTE PROFILE: load from DB if not provided (2026-06-21) ──────
+    # This is the creator's onboarding preferences that drive ICL constraints.
+    if taste_profile is None and creator_id:
+        try:
+            import asyncio
+            # run_new_pipeline is sync; use a fresh loop to await the DB call
+            taste_profile = asyncio.get_event_loop().run_until_complete(
+                taste_store.load_taste_profile_db(creator_id)
+            )
+        except Exception:
+            taste_profile = {}
+    if not taste_profile:
+        taste_profile = {}
 
     # ── NEW (2026-06-15): Archetype + retention scoring pre-pass ─────────
     # 0 LLM tokens. ~50ms. Gives the LLM structured context so it can
@@ -292,6 +311,8 @@ def _run_stage_6_taste_select(
             archetype_confidence=arch_confidence,
             retention_scores=retention_scores,
             max_picks=3,
+            creator_history=history,
+            taste_profile=taste_profile,  # 2026-06-21: creator onboarding prefs
         )
     else:
         # Fallback to legacy prompt

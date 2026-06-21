@@ -11,6 +11,7 @@ import traceback
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from ..models import ProcessResponse, TaskStatus
@@ -283,6 +284,20 @@ async def run_local_pipeline(task_id: str, file_path: str):
 
 
 router = APIRouter(prefix="/process/local", tags=["Local Video"])
+
+
+# Download the residential download server script (for user's Windows laptop)
+@router.get("/ytdlp-server", include_in_schema=False)
+async def download_ytdlp_server():
+    """Download the yt-dlp residential download server for Windows."""
+    script_path = Path("/app/backend/ytdlp-server-windows.py")
+    if script_path.exists():
+        return FileResponse(
+            path=script_path,
+            filename="ytdlp-server.py",
+            media_type="text/plain",
+        )
+    raise HTTPException(404, "Script not found")
 
 
 @router.post("", response_model=ProcessResponse)

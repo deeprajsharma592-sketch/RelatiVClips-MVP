@@ -247,7 +247,27 @@ def render_clip(
     """
     start = clip["start"]
     end = clip["end"]
-    duration = end - start
+    # FIX 2026-06-16: segments are LOCAL FILES. FFmpeg's -ss/-t use
+    # RELATIVE positions within the input file, not absolute video time.
+    # Without this fix, -ss 130.4 on a 35s segment file → 0 frames → 0KB.
+    #
+    # Key insight: audio surgical segments have source_start = ORIGINAL clip start
+    # (no padding), while video segments have source_start = PADDED download start.
+    # The video_path is the source of truth for where the file actually starts.
+    # audio_path segments start at their source_start; video files at their padded start.
+    video_src_start = float(clip.get("video_source_start", 0))  # from video seg
+    audio_src_start = float(clip.get("source_start", start))       # from audio seg
+    # Use whichever source_start is meaningful; prefer video_source_start when set
+    if video_src_start > 0 and abs(video_src_start - audio_src_start) < 5:
+        source_start = video_src_start
+    else:
+        source_start = audio_src_start
+    source_end = float(clip.get("video_source_end", clip.get("source_end", end)))
+    # Relative positions within the local segment file
+    rel_start = max(0.0, start - source_start)
+    rel_end = min(end, source_end)  # clip end, clamped to segment boundary
+    duration = rel_end - rel_start  # actual duration we CAN encode
+    orig_duration = end - start  # original intended duration for metadata
 
     # Validate timestamps - prevent 0 KB files from invalid timestamps
     if start is None or end is None or start >= end or duration <= 0:
@@ -301,8 +321,8 @@ def render_clip(
         ffmpeg_cmd = build_ffmpeg_command(
             video_path,
             str(output_path),
-            start,
-            end,
+            rel_start,
+            rel_end,
             x_offset,
             str(subtitle_path),
             accurate_seek=True,
@@ -313,8 +333,9 @@ def render_clip(
         print(f"[Renderer] Running FFmpeg command:")
         print(f"[Renderer]   Input: {video_path}")
         print(f"[Renderer]   Output: {output_path}")
-        print(f"[Renderer]   Duration: {end - start}s")
+        print(f"[Renderer]   rel_start: {rel_start:.1f}s, rel_end: {rel_end:.1f}s (orig {orig_duration:.0f}s)")
         print(f"[Renderer]   x_offset: {x_offset}")
+        print(f"[Renderer]   CMD: {' '.join(ffmpeg_cmd)}")
         
         result = subprocess.run(
             ffmpeg_cmd,
@@ -322,6 +343,12 @@ def render_clip(
             text=True,
             timeout=600
         )
+
+        # Always print stderr for debugging (ffmpeg can return 0 but write 0 bytes)
+        if result.stderr:
+            print(f"[Renderer] FFmpeg stderr: {result.stderr[:500]}")
+        if result.stdout:
+            print(f"[Renderer] FFmpeg stdout: {result.stdout[:200]}")
 
         if result.returncode != 0:
             print(f"FFmpeg error for clip {clip_index}: returncode={result.returncode}")
@@ -334,8 +361,8 @@ def render_clip(
             simpler_cmd = build_ffmpeg_command(
                 video_path,
                 str(output_path),
-                start,
-                end,
+                rel_start,
+                rel_end,
                 0,  # center crop
                 None,
                 accurate_seek=False,
@@ -343,12 +370,16 @@ def render_clip(
             )
             
             print(f"[Renderer] Running simpler FFmpeg command...")
+            print(f"[Renderer]   Simpler CMD: {' '.join(simpler_cmd)}")
             result = subprocess.run(
                 simpler_cmd,
                 capture_output=True,
                 text=True,
                 timeout=600
             )
+            
+            if result.stderr:
+                print(f"[Renderer] Simpler stderr: {result.stderr[:500]}")
             
             if result.returncode != 0:
                 print(f"Simpler FFmpeg also failed: {result.returncode}")

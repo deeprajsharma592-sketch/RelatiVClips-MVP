@@ -139,6 +139,25 @@ class CreatorProfileModel(Base):
     total_views_earned: Mapped[int] = mapped_column(Integer, default=0)
     total_revenue_cents: Mapped[int] = mapped_column(Integer, default=0)
 
+    # ── TASTE PREFERENCES (Phase 1: onboarding) ──────────────────────────
+    # Target platform for clips
+    target_platform: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)  # tiktok | instagram | youtube_shorts | twitter
+    # Audience demographics
+    audience_age: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "13-17" | "18-24" | "25-34" | "35-44" | "45+"
+    audience_location: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # comma-separated: "India, US, UK"
+    # Clip style preferences
+    clip_style: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)  # hype | educational | storytelling | music_only | raw
+    hook_style: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)  # question | statement | music_drop | face_forward | text_overlay
+    preferred_duration_s: Mapped[int] = mapped_column(Integer, default=30)  # 15 | 30 | 45 | 60
+    # What to avoid
+    avoid_topics: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # comma-separated
+    # Content niche
+    niche: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # rap | tech | gaming | finance | etc.
+    # Onboarding complete flag
+    taste_onboarded: Mapped[bool] = mapped_column(Boolean, default=False)
+    # When preferences were last updated
+    taste_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     user = relationship("UserModel", back_populates="creator_profile")
 
 

@@ -140,6 +140,8 @@ def build_archetype_aware_prompt(
     archetype_confidence: float = 0.0,
     retention_scores: Optional[Dict[int, Dict[str, float]]] = None,
     max_picks: int = 3,
+    creator_history: Optional[List["CreatorClipHistory"]] = None,
+    taste_profile: Optional[Dict] = None,
 ) -> str:
     """
     New (2026-06-15) archetype-aware prompt.
@@ -154,6 +156,10 @@ def build_archetype_aware_prompt(
          - title: 3-6 words, ALL CAPS, for thumbnail/UI
          (legacy: caption, hashtags, reason are also accepted)
       4. Stricter structure: includes archetype-specific guidance.
+      5. ICL examples from creator_history (when available).
+      6. TASTE PROFILE (2026-06-21): creator's onboarding preferences injected
+         directly into the system prompt so the LLM writes copy that matches
+         the creator's specific audience and style.
 
     The LLM is no longer asked to "find a story" — it's given candidates
     that are pre-scored and pre-typed. It only writes COPY.
@@ -191,12 +197,52 @@ def build_archetype_aware_prompt(
         f"{archetype_specific_guidance(archetype)}"
     )
 
-    # 3. VIDEO META
+    # 2b. TASTE PROFILE — creator's onboarding preferences (2026-06-21)
+    # Injected as hard constraints so the LLM writes copy that matches
+    # the creator's specific audience, style, and platform.
+    if taste_profile and taste_profile.get("onboarded"):
+        tp = taste_profile
+        parts.append("\nCREATOR TASTE PROFILE:")
+        if tp.get("niche") and tp["niche"] != "general":
+            parts.append(f"  Niche: {tp['niche']}")
+        if tp.get("clip_style") and tp["clip_style"] != "all":
+            parts.append(f"  Clip style: {tp['clip_style']}")
+        if tp.get("hook_style") and tp["hook_style"] != "all":
+            parts.append(f"  Hook style: {tp['hook_style']}")
+        if tp.get("audience_age") and tp["audience_age"] != "all":
+            parts.append(f"  Audience age: {tp['audience_age']}")
+        if tp.get("audience_location"):
+            locs = ", ".join(tp["audience_location"])
+            parts.append(f"  Audience location: {locs}")
+        if tp.get("preferred_duration_s"):
+            parts.append(f"  Preferred clip duration: ~{tp['preferred_duration_s']}s")
+        if tp.get("target_platform") and tp["target_platform"] != "all":
+            parts.append(f"  Target platform: {tp['target_platform']}")
+        if tp.get("avoid_topics"):
+            avoids = ", ".join(tp["avoid_topics"])
+            parts.append(f"  AVOID these topics: {avoids}")
+        parts.append("")
+
+    # 3. ICL examples (creator history)
+    if creator_history:
+        parts.append(
+            "\nRecent clips from this creator (best to worst):"
+        )
+        for i, clip in enumerate(creator_history[:3]):
+            views_str = f" ({clip.views} views)" if clip.views else ""
+            ret_str = f" | {clip.retention_pct:.0f}% retention" if clip.retention_pct else ""
+            parts.append(
+                f"  [{i+1}] {clip.video_title!r}{views_str}{ret_str}\n"
+                f"       Hook: {clip.edit_reason!r}"
+            )
+        parts.append("")
+
+    # 4. VIDEO META
     title = (video_meta.get("title", "(no title)") or "(no title)")[:80]
     dur = float(video_meta.get("duration_s") or video_meta.get("duration") or 0)
     parts.append(f"\nVideo: {title!r} ({dur:.0f}s, target={max_picks} clips)")
 
-    # 4. CANDIDATES — moment + retention features
+    # 5. CANDIDATES — moment + retention features
     if not moments:
         parts.append("No candidate moments found — return empty picks array.")
     else:
@@ -217,7 +263,7 @@ def build_archetype_aware_prompt(
             f"\nCandidates ({len(cand_lines)}):\n" + "\n".join(cand_lines)
         )
 
-    # 5. OUTPUT SCHEMA — strict JSON
+    # 6. OUTPUT SCHEMA — strict JSON
     parts.append(
         f"\nReturn JSON: {{\"picks\": [{{"
         f"\"moment_index\": <int 1-based from list above>, "
@@ -239,10 +285,14 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     """
     Parse the LLM's strict-JSON moment response into clip edits.
 
+    Handles BOTH formats:
+      - NEW:   {"picks": [{"moment_index": 1, "reason": "...", ...}]}
+      - LEGACY: [{"candidate_index": 1, "edit_reason": "...", ...}]
+
     Returns list of:
       {
         moment_index, trim_start, trim_end, viral_title,
-        caption, hashtags, reason, source_start, source_end
+        caption, hashtags, reason, edit_reason, source_start, source_end
       }
 
     The caller (orchestrator) is responsible for mapping moment_index →
@@ -256,33 +306,67 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
 
-    # Try parsing the whole string first
+    # ── Try NEW format: {"picks": [...]} ───────────────────────────────
+    # This is what the new build_moment_prompt / build_archetype_aware_prompt
+    # ask the LLM to return.
     try:
         data = json.loads(text)
-    except json.JSONDecodeError:
-        # Find a JSON object
-        obj_match = re.search(r'\{\s*"picks"\s*:\s*\[', text, re.DOTALL)
-        if not obj_match:
-            raise ValueError("LLM response contains no 'picks' JSON array")
-        start = obj_match.start()
-        brace_count = 0
-        end_idx = start
-        for i in range(start, len(text)):
-            if text[i] == "{":
-                brace_count += 1
-            elif text[i] == "}":
-                brace_count -= 1
-                if brace_count == 0:
-                    end_idx = i + 1
-                    break
-        text = text[start:end_idx]
-        data = json.loads(text)
+        if isinstance(data, dict) and "picks" in data:
+            valid = _parse_picks_array(data["picks"])
+            if valid is not None:
+                return valid
+    except (json.JSONDecodeError, ValueError, KeyError):
+        pass
 
-    if not isinstance(data, dict) or "picks" not in data:
-        raise ValueError("LLM response is not a JSON object with 'picks' array")
+    # ── Fallback: try LEGACY format: [{"candidate_index": ...}] ─────────
+    # Used by build_prompt() and old test mocks.
+    try:
+        match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
+        if match:
+            arr = json.loads(match.group(0))
+            if isinstance(arr, list):
+                valid = []
+                for item in arr:
+                    if not isinstance(item, dict):
+                        continue
+                    idx_raw = item.get("candidate_index")
+                    if idx_raw is None:
+                        continue
+                    try:
+                        idx = int(idx_raw)
+                    except (TypeError, ValueError):
+                        continue
+                    valid.append({
+                        "moment_index": idx,
+                        "trim_start": float(item.get("trim_start_offset", item.get("trim_start", 0))),
+                        "trim_end": float(item.get("trim_end_offset", item.get("trim_end", 0))),
+                        "confidence": 0.8,
+                        "verified": True,
+                        "viral_title": str(item.get("viral_title", ""))[:100].upper(),
+                        "hook": str(item.get("viral_title", "") or "")[:200],
+                        "retention_bridge": str(item.get("suggested_caption", "") or "")[:300],
+                        "title": str(item.get("viral_title", "") or "")[:100].upper(),
+                        "caption": str(item.get("suggested_caption", ""))[:200],
+                        "edit_reason": str(item.get("edit_reason", ""))[:500],
+                        "reason": str(item.get("edit_reason", "") or item.get("reason", ""))[:500],
+                        "hashtags": str(item.get("suggested_hashtags", item.get("hashtags", "")))[:200],
+                    })
+                if valid:
+                    return valid
+    except (json.JSONDecodeError, ValueError, re.error):
+        pass
 
+    raise ValueError("LLM response is not valid JSON in new or legacy format")
+
+
+def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
+    """Parse the 'picks' array (new format). Returns None if invalid."""
+    import json
+
+    if not isinstance(picks, list):
+        return None
     valid: List[Dict] = []
-    for p in data["picks"]:
+    for p in picks:
         if not isinstance(p, dict):
             continue
         if "moment_index" not in p:
@@ -318,6 +402,7 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
             or p.get("viral_title")
             or hook[:60]
         )[:100].upper()
+        reason_str = str(p.get("reason") or "")[:500]
         valid.append({
             "moment_index": int(p["moment_index"]),
             "trim_start": float(p.get("trim_start", 0)),
@@ -330,10 +415,11 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
             "retention_bridge": retention_bridge,
             "title": title,
             "caption": retention_bridge or str(p.get("caption", ""))[:200],  # legacy alias
+            "edit_reason": reason_str,  # explicit edit_reason field for rank_candidates
             "hashtags": str(p.get("hashtags", ""))[:200],
-            "reason": str(p.get("reason", ""))[:500],
+            "reason": reason_str,
         })
-    return valid
+    return valid if valid else None
 
 
 # ---------------------------------------------------------------------------
@@ -377,21 +463,81 @@ def build_prompt(
     niche: str = "general",
     max_examples: int = 3,
 ) -> str:
-    """Legacy build_prompt — kept for backward compat with existing tests."""
-    # Map HookCandidate → Moment so the new prompt builder handles both paths.
-    fake_moments: List[Moment] = []
-    for i, c in enumerate(hook_candidates, 1):
-        fake_moments.append(Moment(
-            index=i,
-            start=c.start,
-            end=c.end,
-            signal_type="peak",
-            score=c.hook_score,
-            snippet=c.reason,
-            source="legacy_hook",
-            story_position=0.5,
-        ))
-    return build_moment_prompt(fake_moments, video_meta, max_picks=5)
+    """Build ICL prompt with creator history and surgical context.
+
+    This is the legacy path used by tests and the old orchestrator. It
+    supports ICL few-shot examples from creator history and surgical context
+    markers that the new build_moment_prompt doesn't include.
+    """
+    parts: List[str] = []
+
+    # 1. Creator type signal
+    if not creator_history:
+        parts.append("Creator profile: NEW creator — no prior clips. "
+                     "Apply general best practices.")
+    else:
+        parts.append("Creator profile: EXPERIENCED — see recent clips below.")
+
+    # 2. System instruction
+    parts.append(
+        "You are a short-form video clipper (TikTok/Reels/Shorts). "
+        "For each hook candidate, write a compelling SHORT-FORM CLIP:\n"
+        "  - edit_reason: why this moment works as a hook (1 sentence)\n"
+        "  - suggested_caption: max 100 chars, hooky, no generic phrases\n"
+        "  - suggested_hashtags: top 3-5 tags\n"
+        "  - viral_title: 3-6 words, ALL CAPS, stop-scroll\n"
+        "Output JSON: [{\"candidate_index\": <N>, \"edit_reason\": \"...\", ...}]"
+    )
+
+    # 3. Video meta
+    title = video_meta.get("title", "(unknown)") or "(unknown)"
+    dur = float(video_meta.get("duration_s") or video_meta.get("duration") or 0)
+    niche_str = f" (niche: {niche})" if niche != "general" else ""
+    parts.append(f"Video: {title!r} ({dur:.0f}s, target=1-3 clips){niche_str}")
+
+    # 4. ICL examples (creator history)
+    if creator_history:
+        parts.append("\nRecent clips for this creator (best to worst):")
+        for i, clip in enumerate(creator_history[:max_examples]):
+            views_str = f" ({clip.views} views)" if clip.views else ""
+            ret_str = f" | {clip.retention_pct:.0f}% retention" if clip.retention_pct else ""
+            parts.append(
+                f"  Video {i}: {clip.video_title!r}{views_str}{ret_str}\n"
+                f"    Hook: {clip.edit_reason!r}"
+            )
+        parts.append("")
+        parts.append("Examples of THIS creator:")
+        parts.append("")
+
+    # 5. Hook candidates
+    if not hook_candidates:
+        parts.append("Hook candidates: none")
+    else:
+        cand_lines = []
+        for i, c in enumerate(hook_candidates, 1):
+            snippet = c.reason or "(energy peak)"
+            # Surgical context: output as SEPARATE [marker] items (not combined),
+            # matching what the tests expect.
+            markers: List[str] = []
+            if c.surgical_padding_s:
+                markers.append(f"surgery: ±{c.surgical_padding_s:.1f}s padding")
+            if c.source_start is not None and c.source_end is not None:
+                markers.append(f"will cut source t={c.source_start:.1f}s-{c.source_end:.1f}s")
+            surgical_str = "".join(f" [{m}]" for m in markers)
+            cand_lines.append(f"[{i}] t={c.start:.1f}s-{c.end:.1f}s (score={c.hook_score:.2f}){surgical_str}: {snippet!r}")
+        parts.append("Hook candidates:\n" + "\n".join(cand_lines))
+
+    # 6. Output schema
+    parts.append(
+        "\nReturn JSON array of picks (max 3). "
+        "If only 1-2 candidates are strong, return 1-2. Honest > padded.\n"
+        "[{\"candidate_index\": <int>, \"edit_reason\": \"<why this works>\", "
+        "\"suggested_caption\": \"<hooky caption>\", \"suggested_hashtags\": \"<tags>\", "
+        "\"viral_title\": \"<ALL CAPS TITLE>\", \"trim_start_offset\": <sec to trim from start>, "
+        "\"trim_end_offset\": <sec to trim from end>}]"
+    )
+
+    return "\n".join(parts)
 
 
 def parse_response(llm_output: str) -> List[Dict]:

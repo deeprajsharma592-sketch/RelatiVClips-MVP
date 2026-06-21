@@ -11,6 +11,15 @@ TEMP_DIR = BASE_DIR / "temp"
 # Sibling to outputs/temp, persisted across restarts, 7d TTL.
 CACHE_DIR = BASE_DIR / "cache"
 
+# === Residential Downloader (Deepraj's Windows laptop) ===
+# ngrok tunnel: run "ngrok http 8765" on laptop, paste the Forwarding URL here.
+# Update this whenever ngrok restarts (free tier = new URL each time).
+RESIDENTIAL_DOWNLOAD_URL = os.getenv(
+    "RESIDENTIAL_DOWNLOAD_URL",
+    "https://overbid-unleaded-pencil.ngrok-free.dev"
+)
+RESIDENTIAL_DOWNLOAD_TIMEOUT = int(os.getenv("RESIDENTIAL_DOWNLOAD_TIMEOUT", "300"))
+
 OUTPUTS_DIR.mkdir(exist_ok=True)
 TEMP_DIR.mkdir(exist_ok=True)
 CACHE_DIR.mkdir(exist_ok=True)

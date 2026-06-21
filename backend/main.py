@@ -30,6 +30,7 @@ from .routers import (
     claims_router,
     clips_router,
     verification_router,
+    taste_router,
 )
 from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
 from .utils.task_store import set_event_loop, task_store
@@ -110,6 +111,7 @@ app.include_router(campaigns_router.router)
 app.include_router(claims_router.router)
 app.include_router(clips_router.router)
 app.include_router(verification_router.router)
+app.include_router(taste_router.router)
 
 
 # ─── App identity ───────────────────────────────────────────────────────────
@@ -119,6 +121,34 @@ APP_NAME = "RelatiV"
 APP_VERSION = "2.0.0"
 APP_STAGE = "beta"   # beta | rc | stable
 APP_BUILT_AT = "2026-06-15"
+
+
+# Download the residential download server script (for user's Windows laptop)
+@app.get("/ytdlp-server.py", include_in_schema=False)
+async def download_ytdlp_server():
+    """Download the yt-dlp residential server script."""
+    from pathlib import Path
+    script_path = Path("/app/backend/ytdlp-server-windows.py")
+    return FileResponse(script_path, filename="ytdlp-server.py", media_type="text/plain")
+
+
+# Serve finished clip files for download
+@app.get("/clips/{filename}", include_in_schema=False)
+async def download_clip(filename: str):
+    """Download a finished clip MP4 file."""
+    from pathlib import Path
+    import os
+    # Security: only allow files in the outputs directory
+    outputs_dir = Path("/app/outputs")
+    # Remove path traversal attempts
+    safe_name = os.path.basename(filename)
+    file_path = outputs_dir / safe_name
+    if not file_path.exists():
+        raise HTTPException(404, "Clip not found")
+    return FileResponse(file_path, filename=safe_name, media_type="video/mp4")
+
+
+@app.get("/health")
 
 
 @app.get("/health")

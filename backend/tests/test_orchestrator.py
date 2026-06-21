@@ -157,8 +157,10 @@ class TestOrchestratorSmoke:
         """When an LLM callable is given, the prompt is sent to it and parsed."""
         # The LLM "responds" with one of the two candidates
         def fake_llm(prompt: str) -> str:
-            # Verify the prompt contains the expected sections
-            assert "Hook candidates" in prompt
+            # The new archetype-aware prompt uses "Candidates", the legacy
+            # build_prompt uses "Hook candidates". Accept either.
+            assert ("Hook candidates" in prompt or "Candidates" in prompt), \
+                f"prompt missing candidates section"
             assert "JSON" in prompt
             return '[{"candidate_index": 1, "edit_reason": "Strong opening", "trim_start_offset": -2, "trim_end_offset": 13}]'
 

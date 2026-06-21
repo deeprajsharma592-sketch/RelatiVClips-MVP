@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 from ..utils.config import (
     TEMP_DIR, YTDLP_FORMAT, FFMPEG_PATH, FFPROBE_PATH, YTDLP_PATH,
-    BGUTIL_POT_BASE_URL, YT_PROXY,
+    BGUTIL_POT_BASE_URL, YT_PROXY, COOKIES_PATH,
 )
 
 # Per-host concurrency cap for YouTube fetches. YouTube's anti-bot layer
@@ -83,64 +83,112 @@ def download_video(url: str, task_id: str, progress_callback: Optional[callable]
 
 
 def _download_video_locked(url, task_id, video_id, video_path, audio_path, progress_callback):
-    """Inner download — caller must hold `_yt_fetch_lock`."""
-    ytdlp_cmd = [
-        YTDLP_PATH,
-        "-f", "best[height<=480]/best",
-        "--merge-output-format", "mp4",
-        "-o", str(video_path),
-        "--extract-audio",
-        "--audio-format", "wav",
-        "--audio-quality", "0",
-        "--postprocessor-args", f"audio: -ar {16000} -ac 1",
-        "--no-check-certificates",
-        "--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-        # PO-token provider: tells yt-dlp to fetch a per-video token from the
-        # local bgutil container. Bypasses the 2025+ "Sign in to confirm"
-        # anti-bot wall that the old static `player_client=web` could not.
-        "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
-        # JS runtime for YouTube's 2025+ signature/challenge solving.
-        # Without this yt-dlp falls back to deprecated extraction and
-        # the PO token alone isn't enough.
-        "--js-runtimes", "node",
-        "--no-warnings",
-        "--sleep-interval", "5",
-        "--max-sleep-interval", "15",
-        "--wait-for-video", "10",
-    ]
-    # Cloud-IP reputation workaround: optional SOCKS5 tunnel to a residential
-    # IP. Only appended when YT_PROXY is set (default empty, no proxy).
-    if YT_PROXY:
-        ytdlp_cmd += ["--proxy", YT_PROXY]
-    ytdlp_cmd += [url]
+    """Inner download — caller must hold `_yt_fetch_lock`.
 
+    Uses Deepraj's Windows laptop (via ngrok tunnel) as primary downloader
+    because Hetzner datacenter IPs are blocked by YouTube CDN.
+    """
+    # Try residential downloader first (laptop's residential IP)
     try:
-        result = subprocess.run(
-            ytdlp_cmd,
-            capture_output=True,
-            text=True,
-            timeout=600
-        )
+        from ..utils.residential_downloader import download_video as resi_download
 
+        if progress_callback:
+            progress_callback(f"Downloading via residential server (laptop)...")
+
+        resi_download(str(url), str(video_path))
+
+        if progress_callback:
+            progress_callback(f"Download complete for {video_id}, extracting audio...")
+
+    except Exception as resi_err:
+        # Fall back to yt-dlp
+        if progress_callback:
+            progress_callback(f"Residential download failed ({resi_err}), trying yt-dlp...")
+
+        ytdlp_cmd = [
+            YTDLP_PATH,
+            "-f", "best[height<=480]/best",
+            "--merge-output-format", "mp4",
+            "-o", str(video_path),
+            "--extract-audio",
+            "--audio-format", "wav",
+            "--audio-quality", "0",
+            "--postprocessor-args", f"audio: -ar {16000} -ac 1",
+            "--no-check-certificates",
+            "--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+            "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
+            "--js-runtimes", "node",
+            "--cookies", str(COOKIES_PATH),
+            "--no-warnings",
+            "--sleep-interval", "5",
+            "--max-sleep-interval", "15",
+            "--wait-for-video", "10",
+        ]
+        if YT_PROXY:
+            ytdlp_cmd += ["--proxy", YT_PROXY]
+        ytdlp_cmd += [url]
+
+        result = subprocess.run(ytdlp_cmd, capture_output=True, text=True, timeout=600)
         if result.returncode != 0:
             raise RuntimeError(f"yt-dlp failed: {result.stderr}")
 
+    # Extract 16kHz WAV audio from the downloaded MP4
+    # (yt-dlp did this inline; residential downloader just gives us the MP4)
+    probe_cmd = [
+        FFPROBE_PATH,
+        "-v", "error",
+        "-select_streams", "a:0",
+        "-show_entries", "stream=codec_type",
+        "-of", "default=noprint_wrappers=1",
+        str(video_path),
+    ]
+    probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=30)
+    has_audio = "codec_type=audio" in probe_result.stdout
+
+    if not has_audio:
         if progress_callback:
-            progress_callback(f"Download complete for {video_id}")
+            progress_callback("No audio stream found, creating silent audio...")
+        dur_cmd = [
+            FFPROBE_PATH, "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(video_path),
+        ]
+        dur_result = subprocess.run(dur_cmd, capture_output=True, text=True, timeout=30)
+        try:
+            duration = float(dur_result.stdout.strip())
+        except Exception:
+            duration = 10.0
 
-        actual_video_path = TEMP_DIR / f"{task_id}_video.mp4"
+        silent_cmd = [
+            FFMPEG_PATH, "-y",
+            "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono",
+            "-t", str(duration), "-ar", "16000", "-ac", "1", "-acodec", "pcm_s16le",
+            str(audio_path),
+        ]
+        subprocess.run(silent_cmd, capture_output=True, timeout=300)
+    else:
+        audio_cmd = [
+            FFMPEG_PATH, "-y",
+            "-i", str(video_path),
+            "-vn",  # no video
+            "-ar", "16000", "-ac", "1",  # 16kHz mono
+            "-acodec", "pcm_s16le",
+            str(audio_path),
+        ]
+        result = subprocess.run(audio_cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0:
+            raise RuntimeError(f"Audio extraction failed: {result.stderr}")
 
-        return {
-            "video_path": str(actual_video_path),
-            "audio_path": str(audio_path),
-            "video_id": video_id,
-            "task_id": task_id
-        }
+    if progress_callback:
+        progress_callback(f"Download and audio extraction complete for {video_id}")
 
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("Download timeout - video may be too long or unavailable")
-    except Exception as e:
-        raise RuntimeError(f"Download failed: {str(e)}")
+    return {
+        "video_path": str(video_path),
+        "audio_path": str(audio_path),
+        "video_id": video_id,
+        "task_id": task_id,
+    }
 
 
 def load_local_video(file_path: str, task_id: str, progress_callback: Optional[callable] = None) -> dict:
@@ -348,6 +396,7 @@ def _download_audio_only_locked(url, task_id, video_id, audio_path, max_size_mb,
         # on flagged cloud IPs even though we already have the video file.
         "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
         "--js-runtimes", "node",
+        "--cookies", str(COOKIES_PATH),
         "--sleep-interval", "5",
         "--max-sleep-interval", "15",
     ]
@@ -452,6 +501,7 @@ def _surgical_segment_download_locked(
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}",
         "--js-runtimes", "node",
+        "--cookies", str(COOKIES_PATH),
         "--sleep-interval", "3",
         "--max-sleep-interval", "10",
     ]

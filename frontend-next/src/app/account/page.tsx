@@ -311,6 +311,15 @@ export default function AccountPage() {
                 {dash.label}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
+              {user.role === "creator" && (
+                <Link
+                  href="/creators/taste"
+                  className="btn-glass w-full justify-center inline-flex text-[13px]"
+                  style={{ padding: "11px 24px" }}
+                >
+                  🎯 Taste Profile
+                </Link>
+              )}
               <Link
                 href="/plans"
                 className="btn-glass w-full justify-center inline-flex text-[13px]"

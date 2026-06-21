@@ -169,3 +169,61 @@ def update_metrics(
 def creator_exists(creator_id: str) -> bool:
     """Quick check for cold-start optimization."""
     return _history_path(creator_id).exists()
+
+
+# ── DB-backed taste profile ──────────────────────────────────────────────────
+
+async def load_taste_profile_db(creator_id: str) -> dict:
+    """
+    Fetch the creator's taste preferences from Postgres.
+    Falls back to defaults if not found or not onboarded.
+    """
+    defaults = {
+        "niche": "general",
+        "clip_style": "all",
+        "hook_style": "all",
+        "preferred_duration_s": 30,
+        "audience_age": "all",
+        "audience_location": [],
+        "avoid_topics": [],
+        "target_platform": "all",
+        "onboarded": False,
+    }
+
+    try:
+        from ..database.session import async_session
+        from sqlalchemy import select
+        from ..database.models import CreatorProfileModel
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(CreatorProfileModel).where(
+                    CreatorProfileModel.user_id == creator_id
+                )
+            )
+            profile = result.scalar_one_or_none()
+
+        if not profile or not profile.taste_onboarded:
+            return defaults
+
+        locations = []
+        if profile.audience_location:
+            locations = [l.strip() for l in profile.audience_location.split(",") if l.strip()]
+
+        avoids = []
+        if profile.avoid_topics:
+            avoids = [t.strip() for t in profile.avoid_topics.split(",") if t.strip()]
+
+        return {
+            "niche": profile.niche or "general",
+            "clip_style": profile.clip_style or "all",
+            "hook_style": profile.hook_style or "all",
+            "preferred_duration_s": profile.preferred_duration_s or 30,
+            "audience_age": profile.audience_age or "all",
+            "audience_location": locations,
+            "avoid_topics": avoids,
+            "target_platform": profile.target_platform or "all",
+            "onboarded": bool(profile.taste_onboarded),
+        }
+    except Exception:
+        return defaults

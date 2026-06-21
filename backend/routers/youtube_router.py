@@ -587,6 +587,18 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     callback("Source analyzed", step=1, sub_progress=1.0)
 
     if not moments:
+        # Check if this is a cookie/auth error by looking at info
+        auth_error = info.get("auth_error") or (
+            "sign in" in str(info.get("error", "")).lower()
+            if info.get("error") else False
+        )
+        if auth_error:
+            callback("YouTube auth failed — cookies may be expired. Please re-export cookies from your browser and update them in the backend.", step=2, sub_progress=0.0)
+            raise RuntimeError(
+                "YOUTUBE_AUTH_EXPIRED: YouTube cookies appear to be expired. "
+                "Please re-export cookies from your browser (EditThisCookie or browser dev tools) "
+                "and save to /app/RelatiV/cookies.txt, then restart the backend."
+            )
         callback("No candidate moments found — pipeline will not render", step=2, sub_progress=0.0)
         return {
             "clips": [],
@@ -652,13 +664,13 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
                 moments=moments, video_meta=video_meta,
                 archetype=arch_result.primary,
                 archetype_confidence=arch_result.confidence,
-                max_picks=3,
+                max_picks=4,  # LLM picks 1-4 based on actual viral content; "Honest > padded"
             )
         else:
-            prompt = build_moment_prompt(moments, video_meta, max_picks=3)
+            prompt = build_moment_prompt(moments, video_meta, max_picks=4)
     except Exception:
         # Fall back to legacy prompt on any error
-        prompt = build_moment_prompt(moments, video_meta, max_picks=3)
+        prompt = build_moment_prompt(moments, video_meta, max_picks=4)
     # NOTE: the LLM key is INVALID in this env, so this will fail and the
     # energy/moment fallback will be used. Once the key is rotated, the
     # LLM call below activates and replaces the fallback picks.
@@ -1176,6 +1188,8 @@ def _run_moment_pipeline(
                 break
         if spec_match:
             c["video_path"] = spec_match["video_path"]
+            c["video_source_start"] = float(spec_match.get("source_start", 0))
+            c["video_source_end"] = float(spec_match.get("source_end", 999999))
             n_from_spec += 1
             final_clips_with_video.append(c)
         else:
@@ -1205,6 +1219,12 @@ def _run_moment_pipeline(
             cached = get_cached_segment(url, cand["start"], cand["end"])
             if cached is not None:
                 clip["video_path"] = str(cached)
+                # The cached file was saved by surgical download with padded boundaries.
+                # Use cand["start"] as proxy for the file's actual content start:
+                # the file = (cand["start"] - pad) to (cand["end"] + pad).
+                from ..utils.config import SURGICAL_BUFFER_SECONDS as _PAD
+                clip["video_source_start"] = cand["start"] - _PAD
+                clip["video_source_end"] = cand["end"] + _PAD
                 clip.pop("_needs_video_download", None)
                 cached_segs.append(clip)
                 _bridge("video_dl", f"  segment {i+1} cache hit [{cand['start']:.1f}-{cand['end']:.1f}]",
@@ -1277,13 +1297,21 @@ def _run_moment_pipeline(
                 or clip.get("audio_path")
                 or clip.get("source_start", url)
             )
-            seg_file_start = float(clip.get("source_start", 0)) - SURGICAL_BUFFER_SECONDS
-            clip_offset_start = max(0.0, float(clip.get("start", 0)) - seg_file_start)
-            clip_offset_end = max(clip_offset_start + 1, float(clip.get("end", 0)) - seg_file_start)
-            print(f"[DEBUG-render] clip {i}: src_start={clip.get('source_start')} start={clip.get('start')} end={clip.get('end')} → seg_file_start={seg_file_start} offsets=({clip_offset_start}, {clip_offset_end})")
+            # FIX 2026-06-16: use video_source_start (padded) not source_start (audio, unpadded).
+            # video_source_start is set when video segment is attached to clip.
+            # If not set (e.g. video downloaded inline below), compute it now.
+            _vsrc = clip.get("video_source_start")
+            if _vsrc is None:
+                # Video was just downloaded inline — surgical uses padded boundaries.
+                _vsrc = max(0.0, float(clip.get("source_start", clip.get("start", 0))) - SURGICAL_BUFFER_SECONDS)
+                clip["video_source_start"] = _vsrc
+                clip["video_source_end"] = float(clip.get("source_end", clip.get("end", 0))) + SURGICAL_BUFFER_SECONDS
+            seg_start = _vsrc  # video file starts at padded boundary
+            # Pass absolute start/end to render_clip — it computes rel_start/rel_end internally.
+            # Only set video_source_start so render_clip knows where the file actually starts.
             render_clip = dict(clip)
-            render_clip["start"] = round(clip_offset_start, 2)
-            render_clip["end"] = round(clip_offset_end, 2)
+            render_clip["video_source_start"] = _vsrc
+            render_clip["video_source_end"] = clip.get("video_source_end", float(clip.get("source_end", clip.get("end", 0))) + SURGICAL_BUFFER_SECONDS)
             out = renderer_module.render_clip(
                 video_path=source_for_renderer,
                 clip=render_clip,

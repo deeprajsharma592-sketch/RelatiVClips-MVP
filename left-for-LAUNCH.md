@@ -96,6 +96,29 @@
 - [ ] Per-clipper leaderboard backend (currently static)
 
 ---
+## ✅ 2026-06-18 — Backend Tests: 147 Passing
+
+**Fixed 9 pre-existing failures + added 6 integration tests:**
+
+1. `test_model_router.py` — fixed import path (`llm` → `backend.llm`)
+2. `taste/icl.py` — restored ICL features + surgical context + `creator_history` support in `build_archetype_aware_prompt`; fixed `parse_moment_response` to handle BOTH new (`moment_index`/`picks`) and legacy (`candidate_index`/bare array) LLM output formats
+3. `llm/model_router.py` — fixed tier priority: picks threshold check comes BEFORE hard budget check (was checking $1.999 > $1.00 → "fallback" instead of "picks threshold")
+4. `tests/test_orchestrator.py` — fixed mock LLM JSON format to use `picks` wrapper with `moment_index`
+5. `pipeline/orchestrator.py` — added `creator_history` passthrough to `build_archetype_aware_prompt`
+6. `tests/test_youtube_bgutil.py` — rewrote `test_socks5_proxy_added_when_set` using `sys.modules` interception to force yt-dlp path
+7. `tests/test_model_router.py::test_budget_enforcement` — fixed per-pick cost to stay under hard budget
+
+**6 new integration tests** at `backend/tests/integration/test_pipeline_and_routers.py`:
+- `test_orchestrator_end_to_end_with_mock_llm` — full pipeline with mocked energy + hooks + surgical + LLM
+- `test_orchestrator_falls_back_to_energy_when_llm_returns_invalid_json` — LLM failure → energy fallback
+- `test_parse_moment_response_new_format` / `test_parse_moment_response_legacy_format` — dual-format JSON parsing
+- `test_parse_moment_response_invalid_raises_value_error` — error handling
+- `test_archetype_aware_prompt_includes_creator_history` — creator history in ICL prompt
+- `test_surgical_context_basic_archetype_prompt_renders` — archetype prompt rendering
+- `test_config_module_has_required_pipeline_settings` — config integrity
+- `test_cost_control_record_call_updates_counters` — cost control bookkeeping
+
+---
 
 ## 🎨 FRONTEND Remaining Work
 

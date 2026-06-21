@@ -687,6 +687,9 @@ def detect_moments(
     if not transcript or not transcript.get("segments"):
         log("  Trying YouTube captions first (no audio download)...")
         transcript = _try_ytdlp_transcript(source, task_id, log)
+        # Propagate auth errors so the router can surface a clear user message
+        if transcript and transcript.get("auth_error"):
+            info["auth_error"] = True
     else:
         log(f"  Using precomputed transcript ({len(transcript.get('segments', []))} segments)")
 
