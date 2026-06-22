@@ -63,22 +63,17 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMenu}>
           <motion.div
-            className="w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden"
-            style={{
-              background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
-              boxShadow: "0 4px 12px rgba(252, 211, 77, 0.30), 0 1px 0 rgba(255,245,220,0.20) inset",
-            }}
-            whileHover={{ scale: 1.05, rotate: -5 }}
+            className="relative overflow-hidden rounded-xl"
+            whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400 }}
           >
-            <span className="font-display text-base font-bold" style={{ color: "#1A1814" }}>R</span>
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(255,245,220,0.30) 0%, transparent 60%)",
-                pointerEvents: "none",
-              }}
+            <img
+              src="/relativ-logo.webp"
+              alt="RelatiV Clips"
+              width={80}
+              height={36}
+              className="object-contain h-9 w-auto"
+              decoding="async"
             />
           </motion.div>
           <div className="flex items-baseline gap-2">
