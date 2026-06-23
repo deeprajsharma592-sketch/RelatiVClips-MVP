@@ -50,7 +50,7 @@ const cardVariants = {
   animate: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: 0.1 + i * 0.1, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
+    transition: { delay: 0.1 + i * 0.1, duration: 0.5 },
   }),
 };
 
