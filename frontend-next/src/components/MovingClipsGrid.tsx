@@ -305,7 +305,7 @@ export default function MovingClipsGrid() {
         className="mt-10 text-center text-[12px] font-mono"
         style={{ color: "var(--color-text-muted)" }}
       >
-        Sample output — actual clips from the engine land in your dashboard
+        Paste a URL — get clips free during the beta
       </p>
     </div>
   );

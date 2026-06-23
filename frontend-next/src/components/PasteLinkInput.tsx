@@ -123,30 +123,30 @@ export default function PasteLinkInput({
             aria-label="YouTube URL"
           />
           <button
-            type="submit"
-            disabled={!url.trim() || !valid || submitting}
-            className="m-1.5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: "linear-gradient(135deg, #D946EF 0%, #F59E0B 100%)",
-              color: "#FFFFFF",
-              boxShadow:
-                "0 4px 14px rgba(217, 70, 239, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)",
-            }}
-            onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
-            onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+          type="submit"
+          disabled={!url.trim() || !valid || submitting}
+          className="m-1.5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: "linear-gradient(135deg, #D946EF 0%, #F59E0B 100%)",
+            color: "#FFFFFF",
+            boxShadow:
+              "0 4px 14px rgba(217, 70, 239, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)",
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
           >
-            {submitting ? (
-              <>
-                <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                <span>Working…</span>
-              </>
-            ) : (
-              <>
-                <span>Get clips</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </>
-            )}
+          {submitting ? (
+            <>
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+              <span>Working…</span>
+            </>
+          ) : (
+            <>
+              <span>Get 10 clips in 60s</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </>
+          )}
           </button>
         </form>
 
@@ -185,6 +185,14 @@ export default function PasteLinkInput({
           <span style={{ color: "var(--color-text-faint)" }}>·</span>
           <span>or drop a file in the workspace</span>
         </div>
+
+        {/* Objection handler */}
+        <p
+          className="mt-3 ml-6 text-[12px] font-mono"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          No signup required · Works on any public YouTube link
+        </p>
       </div>
     );
   }
@@ -239,7 +247,7 @@ export default function PasteLinkInput({
           <Sparkles className="h-3 w-3 animate-pulse" />
         ) : (
           <>
-            <span className="hidden sm:inline">Get clips</span>
+            <span className="hidden sm:inline">Get 10 clips in 60s</span>
             <ArrowRight className="h-3 w-3" />
           </>
         )}

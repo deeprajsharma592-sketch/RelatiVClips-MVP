@@ -251,6 +251,41 @@ export default function HomePage() {
                 <span style={{ color: "var(--color-text-faint)" }}>·</span>
                 <span>Captions baked in</span>
               </motion.div>
+
+              {/* Social proof bar */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className="mt-8 flex flex-wrap items-center gap-6"
+              >
+                <span
+                  className="text-[12px] font-mono"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Built in Assam, India
+                </span>
+                <span
+                  className="h-3 w-px"
+                  style={{ background: "var(--color-border)" }}
+                />
+                <span
+                  className="text-[12px] font-mono"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Live beta — 50-60 clip requests in first day
+                </span>
+                <span
+                  className="h-3 w-px"
+                  style={{ background: "var(--color-border)" }}
+                />
+                <span
+                  className="text-[12px] font-mono"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  45-second clip time
+                </span>
+              </motion.div>
             </div>
 
             {/* ─── RIGHT COLUMN: CascadeGraphic (glassmorphic pipeline) ─── */}
