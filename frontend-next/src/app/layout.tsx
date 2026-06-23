@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import Header from "@/components/Header";
 import ValuePropBar from "@/components/ValuePropBar";
 import Footer from "@/components/Footer";
@@ -31,6 +31,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap",
   weight: ["300", "400", "500", "600", "700"],
+});
+
+// Bebas Neue — condensed display font for massive Apple-style headlines
+const bebasNeue = Bebas_Neue({
+  variable: "--font-bebas",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
 });
 
 // Italic display: Fraunces (variable, opsz, SOFT, WONK axes) — premium serif italic accents
@@ -164,7 +172,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${geist.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${geist.variable} ${geistMono.variable} ${fraunces.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a

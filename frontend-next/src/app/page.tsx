@@ -39,6 +39,7 @@ import StickyInputBar from "@/components/StickyInputBar";
 import CascadeGraphic from "@/components/CascadeGraphic";
 import PasteLinkInput from "@/components/PasteLinkInput";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
+import BentoGrid from "@/components/BentoGrid";
 
 const PILLARS = [
   {
@@ -123,183 +124,178 @@ export default function HomePage() {
       {/* Header, Footer, CookieBanner, ValuePropBar come from layout.tsx */}
       <StickyInputBar />
 
+      {/* ════════════════════════════════════════════════════════════════
+          HERO — Bebas Neue massive typography + BentoGrid
+         ════════════════════════════════════════════════════════════════ */}
       <section
         id="hero"
-        className="relative min-h-[100vh] flex items-center overflow-hidden pt-24 pb-12 md:pt-28 md:pb-20"
+        className="relative overflow-hidden"
         style={{
-          background:
-            "radial-gradient(ellipse at 70% 30%, rgba(217, 70, 239, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(252, 211, 77, 0.10) 0%, transparent 50%), var(--color-bg-base)",
+          background: "var(--color-bg-base)",
         }}
       >
+        {/* Subtle radial glow behind headline */}
         <div
           aria-hidden
-          className="absolute inset-0 pointer-events-none opacity-30"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage:
-              "linear-gradient(rgba(40, 30, 20, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(40, 30, 20, 0.04) 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-            maskImage:
-              "radial-gradient(ellipse at 50% 50%, black 0%, transparent 80%)",
-            WebkitMaskImage:
-              "radial-gradient(ellipse at 50% 50%, black 0%, transparent 80%)",
+            background:
+              "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(217, 70, 239, 0.06) 0%, transparent 70%)",
           }}
         />
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* ─── LEFT COLUMN: text + paste URL + trust strip ─── */}
-            <div className="lg:col-span-7 flex flex-col">
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <span
-                    className="text-[11px] font-mono tracking-wider"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    01
-                  </span>
-                  <span
-                    className="h-px w-10"
-                    style={{ background: "var(--color-border-strong)" }}
-                  />
-                  <span
-                    className="text-[11px] font-mono uppercase tracking-wider"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    The engine
-                  </span>
-                </div>
-
-                <h1
-                  className="font-display font-semibold"
-                  style={{
-                    fontSize: "clamp(2.75rem, 5.5vw, 4.5rem)",
-                    lineHeight: 0.98,
-                    letterSpacing: "-0.045em",
-                    color: "var(--color-text-primary)",
-                  }}
-                >
-                  One video.{" "}
-                  <span
-                    className="font-fraunces-italic"
-                    style={{
-                      fontWeight: 400,
-                      color: "var(--color-accent)",
-                    }}
-                  >
-                    Ten clips.
-                  </span>
-                  <br />
-                  <span style={{ color: "var(--color-text-primary)" }}>
-                    Zero editing.
-                  </span>
-                </h1>
-
-                <p
-                  className="mt-6 text-base md:text-lg max-w-xl leading-relaxed"
-                  style={{ color: "var(--color-text-secondary)" }}
-                >
-                  RelatiV watches, listens, and finds the moments that{" "}
-                  <em
-                    className="not-italic font-medium"
-                    style={{ color: "var(--color-text-primary)" }}
-                  >
-                    hook
-                  </em>
-                  . Then writes the caption, the title, and the hashtags.
-                  <br className="hidden md:block" />
-                  You paste a URL. You publish clips.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.15 }}
-                className="mt-8 max-w-xl"
-              >
-                <PasteLinkInput variant="hero" />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.35 }}
-                className="mt-6 flex flex-wrap items-center gap-4 text-[12px] font-mono"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span
-                      className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
-                      style={{ background: "#10B981" }}
-                    />
-                    <span
-                      className="relative inline-flex rounded-full h-1.5 w-1.5"
-                      style={{ background: "#10B981" }}
-                    />
-                  </span>
-                  Public beta
-                </span>
-                <span style={{ color: "var(--color-text-faint)" }}>·</span>
-                <span>60s per video</span>
-                <span style={{ color: "var(--color-text-faint)" }}>·</span>
-                <span>9:16 auto-crop</span>
-                <span style={{ color: "var(--color-text-faint)" }}>·</span>
-                <span>Captions baked in</span>
-              </motion.div>
-
-              {/* Social proof bar */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="mt-8 flex flex-wrap items-center gap-6"
-              >
+        {/* Top section: badge + headline + input */}
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 pt-28 pb-16 md:pt-36 md:pb-20">
+          {/* Live badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex items-center gap-3 mb-10"
+          >
+            <span
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-mono font-medium"
+              style={{
+                background: "rgba(16, 185, 129, 0.1)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                color: "#10B981",
+              }}
+            >
+              <span className="relative flex h-1.5 w-1.5">
                 <span
-                  className="text-[12px] font-mono"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  Built in Assam, India
-                </span>
-                <span
-                  className="h-3 w-px"
-                  style={{ background: "var(--color-border)" }}
+                  className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+                  style={{ background: "#10B981" }}
                 />
                 <span
-                  className="text-[12px] font-mono"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  Live beta — 50-60 clip requests in first day
-                </span>
-                <span
-                  className="h-3 w-px"
-                  style={{ background: "var(--color-border)" }}
+                  className="relative inline-flex rounded-full h-1.5 w-1.5"
+                  style={{ background: "#10B981" }}
                 />
-                <span
-                  className="text-[12px] font-mono"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  45-second clip time
-                </span>
-              </motion.div>
-            </div>
+              </span>
+              Public beta · Free while in beta
+            </span>
+          </motion.div>
 
-            {/* ─── RIGHT COLUMN: CascadeGraphic (glassmorphic pipeline) ─── */}
-            <div className="lg:col-span-5 relative flex items-center justify-center">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                className="relative z-10 w-full max-w-[520px]"
-              >
-                <CascadeGraphic />
-              </motion.div>
-            </div>
-          </div>
+          {/* Massive Bebas Neue headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="font-bebas leading-[0.92]"
+            style={{
+              fontSize: "clamp(5rem, 14vw, 11rem)",
+              letterSpacing: "0.01em",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            PASTE A URL.
+          </motion.h1>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.12 }}
+            className="font-bebas leading-[0.92] -mt-2"
+            style={{
+              fontSize: "clamp(5rem, 14vw, 11rem)",
+              letterSpacing: "0.01em",
+              color: "var(--color-accent)",
+            }}
+          >
+            GET 10 CLIPS.
+          </motion.h1>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.19 }}
+            className="font-bebas leading-[0.92] -mt-2"
+            style={{
+              fontSize: "clamp(5rem, 14vw, 11rem)",
+              letterSpacing: "0.01em",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            ZERO EDITING.
+          </motion.h1>
+
+          {/* Subtext */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.28 }}
+            className="mt-8 text-base md:text-lg max-w-xl leading-relaxed"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            RelatiV watches, listens, and finds the moments that{" "}
+            <em
+              className="not-italic font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              hook
+            </em>
+            . Then writes the caption, the title, and the hashtags.
+          </motion.p>
+
+          {/* Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className="mt-8 max-w-xl"
+          >
+            <PasteLinkInput variant="hero" />
+          </motion.div>
+
+          {/* Objection handler */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.45 }}
+            className="mt-4 text-[12px] font-mono"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            No signup required · Works on any public YouTube link · Clips ready in 45 seconds
+          </motion.p>
+
+          {/* Social proof strip */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="mt-8 flex flex-wrap items-center gap-5"
+          >
+            <span
+              className="text-[12px] font-mono"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              Built in Assam, India
+            </span>
+            <span
+              className="h-3 w-px"
+              style={{ background: "var(--color-border)" }}
+            />
+            <span
+              className="text-[12px] font-mono"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              50-60 clip requests in first day
+            </span>
+            <span
+              className="h-3 w-px"
+              style={{ background: "var(--color-border)" }}
+            />
+            <span
+              className="text-[12px] font-mono"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              H.264 output · 9:16 + 1:1 + 16:9
+            </span>
+          </motion.div>
+        </div>
+
+        {/* Bento Grid — directly below hero */}
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-20 md:pb-28">
+          <BentoGrid />
         </div>
       </section>
 
