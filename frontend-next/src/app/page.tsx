@@ -40,7 +40,7 @@ import CascadeGraphic from "@/components/CascadeGraphic";
 import PasteLinkInput from "@/components/PasteLinkInput";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import BentoGrid from "@/components/BentoGrid";
-import HeroNew from "@/components/HeroNew";
+import HeroNature from "@/components/HeroNature";
 
 const PILLARS = [
   {
@@ -125,8 +125,8 @@ export default function HomePage() {
       {/* Header, Footer, CookieBanner, ValuePropBar come from layout.tsx */}
       <StickyInputBar />
 
-      {/* Hero — full dark rebuild */}
-      <HeroNew />
+      {/* Hero — nature-inspired warm dawn */}
+      <HeroNature />
 
       {/* ════════════════════════════════════════════════════════════════
           STATS STRIP — fills the "missing information" gap
