@@ -265,7 +265,7 @@ export default function HeroNature() {
           <h1
             className="font-bebas leading-[0.9]"
             style={{
-              fontSize: "clamp(4rem, 12vw, 10rem)",
+              fontSize: "clamp(3rem, 8vw, 6.5rem)",
               letterSpacing: "0.01em",
               background: "linear-gradient(135deg, #FFFFFF 0%, #F5D0FE 50%, #FFD24A 100%)",
               WebkitBackgroundClip: "text",
@@ -278,7 +278,7 @@ export default function HeroNature() {
           <h1
             className="font-bebas leading-[0.9]"
             style={{
-              fontSize: "clamp(4rem, 12vw, 10rem)",
+              fontSize: "clamp(3rem, 8vw, 6.5rem)",
               letterSpacing: "0.01em",
               color: "#FFFFFF",
             }}
