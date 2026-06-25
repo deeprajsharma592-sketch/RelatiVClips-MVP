@@ -1,0 +1,41 @@
+{
+  "clips": [
+    {
+      "start": 0,
+      "end": 26.0,
+      "source_start": 0,
+      "source_end": 7.97,
+      "audio_path": null,
+      "viral_title": "OPENING SILENCE HOOK",
+      "caption": "STAY WITH ME ON THIS PART. QUIET INTRO WITH DRAMATIC PAUSE SETUP",
+      "hashtags": [
+        "#intro",
+        "#silence",
+        "#hook"
+      ],
+      "reason": "Perfect-depth valley (-1.00\u00d7) at start; attention-grabbing silence tactic",
+      "signal_type": "valley",
+      "llm_provider": "claude",
+      "confidence": 0.4,
+      "verified": true,
+      "_platform_adjustment": "extended_to_26s",
+      "_needs_video_download": true,
+      "video_path": "/app/temp/5fd0a3a5-a4a7-4933-af0e-a65adea79aef_vidseg0.mp4",
+      "video_source_start": 0.0,
+      "video_source_end": 17.97,
+      "clip_id": "yt_5fd0a3a5-a4a_1_0s",
+      "duration_s": 18.0,
+      "file_size_mb": 0.54,
+      "created_at": "2026-06-22T09:33:24.738370",
+      "platform": "universal"
+    }
+  ],
+  "llm_cost_usd": 0.003384,
+  "cost_per_clip_usd": 0.003384,
+  "llm_provider": "claude",
+  "llm_model": null,
+  "archetype": null,
+  "n_clips": 1,
+  "cached_at": 1782120812.925282,
+  "cached_url_hash": "f404f722978c2378"
+}

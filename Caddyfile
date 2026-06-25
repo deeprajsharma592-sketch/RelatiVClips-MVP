@@ -1,9 +1,13 @@
 # RelatiV API Server
 # Port 443 = HTTPS (api.relativclips.com)
-# Port 80 = HTTP (ACME challenges)
-# Port 8080 = HTTP (backup API for cloud IPs like Vercel)
+# Port 80 = HTTP (ACME challenges + all HTTP traffic)
+# Port 8080 = HTTP (backup for tools that need direct IP)
 
 api.relativclips.com {
+    reverse_proxy backend:9000
+}
+
+:443 {
     reverse_proxy backend:9000
 }
 

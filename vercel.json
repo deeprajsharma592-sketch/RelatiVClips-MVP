@@ -1,0 +1,10 @@
+{
+  "experimentalServices": {
+    "relativ-backend": {
+      "type": "web",
+      "root": "backend",
+      "entrypoint": "main:app",
+      "routePrefix": ""
+    }
+  }
+}
