@@ -61,6 +61,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir \
         --extra-index-url https://download.pytorch.org/whl/cpu \
         -r requirements.txt \
+        chromadb>=0.5.0 \
+        sentence-transformers>=3.0.0 \
     && chown -R relativ:relativ /app
 
 # Pre-create runtime directories the pipeline writes to (uploads, temp clips,

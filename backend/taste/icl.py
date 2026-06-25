@@ -142,6 +142,10 @@ def build_archetype_aware_prompt(
     max_picks: int = 3,
     creator_history: Optional[List["CreatorClipHistory"]] = None,
     taste_profile: Optional[Dict] = None,
+    # ── RAG (2026-06-25): ChromaDB vector retrieval ──────────────────────
+    # dict from rag_store.build_rag_context():
+    #   {hits: [...], misses: [...], taste: {...} or None, hooks: [...]}
+    rag_context: Optional[dict] = None,
 ) -> str:
     """
     New (2026-06-15) archetype-aware prompt.
@@ -223,7 +227,38 @@ def build_archetype_aware_prompt(
             parts.append(f"  AVOID these topics: {avoids}")
         parts.append("")
 
-    # 3. ICL examples (creator history)
+    # 3. RAG CONTEXT — ChromaDB vector retrieval (2026-06-25)
+    # Retrieved from the creator's taste collection — only hits, misses, and
+    # hooks that the model confirmed worked for this specific creator.
+    # This replaces flat ICL stuffing: we send 2-3 relevant chunks instead of
+    # the entire taste profile + 10 history items.
+    if rag_context:
+        rag_lines = []
+        if rag_context.get("taste"):
+            t = rag_context["taste"]
+            rag_lines.append(f"  TASTE: {t['content'][:400]}")
+        if rag_context.get("hits"):
+            hits_block = "\n".join(
+                f"  HIT #{i+1}: {h['content'][:250]} (ret={h['meta'].get('retention','?')}, ctr={h['meta'].get('ctr','?')})"
+                for i, h in enumerate(rag_context["hits"][:3])
+            )
+            rag_lines.append(f"\nVERIFIED HITS:\n{hits_block}")
+        if rag_context.get("misses"):
+            misses_block = "\n".join(
+                f"  MISS: {m['content'][:250]}"
+                for m in rag_context["misses"][:2]
+            )
+            rag_lines.append(f"\nAVOID:\n{misses_block}")
+        if rag_context.get("hooks"):
+            hooks_block = "\n".join(
+                f"  HOOK: {h['content'][:200]}"
+                for h in rag_context["hooks"][:2]
+            )
+            rag_lines.append(f"\nHOOK PATTERNS:\n{hooks_block}")
+        if rag_lines:
+            parts.append("\n[TRELATIV TASTE FLYWHEEL — from creator's verified clips]\n" + "\n".join(rag_lines) + "\n")
+
+    # 4. ICL examples (creator history)
     if creator_history:
         parts.append(
             "\nRecent clips from this creator (best to worst):"

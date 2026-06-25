@@ -1,108 +1,77 @@
 version: '3.8'
-
 networks:
   relativ_mesh:
     driver: bridge
-
 services:
-  # Automated HTTPS Reverse Proxy
   caddy:
     image: caddy:latest
     ports:
-      - "80:80"
-      - "443:443"
+    - 80:80
+    - 443:443
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+    - ./Caddyfile:/etc/caddy/Caddyfile
+    - caddy_data:/data
+    - caddy_config:/config
     networks:
-      - relativ_mesh
+    - relativ_mesh
     restart: unless-stopped
-
-  # FastAPI Core Engine
   backend:
-    # NEW 2026-06-16: pin to b8e image (streaming render — per-clip
-    # download+face+render pipeline, 31% faster cold runs). Bump tag
-    # when making source changes.
     image: relativ-backend:b8e
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "9000:9000"
+    - 9000:9000
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-haiku-4-5-20251001}
-      - LLM_PROVIDER=${LLM_PROVIDER:-auto}
-      - LLM_TIER=${LLM_TIER:-smart}
-      # Bumped to 500 from 200 on 2026-06-15: with the strict-JSON output
-      # schema ({picks: [...]} with viral_title + caption + hashtags + reason
-      # per pick), 200 tokens was cutting the response off mid-JSON after
-      # 2 picks. 500 covers 3 full picks + JSON wrapper + safety margin.
-      - LLM_MAX_OUTPUT_TOKENS=${LLM_MAX_OUTPUT_TOKENS:-500}
-      - LLM_DAILY_BUDGET_USD=${LLM_DAILY_BUDGET_USD:-0.50}
-      - LLM_HARD_BUDGET_USD=${LLM_HARD_BUDGET_USD:-1.00}
-      - LLM_SMART_THRESHOLD=${LLM_SMART_THRESHOLD:-2000}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - MINIMAX_API_KEY=${MINIMAX_API_KEY:-}
-      - MINIMAX_BASE_URL=${MINIMAX_BASE_URL:-https://api.minimax.io/v1}
-      - MINIMAX_MODEL=${MINIMAX_MODEL:-minimax-m3}
-      - BGUTIL_POT_BASE_URL=http://bgutil:4416
-      - YT_PROXY=${YT_PROXY:-}
-      - YT_PROXY_POOL=${YT_PROXY_POOL:-http://notwsorf:314mswy67hf9@9.142.11.129:5285/}
-      - JWT_SECRET=***
-      - COOKIE_SECURE=${COOKIE_SECURE:-false}
-      - IP_SALT=${IP_SALT:-relativ-default-salt}
+    - CHROMA_PERSIST_DIR=/app/chroma_data
+    - CHROMA_PERSIST_DIR=/app/chroma_data
     depends_on:
-      - db
-      - bgutil
+    - db
+    - bgutil
     volumes:
-      - ./backend/pipeline:/app/backend/pipeline
-      - ./backend/utils:/app/backend/utils
-      - ./backend/routers:/app/backend/routers
-      - ./outputs:/app/outputs
-      - ./temp:/app/temp
-      - ./cache:/app/cache
-      - ./cookies.txt:/app/cookies.txt
+    - ./backend/pipeline:/app/backend/pipeline
+    - ./backend/utils:/app/backend/utils
+    - ./backend/routers:/app/backend/routers
+    - ./backend/database:/app/backend/database
+    - ./backend/taste:/app/backend/taste
+    - ./outputs:/app/outputs
+    - ./temp:/app/temp
+    - ./cache:/app/cache
+    - ./cookies.txt:/app/cookies.txt
+    - ./chroma_data:/app/chroma_data
     networks:
-      - relativ_mesh
+    - relativ_mesh
     restart: unless-stopped
-
-  # YouTube PO-token provider. Tiny HTTP server on :4416 that
-  # yt-dlp's bgutil-ytdlp-pot-provider plugin calls per video to
-  # bypass the 2025+ "Sign in to confirm" anti-bot wall.
   bgutil:
     image: brainicism/bgutil-ytdlp-pot-provider:latest
     init: true
     ports:
-      - "4416:4416"
+    - 4416:4416
     networks:
-      - relativ_mesh
+    - relativ_mesh
     restart: unless-stopped
     healthcheck:
-      # The bgutil image is a minimal Node.js container — no curl/wget.
-      # Use node's http module for the ping check.
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4416/ping', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      test:
+      - CMD
+      - node
+      - -e
+      - 'require(''http'').get(''http://127.0.0.1:4416/ping'', r => process.exit(r.statusCode
+        === 200 ? 0 : 1)).on(''error'', () => process.exit(1))'
       interval: 30s
       timeout: 5s
       retries: 3
-
-  # Core Database Engine
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=relativ_admin
-      - POSTGRES_PASSWORD=relativ_secure_pass
-      - POSTGRES_DB=relativ_db
+    - POSTGRES_USER=relativ_admin
+    - POSTGRES_PASSWORD=relativ_secure_pass
+    - POSTGRES_DB=relativ_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+    - postgres_data:/var/lib/postgresql/data
     networks:
-      - relativ_mesh
+    - relativ_mesh
     restart: unless-stopped
-
 volumes:
-  caddy_data:
-  caddy_config:
-  postgres_data:
+  caddy_data: null
+  caddy_config: null
+  postgres_data: null

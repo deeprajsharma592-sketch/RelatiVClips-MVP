@@ -38,6 +38,8 @@ from ..utils.config import TEMP_DIR, OUTPUTS_DIR
 from . import audio_analysis
 from . import hooks as hook_stage
 from . import surgical as surgical_stage
+from . import speculative  # for speculative_video_download
+from ..database import rag_store  # ChromaDB-backed RAG (2026-06-25)
 from . import transcription as transcription_module
 from . import face_detection as face_stage
 from . import renderer as renderer_module
@@ -302,6 +304,66 @@ def _run_stage_6_taste_select(
             story_position=float(c.get("story_position", 0.5)),
         ))
 
+    # ── RAG retrieval (2026-06-25): ChromaDB vector search ───────────────
+    # Build the context block before calling the LLM.
+    # Uses the transcript as the query to retrieve the most relevant
+    # hit/miss/hook chunks from the creator's taste collection.
+    # Non-fatal: if RAG fails, pipeline continues without it.
+    rag_context: Optional[dict] = None
+    if creator_id and candidates:
+        try:
+            # Build a representative transcript snippet from the candidates
+            snippet = " ".join(
+                c.get("snippet", "") or c.get("reason", "") or ""
+                for c in candidates[:5]
+            )[:600]
+
+            # ── Fetch hits, misses, and taste in separate queries ────────
+            # ChromaDB 1.x `where` only supports ONE condition at a time.
+            # We run three queries instead of one to work around this.
+            hits, misses, taste_chunks, hooks = [], [], [], []
+            try:
+                hits = rag_store.retrieve(creator_id, snippet, top_k=3,
+                    chunk_types=["hit"], archetype_filter=None)
+            except Exception: pass
+            try:
+                misses = rag_store.retrieve(creator_id, snippet, top_k=2,
+                    chunk_types=["miss"], archetype_filter=None)
+            except Exception: pass
+            try:
+                taste_chunks = rag_store.retrieve(creator_id, snippet, top_k=1,
+                    chunk_types=["taste"], archetype_filter=None)
+            except Exception: pass
+            try:
+                hooks = rag_store.retrieve(creator_id, snippet, top_k=2,
+                    chunk_types=["hook"], archetype_filter=None)
+            except Exception: pass
+
+            # Post-filter by archetype (ChromaDB 1.x limitation workaround)
+            if archetype:
+                for lst in [hits, misses, taste_chunks, hooks]:
+                    lst[:] = [c for c in lst if c.get("archetype") == archetype]
+
+            rag_context = {
+                "hits": hits,
+                "misses": misses,
+                "taste": taste_chunks[0] if taste_chunks else None,
+                "hooks": hooks,
+                "total_tokens_approx": int(
+                    sum(len(c["content"].split()) for c in hits + misses + hooks) * 1.33
+                ),
+            }
+
+            n_hits = len(rag_context["hits"])
+            n_misses = len(rag_context["misses"])
+            if n_hits or rag_context.get("taste"):
+                _emit(progress, "rag",
+                      f"RAG: {n_hits} hits, {n_misses} misses retrieved "
+                      f"(~{rag_context.get('total_tokens_approx', 0)} tokens)")
+        except Exception as e:
+            import logging
+            logging.getLogger("orchestrator").warning(f"RAG retrieval failed: {e}")
+
     # Use the NEW archetype-aware prompt when we have candidates + retention
     if moment_list and retention_scores:
         prompt = taste_icl.build_archetype_aware_prompt(
@@ -312,7 +374,8 @@ def _run_stage_6_taste_select(
             retention_scores=retention_scores,
             max_picks=3,
             creator_history=history,
-            taste_profile=taste_profile,  # 2026-06-21: creator onboarding prefs
+            taste_profile=taste_profile,
+            rag_context=rag_context,  # 2026-06-25: ChromaDB RAG injection
         )
     else:
         # Fallback to legacy prompt
@@ -432,9 +495,13 @@ def _run_stage_8_render(
     rendered = []
     for i, clip in enumerate(clips):
         _emit(progress, "render", f"Rendering clip {i+1}/{len(clips)}...")
-        # Use the segment's local audio file if available; fall back to source.
+        # Use specvid_path (full H.264 video) over audio_path (audio-only .m4a).
+        # specvid_path is set by speculative_video_download in stage 4.
+        # audio_path is the audio-only surgical segment — FFmpeg produces 0 KB with it.
         clip_input = (
-            clip.get("audio_path")
+            clip.get("specvid_path")
+            or clip.get("video_path")
+            or clip.get("audio_path")
             or clip.get("file_path")
             or source
         )
@@ -513,6 +580,15 @@ def run_new_pipeline(
 
     result: Dict = {"clips": [], "stages_run": [], "task_id": task_id}
 
+    # ── RAG init (lazy, once per process lifetime) ────────────────────
+    # ChromaDB + sentence-transformers loaded here on first pipeline call.
+    # RagStoreError is non-fatal — pipeline continues without RAG if it fails.
+    try:
+        rag_store.init_rag_store()
+    except Exception as e:
+        import logging
+        logging.getLogger("orchestrator").warning(f"RAG init failed: {e}")
+
     # Stage 1: URL analyze (always runs — cheap, sets source_type)
     video_meta: Dict = {}
     if 1 in run_set:
@@ -575,6 +651,19 @@ def run_new_pipeline(
             result["segments"] = segments
             result["stages_run"].append(4)
 
+            # ── Speculative video download ──────────────────────────────────
+            # Download full video (not just audio) for top-K candidates
+            # in parallel with stage 5/6. This is what the renderer needs
+            # (audio_path = audio-only .m4a; specvid_path = full H.264 video).
+            spec_results = speculative.speculative_video_download(
+                source, hook_candidates, task_id,
+                log_fn=lambda m: _emit(progress, "specvid", m),
+            )
+            # Attach specvid paths to segments by candidate index
+            for i, seg in enumerate(segments):
+                spec = spec_results.get(i, {})
+                seg["specvid_path"] = spec.get("video_path")
+
     # Stage 5: Per-segment transcription (or use precomputed YouTube captions)
     if 5 in run_set and segments:
         segments = _run_stage_5_transcribe_segments(
@@ -608,6 +697,7 @@ def run_new_pipeline(
                 clip["audio_path"] = matching["audio_path"]
                 clip["source_start"] = matching.get("source_start")
                 clip["source_end"] = matching.get("source_end")
+                clip["specvid_path"] = matching.get("specvid_path")
         result["stages_run"].append(6)
 
     # Stage 7: Face detection
