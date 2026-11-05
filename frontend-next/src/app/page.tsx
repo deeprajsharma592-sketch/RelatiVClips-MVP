@@ -41,6 +41,7 @@ import PasteLinkInput from "@/components/PasteLinkInput";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import BentoGrid from "@/components/BentoGrid";
 import HeroNature from "@/components/HeroNature";
+import ProductMockup from "@/components/ProductMockup";
 
 const PILLARS = [
   {
@@ -129,8 +130,14 @@ export default function HomePage() {
       <HeroNature />
 
       {/* ════════════════════════════════════════════════════════════════
+          PRODUCT MOCKUP — animated pipeline demo
+         ════════════════════════════════════════════════════════════════ */}
+      <ProductMockup />
+
+      {/* ════════════════════════════════════════════════════════════════
           STATS STRIP — fills the "missing information" gap
          ════════════════════════════════════════════════════════════════ */}
+
       <section
         className="relative py-10 border-y"
         style={{
