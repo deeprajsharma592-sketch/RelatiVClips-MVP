@@ -305,7 +305,13 @@ def surgical_extract_local(
                 results.append({**cand, "audio_path": None, "source_start": start, "source_end": end})
                 continue
             log_fn(f"  Segment {i+1} ready ({audio_path.stat().st_size / 1024:.0f} KB)")
-            results.append({**cand, "audio_path": str(audio_path), "source_start": start, "source_end": end})
+            results.append({
+                **cand,
+                "audio_path": str(audio_path),
+                "video_path": source_video,
+                "source_start": start,
+                "source_end": end
+            })
         except subprocess.TimeoutExpired:
             log_fn(f"  Segment {i+1} timed out")
             results.append({**cand, "audio_path": None, "source_start": start, "source_end": end})

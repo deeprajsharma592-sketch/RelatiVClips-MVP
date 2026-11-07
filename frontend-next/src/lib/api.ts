@@ -28,6 +28,69 @@ export async function submitYouTubeUrl(
   };
 }
 
+export async function uploadVideoFile(
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<{ filePath: string; taskId: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    // Use apiPath so it works in both dev (localhost:9000) and prod proxy
+    xhr.open("POST", apiPath("/upload"));
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          onProgress(pct);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve({ filePath: data.file_path, taskId: data.task_id });
+        } catch {
+          reject(new Error("Invalid server response format"));
+        }
+      } else {
+        let msg = `Upload failed with status ${xhr.status}`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          if (err.detail) msg = err.detail;
+        } catch {}
+        reject(new Error(msg));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during file upload"));
+    const formData = new FormData();
+    formData.append("file", file);
+    xhr.send(formData);
+  });
+}
+
+export async function submitLocalVideo(filePath: string): Promise<ProcessInitResponse> {
+  const res = await fetch(apiPath("/api/v1/process/local"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_path: filePath }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || `Request failed with status ${res.status}`);
+  }
+
+  const data = await res.json();
+  return {
+    taskId: data.task_id,
+    status: data.status,
+    position: data.position,
+  };
+}
+
 export async function checkProcessingStatus(
   taskId: string
 ): Promise<StatusResponse> {

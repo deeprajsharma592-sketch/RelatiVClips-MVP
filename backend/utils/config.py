@@ -31,9 +31,9 @@ VRAM_MODEL_LIMIT_GB = MAX_VRAM_GB - VRAM_BUFFER_GB
 MAX_CONCURRENT_TASKS = 1
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-# Default to Haiku 4.5 — fastest, cheapest, good enough for structured hook selection.
-# Override with CLAUDE_MODEL=claude-3-5-sonnet-20241022 etc. in .env if you want quality.
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+# Default to Claude 3.5 Haiku — fast, economical, excellent for viral hook selection.
+# Override with CLAUDE_MODEL=claude-3-5-sonnet-20241022 in .env if you want elite depth.
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
 
 # --- DeepSeek API (cheaper alternative to Claude, ~30x cheaper) ---
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")

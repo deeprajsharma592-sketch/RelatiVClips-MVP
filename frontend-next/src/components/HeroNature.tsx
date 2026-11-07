@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Link2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import VideoIntake from "./VideoIntake";
 
 const URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/i;
 
@@ -241,14 +242,14 @@ export default function HeroNature() {
           hashtags — in 60 seconds.
         </motion.p>
 
-        {/* Paste URL input */}
+        {/* Video Intake: Local Upload First + YouTube Mockup */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.22 }}
           className="mb-8"
         >
-          <HeroInput />
+          <VideoIntake />
         </motion.div>
 
         {/* Trust line */}

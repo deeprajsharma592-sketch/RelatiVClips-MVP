@@ -17,6 +17,7 @@ from ..utils.config import (
     FFMPEG_PATH
 )
 from .clip_selector import generate_ass_subtitle, generate_simple_ass
+from .captions import generate_viral_ass_subtitles
 from ..utils.vram_manager import clear_gpu
 
 _THUMB_CACHE: Dict[str, str] = {}
@@ -162,30 +163,24 @@ def build_ffmpeg_command(
     filters = []
     
     if is_vertical:
-        filters.append("scale=1080:1920")
+        filters.append("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
     else:
-        crop_size = min(src_width, src_height)
-        crop_w = crop_size
-        crop_h = crop_size
+        # Proper 9:16 vertical crop from landscape without stretching
+        target_crop_w = int(src_height * 9 / 16)
+        target_crop_w = min(src_width, (target_crop_w // 2) * 2)
+        target_crop_h = src_height
 
         if x_offset and 0 < x_offset < src_width:
-            crop_x = x_offset - crop_w // 2
-            crop_x = max(0, min(crop_x, src_width - crop_w))
+            crop_x = int(x_offset - target_crop_w // 2)
+            crop_x = max(0, min(crop_x, src_width - target_crop_w))
         else:
-            crop_x = (src_width - crop_w) // 2
-        crop_y = (src_height - crop_h) // 2
+            crop_x = (src_width - target_crop_w) // 2
+        crop_y = 0
 
-        crop_w = crop_w // 2 * 2
-        crop_h = crop_h // 2 * 2
-        crop_x = crop_x // 2 * 2
-        crop_y = crop_y // 2 * 2
-
-        print(f"[Renderer] Cropping {crop_w}x{crop_h} at ({crop_x},{crop_y})")
-        filters.append(f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y}")
-
-        target_w = CROP_WIDTH
-        target_h = CROP_HEIGHT
-        filters.append(f"scale={target_w}:{target_h}")
+        crop_x = (crop_x // 2) * 2
+        print(f"[Renderer] 9:16 Crop: {target_crop_w}x{target_crop_h} at ({crop_x},{crop_y})")
+        filters.append(f"crop={target_crop_w}:{target_crop_h}:{crop_x}:{crop_y}")
+        filters.append("scale=1080:1920")
 
     # Add subtitle if available
     subtitle_to_use = None
@@ -195,7 +190,9 @@ def build_ffmpeg_command(
             subtitle_to_use = sub_path.as_posix()
     
     if subtitle_to_use:
-        filters.append(f"ass={subtitle_to_use}")
+        # Escape path for FFmpeg filter parameter syntax (colons, backslashes, single quotes)
+        escaped_sub = subtitle_to_use.replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+        filters.append(f"ass='{escaped_sub}'")
 
     cmd.extend(["-vf", ",".join(filters)])
 
@@ -280,7 +277,16 @@ def render_clip(
     output_filename = f"{clip_id}.mp4"
     output_path = OUTPUTS_DIR / output_filename
 
-    subtitle_path = None  # Skip subtitle generation
+    # Generate viral dynamic captions
+    subtitle_path = None
+    try:
+        sub_file = TEMP_DIR / f"{task_id}_{clip_index}_captions.ass"
+        subtitle_path = generate_viral_ass_subtitles(clip, sub_file)
+        if subtitle_path and Path(subtitle_path).exists():
+            print(f"[Renderer] Dynamic captions generated: {subtitle_path}")
+    except Exception as e:
+        print(f"[Renderer] Captions generation skipped: {e}")
+        subtitle_path = None
 
     if progress_callback:
         progress_callback(f"Rendering clip {clip_index} ({duration:.0f}s)...")

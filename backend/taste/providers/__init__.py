@@ -88,8 +88,8 @@ class ClaudeProvider(LLMProvider):
     name = "claude"
     cost_per_1k_tokens = 0.003  # input, sonnet; output is $0.015
 
-    def __init__(self, model: str = "claude-haiku-4-5-20251001"):
-        self.model = model
+    def __init__(self, model: Optional[str] = None):
+        self.model = model or _env("CLAUDE_MODEL") or "claude-3-5-haiku-20241022"
         try:
             import anthropic  # type: ignore
             self._anthropic = anthropic

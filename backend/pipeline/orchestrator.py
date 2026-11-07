@@ -684,25 +684,44 @@ def run_new_pipeline(
         # Enrich each taste pick with the audio_path from the matching
         # surgical segment. The taste selector doesn't know about the
         # local audio files; stage 8's renderer needs them.
+        # Enrich each taste pick with audio_path, video_path, transcript from segments
+        is_local_source = (video_meta.get("source_type") == "local") or Path(source).exists()
         for clip in final_clips:
-            if "audio_path" in clip:
-                continue
             clip_start = float(clip.get("start", -1))
             matching = next(
                 (s for s in segments
-                 if abs(float(s.get("source_start", -1)) - clip_start) < 0.5),
+                 if abs(float(s.get("source_start", -1)) - clip_start) < 1.0),
                 None,
             )
-            if matching and matching.get("audio_path"):
-                clip["audio_path"] = matching["audio_path"]
-                clip["source_start"] = matching.get("source_start")
-                clip["source_end"] = matching.get("source_end")
+            if matching:
+                if not clip.get("audio_path") and matching.get("audio_path"):
+                    clip["audio_path"] = matching["audio_path"]
+                if not clip.get("transcript") and matching.get("transcript"):
+                    clip["transcript"] = matching["transcript"]
+                clip["source_start"] = matching.get("source_start", clip_start)
+                clip["source_end"] = matching.get("source_end", float(clip.get("end", clip_start + 15)))
                 clip["specvid_path"] = matching.get("specvid_path")
+                if matching.get("video_path"):
+                    clip["video_path"] = matching["video_path"]
+            
+            # If local file, source is the original high-res video!
+            if is_local_source:
+                clip["video_path"] = source
+                clip["video_source_start"] = 0.0
+                clip["video_source_end"] = float(video_meta.get("duration_s", 0) or 999999)
+
+            if not clip.get("transcript") and result.get("transcript"):
+                clip["transcript"] = result["transcript"]
         result["stages_run"].append(6)
 
     # Stage 7: Face detection
-    if 7 in run_set and segments:
-        segments = _run_stage_7_face_data(source, segments, progress)
+    if 7 in run_set and final_clips:
+        # Run face detection on candidate clips
+        detect_target = source if is_local_source else None
+        if not detect_target and final_clips:
+            detect_target = final_clips[0].get("specvid_path") or final_clips[0].get("audio_path")
+        if detect_target:
+            final_clips = _run_stage_7_face_data(detect_target, final_clips, progress)
         result["stages_run"].append(7)
 
     # Stage 8: Render — uses the LOCAL segment files downloaded in stage 4

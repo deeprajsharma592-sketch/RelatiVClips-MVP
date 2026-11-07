@@ -37,6 +37,7 @@ import Footer from "@/components/Footer";
 import StickyInputBar from "@/components/StickyInputBar";
 import { StageAnimation } from "@/components/StageAnimation";
 import { ActivityFeed, type FeedEvent } from "@/components/ActivityFeed";
+import VideoIntake from "@/components/VideoIntake";
 import { submitYouTubeUrl, checkProcessingStatus } from "@/lib/api";
 import type { ProcessState, Clip, PipelineStep, StatusResponse } from "@/types";
 
@@ -90,9 +91,10 @@ function ProcessInner() {
   const params = useSearchParams();
   const router = useRouter();
   const initialUrl = params.get("url") || "";
+  const initialTaskId = params.get("taskId") || params.get("task_id") || "";
 
   const [url, setUrl] = useState(initialUrl);
-  const [state, setState] = useState<ProcessState>(initialUrl ? "processing" : "idle");
+  const [state, setState] = useState<ProcessState>(initialUrl || initialTaskId ? "processing" : "idle");
   const [clips, setClips] = useState<Clip[]>([]);
   const [error, setError] = useState<string | null>(null);
   // Backend-driven progress fields (replaces the old 1.4s rotation timer)
@@ -116,25 +118,6 @@ function ProcessInner() {
   const taskIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
 
-  // Auto-start if URL was provided
-  useEffect(() => {
-    if (initialUrl && state === "processing" && !taskIdRef.current) {
-      startProcessing(initialUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Elapsed timer (independent of progress — always ticks)
-  useEffect(() => {
-    if (state !== "processing") return;
-    const t = setInterval(() => {
-      if (startedAtRef.current > 0) {
-        setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000));
-      }
-    }, 500);
-    return () => clearInterval(t);
-  }, [state]);
-
   const pushEvent = useCallback((msg: string, step?: number, kind: FeedEvent["kind"] = "sub") => {
     if (msg === lastStepMsgRef.current) return; // dedupe rapid dupes
     lastStepMsgRef.current = msg;
@@ -142,8 +125,8 @@ function ProcessInner() {
     setFeed((prev) => [...prev, { id, ts: performance.now(), message: msg, step, kind }]);
   }, []);
 
-  const startProcessing = useCallback(
-    async (targetUrl: string) => {
+  const startPollingTask = useCallback(
+    async (taskId: string) => {
       setError(null);
       setClips([]);
       setProgress(0);
@@ -160,17 +143,15 @@ function ProcessInner() {
       eventCounterRef.current = 0;
       setState("processing");
       startedAtRef.current = Date.now();
+      taskIdRef.current = taskId;
+      pushEvent(`Connected to pipeline · task ${taskId.slice(0, 8)}`, undefined, "info");
+
       try {
-        pushEvent("Submitting URL to pipeline…", undefined, "info");
-        const init = await submitYouTubeUrl(targetUrl);
-        taskIdRef.current = init.taskId;
-        pushEvent(`Pipeline started · task ${init.taskId.slice(0, 8)}`, undefined, "info");
         const deadline = Date.now() + MAX_POLL_DURATION_MS;
         while (Date.now() < deadline) {
           await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-          const status = await checkProcessingStatus(init.taskId);
+          const status = await checkProcessingStatus(taskId);
 
-          // Backend is the source of truth — drive the bar from real data
           if (typeof status.progress === "number") {
             setProgress((prev) => Math.max(prev, Math.min(100, status.progress ?? 0)));
           }
@@ -188,7 +169,6 @@ function ProcessInner() {
           if (typeof status.time_estimate_seconds === "number") {
             setEtaSec(status.time_estimate_seconds);
           }
-          // Cost + cache + per-step timing
           if (typeof status.llm_cost_usd === "number" && status.llm_cost_usd > 0) {
             setCostUsd(status.llm_cost_usd);
           }
@@ -208,11 +188,7 @@ function ProcessInner() {
             setStepNumber(STEPS.length);
             setClips(status.clips ?? []);
             setState("completed");
-            if (cacheHit) {
-              pushEvent(`Cache hit · ${(status.clips ?? []).length} clips served instantly`, undefined, "cache");
-            } else {
-              pushEvent(`Done · ${(status.clips ?? []).length} clips ready`, undefined, "step");
-            }
+            pushEvent(`Done · ${(status.clips ?? []).length} clips ready`, undefined, "step");
             return;
           }
           if (status.status === "failed") {
@@ -230,8 +206,44 @@ function ProcessInner() {
         pushEvent(err instanceof Error ? err.message : "Unexpected error", undefined, "error");
       }
     },
-    [pushEvent, cacheHit]
+    [pushEvent]
   );
+
+  const startProcessing = useCallback(
+    async (targetUrl: string) => {
+      try {
+        pushEvent("Submitting URL to pipeline…", undefined, "info");
+        const init = await submitYouTubeUrl(targetUrl);
+        await startPollingTask(init.taskId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+        setState("error");
+        pushEvent(err instanceof Error ? err.message : "Unexpected error", undefined, "error");
+      }
+    },
+    [pushEvent, startPollingTask]
+  );
+
+  // Auto-start if task_id or URL was provided
+  useEffect(() => {
+    if (initialTaskId && !taskIdRef.current) {
+      startPollingTask(initialTaskId);
+    } else if (initialUrl && state === "processing" && !taskIdRef.current) {
+      startProcessing(initialUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Elapsed timer (independent of progress — always ticks)
+  useEffect(() => {
+    if (state !== "processing") return;
+    const t = setInterval(() => {
+      if (startedAtRef.current > 0) {
+        setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000));
+      }
+    }, 500);
+    return () => clearInterval(t);
+  }, [state]);
 
   const handleSubmit = useCallback(
     (e?: React.FormEvent) => {
@@ -322,62 +334,14 @@ function ProcessInner() {
 
           {/* Input (visible in idle/error states) */}
           {(state === "idle" || state === "error") && (
-            <form
-              onSubmit={handleSubmit}
-              className="max-w-2xl mx-auto mb-8"
-            >
-              <div
-                className="flex items-stretch gap-0 rounded-full overflow-hidden"
-                style={{
-                  background: "var(--glass-light-strong)",
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                  border: "1px solid var(--color-border)",
-                  boxShadow:
-                    "0 8px 24px rgba(40, 30, 20, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+            <div className="mb-10">
+              <VideoIntake
+                onStartProcess={(tId) => {
+                  taskIdRef.current = tId;
+                  startPollingTask(tId);
                 }}
-              >
-                <input
-                  type="url"
-                  inputMode="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://youtube.com/watch?v=…"
-                  className="flex-1 min-w-0 bg-transparent px-6 py-4 text-[15px] outline-none placeholder:text-[var(--color-text-muted)]/70"
-                  style={{ color: "var(--color-text-primary)" }}
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={!url.trim()}
-                  className="m-1.5 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-40"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #D946EF 0%, #F59E0B 100%)",
-                    color: "#FFFFFF",
-                    boxShadow:
-                      "0 4px 14px rgba(217, 70, 239, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)",
-                  }}
-                >
-                  Get clips
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              {error && (
-                <div className="mt-4 ml-6 flex items-start gap-2 text-[13px]" style={{ color: "var(--color-accent)" }}>
-                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <div>
-                    <div>{error}</div>
-                    <button
-                      onClick={handleSubmit}
-                      className="mt-2 text-[12px] underline opacity-80 hover:opacity-100"
-                    >
-                      Try a different URL
-                    </button>
-                  </div>
-                </div>
-              )}
-            </form>
+              />
+            </div>
           )}
 
           {/* Processing dashboard */}
