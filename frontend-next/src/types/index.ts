@@ -13,6 +13,9 @@ export interface Clip {
   file_path: string;
   file_size_mb: number;
   created_at: string;
+  hook_score?: number;
+  story_score?: number;
+  engagement_score?: number;
 }
 
 export interface ProcessStep {
