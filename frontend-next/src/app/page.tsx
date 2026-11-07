@@ -38,6 +38,7 @@ import { useState } from "react";
 import StickyInputBar from "@/components/StickyInputBar";
 import CascadeGraphic from "@/components/CascadeGraphic";
 import PasteLinkInput from "@/components/PasteLinkInput";
+import VideoIntake from "@/components/VideoIntake";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import BentoGrid from "@/components/BentoGrid";
 import HeroNature from "@/components/HeroNature";
@@ -548,12 +549,12 @@ export default function HomePage() {
                 color: "var(--color-text-primary)",
               }}
             >
-              Paste a URL.{" "}
+              Drop your video.{" "}
               <span
                 className="font-fraunces-italic"
                 style={{ color: "var(--color-accent)", fontWeight: 400 }}
               >
-                Publish clips.
+                Publish viral clips.
               </span>
             </h2>
 
@@ -561,12 +562,12 @@ export default function HomePage() {
               className="mt-5 text-base md:text-lg max-w-xl mx-auto"
               style={{ color: "var(--color-text-secondary)" }}
             >
-              Drop a YouTube link — get ten ready-to-post short-form
-              clips in under a minute. Free during the public beta.
+              Upload your video file or paste a link — get ten ready-to-post short-form
+              clips with dynamic subtitles in under a minute.
             </p>
 
             <div className="mt-8 max-w-2xl mx-auto">
-              <PasteLinkInput variant="hero" />
+              <VideoIntake />
             </div>
           </motion.div>
         </div>

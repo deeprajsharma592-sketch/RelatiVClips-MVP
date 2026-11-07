@@ -1,120 +1,61 @@
 "use client";
 
 /**
- * /signup — multi-step: role select → role-specific form → submit.
- *
- * 3 user types:
- *  - Creator: own long-form content (YouTube, podcasts). Get clipped, earn.
- *  - Brand: D2C company, agency, or sponsor. Post campaigns, pay clippers.
- *  - Clipper: Pro/Elite subscriber. Create clips, get paid weekly.
- *
- * Wire-up:
- *  - Role selection drives which fields render in step 2.
- *  - On submit, calls lib/auth.ts → backend POST /api/v1/auth/signup
- *  - On success, the backend sets the HttpOnly cookie; we redirect to
- *    /account where the user can see their freshly-created profile.
+ * /signup — Streamlined, frictionless 1-step signup
+ * No roadblocks, no 8-field interrogation.
  */
 
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { signup, ROLE_DESCRIPTION, type UserRole, type User } from "@/lib/auth";
+import { Sparkles, ArrowRight, Loader2, AlertCircle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { signup, type UserRole } from "@/lib/auth";
 
-type Step = "role" | "form" | "done";
-
-interface FormState {
-  email: string;
-  password: string;
-  name: string;
-  role: UserRole | null;
-  // creator
-  handle: string;
-  primary_platform: string;
-  channel_url: string;
-  // brand
-  company_name: string;
-  website: string;
-  industry: string;
-  // clipper
-  specialty: string;
-  accept_tos: boolean;
-}
-
-const INITIAL: FormState = {
-  email: "",
-  password: "",
-  name: "",
-  role: null,
-  handle: "",
-  primary_platform: "youtube",
-  channel_url: "",
-  company_name: "",
-  website: "",
-  industry: "",
-  specialty: "",
-  accept_tos: false,
-};
-
-const ROLE_META: { key: UserRole; icon: string; tagline: string }[] = [
-  { key: "creator", icon: "▶", tagline: "Long-form → viral clips" },
-  { key: "brand", icon: "$", tagline: "Pay per view, not flat fee" },
-  { key: "clipper", icon: "✂", tagline: "Pro/Elite subscription" },
+const CONTENT_TYPES = [
+  { id: "podcasts", label: "🎙️ Podcasts" },
+  { id: "talking_head", label: "🗣️ Talking Head / Advice" },
+  { id: "education", label: "📚 Education & Tech" },
+  { id: "gaming", label: "🎮 Gaming & Live Streams" },
+  { id: "brand", label: "🛍️ Brand & E-Commerce" },
 ];
-
-const PLATFORM_OPTIONS = ["youtube", "spotify", "apple_podcasts", "rumble", "twitch", "other"];
 
 export default function SignupPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("role");
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [selectedType, setSelectedType] = useState("podcasts");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setForm((prev) => ({ ...prev, [k]: v }));
-
-  const onPickRole = (r: UserRole) => {
-    set("role", r);
-    setStep("form");
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.role) return;
-    if (!form.accept_tos) {
-      setSubmitError("You must accept the Terms of Service to continue.");
+    if (!name.trim() || !email.trim() || !password) return;
+    if (password.length < 8) {
+      setSubmitError("Password must be at least 8 characters long.");
       return;
     }
+
     setSubmitting(true);
     setSubmitError(null);
+
     try {
-      // Build payload with only the role-relevant fields
-      const payload: any = {
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-        name: form.name.trim(),
-        role: form.role,
-        accept_tos: form.accept_tos,
-      };
-      if (form.role === "creator") {
-        payload.handle = form.handle || undefined;
-        payload.primary_platform = form.primary_platform;
-        payload.channel_url = form.channel_url || undefined;
-      } else if (form.role === "brand") {
-        payload.company_name = form.company_name || undefined;
-        payload.website = form.website || undefined;
-        payload.industry = form.industry || undefined;
-      } else if (form.role === "clipper") {
-        payload.handle = form.handle || undefined;
-        payload.specialty = form.specialty || undefined;
-      }
-      const result = await signup(payload);
-      setStep("done");
-      // Role-based redirect: brand → /brands/dashboard, clipper → /clippers/dashboard,
-      // creator → /creators/dashboard, fallback → /account.
-      const dest = roleDestination(result.user);
-      setTimeout(() => router.push(dest), 1500);
+      const role: UserRole = selectedType === "brand" ? "brand" : "creator";
+      await signup({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role,
+        specialty: selectedType,
+        accept_tos: true,
+      });
+
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/process");
+      }, 1000);
     } catch (err: any) {
       setSubmitError(err?.message || "Sign up failed. Please try again.");
     } finally {
@@ -123,347 +64,172 @@ export default function SignupPage() {
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-32 pb-16 px-4 sm:px-6 animate-page-enter">
+    <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden pt-28 pb-16 px-4 sm:px-6">
+      {/* Background ambient light */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-[color:var(--color-glow-primary)] opacity-30 blur-[120px]" />
-        <div className="absolute bottom-0 right-1/3 h-[300px] w-[300px] rounded-full bg-[color:var(--color-glow-violet)] opacity-25 blur-[120px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 h-[450px] w-[500px] rounded-full bg-blue-500/10 blur-[140px]" />
+        <div className="absolute bottom-10 right-1/4 h-[300px] w-[350px] rounded-full bg-cyan-500/10 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-2xl">
-        {/* Stepper */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {(["role", "form", "done"] as const).map((s, i) => {
-            const idx = ["role", "form", "done"].indexOf(step);
-            const active = i <= idx;
-            return (
-              <div key={s} className="flex items-center gap-2">
-                <div
-                  className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-mono ${
-                    active
-                      ? "bg-[color:var(--color-accent)] text-[color:var(--color-bg-base)]"
-                      : "bg-[color:var(--color-surface)] text-text-muted"
-                  }`}
-                >
-                  {i + 1}
-                </div>
-                {i < 2 && (
-                  <div
-                    className={`w-8 h-px ${
-                      i < idx ? "bg-[color:var(--color-accent)]" : "bg-[color:var(--color-border)]"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* STEP 1: role pick */}
-        {step === "role" && (
-          <div className="text-center">
-            <span className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-              STEP 1 / 3 · WHO ARE YOU
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <div
+          className="rounded-3xl p-7 sm:p-9 shadow-2xl backdrop-blur-2xl transition-all"
+          style={{
+            background: "var(--glass-light-strong)",
+            border: "1px solid var(--color-border)",
+            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7)",
+          }}
+        >
+          {/* Header */}
+          <div className="text-center mb-8">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium mb-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+              <Sparkles className="w-3 h-3" />
+              Instant Free Access
             </span>
-            <h1 className="font-display font-bold text-3xl md:text-5xl text-text-primary tracking-tight mt-3">
-              Pick your role.
+            <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight">
+              Create your account
             </h1>
-            <p className="mt-3 text-text-secondary max-w-md mx-auto">
-              Each role gets its own dashboard, data model, and onboarding. You can&apos;t be two at once.
-            </p>
-            <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3">
-              {ROLE_META.map((r) => (
-                <button
-                  key={r.key}
-                  type="button"
-                  onClick={() => onPickRole(r.key)}
-                  className="group text-left rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-6 hover:border-[color:var(--color-accent)] hover:bg-[color:var(--color-surface-2)] transition-all"
-                >
-                  <div className="text-3xl mb-3 text-[color:var(--color-accent)] group-hover:scale-110 transition-transform inline-block">
-                    {r.icon}
-                  </div>
-                  <div className="font-display font-bold text-lg text-text-primary mb-1 capitalize">
-                    {r.key === "brand" ? "D2C Brand" : r.key}
-                  </div>
-                  <p className="text-xs text-text-muted mb-3 leading-relaxed">
-                    {ROLE_DESCRIPTION[r.key]}
-                  </p>
-                  <div className="text-[10px] font-mono text-text-faint">{r.tagline}</div>
-                </button>
-              ))}
-            </div>
-            <p className="mt-8 text-xs text-text-muted">
-              Already have an account?{" "}
-              <Link href="/login" className="text-[color:var(--color-accent)] hover:underline">
-                Sign in
-              </Link>
+            <p className="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Turn long videos into viral 9:16 vertical clips in seconds.
             </p>
           </div>
-        )}
 
-        {/* STEP 2: form */}
-        {step === "form" && form.role && (
-          <form onSubmit={onSubmit} className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)]/80 backdrop-blur p-8 space-y-6">
-            <div className="text-center mb-4">
-              <span className="inline-flex items-center gap-2 mb-2 px-3 py-1.5 rounded-full bg-[color:var(--color-surface-2)] border border-[color:var(--color-border)] text-[10px] font-mono tracking-widest text-text-muted">
-                STEP 2 / 3 · YOUR DETAILS
-              </span>
-              <h1 className="font-display font-bold text-2xl text-text-primary mt-2 capitalize">
-                {form.role === "brand" ? "D2C Brand" : form.role} account
-              </h1>
-              <button
-                type="button"
-                onClick={() => setStep("role")}
-                className="text-xs text-text-muted hover:text-text-primary mt-1"
-              >
-                ← Change role
-              </button>
-            </div>
+          {success ? (
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="py-12 text-center space-y-3"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Account Created!</h2>
+              <p className="text-xs text-slate-500">Redirecting you to the studio...</p>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {submitError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Your name" required>
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Your Name
+                </label>
                 <input
                   type="text"
                   required
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="Maya Chen"
-                  className={inputClass}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Deepraj Sharma"
+                  disabled={submitting}
+                  className="w-full rounded-xl px-4 py-3 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-all placeholder:text-slate-400"
                 />
-              </Field>
-              <Field label="Email" required>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Email Address
+                </label>
                 <input
                   type="email"
                   required
-                  value={form.email}
-                  onChange={(e) => set("email", e.target.value)}
-                  placeholder="you@example.com"
-                  className={inputClass}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="deepraj@example.com"
+                  disabled={submitting}
+                  className="w-full rounded-xl px-4 py-3 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-all placeholder:text-slate-400"
                 />
-              </Field>
-            </div>
-
-            <Field label="Password" required hint="Minimum 8 characters">
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={form.password}
-                onChange={(e) => set("password", e.target.value)}
-                placeholder="••••••••"
-                className={inputClass}
-              />
-            </Field>
-
-            {/* Role-specific fields */}
-            {form.role === "creator" && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Handle (YouTube / TikTok / etc.)">
-                    <input
-                      type="text"
-                      value={form.handle}
-                      onChange={(e) => set("handle", e.target.value)}
-                      placeholder="@hookqueen"
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="Primary platform">
-                    <select
-                      value={form.primary_platform}
-                      onChange={(e) => set("primary_platform", e.target.value)}
-                      className={inputClass}
-                    >
-                      {PLATFORM_OPTIONS.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-                <Field label="Channel URL" hint="Optional — we'll use it to verify your account later">
-                  <input
-                    type="url"
-                    value={form.channel_url}
-                    onChange={(e) => set("channel_url", e.target.value)}
-                    placeholder="https://youtube.com/@you"
-                    className={inputClass}
-                  />
-                </Field>
-              </>
-            )}
-
-            {form.role === "brand" && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Company name" required>
-                    <input
-                      type="text"
-                      required
-                      value={form.company_name}
-                      onChange={(e) => set("company_name", e.target.value)}
-                      placeholder="Acme Co."
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="Industry">
-                    <input
-                      type="text"
-                      value={form.industry}
-                      onChange={(e) => set("industry", e.target.value)}
-                      placeholder="D2C · Wellness"
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-                <Field label="Website">
-                  <input
-                    type="url"
-                    value={form.website}
-                    onChange={(e) => set("website", e.target.value)}
-                    placeholder="https://acme.com"
-                    className={inputClass}
-                  />
-                </Field>
-              </>
-            )}
-
-            {form.role === "clipper" && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Handle">
-                    <input
-                      type="text"
-                      value={form.handle}
-                      onChange={(e) => set("handle", e.target.value)}
-                      placeholder="@hookqueen"
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="Specialty">
-                    <input
-                      type="text"
-                      value={form.specialty}
-                      onChange={(e) => set("specialty", e.target.value)}
-                      placeholder="Podcasts · Tech"
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-                <div className="rounded-md border border-[color:var(--color-accent-tertiary)]/30 bg-[color:var(--color-accent-tertiary)]/5 p-3 text-xs text-text-secondary">
-                  Heads up: paying clipper accounts are billed via Stripe. You&apos;ll set up
-                  payment on the next step.
-                </div>
-              </>
-            )}
-
-            <label className="flex items-start gap-2 text-xs text-text-secondary">
-              <input
-                type="checkbox"
-                checked={form.accept_tos}
-                onChange={(e) => set("accept_tos", e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                I agree to the{" "}
-                <Link href="/legal/terms" className="text-[color:var(--color-accent)] hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/legal/privacy" className="text-[color:var(--color-accent)] hover:underline">
-                  Privacy Policy
-                </Link>
-                . I confirm I&apos;m 18+.
-              </span>
-            </label>
-
-            {submitError && (
-              <div className="rounded-md border border-[color:var(--color-error)]/30 bg-[color:var(--color-error)]/10 px-4 py-3 text-sm text-[color:var(--color-error)]">
-                {submitError}
               </div>
-            )}
 
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => setStep("role")}
-                className="text-xs text-text-muted hover:text-text-primary"
-              >
-                ← Back
-              </button>
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  disabled={submitting}
+                  className="w-full rounded-xl px-4 py-3 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-all placeholder:text-slate-400"
+                />
+              </div>
+
+              {/* Content Type Pill Picker */}
+              <div className="pt-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  What do you primarily create?
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CONTENT_TYPES.map((type) => (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => setSelectedType(type.id)}
+                      className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                        selectedType === type.id
+                          ? "bg-blue-600 text-white font-medium shadow-sm shadow-blue-500/30"
+                          : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200/60 dark:border-white/5"
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn-primary btn-shine text-sm"
-                style={{ paddingTop: "12px", paddingBottom: "12px", paddingLeft: "28px", paddingRight: "28px" }}
+                className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl py-3.5 px-6 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:opacity-95 shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Creating account…" : "Create account →"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Creating account...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Start Clipping Free</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
-            </div>
-          </form>
-        )}
 
-        {/* STEP 3: done */}
-        {step === "done" && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
-          >
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--color-success)]/15 border border-[color:var(--color-success)]/30 text-[color:var(--color-success)] text-3xl mb-6">
-              ✓
-            </div>
-            <h1 className="font-display font-bold text-3xl text-text-primary mb-2">
-              You&apos;re in.
-            </h1>
-            <p className="text-text-secondary">Redirecting to your account…</p>
-          </motion.div>
-        )}
-      </div>
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 pt-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                <span>No credit card required. Free during beta.</span>
+              </div>
+            </form>
+          )}
+
+          {/* Footer link */}
+          <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-white/5">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+            >
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </motion.div>
     </section>
-  );
-}
-
-const inputClass =
-  "w-full px-4 py-2.5 rounded-[var(--radius-md)] bg-[color:var(--color-bg-base)] border border-[color:var(--color-border)] text-text-primary placeholder:text-text-faint focus:outline-none focus:border-[color:var(--color-accent)]";
-
-/**
- * Where to send a freshly-signed-up user based on the role their account was
- * created with. We trust the role returned by the backend (which just issued
- * the session) over the form state.
- */
-function roleDestination(user: User): string {
-  switch (user.role) {
-    case "brand":
-      return "/brands/dashboard";
-    case "clipper":
-      return "/clippers/dashboard";
-    case "creator":
-      return "/creators/dashboard";
-    default:
-      return "/account";
-  }
-}
-
-function Field({
-  label,
-  required,
-  hint,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="flex items-center gap-2 mb-2 text-xs font-mono tracking-wider text-text-muted uppercase">
-        <span>{label}</span>
-        {required && <span className="text-[color:var(--color-accent)]">*</span>}
-      </span>
-      {children}
-      {hint && <span className="block mt-1 text-[10px] text-text-faint">{hint}</span>}
-    </label>
   );
 }

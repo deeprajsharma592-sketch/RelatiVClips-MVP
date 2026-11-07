@@ -9,12 +9,11 @@ import { ROLE_LABEL, type UserRole } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV_LINKS = [
-  { href: "/", label: "Workspace" },
-  { href: "/clippers", label: "Clippers", highlight: true },
-  { href: "/brands", label: "Brands", highlight: true },
-  { href: "/campaigns", label: "Campaigns", highlight: true },
-  { href: "/services", label: "Services" },
-  { href: "/plans", label: "Plans" },
+  { href: "/", label: "Studio" },
+  { href: "/process", label: "Clip Video" },
+  { href: "/plans", label: "Pricing" },
+  { href: "/changelog", label: "Changelog" },
+  { href: "/about", label: "About" },
 ];
 
 const ROLE_GRADIENT: Record<UserRole, string> = {
