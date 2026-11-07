@@ -8,9 +8,15 @@ import { useAuth } from "@/lib/AuthContext";
 import { ROLE_LABEL, type UserRole } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 
-const NAV_LINKS = [
+interface NavLink {
+  href: string;
+  label: string;
+  highlight?: boolean;
+}
+
+const NAV_LINKS: NavLink[] = [
   { href: "/", label: "Studio" },
-  { href: "/process", label: "Clip Video" },
+  { href: "/process", label: "Clip Video", highlight: true },
   { href: "/plans", label: "Pricing" },
   { href: "/changelog", label: "Changelog" },
   { href: "/about", label: "About" },
