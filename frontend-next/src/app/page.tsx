@@ -36,12 +36,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import StickyInputBar from "@/components/StickyInputBar";
-import CascadeGraphic from "@/components/CascadeGraphic";
-import PasteLinkInput from "@/components/PasteLinkInput";
 import VideoIntake from "@/components/VideoIntake";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import BentoGrid from "@/components/BentoGrid";
-import HeroNature from "@/components/HeroNature";
+import HeroStudio from "@/components/HeroStudio";
 import ProductMockup from "@/components/ProductMockup";
 
 const PILLARS = [
@@ -63,13 +61,6 @@ const PILLARS = [
     body: "Word-by-word captions, viral title, hashtags, 9:16 render. All auto.",
     accent: "#06B6D4",
   },
-];
-
-const STATS = [
-  { v: "60s", l: "average clip time" },
-  { v: "10×", l: "output per video" },
-  { v: "$0", l: "manual editing" },
-  { v: "4-min", l: "2-hour source" },
 ];
 
 const STEPS = [
@@ -127,52 +118,13 @@ export default function HomePage() {
       {/* Header, Footer, CookieBanner, ValuePropBar come from layout.tsx */}
       <StickyInputBar />
 
-      {/* Hero — nature-inspired warm dawn */}
-      <HeroNature />
+      {/* Hero — Grounded Precision Studio Canvas */}
+      <HeroStudio />
 
       {/* ════════════════════════════════════════════════════════════════
           PRODUCT MOCKUP — animated pipeline demo
          ════════════════════════════════════════════════════════════════ */}
       <ProductMockup />
-
-      {/* ════════════════════════════════════════════════════════════════
-          STATS STRIP — fills the "missing information" gap
-         ════════════════════════════════════════════════════════════════ */}
-
-      <section
-        className="relative py-10 border-y"
-        style={{
-          background: "var(--color-bg-deep)",
-          borderColor: "var(--color-border)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {STATS.map((s, i) => (
-              <motion.div
-                key={s.l}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.08, duration: 0.4 }}
-                className="text-center md:text-left"
-              >
-                <div
-                  className="font-mono text-3xl md:text-4xl font-semibold"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  {s.v}
-                </div>
-                <div
-                  className="text-[11px] font-mono uppercase tracking-wider mt-1"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  {s.l}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ════════════════════════════════════════════════════════════════
           SECTION 02 — MOVING CLIPS GRID
