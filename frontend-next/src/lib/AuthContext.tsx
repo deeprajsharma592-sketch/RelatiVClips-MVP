@@ -27,22 +27,66 @@ interface AuthContextValue {
   error: string | null;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
+  loginAsDemo: (name?: string, email?: string, role?: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const DEMO_STORAGE_KEY = "relativ_demo_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loginAsDemo = useCallback((name = "Deepraj Sharma", email = "deepraj@relativclips.com", role: UserRole = "creator") => {
+    const demoUser: User = {
+      id: "demo-" + Math.random().toString(36).substring(2, 9),
+      name,
+      email,
+      role,
+      is_verified: true,
+      created_at: new Date().toISOString(),
+      last_login_at: new Date().toISOString(),
+      profile: { specialty: "podcasts" },
+    };
+    try {
+      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser));
+      document.cookie = "relativ_demo_session=1; path=/; max-age=86400; SameSite=Lax";
+    } catch {}
+    setUser(demoUser);
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Check if demo user is stored locally
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem(DEMO_STORAGE_KEY);
+        if (stored) {
+          try {
+            setUser(JSON.parse(stored));
+            setLoading(false);
+            return;
+          } catch {}
+        }
+      }
+
       const r = await meFetch();
       setUser(r?.user || null);
     } catch (e: any) {
+      // If backend is offline but demo user exists
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem(DEMO_STORAGE_KEY);
+        if (stored) {
+          try {
+            setUser(JSON.parse(stored));
+            setLoading(false);
+            return;
+          } catch {}
+        }
+      }
       setError(e?.message || "Failed to load user");
       setUser(null);
     } finally {
@@ -52,6 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(DEMO_STORAGE_KEY);
+        document.cookie = "relativ_demo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+      }
       await logoutFetch();
     } finally {
       setUser(null);

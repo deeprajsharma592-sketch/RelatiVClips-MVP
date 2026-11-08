@@ -45,6 +45,7 @@ const COOKIE_NAMES = [
   "relativ_session",       // canonical name (current)
   "relativ_access_token",  // legacy / dev
   "session",               // alt dev name
+  "relativ_demo_session",  // demo / sandbox session
 ];
 
 function hasSessionCookie(req: NextRequest): boolean {
