@@ -79,8 +79,8 @@ import os
 _default_cors = ",".join([
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    # Pre-launch defaults (Hetzner IP + common Vercel previews)
-    "http://91.98.144.72:3000",
+    "https://relativclips.com",
+    "https://www.relativclips.com",
     "https://relativ.app",
     "https://www.relativ.app",
 ])
