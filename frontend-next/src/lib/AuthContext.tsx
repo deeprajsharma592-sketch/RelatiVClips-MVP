@@ -19,7 +19,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { me as meFetch, logout as logoutFetch, type User } from "@/lib/auth";
+import { me as meFetch, logout as logoutFetch, type User, type UserRole } from "@/lib/auth";
 
 interface AuthContextValue {
   user: User | null;
