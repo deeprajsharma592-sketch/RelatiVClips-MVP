@@ -60,13 +60,13 @@ export default function SignupPage() {
     setTimeout(() => {
       loginAsDemo("Creator", "creator@gmail.com", "creator");
       setSuccess(true);
-      setTimeout(() => router.push("/process"), 800);
+      setTimeout(() => router.push("/dashboard"), 800);
     }, 700);
   };
 
   const handleDemoBypass = () => {
     loginAsDemo(name.trim() || "Deepraj Sharma", email.trim() || "deepraj@relativclips.com", "creator");
-    router.push("/process");
+    router.push("/dashboard");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +92,7 @@ export default function SignupPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push("/process");
+        router.push("/dashboard");
       }, 1000);
     } catch (err: any) {
       const msg = err?.message || "";

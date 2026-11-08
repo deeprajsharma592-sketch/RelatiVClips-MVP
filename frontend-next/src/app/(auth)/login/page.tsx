@@ -29,7 +29,7 @@ function roleDestination(user: User): string {
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const nextPath = search.get("next") || "/account";
+  const nextPath = search.get("next") || "/dashboard";
   const { loginAsDemo } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -58,14 +58,14 @@ function LoginForm() {
 
     setTimeout(() => {
       loginAsDemo("Creator", "creator@gmail.com", "creator");
-      const dest = nextPath && nextPath.startsWith("/") ? nextPath : "/process";
+      const dest = nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard";
       router.push(dest);
     }, 600);
   };
 
   const handleDemoBypass = () => {
     loginAsDemo(email ? email.split("@")[0] : "Deepraj Sharma", email || "deepraj@relativclips.com", "creator");
-    const dest = nextPath && nextPath.startsWith("/") ? nextPath : "/process";
+    const dest = nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard";
     router.push(dest);
   };
 

@@ -59,7 +59,7 @@ export default function PasteLinkInput({
       setSubmitting(true);
       try {
         // Hand off to the workspace, where the real processing happens
-        const target = `/process?url=${encodeURIComponent(trimmed)}`;
+        const target = `/dashboard?url=${encodeURIComponent(trimmed)}`;
         router.push(target);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");

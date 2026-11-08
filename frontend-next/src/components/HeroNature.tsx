@@ -24,7 +24,7 @@ function HeroInput() {
     const trimmed = url.trim();
     if (!URL_REGEX.test(trimmed)) return;
     setSubmitting(true);
-    router.push(`/process?url=${encodeURIComponent(trimmed)}`);
+    router.push(`/dashboard?url=${encodeURIComponent(trimmed)}`);
   };
 
   return (

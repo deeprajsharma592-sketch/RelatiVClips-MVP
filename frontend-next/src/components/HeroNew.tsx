@@ -107,7 +107,7 @@ function HeroInput() {
     e.preventDefault();
     if (!valid) return;
     setSubmitting(true);
-    router.push(`/process?url=${encodeURIComponent(url.trim())}`);
+    router.push(`/dashboard?url=${encodeURIComponent(url.trim())}`);
   };
 
   return (
