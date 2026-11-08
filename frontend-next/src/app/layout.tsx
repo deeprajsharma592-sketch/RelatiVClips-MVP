@@ -3,7 +3,6 @@ import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono, Bebas_Neue 
 import Header from "@/components/Header";
 import ValuePropBar from "@/components/ValuePropBar";
 import Footer from "@/components/Footer";
-import CustomCursor from "@/components/CustomCursor";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
@@ -182,7 +181,6 @@ export default function RootLayout({
         </a>
         <ThemeProvider>
           <AuthProvider>
-            <CustomCursor />
             <Header />
             <ValuePropBar />
             <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
