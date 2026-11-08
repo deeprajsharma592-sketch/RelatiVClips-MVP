@@ -264,7 +264,7 @@ export default function CascadeGraphic({ className = "" }: CascadeGraphicProps) 
         </text>
 
         {/* ═══════════════════════════════════════════════════════════════
-            SHAPE 4 — Square (Claude hook score) — gold
+            SHAPE 4 — Square (RelatiV hook score) — gold
            ═══════════════════════════════════════════════════════════════ */}
         <circle cx="300" cy="460" r="68" fill="url(#halo-amber)" filter="url(#halo-blur)" opacity="0.55" />
         <rect
@@ -309,7 +309,7 @@ export default function CascadeGraphic({ className = "" }: CascadeGraphicProps) 
           letterSpacing="0.12em"
           fill="rgba(255, 255, 255, 0.85)"
         >
-          CLAUDE
+          HOOKS
         </text>
 
         {/* ═══════════════════════════════════════════════════════════════

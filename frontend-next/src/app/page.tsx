@@ -52,7 +52,7 @@ const PILLARS = [
   {
     icon: Brain,
     title: "Reads the room",
-    body: "Claude picks the 10 most shareable moments per video. Not the loudest — the best.",
+    body: "RelatiV AI scores and selects the most shareable moments per video. Not the loudest — the best.",
     accent: "#F59E0B",
   },
   {
@@ -75,7 +75,7 @@ const STEPS = [
     num: "02",
     icon: Zap,
     title: "Engine runs",
-    body: "Whisper transcribes. Librosa scores energy peaks. Claude picks the 10 most shareable moments.",
+    body: "Audio intelligence transcribes and scores energy peaks to isolate high-retention moments.",
     accent: "#D946EF",
   },
   {
@@ -106,7 +106,7 @@ const FAQS = [
   },
   {
     q: "Do you support non-English videos?",
-    a: "Whisper auto-detects 99 languages. Claude scoring works best on English but understands multilingual transcripts. UI is English today.",
+    a: "Auto-detects 99 languages. RelatiV AI scoring works best on English but understands multilingual transcripts. UI is English today.",
   },
 ];
 

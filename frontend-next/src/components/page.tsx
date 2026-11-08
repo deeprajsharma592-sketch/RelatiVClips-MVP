@@ -53,10 +53,10 @@ const ENGINE_FEATURES = [
     metricLabel: "for 2h video",
   },
   {
-    id: "claude",
+    id: "hook_engine",
     badge: "Φ-Hook",
-    title: "Claude calibrates the hook",
-    body: "Anthropic Claude scores every moment for emotional peak, narrative completeness, and shareability. We pick the 10 winners — not the 10 longest.",
+    title: "RelatiV AI calibrates the hook",
+    body: "RelatiV AI scores every moment for emotional peak, narrative completeness, and shareability. We pick the 10 winners — not the 10 longest.",
     metric: "97%",
     metricLabel: "caption accuracy",
   },
@@ -102,7 +102,7 @@ const PRICING = [
     cadence: "per month",
     cta: "Try Pro free for 7 days",
     highlight: true,
-    features: ["600 min / month processing", "Unlimited clips", "All aspect ratios", "No watermark", "Claude hook calibration", "Priority queue"],
+    features: ["600 min / month processing", "Unlimited clips", "All aspect ratios", "No watermark", "AI hook calibration", "Priority queue"],
   },
   {
     tier: "Teams",
@@ -135,7 +135,7 @@ function HeroSection({ onCtaClick }: { onCtaClick: () => void }) {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-accent" />
           </span>
           <span className="text-xs font-mono text-text-muted">
-            NEW · Claude hook calibration · v2.0
+            NEW · RelatiV AI hook calibration · v2.0
           </span>
         </motion.div>
 
@@ -234,7 +234,7 @@ function TrustBar() {
   // engine that powers RelatiV — what the founder is shipping in
   // public, what people can verify on GitHub.
   const items = [
-    "Claude Haiku 4.5",
+    "RelatiV AI 2.0",
     "faster-whisper",
     "YOLO v8 face tracking",
     "librosa energy peaks",
@@ -294,7 +294,7 @@ function DemoSection() {
     () => [
       { label: "Transcribe", sub: "Whisper · RunPod serverless" },
       { label: "Analyze", sub: "Audio energy + speech patterns" },
-      { label: "Hook score", sub: "Claude · emotional peak" },
+      { label: "Hook score", sub: "RelatiV AI · emotional peak" },
       { label: "Render", sub: "YOLO face tracking · 9:16" },
     ],
     []
@@ -553,7 +553,7 @@ function EngineSection() {
             </span>
           </h2>
           <p className="mt-6 text-lg text-text-muted max-w-2xl">
-            RelatiV is the only short-form engine that runs Whisper, Claude, and YOLO together — tuned for virality, not just transcription.
+            RelatiV is the only short-form engine that runs multi-modal audio and visual intelligence together — tuned for virality, not just transcription.
           </p>
         </div>
 
@@ -570,19 +570,19 @@ function EngineSection() {
             <div className="relative h-full flex flex-col">
               <span className="text-xs font-mono text-accent mb-4">[Φ-HOOK]</span>
               <h3 className="text-3xl font-display font-bold text-text-primary leading-tight mb-4">
-                Claude calibrates the moment.
+                RelatiV AI calibrates the moment.
               </h3>
               <p className="text-text-muted leading-relaxed mb-6">
                 Every transcript segment is scored for emotional peak, narrative completeness, and shareability. We pick the 10 winners — not the 10 longest.
               </p>
               <div className="mt-auto">
                 <div className="font-display text-6xl font-bold text-accent">97%</div>
-                <p className="text-xs font-mono text-text-muted mt-1">caption accuracy · Claude Opus</p>
+                <p className="text-xs font-mono text-text-muted mt-1">hook accuracy · RelatiV v2.0</p>
               </div>
             </div>
           </motion.div>
 
-          {ENGINE_FEATURES.filter((f) => f.id !== "claude").map((f, i) => (
+          {ENGINE_FEATURES.filter((f) => f.id !== "hook_engine").map((f, i) => (
             <motion.div
               key={f.id}
               initial={{ opacity: 1, y: 0 }}

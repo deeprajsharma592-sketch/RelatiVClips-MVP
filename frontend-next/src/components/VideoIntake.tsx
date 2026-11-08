@@ -63,7 +63,7 @@ export default function VideoIntake({ className = "", onStartProcess }: VideoInt
         if (onStartProcess) {
           onStartProcess(init.taskId);
         } else {
-          router.push(`/process?taskId=${encodeURIComponent(init.taskId)}`);
+          router.push(`/dashboard?taskId=${encodeURIComponent(init.taskId)}`);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to upload video.");
@@ -104,7 +104,7 @@ export default function VideoIntake({ className = "", onStartProcess }: VideoInt
       return;
     }
     setError(null);
-    router.push(`/process?url=${encodeURIComponent(trimmed)}`);
+    router.push(`/dashboard?url=${encodeURIComponent(trimmed)}`);
   };
 
   return (

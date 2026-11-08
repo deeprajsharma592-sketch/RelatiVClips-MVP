@@ -14,7 +14,7 @@ type TechItem = {
 };
 
 const STACK: TechItem[] = [
-  { label: "Claude Haiku 4.5", note: "hook calibration · ICL prompt" },
+  { label: "RelatiV AI 2.0", note: "hook calibration · ICL prompt" },
   { label: "faster-whisper", note: "CPU int8 · word-level timestamps" },
   { label: "YOLO v8", note: "active speaker · smart reframing" },
   { label: "librosa", note: "RMS energy peaks" },

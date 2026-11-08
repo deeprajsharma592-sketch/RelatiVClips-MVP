@@ -17,7 +17,7 @@ const BENTO_CARDS = [
     icon: Zap,
     label: "THE ENGINE",
     title: "Paste a URL.\nGet clips.",
-    body: "45 seconds from YouTube link to 10 ready-to-post clips. Whisper transcribes. Claude scores hook dimensions. FFmpeg renders H.264.",
+    body: "45 seconds from video input to 10 ready-to-post clips. Transcribes audio, scores hook dimensions, and renders crisp H.264 vertical video.",
     accent: "#D946EF",
     accentDim: "rgba(26,5,51,0.7)",
     href: "/services",

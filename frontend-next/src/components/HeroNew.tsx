@@ -781,7 +781,7 @@ export default function HeroNew() {
               step: "02",
               icon: Brain,
               title: "AI finds the hooks",
-              body: "Whisper transcribes. Claude scores 10 viral moments from audio + transcript.",
+              body: "Transcribes and scores 10 viral moments from audio + transcript.",
               color: "#D946EF",
             },
             {

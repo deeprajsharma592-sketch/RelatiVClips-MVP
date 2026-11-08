@@ -52,7 +52,7 @@ const STEPS: PipelineStep[] = [
   { number: 1, label: "Fetching source",       sub: "YouTube · captions · audio",  icon: "📥", vibe: "fetch" },
   { number: 2, label: "Analyzing",             sub: "librosa · energy peaks",      icon: "🎵", vibe: "audio" },
   { number: 3, label: "Transcribing",          sub: "Captions · Whisper fallback", icon: "💬", vibe: "transcribe" },
-  { number: 4, label: "Selecting clips",       sub: "Claude · hook scoring",       icon: "🧠", vibe: "llm" },
+  { number: 4, label: "Selecting clips",       sub: "RelatiV AI · hook scoring",       icon: "🧠", vibe: "llm" },
   { number: 5, label: "Detecting faces",       sub: "Center-crop · OpenCV",        icon: "👤", vibe: "face" },
   { number: 6, label: "Rendering",             sub: "FFmpeg · 9:16 export",        icon: "🎬", vibe: "render" },
 ];
@@ -91,6 +91,12 @@ function ProcessFallback() {
 function ProcessInner() {
   const params = useSearchParams();
   const router = useRouter();
+
+  useEffect(() => {
+    const q = params.toString();
+    router.replace(q ? `/dashboard?${q}` : "/dashboard");
+  }, [params, router]);
+
   const initialUrl = params.get("url") || "";
   const initialTaskId = params.get("taskId") || params.get("task_id") || "";
 

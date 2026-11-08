@@ -56,7 +56,7 @@ const SURFACES = [
 ];
 
 const ADVANTAGES = [
-  { title: "Taste, not length", body: "Every other tool optimizes for video length. RelatiV picks the 10 hookiest moments. 4-stage AI scoring (Whisper → Claude → librosa → YOLO) is replaceable. The signal — taste-based selection — is not." },
+  { title: "Taste, not length", body: "Every other tool optimizes for video length. RelatiV picks the 10 hookiest moments using proprietary taste-based scoring. The signal — taste-based selection — is unbeatable." },
   { title: "3-sided flywheel", body: "Creators bring content, brands bring budget, clippers bring distribution. Each side pulls the other two. Switching cost is the workflow, not the data." },
   { title: "Own infrastructure", body: "Self-hostable on Hetzner + RunPod. No vendor lock-in. Margin compounds as we replace inference providers. Founder principle: \"robust and scalable, not dependent on third parties.\"" },
 ];
@@ -124,7 +124,7 @@ export default function YCPage() {
             className="mt-8 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            Paste a YouTube URL → get 10 ready-to-post clips in 4 minutes. Claude scores hooks. YOLO re-frames. Whispers transcripts. Pays clippers every Monday.
+            Paste a YouTube URL or drop MP4 → get 10 ready-to-post clips in 45s. RelatiV AI scores hooks, frames speakers, and burns designer captions. Pays clippers every Monday.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
