@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import Header from "@/components/Header";
-import ValuePropBar from "@/components/ValuePropBar";
 import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -182,7 +181,6 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <Header />
-            <ValuePropBar />
             <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
             <Footer />
             <script
