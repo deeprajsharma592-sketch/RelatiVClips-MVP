@@ -190,7 +190,7 @@ export default function Footer() {
               className="text-[11px]"
               style={{ color: "var(--color-text-muted)", opacity: 0.7 }}
             >
-              Built in Assam, India · deployed globally
+              Built in Bengaluru
             </p>
           </div>
 
