@@ -38,10 +38,12 @@ if %ERRORLEVEL% NEQ 0 (
 
 :: 4. Install dependencies if needed
 echo [*] Checking required dependencies...
-python -c "import fastapi, faster_whisper, uvicorn" >nul 2>&1
+python -c "import fastapi, faster_whisper, uvicorn, yt_dlp" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo [*] Installing dependencies from backend/requirements.txt...
     pip install -r backend/requirements.txt
+    echo [*] Ensuring latest yt-dlp version for YouTube pipeline...
+    pip install -U yt-dlp
     echo [*] Installing PyTorch with CUDA acceleration...
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 )

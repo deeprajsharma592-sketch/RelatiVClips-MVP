@@ -30,11 +30,13 @@ if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
 # 4. Check dependencies
 Write-Host "[*] Verifying dependencies..." -ForegroundColor Green
 try {
-    python -c "import fastapi, faster_whisper, uvicorn" 2>$null
+    python -c "import fastapi, faster_whisper, uvicorn, yt_dlp" 2>$null
     if ($LASTEXITCODE -ne 0) { throw "Missing deps" }
 } catch {
     Write-Host "[*] Installing backend requirements..." -ForegroundColor Yellow
     pip install -r backend/requirements.txt
+    Write-Host "[*] Ensuring latest yt-dlp version for YouTube pipeline..." -ForegroundColor Yellow
+    pip install -U yt-dlp
     Write-Host "[*] Installing PyTorch with CUDA acceleration..." -ForegroundColor Yellow
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 }

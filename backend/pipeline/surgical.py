@@ -71,7 +71,7 @@ def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
     # Working copy of cookies (so yt-dlp's save_cookies can't corrupt source)
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
+        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
         try:
             shutil.copy2(str(COOKIES_PATH), _working)
             cmd.extend(["--cookies", _working])
@@ -121,7 +121,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
     ]
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
+        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
         try:
             shutil.copy2(str(COOKIES_PATH), _working)
             cmd.extend(["--cookies", _working])

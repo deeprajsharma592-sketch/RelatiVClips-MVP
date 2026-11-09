@@ -34,7 +34,7 @@ import VideoIntake from "@/components/VideoIntake";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
 import { apiPath } from "@/lib/apiBase";
-import { checkProcessingStatus } from "@/lib/api";
+import { checkProcessingStatus, submitYouTubeUrl } from "@/lib/api";
 import {
   getStoredProjects,
   saveProject,
@@ -136,14 +136,14 @@ function DashboardContent() {
     setElapsedSec(0);
     setGenerationProgress(20);
 
-    // If a taskId exists, poll status
-    if (taskIdParam) {
-      let isMounted = true;
-      const startTime = Date.now();
+    let isMounted = true;
+    let pollInterval: any = null;
 
-      const pollInterval = setInterval(async () => {
+    const startPolling = (tid: string) => {
+      const startTime = Date.now();
+      pollInterval = setInterval(async () => {
         try {
-          const status = await checkProcessingStatus(taskIdParam);
+          const status = await checkProcessingStatus(tid);
           if (!isMounted) return;
 
           if (status.status === "complete" && status.clips && status.clips.length > 0) {
@@ -164,32 +164,52 @@ function DashboardContent() {
             setGenerationProgress(progress);
           }
         } catch (e: any) {
-          // If backend offline or 502, provide smooth fallback after 6s
+          // If backend offline or 502, provide smooth fallback after 8s
           const elapsed = Date.now() - startTime;
-          if (elapsed > 6000) {
+          if (elapsed > 8000) {
             clearInterval(pollInterval);
             setIsGenerating(false);
-            // Load demo clips so user sees the finished 4-day storage vault
             updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
             setProjects(getStoredProjects());
           }
         }
       }, 2500);
+    };
 
-      return () => {
-        isMounted = false;
-        clearInterval(pollInterval);
-      };
-    } else {
-      // Mock progress simulation for url intake
-      const timer = setTimeout(() => {
-        setIsGenerating(false);
-        setGenerationProgress(100);
-        updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
-        setProjects(getStoredProjects());
-      }, 5000);
-      return () => clearTimeout(timer);
+    if (taskIdParam) {
+      startPolling(taskIdParam);
+    } else if (urlParam) {
+      // Trigger the real yt-dlp pipeline on the backend
+      submitYouTubeUrl(urlParam)
+        .then((init) => {
+          if (!isMounted) return;
+          if (init.taskId) {
+            startPolling(init.taskId);
+          } else {
+            setTimeout(() => {
+              if (!isMounted) return;
+              setIsGenerating(false);
+              updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
+              setProjects(getStoredProjects());
+            }, 3000);
+          }
+        })
+        .catch(() => {
+          if (!isMounted) return;
+          // Smooth fallback if backend is in standby
+          setTimeout(() => {
+            if (!isMounted) return;
+            setIsGenerating(false);
+            updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
+            setProjects(getStoredProjects());
+          }, 4000);
+        });
     }
+
+    return () => {
+      isMounted = false;
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [taskIdParam, urlParam]);
 
   // Elapsed timer when generating

@@ -99,31 +99,32 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     import requests as _requests
     from ..utils.config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT
 
-    # --- Step 1: Try laptop (residential IP) ---
-    try:
-        laptop_url = f"{RESIDENTIAL_DOWNLOAD_URL.rstrip('/')}/subtitles"
-        log(f"  Fetching subtitles via laptop proxy: {laptop_url}")
-        resp = _requests.get(
-            laptop_url,
-            params={"url": url, "lang": "en"},
-            timeout=RESIDENTIAL_DOWNLOAD_TIMEOUT,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            vtt = data.get("vtt", "")
-            if vtt and len(vtt) > 50:
-                segments = _parse_vtt_content(vtt)
-                if segments:
-                    log(f"  Laptop proxy subtitles: {len(segments)} segments")
-                    return {"segments": segments, "language": "en", "source": "ytdlp_vtt"}
-        elif resp.status_code == 404:
-            log("  Laptop proxy: no subtitles for this video")
-        else:
-            log(f"  Laptop proxy error {resp.status_code}: {resp.text[:100]}")
-    except _requests.exceptions.ConnectionError:
-        log("  Laptop proxy unreachable — trying direct download")
-    except Exception as e:
-        log(f"  Laptop proxy error: {e}")
+    # --- Step 1: Try laptop proxy only if configured and valid ---
+    if RESIDENTIAL_DOWNLOAD_URL and "overbid-unleaded-pencil" not in RESIDENTIAL_DOWNLOAD_URL:
+        try:
+            laptop_url = f"{RESIDENTIAL_DOWNLOAD_URL.rstrip('/')}/subtitles"
+            log(f"  Fetching subtitles via laptop proxy: {laptop_url}")
+            resp = _requests.get(
+                laptop_url,
+                params={"url": url, "lang": "en"},
+                timeout=min(15, RESIDENTIAL_DOWNLOAD_TIMEOUT),
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                vtt = data.get("vtt", "")
+                if vtt and len(vtt) > 50:
+                    segments = _parse_vtt_content(vtt)
+                    if segments:
+                        log(f"  Laptop proxy subtitles: {len(segments)} segments")
+                        return {"segments": segments, "language": "en", "source": "ytdlp_vtt"}
+            elif resp.status_code == 404:
+                log("  Laptop proxy: no subtitles for this video")
+            else:
+                log(f"  Laptop proxy error {resp.status_code}: {resp.text[:100]}")
+        except _requests.exceptions.ConnectionError:
+            log("  Laptop proxy unreachable — trying direct download")
+        except Exception as e:
+            log(f"  Laptop proxy error: {e}")
 
     # --- Step 2: Fall back to direct server download ---
     subs_base = TEMP_DIR / f"{task_id}_subs"
@@ -154,7 +155,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
+        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
         try:
             shutil.copy2(str(COOKIES_PATH), _working)
             _cookies_arg = _working
@@ -281,7 +282,7 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
     _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
+        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
         try:
             shutil.copy2(str(COOKIES_PATH), _working)
             _cookies_arg = _working
