@@ -183,7 +183,9 @@ class YouTubeSurgicalFunnel:
             return {"success": True, "transcript": transcript, "audio_path": None}
 
         # Whisper was used, so audio already exists on disk at the temp path
-        audio_path = TEMP_DIR / f"{self.task_id}_audio.m4a"
+        audio_path = TEMP_DIR / f"{self.task_id}_audio.wav"
+        if not audio_path.exists():
+            audio_path = TEMP_DIR / f"{self.task_id}_audio.m4a"
         if not audio_path.exists():
             self.log("  Audio file not found on disk, re-downloading...")
             audio_path = _download_audio(self.url, self.task_id, self.log)

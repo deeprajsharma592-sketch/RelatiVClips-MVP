@@ -2,8 +2,21 @@
 RelatiV Backend - Main Entry Point
 Supports dual pipelines: Local Video and YouTube Surgical Funnel
 """
-import asyncio
 import sys
+# Shim for Python 3.12 where setuptools/pkg_resources might be missing
+try:
+    import pkg_resources
+except ImportError:
+    import types
+    pr = types.ModuleType("pkg_resources")
+    pr.get_distribution = lambda dist: type("Dist", (), {"version": "0.0.0"})()
+    pr.resource_filename = lambda *a, **k: ""
+    pr.iter_entry_points = lambda *a, **k: []
+    pr.Requirement = type("Requirement", (), {"parse": lambda s: s})
+    pr.DistributionNotFound = type("DistributionNotFound", (Exception,), {})
+    sys.modules["pkg_resources"] = pr
+
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path

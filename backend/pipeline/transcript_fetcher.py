@@ -267,7 +267,7 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
 
 def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
     """Download audio from a URL using yt-dlp."""
-    audio_path = TEMP_DIR / f"{task_id}_audio.m4a"
+    audio_path = TEMP_DIR / f"{task_id}_audio.wav"
 
     if audio_path.exists():
         try:
@@ -279,7 +279,7 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         YTDLP_PATH,
         "-f", "bestaudio/best",
         "--extract-audio",
-        "--audio-format", "m4a",
+        "--audio-format", "wav",
         "--audio-quality", "0",
         "--extractor-args", "youtube:player_client=android,web",
         "-o", str(audio_path),

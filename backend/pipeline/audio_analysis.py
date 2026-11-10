@@ -22,6 +22,20 @@ The "valley" is the hook the energy-based peak detector misses:
   - "...and then I made 10 Cr in 6 months." (peak, energy spike)
 The valley→peak PAIR is the viral moment, not the peak alone.
 """
+import sys
+# Shim for Python 3.12 where setuptools/pkg_resources might be missing
+try:
+    import pkg_resources
+except ImportError:
+    import types
+    pr = types.ModuleType("pkg_resources")
+    pr.get_distribution = lambda dist: type("Dist", (), {"version": "0.0.0"})()
+    pr.resource_filename = lambda *a, **k: ""
+    pr.iter_entry_points = lambda *a, **k: []
+    pr.Requirement = type("Requirement", (), {"parse": lambda s: s})
+    pr.DistributionNotFound = type("DistributionNotFound", (Exception,), {})
+    sys.modules["pkg_resources"] = pr
+
 import numpy as np
 import librosa
 from typing import List, Dict, Tuple
