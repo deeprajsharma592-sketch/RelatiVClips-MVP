@@ -146,7 +146,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             and "haiku" in model_name
             and len(cacheable) >= 4000
         )
-        with httpx.Client(timeout=120.0) as client:
+        with httpx.Client(timeout=30.0, trust_env=False) as client:
             payload = {
                 "model": model_name,
                 "max_tokens": max_out,
