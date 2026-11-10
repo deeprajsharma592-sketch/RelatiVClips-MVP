@@ -15,15 +15,13 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const pathStr = path.join("/");
   const search = req.nextUrl.search;
 
-  // The frontend calls /api/proxy/api/v1/<path> but the backend FastAPI
-  // routers are mounted WITHOUT the /api/v1/ prefix (e.g. /process/youtube,
-  // not /api/v1/process/youtube). Strip the prefix before forwarding so
-  // /api/proxy/api/v1/process/youtube → ${BACKEND_BASE}/process/youtube.
+  // FastAPI auth, dashboard, billing, campaigns, taste, verification, and clips
+  // are all mounted at /api/v1/... on the backend.
+  // ONLY strip api/v1/ for un-prefixed backend routers: process, upload, download, status, health.
   let cleanedPath = pathStr;
-  const apiV1Prefix = "api/v1/";
-  if (cleanedPath === "api/v1" || cleanedPath.startsWith(apiV1Prefix)) {
-    cleanedPath = cleanedPath.slice(apiV1Prefix.length);
-    if (cleanedPath === "") cleanedPath = ""; // root → just /, not //
+  const unPrefixed = ["api/v1/process", "api/v1/upload", "api/v1/download", "api/v1/status", "api/v1/health"];
+  if (unPrefixed.some((prefix) => cleanedPath === prefix || cleanedPath.startsWith(prefix + "/"))) {
+    cleanedPath = cleanedPath.slice("api/v1/".length);
   }
 
   const targetUrl = `${BACKEND_BASE}/${cleanedPath}${search}`;
