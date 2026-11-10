@@ -19,7 +19,7 @@ energy-based heuristic via `taste.selector._fallback_selection`.
 import logging
 import os
 import time
-from threading import Lock
+from threading import RLock
 from typing import Callable, List, Optional, Tuple
 
 # Import config FIRST so load_dotenv() has run before reading env.
@@ -38,7 +38,7 @@ log = logging.getLogger(__name__)
 # --- Circuit breaker state (per-process, in-memory) ---
 # Maps provider name -> {"failures": int, "opened_at": float | None}
 _BREAKER_STATE: dict = {}
-_BREAKER_LOCK = Lock()
+_BREAKER_LOCK = RLock()
 _AVAILABLE_CLAUDE_MODELS: Optional[List[str]] = None
 
 
