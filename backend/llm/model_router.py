@@ -64,7 +64,7 @@ TIER_CONFIG = {
         "primary": CLAUDE_MODEL or "claude-3-5-haiku-20241022",
         "fallback": [CLAUDE_MODEL or "claude-3-5-haiku-20241022"],
         "description": "High quality for story/hook calibration.",
-        "use_cache": False,
+        "use_cache": True,
     },
     LLMTier.BUDGET: {
         # V4-Flash is the workhorse; V4-Pro kept as quality-bump option
