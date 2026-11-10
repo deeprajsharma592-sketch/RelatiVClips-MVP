@@ -148,7 +148,19 @@ async def download_clip(filename: str):
     return FileResponse(file_path, filename=safe_name, media_type="video/mp4")
 
 
-@app.get("/health")
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "stage": APP_STAGE,
+        "dashboard": "https://relativclips.com/dashboard",
+        "health": "/health",
+        "smoke_test": "/smoke-test-llm",
+        "cost_status": "/cost-status",
+        "clips": "/clips",
+    }
 
 
 @app.get("/health")
