@@ -42,7 +42,7 @@ from ..utils.config import (
 log = logging.getLogger(__name__)
 
 
-def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
+def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[str] = None) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video.
 
     yt-dlp's `--download-sections` accepts a time-range string like
@@ -63,7 +63,7 @@ def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
         "--audio-format", "m4a",
         "--audio-quality", "0",
         "--download-sections", f"*{s_str}-{e_str}",
-        "-o", "-",  # stdout
+        "-o", dest_path if dest_path else "-",
         "--no-warnings",
         "--no-check-certificates",
         url,
@@ -83,7 +83,7 @@ def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
     return cmd
 
 
-def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
+def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Optional[str] = None) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video
     AS A VIDEO FILE (with both video and audio streams) for the renderer.
 
@@ -110,11 +110,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
             "best[height<=720]"  # last resort — may be VP9/MPEG-2
         ),
         "--download-sections", f"*{s_str}-{e_str}",
-        # NOTE: --force-keyframes-at-cuts is intentionally omitted. Adding it
-        # causes FFmpeg to re-encode the stream (H.264→MPEG-2→H.264) which
-        # is slow and destroys quality. The H.264 keyframe structure of format
-        # 18 segments is dense enough for accurate FFmpeg seeking.
-        "-o", "-",  # stdout
+        "-o", dest_path if dest_path else "-",
         "--no-warnings",
         "--no-check-certificates",
         url,
@@ -155,7 +151,7 @@ def _download_one_segment(
         except Exception:
             pass
 
-    cmd = _ytdlp_section_url(url, start, end)
+    cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path))
 
     def _log(msg: str) -> None:
         with log_lock:
@@ -168,10 +164,9 @@ def _download_one_segment(
     try:
         for seg_attempt in range(1, 5):
             try:
-                with open(audio_path, "wb") as f:
-                    result = subprocess.run(
-                        cmd, stdout=f, stderr=subprocess.PIPE, timeout=120
-                    )
+                result = subprocess.run(
+                    cmd, capture_output=True, timeout=120
+                )
                 if result.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 0:
                     final_ok = True
                     break
@@ -365,13 +360,12 @@ def _download_one_video_segment(
         final_ok = True
     except Exception as resi_err:
         _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
-        cmd = _ytdlp_video_section_url(url, start, end)
+        cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path))
         for seg_attempt in range(1, 4):
             try:
-                with open(video_path, "wb") as f:
-                    result = subprocess.run(
-                        cmd, stdout=f, stderr=subprocess.PIPE, timeout=180
-                    )
+                result = subprocess.run(
+                    cmd, capture_output=True, timeout=180
+                )
                 if (result.returncode == 0 and video_path.exists()
                         and video_path.stat().st_size > 1024):
                     try:

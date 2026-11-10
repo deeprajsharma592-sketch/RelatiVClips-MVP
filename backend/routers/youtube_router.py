@@ -1336,17 +1336,22 @@ def _run_moment_pipeline(
     with ThreadPoolExecutor(max_workers=min(3, len(final_clips)), thread_name_prefix="stream") as pool:
         futures = {pool.submit(_process_clip, i, c): i for i, c in enumerate(final_clips)}
         completed_count = 0
-        for fut in as_completed(futures, timeout=240):
-            i = futures[fut]
-            try:
-                out = fut.result(timeout=240)
-                if out:
-                    rendered.append(out)
-            except Exception as e:
-                _bridge("render", f"  clip {i+1} worker crashed: {e}")
-            completed_count += 1
-            _bridge("render", f"Rendered {completed_count}/{len(final_clips)} clips",
-                    step=6, sub_progress=completed_count / max(1, len(final_clips)))
+        try:
+            for fut in as_completed(futures, timeout=600):
+                i = futures[fut]
+                try:
+                    out = fut.result()
+                    if out:
+                        rendered.append(out)
+                except Exception as e:
+                    _bridge("render", f"  clip {i+1} worker crashed: {e}")
+                completed_count += 1
+                _bridge("render", f"Rendered {completed_count}/{len(final_clips)} clips",
+                        step=6, sub_progress=completed_count / max(1, len(final_clips)))
+        except TimeoutError:
+            _bridge("render", f"Render deadline reached — keeping {len(rendered)} completed clip(s)")
+            if not rendered:
+                raise RuntimeError("All clip render tasks timed out")
 
     _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
     # Strip non-serializable / circular fields before returning
