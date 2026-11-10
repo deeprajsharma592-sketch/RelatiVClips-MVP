@@ -54,15 +54,17 @@ class LLMTier(str, Enum):
     SMART = "smart"               # Router decides per-request
 
 
+from ..utils.config import CLAUDE_MODEL
+
 # Map tier -> (primary model, fallback chain)
 # Note: "smart" is a router meta-tier, not a real choice — it dispatches to
 # one of the other three at runtime. We omit it from TIER_CONFIG.
 TIER_CONFIG = {
     LLMTier.CALIBRATION: {
-        "primary": "claude-haiku-4-5-20251001",
-        "fallback": ["claude-haiku-4-5-20251001"],
-        "description": "High quality for story/hook calibration. Uses Claude's prompt caching.",
-        "use_cache": True,  # critical for Haiku cost reduction
+        "primary": CLAUDE_MODEL or "claude-3-5-haiku-20241022",
+        "fallback": [CLAUDE_MODEL or "claude-3-5-haiku-20241022"],
+        "description": "High quality for story/hook calibration.",
+        "use_cache": False,
     },
     LLMTier.BUDGET: {
         # V4-Flash is the workhorse; V4-Pro kept as quality-bump option
@@ -84,6 +86,10 @@ TIER_CONFIG = {
 
 # ─── Cost constants (USD per million tokens) ────────────────────────────────
 COST_PER_MTOK = {
+    "claude-3-5-haiku-20241022": {
+        "input": 0.80, "output": 4.0,
+        "cache_read": 0.08, "cache_write": 1.0,
+    },
     "claude-haiku-4-5-20251001": {
         "input": 1.0, "output": 5.0,
         "cache_read": 0.10, "cache_write": 1.25,

@@ -203,6 +203,37 @@ async def cost_status():
     return cost_control.cost_status()
 
 
+@app.get("/smoke-test-llm")
+async def smoke_test_llm():
+    """Live smoke test of the Claude / LLM pipeline.
+    Sends a test hook-selection prompt to verify the API key, model, and track spend.
+    """
+    from .llm.chain import call_with_fallback, breaker_status
+    from .llm import cost_control
+    
+    test_prompt = (
+        "You are evaluating a YouTube clip moment for virality.\n"
+        "Moment text: 'Wait until you see how this engine behaves at 9000 RPM.'\n"
+        "Return a JSON array with one object containing keys: 'viral_title', 'caption', 'hashtags', 'confidence'."
+    )
+    try:
+        response_text, provider = call_with_fallback(test_prompt)
+        status = cost_control.cost_status()
+        return {
+            "success": bool(response_text),
+            "provider_used": provider,
+            "response": response_text,
+            "cost_status": status,
+            "breakers": breaker_status(),
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "breakers": breaker_status(),
+        }
+
+
 @app.get("/proxy-status")
 async def proxy_status():
     """Test the YouTube proxy chain + show config. Run 3 fresh YouTube fetches

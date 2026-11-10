@@ -144,6 +144,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         use_cache = (
             model_name.startswith("claude-")
             and "haiku" in model_name
+            and len(cacheable) >= 4000
         )
         with httpx.Client(timeout=120.0) as client:
             payload = {
