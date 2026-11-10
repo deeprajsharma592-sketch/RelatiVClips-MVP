@@ -171,28 +171,18 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             split_point = last_nl
         cacheable = prompt[:split_point]
         variable = prompt[split_point:]
-        candidate_models = []
-        # Add models returned directly from Anthropic's /v1/models first
+        # Priority: tested active Haiku 4.5, then other active models from Anthropic API
+        candidate_models = ["claude-haiku-4-5-20251001", "claude-haiku-5-5"]
         for am in _get_available_claude_models():
             if am not in candidate_models:
                 candidate_models.append(am)
         if model_name and model_name not in candidate_models:
             candidate_models.append(model_name)
-        for fallback_m in [
-            "claude-3-5-sonnet-latest",
-            "claude-3-5-haiku-latest",
-            "claude-3-7-sonnet-20250219",
-            "claude-3-haiku-20240307",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-5-haiku-20241022",
-        ]:
-            if fallback_m not in candidate_models:
-                candidate_models.append(fallback_m)
 
         # Prioritize Haiku (fastest & cheapest for hook extraction) then Sonnet
         candidate_models = sorted(
             candidate_models,
-            key=lambda m: 0 if "haiku" in m.lower() else (1 if "sonnet" in m.lower() else 2)
+            key=lambda m: 0 if m == "claude-haiku-4-5-20251001" else (1 if "haiku" in m.lower() else (2 if "sonnet" in m.lower() else 3))
         )
 
         last_error = None
@@ -203,7 +193,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                 and len(cacheable) >= 4000
             )
             try:
-                log.info(f"Attempting Claude API call with model: {current_model}")
+                print(f"[Claude] Calling Anthropic API with model: {current_model}...")
                 with httpx.Client(timeout=15.0, trust_env=False) as client:
                     payload = {
                         "model": current_model,
@@ -249,15 +239,15 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                         model_router.record_pick(current_model, est_cost)
                     for block in body.get("content", []):
                         if block.get("type") == "text":
-                            log.info(f"Claude API call succeeded with model {current_model} (tokens: in={in_tok}, out={out_tok})")
+                            print(f"[Claude] SUCCESS with {current_model} (tokens: in={in_tok}, out={out_tok})")
                             return block.get("text", "")
                     raise RuntimeError("Claude returned no text block")
                 last_error = f"Claude API error {r.status_code}: {r.text[:300]}"
-                log.warning(f"Claude model {current_model} failed ({r.status_code}): {r.text[:150]}")
+                print(f"[Claude] Model {current_model} returned HTTP {r.status_code}: {r.text[:150]}")
                 continue
             except Exception as exc:
                 last_error = f"Claude model {current_model} call exception: {exc}"
-                log.warning(last_error)
+                print(f"[Claude] Model {current_model} exception: {exc}")
                 continue
         raise RuntimeError(last_error or "Claude API call failed")
 
