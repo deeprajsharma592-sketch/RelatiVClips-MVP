@@ -61,8 +61,8 @@ from ..utils.config import CLAUDE_MODEL
 # one of the other three at runtime. We omit it from TIER_CONFIG.
 TIER_CONFIG = {
     LLMTier.CALIBRATION: {
-        "primary": CLAUDE_MODEL or "claude-3-5-haiku-20241022",
-        "fallback": [CLAUDE_MODEL or "claude-3-5-haiku-20241022"],
+        "primary": CLAUDE_MODEL if CLAUDE_MODEL != "claude-3-5-haiku-20241022" else "claude-3-haiku-20240307",
+        "fallback": ["claude-3-haiku-20240307", "claude-3-5-sonnet-20241022"],
         "description": "High quality for story/hook calibration.",
         "use_cache": True,
     },
@@ -86,6 +86,10 @@ TIER_CONFIG = {
 
 # ─── Cost constants (USD per million tokens) ────────────────────────────────
 COST_PER_MTOK = {
+    "claude-3-haiku-20240307": {
+        "input": 0.25, "output": 1.25,
+        "cache_read": 0.03, "cache_write": 0.30,
+    },
     "claude-3-5-haiku-20241022": {
         "input": 0.80, "output": 4.0,
         "cache_read": 0.08, "cache_write": 1.0,

@@ -40,6 +40,7 @@ _model_router = None
 # Update these if Anthropic changes pricing.
 _COST_PER_MTOK = {
     # Model: (input_usd_per_mtok, output_usd_per_mtok)
+    "claude-3-haiku-20240307": (0.25, 1.25),
     "claude-3-5-haiku-20241022": (0.80, 4.0),
     "claude-haiku-4-5-20251001": (1.0, 5.0),
     "claude-haiku-3-5-20241022": (0.80, 4.0),
