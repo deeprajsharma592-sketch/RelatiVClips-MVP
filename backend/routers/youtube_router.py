@@ -1275,6 +1275,8 @@ def _run_moment_pipeline(
                 )
                 if dl_result and dl_result[0].get("video_path"):
                     clip["video_path"] = dl_result[0]["video_path"]
+                    clip["video_source_start"] = dl_result[0].get("source_start")
+                    clip["video_source_end"] = dl_result[0].get("source_end")
                     from ..pipeline.cache import save_segment_cache
                     seg_path = Path(clip["video_path"])
                     if seg_path.exists():
@@ -1282,10 +1284,10 @@ def _run_moment_pipeline(
                 _on_vid_done(i, len(final_clips), True)
 
             # 2. Face detection (fast, ~1s)
-            ap = clip.get("audio_path")
-            if ap and Path(ap).exists():
+            vp = clip.get("video_path")
+            if vp and Path(vp).exists():
                 try:
-                    face_data = face_stage.get_batch_face_data(ap, [clip])
+                    face_data = face_stage.get_batch_face_data(vp, [clip])
                     clip["face_data"] = face_data[0] if face_data else None
                 except Exception as e:
                     _bridge("face", f"  face {i+1} failed: {e}")
@@ -1335,11 +1337,12 @@ def _run_moment_pipeline(
     # Run all clips as independent streaming pipelines. as_completed yields
     # results in the order they finish — so the fastest clip's render can
     # complete and be returned before the slowest download even finishes.
-    with ThreadPoolExecutor(max_workers=min(3, len(final_clips)), thread_name_prefix="stream") as pool:
+    pool = ThreadPoolExecutor(max_workers=min(3, len(final_clips)), thread_name_prefix="stream")
+    try:
         futures = {pool.submit(_process_clip, i, c): i for i, c in enumerate(final_clips)}
         completed_count = 0
         try:
-            for fut in as_completed(futures, timeout=600):
+            for fut in as_completed(futures, timeout=180):
                 i = futures[fut]
                 try:
                     out = fut.result()
@@ -1354,6 +1357,8 @@ def _run_moment_pipeline(
             _bridge("render", f"Render deadline reached — keeping {len(rendered)} completed clip(s)")
             if not rendered:
                 raise RuntimeError("All clip render tasks timed out")
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
     _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
     # Strip non-serializable / circular fields before returning

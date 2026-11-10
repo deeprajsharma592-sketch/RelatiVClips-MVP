@@ -262,7 +262,7 @@ def render_clip(
     source_end = float(clip.get("video_source_end", clip.get("source_end", end)))
     # Relative positions within the local segment file
     rel_start = max(0.0, start - source_start)
-    rel_end = min(end, source_end)  # clip end, clamped to segment boundary
+    rel_end = max(rel_start, min(end, source_end) - source_start)
     duration = rel_end - rel_start  # actual duration we CAN encode
     orig_duration = end - start  # original intended duration for metadata
 
@@ -347,7 +347,7 @@ def render_clip(
             ffmpeg_cmd,
             capture_output=True,
             text=True,
-            timeout=600
+            timeout=90
         )
 
         # Always print stderr for debugging (ffmpeg can return 0 but write 0 bytes)
@@ -381,7 +381,7 @@ def render_clip(
                 simpler_cmd,
                 capture_output=True,
                 text=True,
-                timeout=600
+                timeout=90
             )
             
             if result.stderr:

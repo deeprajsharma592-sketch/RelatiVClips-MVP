@@ -337,9 +337,13 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     import re
 
     text = (llm_output or "").strip()
-    # Strip code fences
-    text = re.sub(r"^```(?:json)?\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
+    # Strip markdown code fences if present
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if code_block:
+        text = code_block.group(1).strip()
+    else:
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text).strip()
 
     # ── Try NEW format: {"picks": [...]} ───────────────────────────────
     # This is what the new build_moment_prompt / build_archetype_aware_prompt
@@ -353,8 +357,20 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     except (json.JSONDecodeError, ValueError, KeyError):
         pass
 
+    # Regex search for any embedded JSON object {...} containing picks
+    try:
+        obj_match = re.search(r"\{[\s\S]*\}", text)
+        if obj_match:
+            data = json.loads(obj_match.group(0))
+            if isinstance(data, dict) and "picks" in data:
+                valid = _parse_picks_array(data["picks"])
+                if valid is not None:
+                    return valid
+    except (json.JSONDecodeError, ValueError, KeyError):
+        pass
+
     # ── Fallback: try LEGACY format: [{"candidate_index": ...}] ─────────
-    # Used by build_prompt() and old test mocks.
+    # Used by build_prompt() and old test mocks. Also handles [{"moment_index": ...}]
     try:
         match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
         if match:
@@ -364,7 +380,7 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
                 for item in arr:
                     if not isinstance(item, dict):
                         continue
-                    idx_raw = item.get("candidate_index")
+                    idx_raw = item.get("candidate_index", item.get("moment_index"))
                     if idx_raw is None:
                         continue
                     try:

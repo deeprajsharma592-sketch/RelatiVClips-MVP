@@ -431,7 +431,7 @@ def surgical_download_video_youtube(
         for i, cand in enumerate(candidates):
             start = float(cand["start"])
             end = float(cand["end"])
-            video_path = TEMP_DIR / f"{task_id}_vidseg{i}.mp4"
+            video_path = TEMP_DIR / f"{task_id}_vidseg_{int(start)}_{int(end)}_{i}.mp4"
             fut = pool.submit(
                 _download_one_video_segment,
                 url, start, end, video_path, log_fn, i, len(candidates), log_lock,
@@ -465,11 +465,12 @@ def surgical_download_video_youtube(
 
 def cleanup_segments(task_id: str):
     """Remove all temp files for a task. Idempotent."""
-    for path in TEMP_DIR.glob(f"{task_id}_seg*.m4a"):
-        try:
-            path.unlink()
-        except Exception:
-            pass
+    for pattern in (f"{task_id}_seg*.m4a", f"{task_id}_vidseg*.mp4"):
+        for path in TEMP_DIR.glob(pattern):
+            try:
+                path.unlink()
+            except Exception:
+                pass
 
 def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, timeout: int = 120):
     """Run a yt-dlp command with retries on transient failures (rc=1, bot blocks).
