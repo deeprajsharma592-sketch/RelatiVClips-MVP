@@ -217,7 +217,7 @@ async def smoke_test_llm():
         "Return a JSON array with one object containing keys: 'viral_title', 'caption', 'hashtags', 'confidence'."
     )
     try:
-        response_text, provider = call_with_fallback(test_prompt)
+        response_text, provider = await asyncio.to_thread(call_with_fallback, test_prompt)
         status = cost_control.cost_status()
         return {
             "success": bool(response_text),
