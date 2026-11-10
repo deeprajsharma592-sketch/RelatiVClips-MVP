@@ -8,9 +8,24 @@ try:
     import pkg_resources
 except ImportError:
     import types
+    from pathlib import Path
+    def _res_filename(pkg, resource):
+        pkg_str = str(pkg)
+        mod = sys.modules.get(pkg_str)
+        if mod and hasattr(mod, "__file__") and mod.__file__:
+            return str(Path(mod.__file__).parent / resource)
+        try:
+            import importlib
+            m = importlib.import_module(pkg_str)
+            if hasattr(m, "__file__") and m.__file__:
+                return str(Path(m.__file__).parent / resource)
+        except Exception:
+            pass
+        return resource
+
     pr = types.ModuleType("pkg_resources")
     pr.get_distribution = lambda dist: type("Dist", (), {"version": "0.0.0"})()
-    pr.resource_filename = lambda *a, **k: ""
+    pr.resource_filename = _res_filename
     pr.iter_entry_points = lambda *a, **k: []
     pr.Requirement = type("Requirement", (), {"parse": lambda s: s})
     pr.DistributionNotFound = type("DistributionNotFound", (Exception,), {})
