@@ -231,12 +231,20 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
             return None
 
         model = WhisperModel(WHISPER_MODEL, device="cuda", compute_type=WHISPER_COMPUTE_TYPE)
-        segments, info = model.transcribe(
-            audio_path,
-            beam_size=5,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
-        )
+        try:
+            segments, info = model.transcribe(
+                audio_path,
+                beam_size=5,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500),
+            )
+        except Exception as vad_err:
+            log(f"  Whisper VAD failed ({vad_err}), retrying without VAD filter...")
+            segments, info = model.transcribe(
+                audio_path,
+                beam_size=5,
+                vad_filter=False,
+            )
 
         segment_list = []
         for seg in segments:
