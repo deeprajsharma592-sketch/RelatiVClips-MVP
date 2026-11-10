@@ -189,6 +189,12 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             if fallback_m not in candidate_models:
                 candidate_models.append(fallback_m)
 
+        # Prioritize Haiku (fastest & cheapest for hook extraction) then Sonnet
+        candidate_models = sorted(
+            candidate_models,
+            key=lambda m: 0 if "haiku" in m.lower() else (1 if "sonnet" in m.lower() else 2)
+        )
+
         last_error = None
         for current_model in candidate_models:
             use_cache = (
@@ -196,58 +202,63 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                 and "haiku" in current_model
                 and len(cacheable) >= 4000
             )
-            with httpx.Client(timeout=30.0, trust_env=False) as client:
-                payload = {
-                    "model": current_model,
-                    "max_tokens": max_out,
-                    "messages": [{"role": "user", "content": prompt}],
-                }
-                if use_cache:
-                    payload["system"] = [
-                        {
-                            "type": "text",
-                            "text": system_prompt,
-                            "cache_control": {"type": "ephemeral"},
+            try:
+                log.info(f"Attempting Claude API call with model: {current_model}")
+                with httpx.Client(timeout=15.0, trust_env=False) as client:
+                    payload = {
+                        "model": current_model,
+                        "max_tokens": max_out,
+                        "messages": [{"role": "user", "content": prompt}],
+                    }
+                    if use_cache:
+                        payload["system"] = [
+                            {
+                                "type": "text",
+                                "text": system_prompt,
+                                "cache_control": {"type": "ephemeral"},
+                            },
+                            {
+                                "type": "text",
+                                "text": cacheable,
+                                "cache_control": {"type": "ephemeral"},
+                            },
+                        ]
+                        payload["messages"] = [{"role": "user", "content": variable}]
+                    else:
+                        payload["system"] = system_prompt
+                    r = client.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={
+                            "x-api-key": ANTHROPIC_API_KEY,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json",
                         },
-                        {
-                            "type": "text",
-                            "text": cacheable,
-                            "cache_control": {"type": "ephemeral"},
-                        },
-                    ]
-                    payload["messages"] = [{"role": "user", "content": variable}]
-                else:
-                    payload["system"] = system_prompt
-                r = client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": ANTHROPIC_API_KEY,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json=payload,
-                )
-            if r.status_code == 200:
-                body = r.json()
-                usage = body.get("usage", {})
-                in_tok = int(usage.get("input_tokens", 0))
-                out_tok = int(usage.get("output_tokens", 0))
-                cache_read = int(usage.get("cache_read_input_tokens", 0))
-                if in_tok or out_tok:
-                    cost_control.record_call(current_model, in_tok, out_tok, cache_read=cache_read)
-                    est_cost = cost_control.estimate_cost_usd(
-                        current_model, in_tok, out_tok, cache_read=cache_read
+                        json=payload,
                     )
-                    model_router.record_pick(current_model, est_cost)
-                for block in body.get("content", []):
-                    if block.get("type") == "text":
-                        return block.get("text", "")
-                raise RuntimeError("Claude returned no text block")
-            last_error = f"Claude API error {r.status_code}: {r.text[:300]}"
-            if r.status_code == 404:
-                log.info(f"Model {current_model} returned 404, falling back to next candidate...")
+                if r.status_code == 200:
+                    body = r.json()
+                    usage = body.get("usage", {})
+                    in_tok = int(usage.get("input_tokens", 0))
+                    out_tok = int(usage.get("output_tokens", 0))
+                    cache_read = int(usage.get("cache_read_input_tokens", 0))
+                    if in_tok or out_tok:
+                        cost_control.record_call(current_model, in_tok, out_tok, cache_read=cache_read)
+                        est_cost = cost_control.estimate_cost_usd(
+                            current_model, in_tok, out_tok, cache_read=cache_read
+                        )
+                        model_router.record_pick(current_model, est_cost)
+                    for block in body.get("content", []):
+                        if block.get("type") == "text":
+                            log.info(f"Claude API call succeeded with model {current_model} (tokens: in={in_tok}, out={out_tok})")
+                            return block.get("text", "")
+                    raise RuntimeError("Claude returned no text block")
+                last_error = f"Claude API error {r.status_code}: {r.text[:300]}"
+                log.warning(f"Claude model {current_model} failed ({r.status_code}): {r.text[:150]}")
                 continue
-            break
+            except Exception as exc:
+                last_error = f"Claude model {current_model} call exception: {exc}"
+                log.warning(last_error)
+                continue
         raise RuntimeError(last_error or "Claude API call failed")
 
     return _call
