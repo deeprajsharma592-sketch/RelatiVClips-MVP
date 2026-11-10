@@ -110,7 +110,7 @@ def _build_still_audio_command(
             f"gblur=sigma=0.6"
         ),
         "-c:v", "libx264",
-        "-preset", FFMPEG_PRESET if FFMPEG_PRESET in ("ultrafast","superfast","veryfast","faster","fast","medium","slow","slower","veryslow") else "medium",
+        "-preset", FFMPEG_PRESET if FFMPEG_PRESET in ("ultrafast","superfast","veryfast","faster","fast","medium","slow","slower","veryslow") else "veryfast",
         "-crf", str(FFMPEG_CQ),
         "-pix_fmt", "yuv420p",
         "-tune", "stillimage",
@@ -199,7 +199,7 @@ def build_ffmpeg_command(
     cmd.extend([
         "-movflags", "+faststart",
         "-c:v", "libx264",
-        "-preset", FFMPEG_PRESET if FFMPEG_PRESET in ("ultrafast","superfast","veryfast","faster","fast","medium","slow","slower","veryslow") else "medium",
+        "-preset", FFMPEG_PRESET if FFMPEG_PRESET in ("ultrafast","superfast","veryfast","faster","fast","medium","slow","slower","veryslow") else "veryfast",
         "-crf", str(FFMPEG_CQ),
         "-pix_fmt", "yuv420p",
     ])
