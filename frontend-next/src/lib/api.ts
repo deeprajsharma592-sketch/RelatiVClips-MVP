@@ -32,10 +32,19 @@ export async function uploadVideoFile(
   file: File,
   onProgress?: (percent: number) => void
 ): Promise<{ filePath: string; taskId: string }> {
+  // Resolve direct upload endpoint to bypass Vercel's 4.5MB serverless limit
+  let targetEndpoint = apiPath("/upload");
+  try {
+    const res = await fetch("/api/upload-target");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.uploadUrl) targetEndpoint = data.uploadUrl;
+    }
+  } catch {}
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    // Use apiPath so it works in both dev (localhost:9000) and prod proxy
-    xhr.open("POST", apiPath("/upload"));
+    xhr.open("POST", targetEndpoint);
 
     if (xhr.upload && onProgress) {
       xhr.upload.onprogress = (e) => {
