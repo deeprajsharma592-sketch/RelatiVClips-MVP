@@ -39,6 +39,36 @@ log = logging.getLogger(__name__)
 # Maps provider name -> {"failures": int, "opened_at": float | None}
 _BREAKER_STATE: dict = {}
 _BREAKER_LOCK = Lock()
+_AVAILABLE_CLAUDE_MODELS: Optional[List[str]] = None
+
+
+def _get_available_claude_models() -> List[str]:
+    """Auto-detect valid models directly from Anthropic API to prevent 404 errors."""
+    global _AVAILABLE_CLAUDE_MODELS
+    if _AVAILABLE_CLAUDE_MODELS is not None:
+        return _AVAILABLE_CLAUDE_MODELS
+    import httpx
+    try:
+        with httpx.Client(timeout=5.0, trust_env=False) as client:
+            r = client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                },
+            )
+            if r.status_code == 200:
+                data = r.json()
+                models = [m.get("id") for m in data.get("data", []) if m.get("id")]
+                if models:
+                    _AVAILABLE_CLAUDE_MODELS = models
+                    log.info(f"Discovered available Anthropic models: {models}")
+                    return _AVAILABLE_CLAUDE_MODELS
+            else:
+                log.warning(f"Anthropic /v1/models returned HTTP {r.status_code}: {r.text[:200]}")
+    except Exception as e:
+        log.warning(f"Could not auto-fetch Anthropic models list: {e}")
+    return []
 
 
 def _breaker_key(provider_name: str) -> str:
@@ -141,8 +171,21 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             split_point = last_nl
         cacheable = prompt[:split_point]
         variable = prompt[split_point:]
-        candidate_models = [model_name]
-        for fallback_m in ["claude-3-haiku-20240307", "claude-3-5-sonnet-20241022"]:
+        candidate_models = []
+        # Add models returned directly from Anthropic's /v1/models first
+        for am in _get_available_claude_models():
+            if am not in candidate_models:
+                candidate_models.append(am)
+        if model_name and model_name not in candidate_models:
+            candidate_models.append(model_name)
+        for fallback_m in [
+            "claude-3-5-sonnet-latest",
+            "claude-3-5-haiku-latest",
+            "claude-3-7-sonnet-20250219",
+            "claude-3-haiku-20240307",
+            "claude-3-5-sonnet-20241022",
+            "claude-3-5-haiku-20241022",
+        ]:
             if fallback_m not in candidate_models:
                 candidate_models.append(fallback_m)
 

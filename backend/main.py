@@ -215,6 +215,31 @@ async def cost_status():
     return cost_control.cost_status()
 
 
+@app.get("/anthropic-models")
+async def list_anthropic_models():
+    """Probe Anthropic API to discover all active model IDs available to this key."""
+    import httpx
+    from .utils.config import ANTHROPIC_API_KEY
+    if not ANTHROPIC_API_KEY:
+        return {"error": "ANTHROPIC_API_KEY not configured"}
+    try:
+        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+            r = await client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                },
+            )
+            if r.status_code == 200:
+                data = r.json()
+                models = [m.get("id") for m in data.get("data", [])]
+                return {"status": "ok", "models": models, "raw": data}
+            return {"status": "error", "code": r.status_code, "detail": r.text}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 @app.get("/smoke-test-llm")
 async def smoke_test_llm():
     """Live smoke test of the Claude / LLM pipeline.
