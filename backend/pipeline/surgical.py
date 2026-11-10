@@ -62,6 +62,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
         "--extract-audio",
         "--audio-format", "m4a",
         "--audio-quality", "0",
+        "--extractor-args", "youtube:player_client=android,web",
         "--download-sections", f"*{s_str}-{e_str}",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
@@ -110,6 +111,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
             "best[height<=720]"  # last resort — may be VP9/MPEG-2
         ),
         "--download-sections", f"*{s_str}-{e_str}",
+        "--extractor-args", "youtube:player_client=android,web",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
         "--no-check-certificates",
