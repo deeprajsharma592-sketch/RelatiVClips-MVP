@@ -1,5 +1,7 @@
 @echo off
-TITLE RelatiV GPU Backend - Lenovo LOQ RTX 5050
+setlocal
+cd /d "%~dp0"
+title RelatiV GPU Backend - Lenovo LOQ RTX
 color 0b
 
 echo =====================================================================
@@ -10,59 +12,41 @@ echo.
 
 :: 1. Check Python
 python --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Python is not installed or not in your PATH.
-    echo Please install Python 3.11 or 3.12 from python.org (check "Add Python to PATH").
+if errorlevel 1 (
+    echo [ERROR] Python was not found in your PATH!
+    echo Please install Python 3.11 or 3.12 and ensure "Add Python to PATH" is checked.
     pause
     exit /b 1
 )
 
-:: 2. Check or create virtual environment
-if not exist ".venv" (
-    echo [*] Creating Python virtual environment in .venv...
+:: 2. Create and activate virtual environment
+if not exist .venv (
+    echo [*] Creating virtual environment...
     python -m venv .venv
 )
-
-echo [*] Activating virtual environment...
 call .venv\Scripts\activate.bat
 
-:: 3. Check FFmpeg
-ffmpeg -version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [WARNING] FFmpeg was not found in your system PATH!
-    echo To install FFmpeg on Windows quickly, run in PowerShell:
-    echo   winget install Gyan.FFmpeg
-    echo or download from https://www.gyan.dev/ffmpeg/builds/
-    echo.
-)
-
-:: 4. Install dependencies if needed
-echo [*] Checking required dependencies...
-python -c "import fastapi, faster_whisper, uvicorn, yt_dlp" >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [*] Installing dependencies from backend/requirements.txt...
-    pip install -r backend/requirements.txt
-    echo [*] Ensuring latest yt-dlp version for YouTube pipeline...
-    pip install -U yt-dlp
+:: 3. Ensure required packages are installed
+python -c "import fastapi" >nul 2>&1
+if errorlevel 1 (
+    echo [*] Installing requirements from backend/requirements.txt...
+    python -m pip install --upgrade pip
+    python -m pip install -r backend/requirements.txt
+    python -m pip install -U yt-dlp
     echo [*] Installing PyTorch with CUDA acceleration...
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 )
 
-:: 5. Create temp & outputs directories
-if not exist "temp" mkdir temp
-if not exist "outputs" mkdir outputs
+:: 4. Ensure runtime folders exist
+if not exist temp mkdir temp
+if not exist outputs mkdir outputs
 
-:: 6. Verify NVIDIA CUDA GPU
-echo [*] Checking NVIDIA GPU status...
-python -c "import torch; print(f'[CUDA] Available: {torch.cuda.is_available()}, Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"None\"}')"
-
-:: 7. Start the FastAPI Uvicorn Server on port 9000
+:: 5. Launch FastAPI Backend
 echo.
 echo =====================================================================
-echo RelatiV GPU Backend is starting on http://localhost:9000
-echo Connect to Cloudflare Tunnel / ngrok to link with relativclips.com
+echo RelatiV GPU Backend is running on http://localhost:9000
 echo =====================================================================
 echo.
 
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 9000 --reload
-pause
+if errorlevel 1 pause

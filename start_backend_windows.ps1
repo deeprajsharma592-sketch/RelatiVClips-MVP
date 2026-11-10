@@ -1,4 +1,6 @@
 # RelatiV GPU Backend Starter for Windows PowerShell
+Set-Location $PSScriptRoot
+
 Write-Host "=====================================================================" -ForegroundColor Cyan
 Write-Host "      RelatiV Video AI Pipeline - GPU Worker Initialization" -ForegroundColor Cyan
 Write-Host "                Target: Lenovo LOQ (NVIDIA RTX)" -ForegroundColor Cyan
@@ -21,35 +23,25 @@ if (-not (Test-Path ".venv")) {
 Write-Host "[*] Activating virtual environment..." -ForegroundColor Green
 & .\.venv\Scripts\Activate.ps1
 
-# 3. Check FFmpeg
-if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-    Write-Host "[WARNING] FFmpeg was not found in your system PATH!" -ForegroundColor Yellow
-    Write-Host "To install FFmpeg on Windows, run: winget install Gyan.FFmpeg" -ForegroundColor Yellow
-}
-
-# 4. Check dependencies
+# 3. Check dependencies
 Write-Host "[*] Verifying dependencies..." -ForegroundColor Green
 try {
-    python -c "import fastapi, faster_whisper, uvicorn, yt_dlp" 2>$null
+    python -c "import fastapi" 2>$null
     if ($LASTEXITCODE -ne 0) { throw "Missing deps" }
 } catch {
     Write-Host "[*] Installing backend requirements..." -ForegroundColor Yellow
-    pip install -r backend/requirements.txt
-    Write-Host "[*] Ensuring latest yt-dlp version for YouTube pipeline..." -ForegroundColor Yellow
-    pip install -U yt-dlp
+    python -m pip install --upgrade pip
+    python -m pip install -r backend/requirements.txt
+    python -m pip install -U yt-dlp
     Write-Host "[*] Installing PyTorch with CUDA acceleration..." -ForegroundColor Yellow
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 }
 
-# 5. Create directories
+# 4. Create directories
 if (-not (Test-Path "temp")) { New-Item -ItemType Directory -Path "temp" | Out-Null }
 if (-not (Test-Path "outputs")) { New-Item -ItemType Directory -Path "outputs" | Out-Null }
 
-# 6. Verify GPU
-Write-Host "[*] Testing NVIDIA CUDA GPU..." -ForegroundColor Green
-python -c "import torch; print(f'[CUDA] Available: {torch.cuda.is_available()}, Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else ''None''}')"
-
-# 7. Start Uvicorn
+# 5. Start Uvicorn
 Write-Host ""
 Write-Host "=====================================================================" -ForegroundColor Cyan
 Write-Host "Starting RelatiV GPU Server on http://localhost:9000" -ForegroundColor Cyan
