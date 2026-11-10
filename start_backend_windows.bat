@@ -33,9 +33,10 @@ if errorlevel 1 (
     echo [*] Installing requirements from backend/requirements.txt...
     "%VENV_PYTHON%" -m pip install --upgrade pip
     "%VENV_PYTHON%" -m pip install -r backend/requirements.txt
+    "%VENV_PYTHON%" -m pip install "transformers<4.49.0"
     "%VENV_PYTHON%" -m pip install -U yt-dlp
     echo [*] Installing PyTorch with CUDA acceleration...
-    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 )
 
 :: 4. Ensure runtime folders exist

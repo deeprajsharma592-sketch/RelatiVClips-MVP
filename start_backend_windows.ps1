@@ -32,9 +32,10 @@ try {
     Write-Host "[*] Installing backend requirements..." -ForegroundColor Yellow
     python -m pip install --upgrade pip
     python -m pip install -r backend/requirements.txt
+    python -m pip install "transformers<4.49.0"
     python -m pip install -U yt-dlp
     Write-Host "[*] Installing PyTorch with CUDA acceleration..." -ForegroundColor Yellow
-    python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 }
 
 # 4. Create directories
