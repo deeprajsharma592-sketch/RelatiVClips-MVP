@@ -89,10 +89,14 @@ def init_rag_store() -> None:
     Call once on app startup.
     Validates ChromaDB connectivity and that the embedding model loads.
     """
-    client = _get_chroma_client()
-    model = _get_embedding_model()
-    _ = model.get_embedding_dimension()
-    log.info("RAG store initialised — ChromaDB + all-MiniLM-L6-v2 ready")
+    try:
+        client = _get_chroma_client()
+        model = _get_embedding_model()
+        if model:
+            _ = model.get_embedding_dimension()
+            log.info("RAG store initialised — ChromaDB + all-MiniLM-L6-v2 ready")
+    except Exception as e:
+        log.warning(f"RAG store optional init skipped: {e}")
 
 # ─── Store operations ────────────────────────────────────────────────────────
 
