@@ -792,10 +792,10 @@ def detect_moments(
 
     info["source"] = "audio"
     info["audio_path"] = audio_path
-    # Use librosa to get the actual duration
+    # Use safe audio loader to get the actual duration
     try:
-        import librosa
-        y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
+        from .audio_analysis import load_audio_safely
+        y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
         info["duration_s"] = float(len(y)) / sr
     except Exception:
         info["duration_s"] = 0.0

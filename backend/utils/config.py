@@ -139,8 +139,8 @@ BGUTIL_POT_BASE_URL = os.getenv("BGUTIL_POT_BASE_URL", "http://127.0.0.1:4416")
 # (no proxy). Set to e.g. "socks5://user:pass@home-ip:1080" at deploy time.
 YT_PROXY = os.getenv("YT_PROXY", "")
 
-FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
-FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
+FFMPEG_PATH = os.getenv("FFMPEG_PATH") or _shutil.which("ffmpeg") or "ffmpeg"
+FFPROBE_PATH = os.getenv("FFPROBE_PATH") or _shutil.which("ffprobe") or "ffprobe"
 # Pin to venv-installed yt-dlp (2026+ has --js-runtimes, --remote-components
 # needed for YouTube's 2025+ challenge solver). System /usr/bin/yt-dlp is
 # typically the old 2024 version from apt and breaks.

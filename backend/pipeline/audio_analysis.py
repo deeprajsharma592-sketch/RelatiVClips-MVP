@@ -50,6 +50,26 @@ from ..utils.config import (
 )
 
 
+def load_audio_safely(audio_path: str, target_sr: int = TARGET_SAMPLE_RATE) -> Tuple[np.ndarray, int]:
+    """Load audio with direct soundfile support to bypass audioread/pkg_resources subprocess bugs."""
+    try:
+        import soundfile as sf
+        y, sr = sf.read(audio_path)
+        if y.ndim > 1:
+            y = np.mean(y, axis=1)
+        if sr != target_sr:
+            import scipy.signal
+            num_samples = int(len(y) * target_sr / sr)
+            y = scipy.signal.resample(y, num_samples)
+            sr = target_sr
+        return y.astype(np.float32), sr
+    except Exception as sf_err:
+        try:
+            return librosa.load(audio_path, sr=target_sr, mono=True)
+        except Exception as lb_err:
+            raise RuntimeError(f"Audio load failed: sf={sf_err}, librosa={lb_err}")
+
+
 def analyze_audio_peaks(audio_path: str, progress_callback=None) -> dict:
     """
     Analyze audio for RMS energy and high-intensity peaks.
@@ -80,7 +100,7 @@ def analyze_audio_peaks(audio_path: str, progress_callback=None) -> dict:
     if progress_callback:
         progress_callback("Loading audio for energy analysis...")
 
-    y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
+    y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
 
     hop_length = 512
     frame_rate = sr / hop_length
@@ -386,7 +406,7 @@ def analyze_audio_peaks_and_valleys(
     if progress_callback:
         progress_callback("Loading audio for combined peak + valley + steep analysis...")
 
-    y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
+    y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
     hop_length = 512
     frame_dur = hop_length / sr
 
