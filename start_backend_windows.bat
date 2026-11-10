@@ -19,22 +19,23 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: 2. Create and activate virtual environment
-if not exist .venv (
+:: 2. Create virtual environment if needed
+if not exist ".venv\Scripts\python.exe" (
     echo [*] Creating virtual environment...
     python -m venv .venv
 )
-call .venv\Scripts\activate.bat
+
+set "VENV_PYTHON=%~dp0.venv\Scripts\python.exe"
 
 :: 3. Ensure required packages are installed
-python -c "import fastapi" >nul 2>&1
+"%VENV_PYTHON%" -c "import fastapi" >nul 2>&1
 if errorlevel 1 (
     echo [*] Installing requirements from backend/requirements.txt...
-    python -m pip install --upgrade pip
-    python -m pip install -r backend/requirements.txt
-    python -m pip install -U yt-dlp
+    "%VENV_PYTHON%" -m pip install --upgrade pip
+    "%VENV_PYTHON%" -m pip install -r backend/requirements.txt
+    "%VENV_PYTHON%" -m pip install -U yt-dlp
     echo [*] Installing PyTorch with CUDA acceleration...
-    python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 )
 
 :: 4. Ensure runtime folders exist
@@ -48,5 +49,5 @@ echo RelatiV GPU Backend is running on http://localhost:9000
 echo =====================================================================
 echo.
 
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 9000 --reload
+"%VENV_PYTHON%" -m uvicorn backend.main:app --host 0.0.0.0 --port 9000 --reload
 if errorlevel 1 pause
