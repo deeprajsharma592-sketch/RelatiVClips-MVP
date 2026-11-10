@@ -1473,8 +1473,11 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
                 except Exception as e:
                     print(f"[CACHE] Result cache save failed (continuing): {e}")
         except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            print(f"[PIPELINE ERROR TRACEBACK]:\n{tb}")
             task_store.update_task(
-                task_id, status=TaskStatus.FAILED, error=str(e),
+                task_id, status=TaskStatus.FAILED, error=f"{e} | {tb.splitlines()[-2] if len(tb.splitlines()) > 1 else ''}",
             )
             callback(f"FAILED: {e}", step=6, progress=0)
         _active_tasks.pop(task_id, None)
