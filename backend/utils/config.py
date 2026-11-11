@@ -115,8 +115,8 @@ STEEP_MIN_RELATIVE_RISE = float(os.getenv("STEEP_MIN_RELATIVE_RISE", "0.3"))
 CROP_WIDTH = 608
 CROP_HEIGHT = 1080
 
-FFMPEG_PRESET = "p5"
-FFMPEG_CQ = 20
+FFMPEG_PRESET = "fast"
+FFMPEG_CQ = 18
 FFMPEG_AUDIO_BITRATE = "192k"
 
 # BUGFIX 2026-06-15: 24h was too short — users come back to "download my

@@ -102,17 +102,18 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     e_str = str(timedelta(seconds=int(e)))
     cmd = [
         YTDLP_PATH,
-        # Prefer 1080p/720p HD so 9:16 vertical crop is crisp and clear
+        # Prefer full 1080p HD so 9:16 vertical crop has crisp master detail
         "-f", (
-            "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/"
-            "bestvideo[height<=1080]+bestaudio/"
-            "best[height<=1080]/"
-            "22/"           # 720p H.264 + AAC
-            "18/"           # 360p fallback
+            "bv*[height=1080]+ba/"
+            "bv*[height<=1080]+ba/"
+            "b[height<=1080]/"
+            "bv*+ba/"
+            "22/"
             "best"
         ),
+        "--merge-output-format", "mp4",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=android,web",
+        "--extractor-args", "youtube:player_client=mweb,web,android",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
         "--no-check-certificates",
