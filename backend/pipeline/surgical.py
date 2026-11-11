@@ -69,6 +69,8 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
         "--no-check-certificates",
         url,
     ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     # Working copy of cookies (so yt-dlp's save_cookies can't corrupt source)
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
@@ -116,6 +118,8 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         "--no-check-certificates",
         url,
     ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     if COOKIES_PATH and COOKIES_PATH.exists():
         import shutil
         _working = str(TEMP_DIR / "youtube_cookies_working.txt")

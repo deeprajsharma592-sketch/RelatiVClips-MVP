@@ -205,6 +205,18 @@ def get_cached_segment(
         log.debug(f"[CACHE] Segment stale ({age_h:.1f}h > {max_age_hours}h): {path.name}")
         return None
 
+    # Don't reuse old low-resolution (< 720p) cached segments
+    try:
+        import cv2
+        cap = cv2.VideoCapture(str(path))
+        h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        cap.release()
+        if h > 0 and h < 720:
+            log.info(f"[CACHE] Skipping low-res ({int(h)}p) cached segment: {path.name}")
+            return None
+    except Exception:
+        pass
+
     log.info(f"[CACHE] HIT segment: {url[:50]}... [{start:.1f}-{end:.1f}] → {path.name}")
     return path
 
