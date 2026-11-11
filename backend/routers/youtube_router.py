@@ -882,6 +882,7 @@ def _run_moment_pipeline(
                             "text": m.snippet,
                         })
                 transcript_dict = {"segments": transcript_segments}
+                moment_by_idx = {m.index: m for m in moments}
 
                 arch_result = detect_archetype(transcript_dict)
                 _bridge("taste",
@@ -1133,6 +1134,8 @@ def _run_moment_pipeline(
             )
             clip["start"] = round(new_start, 2)
             clip["end"] = round(new_end, 2)
+            clip["source_start"] = round(new_start, 2)
+            clip["source_end"] = round(new_end, 2)
             clip["_platform_adjustment"] = reason
             # Apply universal caption styling + hashtag limit
             clip["caption"] = style_caption(clip.get("caption", ""))
@@ -1164,8 +1167,8 @@ def _run_moment_pipeline(
 
     video_candidates = [
         {
-            "start": c.get("source_start", c["start"]),
-            "end": c.get("source_end", c["end"]),
+            "start": c.get("start", c.get("source_start")),
+            "end": c.get("end", c.get("source_end")),
         }
         for c in final_clips
     ]
@@ -1207,8 +1210,8 @@ def _run_moment_pipeline(
     if n_need_download > 0:
         # Only download the ones we couldn't pre-fetch
         video_candidates_to_fetch = [
-            {"start": c.get("source_start", c["start"]),
-             "end": c.get("source_end", c["end"])}
+            {"start": c.get("start", c.get("source_start")),
+             "end": c.get("end", c.get("source_end"))}
             for c in final_clips if c.get("_needs_video_download")
         ]
         # NEW 2026-06-15: Segment cache (Option 3).
@@ -1266,8 +1269,8 @@ def _run_moment_pipeline(
         try:
             # 1. If we still need to download, do it now (in parallel with others)
             if clip.get("_needs_video_download") or not clip.get("video_path"):
-                cand = {"start": clip.get("source_start", clip["start"]),
-                        "end": clip.get("source_end", clip["end"])}
+                cand = {"start": clip.get("start", clip.get("source_start")),
+                        "end": clip.get("end", clip.get("source_end"))}
                 dl_result = surgical_stage.surgical_download_video_youtube(
                     url, [cand], task_id,
                     log_fn=_bridge,
