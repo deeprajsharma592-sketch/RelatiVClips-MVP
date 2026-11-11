@@ -140,12 +140,13 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
 
     cmd = [
         YTDLP_PATH,
+        "--write-subs",
         "--write-auto-subs",
-        "--sub-lang", "en,en-orig,en-US,en-GB",
+        "--sub-lang", "en.*,hi.*,ur.*,es.*,all,-live_chat",
         "--sub-format", "vtt/srt/best",
         "--skip-download",
         "--extractor-args", "youtube:player_client=android,web",
-        "-o", str(subs_base),
+        "-o", str(subs_base) + ".%(ext)s",
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -199,19 +200,30 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
 
     segments = []
     source = None
+    sub_file = None
 
-    if subs_vtt.exists() and subs_vtt.stat().st_size > 0:
-        log(f"  VTT subtitles found ({subs_vtt.stat().st_size} bytes)")
-        segments = _parse_vtt(str(subs_vtt))
+    vtt_candidates = sorted(list(TEMP_DIR.glob(f"{task_id}_subs*.vtt")), key=lambda p: p.stat().st_size, reverse=True)
+    srt_candidates = sorted(list(TEMP_DIR.glob(f"{task_id}_subs*.srt")), key=lambda p: p.stat().st_size, reverse=True)
+
+    if vtt_candidates and vtt_candidates[0].stat().st_size > 50:
+        sub_file = vtt_candidates[0]
+        log(f"  VTT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_vtt(str(sub_file))
         source = "ytdlp_vtt"
-    elif subs_srt.exists() and subs_srt.stat().st_size > 0:
-        log(f"  SRT subtitles found ({subs_srt.stat().st_size} bytes)")
-        segments = _parse_srt(str(subs_srt))
+    elif srt_candidates and srt_candidates[0].stat().st_size > 50:
+        sub_file = srt_candidates[0]
+        log(f"  SRT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_srt(str(sub_file))
         source = "ytdlp_srt"
 
     if segments:
-        log(f"  Parsed {len(segments)} subtitle segments")
-        return {"segments": segments, "language": "en", "source": source}
+        lang = "en"
+        if sub_file:
+            parts = sub_file.name.split(".")
+            if len(parts) >= 3:
+                lang = parts[-2]
+        log(f"  Parsed {len(segments)} subtitle segments ({lang})")
+        return {"segments": segments, "language": lang, "source": source}
 
     log("  Subtitles file empty or unparseable")
     return None

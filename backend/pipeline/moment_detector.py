@@ -800,6 +800,17 @@ def detect_moments(
     except Exception:
         info["duration_s"] = 0.0
 
+    # Try transcribing audio with Whisper so we have words for captions and moments
+    try:
+        from .transcript_fetcher import _try_whisper_transcript
+        whisper_tr = _try_whisper_transcript(audio_path, task_id, log)
+        if whisper_tr and whisper_tr.get("segments"):
+            info["transcript"] = whisper_tr
+            info["source"] = "whisper"
+            log(f"  Whisper transcription succeeded ({len(whisper_tr['segments'])} segments)")
+    except Exception as e:
+        log(f"  Whisper transcription skipped: {e}")
+
     moments = _audio_moments_from_file(audio_path, info["duration_s"])
     log(f"  Built {len(moments)} candidate moments from audio (peaks + valleys + steep)")
     return moments, info

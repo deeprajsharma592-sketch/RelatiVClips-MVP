@@ -100,15 +100,14 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     e_str = str(timedelta(seconds=int(e)))
     cmd = [
         YTDLP_PATH,
-        # Format 18 = H.264 360p + AAC combined (mp4). Always H.264
-        # with excellent keyframe placement — reliable seeking for surgical
-        # sections. Higher-res combined H.264 formats (93, 94, 95) as fallback.
+        # Prefer 1080p/720p HD so 9:16 vertical crop is crisp and clear
         "-f", (
-            "18/"          # H.264 360p + AAC combined
-            "93/"           # H.264 360p + AAC combined (alt)
-            "94/"           # H.264 480p + AAC combined
-            "95/"           # H.264 720p + AAC combined
-            "best[height<=720]"  # last resort — may be VP9/MPEG-2
+            "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/"
+            "bestvideo[height<=1080]+bestaudio/"
+            "best[height<=1080]/"
+            "22/"           # 720p H.264 + AAC
+            "18/"           # 360p fallback
+            "best"
         ),
         "--download-sections", f"*{s_str}-{e_str}",
         "--extractor-args", "youtube:player_client=android,web",

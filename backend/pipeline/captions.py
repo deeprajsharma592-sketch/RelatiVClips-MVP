@@ -97,13 +97,43 @@ def generate_viral_ass_subtitles(
                                 "end": round(s_rel + (idx + 1) * step, 3),
                             })
 
-    # Fallback if no words from transcript: synthesize from caption
+    # Fallback 1: if no words from transcript, transcribe the local clip segment with Whisper
+    if not raw_words:
+        local_media = clip.get("audio_path") or clip.get("video_path")
+        if local_media and Path(local_media).exists():
+            try:
+                from faster_whisper import WhisperModel
+                from ..utils.config import WHISPER_MODEL, WHISPER_COMPUTE_TYPE
+                from ..utils.vram_manager import get_vram_usage
+                vram = get_vram_usage()
+                dev = "cuda" if vram.get("cuda_available") else "cpu"
+                ctype = WHISPER_COMPUTE_TYPE if dev == "cuda" else "int8"
+                whisper_mod = WhisperModel(WHISPER_MODEL, device=dev, compute_type=ctype)
+                segs, _ = whisper_mod.transcribe(str(local_media), word_timestamps=True)
+                for seg in segs:
+                    if getattr(seg, "words", None):
+                        for w in seg.words:
+                            clean_w = _sanitize_text(w.word)
+                            if clean_w:
+                                raw_words.append({
+                                    "word": clean_w,
+                                    "start": round(w.start, 3),
+                                    "end": round(w.end, 3),
+                                })
+            except Exception as e:
+                print(f"[Captions] Clip Whisper fallback skipped: {e}")
+
+    # Fallback 2 if still no words: synthesize from caption (strip debug text)
     if not raw_words:
         caption = clip.get("caption") or clip.get("viral_title") or ""
+        # Never display internal diagnostic strings like [AUDIO PEAK]
+        if "AUDIO PEAK" in caption or "LOUD SUSTAINED" in caption:
+            caption = clip.get("viral_title") or ""
+        if "AUDIO PEAK" in caption or "LOUD SUSTAINED" in caption or not caption.strip():
+            caption = "🔥 WATCH THIS MOMENT"
+
         words = caption.split()
-        if not words:
-            words = ["WATCH", "THIS", "MOMENT"]
-        step = clip_duration / len(words)
+        step = clip_duration / max(1, len(words))
         for idx, w in enumerate(words):
             clean_w = _sanitize_text(w)
             if clean_w:
