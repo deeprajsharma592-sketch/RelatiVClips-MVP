@@ -374,18 +374,16 @@ def _download_one_video_segment(
                 if (result.returncode == 0 and video_path.exists()
                         and video_path.stat().st_size > 1024):
                     try:
-                        probe = subprocess.run(
-                            ["ffprobe", "-v", "error", "-select_streams", "v",
-                             "-show_entries", "stream=codec_type", "-of",
-                             "csv=p=0", str(video_path)],
-                            capture_output=True, text=True, timeout=10,
-                        )
-                        if "video" in (probe.stdout or ""):
+                        import cv2
+                        cap = cv2.VideoCapture(str(video_path))
+                        frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                        cap.release()
+                        if frames > 0 and h > 0:
                             final_ok = True
                             break
                     except Exception:
-                        final_ok = True
-                        break
+                        pass
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
                 _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 failed (rc={result.returncode}): {err_snippet[:100]}")
             except subprocess.TimeoutExpired:
