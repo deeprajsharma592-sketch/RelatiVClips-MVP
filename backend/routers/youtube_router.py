@@ -651,38 +651,27 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     # SIMPLIFIED 2026-06-15: dropped per-platform prompt guidance. All platforms
     # (TikTok/Reels/Shorts) now share the same universal 9:16 22-30s format.
     try:
-        # Check if full transcript is available to eliminate false positives
+        import random
+        from ..taste.icl import build_relativsauce_prompt
         orig_transcript_segs = info.get("transcript", {}).get("segments") if info.get("transcript") else None
-        if orig_transcript_segs and len(orig_transcript_segs) > 5:
-            from ..taste.icl import build_hybrid_narrative_prompt
-            _bridge("taste", f"Using full transcript ({len(orig_transcript_segs)} segs) + Librosa energy markers for story detection")
-            prompt = build_hybrid_narrative_prompt(
-                transcript_segments=orig_transcript_segs,
-                moments=moments,
-                video_meta=video_meta,
-                max_picks=4,
-            )
+
+        # 5% exploration policy
+        is_experiment_run = (random.random() < 0.05)
+        if is_experiment_run:
+            _bridge("taste", "🎲 RelatiVSauce: 5% exploration active — testing high-variance wildcard hook")
         else:
-            # Fall back to archetype-aware prompt on moments
-            from ..pipeline.archetype import detect_archetype
-            synth_transcript = {
-                "segments": [
-                    {"start": m.start, "end": m.end, "text": m.snippet}
-                    for m in moments[:30]
-                ]
-            }
-            arch_result = detect_archetype(synth_transcript)
-            if arch_result.confidence > 0.1:
-                prompt = build_archetype_aware_prompt(
-                    moments=moments, video_meta=video_meta,
-                    archetype=arch_result.primary,
-                    archetype_confidence=arch_result.confidence,
-                    max_picks=4,
-                )
-            else:
-                prompt = build_moment_prompt(moments, video_meta, max_picks=4)
-    except Exception:
-        # Fall back to legacy prompt on any error
+            _bridge("taste", "🎯 RelatiVSauce: enforcing sauce-0.1 rubric (hook, wide-funnel, self-containment)")
+
+        prompt = build_relativsauce_prompt(
+            transcript_segments=orig_transcript_segs or [],
+            moments=moments,
+            video_meta=video_meta,
+            is_experiment=is_experiment_run,
+            max_picks=3,
+        )
+    except Exception as e:
+        _bridge("taste", f"RelatiVSauce prompt fallback: {e}")
+        from ..taste.icl import build_moment_prompt
         prompt = build_moment_prompt(moments, video_meta, max_picks=4)
     # NOTE: the LLM key is INVALID in this env, so this will fail and the
     # energy/moment fallback will be used. Once the key is rotated, the
@@ -1073,7 +1062,12 @@ def _run_moment_pipeline(
                 "signal_type": m.signal_type if m else "narrative_story",
                 "llm_provider": provider_used or "claude",
                 "confidence": round(conf, 3),
-                "verified": True,
+                "score": p.get("score"),
+                "verified": bool(p.get("verified", True)),
+                "is_experiment": bool(p.get("is_experiment", False)),
+                "hook_type": p.get("hook_type", "none"),
+                "broad_angle": p.get("broad_angle", "none"),
+                "rubric_ver": p.get("rubric_ver", "sauce-0.1"),
             })
     if picks_sorted and unverified_count:
         _bridge(
