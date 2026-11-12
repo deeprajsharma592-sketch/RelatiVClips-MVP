@@ -1068,13 +1068,6 @@ def _run_moment_pipeline(
                 "confidence": round(conf, 3),
                 "verified": True,
             })
-                "hashtags": p.get("hashtags", "#shorts #viral"),
-                "reason": p.get("reason", m.snippet[:60]),
-                "signal_type": m.signal_type,
-                "llm_provider": provider_used or "fallback",
-                "confidence": round(conf, 3),
-                "verified": True,
-            })
     if picks_sorted and unverified_count:
         _bridge(
             "filter",
