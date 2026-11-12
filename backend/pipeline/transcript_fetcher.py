@@ -142,7 +142,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         YTDLP_PATH,
         "--write-subs",
         "--write-auto-subs",
-        "--sub-lang", "en.*,hi.*,ur.*,es.*,all,-live_chat",
+        "--sub-lang", "en.*,en,hi.*",
         "--sub-format", "vtt/srt/best",
         "--skip-download",
         "--extractor-args", "youtube:player_client=android,web",

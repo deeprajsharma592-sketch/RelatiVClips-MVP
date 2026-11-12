@@ -316,6 +316,91 @@ def build_archetype_aware_prompt(
     return "\n".join(parts)
 
 
+def build_hybrid_narrative_prompt(
+    transcript_segments: List[Dict],
+    moments: List["Moment"],
+    video_meta: Dict,
+    max_picks: int = 4,
+) -> str:
+    """
+    Build a hybrid prompt combining the FULL TRANSCRIPT dialogue with
+    Librosa acoustic energy markers (peaks, valleys, chaotic bursts).
+    
+    This eliminates false positives: Claude reads the whole conversation flow,
+    using audio peaks as energy hints rather than isolated clips.
+    """
+    parts: List[str] = []
+
+    parts.append(
+        "You are an elite short-form video editor for TikTok, YouTube Shorts, and Instagram Reels.\n"
+        "You are given the FULL TIMESTAMPED TRANSCRIPT of this video, annotated with Librosa acoustic energy markers:\n"
+        "  - ⚡ [HIGH ENERGY BURST] = Loud sustained acoustic volume\n"
+        "  - 🔥 [CHAOTIC ENERGY MOMENT] = Sudden volume spike or rapid speech\n"
+        "  - 🤫 [DRAMATIC PAUSE / VALLEY] = Silence or quiet beat\n\n"
+        "CRITICAL INSTRUCTION ON FALSE POSITIVES:\n"
+        "Loud audio spikes alone are often FALSE POSITIVES (microphone bumps, laughter, coughing, screaming without narrative substance).\n"
+        "Do NOT pick a clip just because it is marked with ⚡.\n"
+        "Instead, find the 2-4 most viral, self-contained STORIES, REVELATIONS, or LESSONS (22s to 32s each).\n"
+        "A winning clip MUST have:\n"
+        "  1. HOOK (0-3s): A question, shocking statement, or curiosity gap that stops the scroll.\n"
+        "  2. STORY FLOW: Clear context — the listener understands what is happening without watching the rest of the video.\n"
+        "  3. PAYOFF: A punchline, surprising fact, or resolution at the end.\n"
+        "If an insightful story beat also aligns with an energy burst (⚡), that is ideal — but NARRATIVE COHERENCE comes first."
+    )
+
+    title = video_meta.get("title", "(no title)") or "(no title)"
+    dur = float(video_meta.get("duration_s") or 0)
+    parts.append(f"\nVIDEO: {title[:80]!r} (Duration: {dur:.0f}s)")
+
+    # Build annotated transcript lines
+    transcript_lines = []
+    truncated_segments = transcript_segments[:600]
+    for seg in truncated_segments:
+        s = float(seg.get("start", 0))
+        e = float(seg.get("end", 0))
+        txt = seg.get("text", "").strip()
+        if not txt:
+            continue
+        markers = []
+        for m in moments:
+            if not (e < m.start or s > m.end):
+                if m.signal_type in ("peak", "steep_peak"):
+                    markers.append("⚡ [HIGH ENERGY BURST]")
+                elif m.signal_type in ("valley", "steep_valley", "silence"):
+                    markers.append("🤫 [DRAMATIC PAUSE]")
+                break
+        marker_str = f" {markers[0]}" if markers else ""
+        m_s, s_s = int(s // 60), int(s % 60)
+        m_e, s_e = int(e // 60), int(e % 60)
+        time_tag = f"[{m_s:02d}:{s_s:02d}-{m_e:02d}:{s_e:02d}]"
+        transcript_lines.append(f"{time_tag} {txt}{marker_str}")
+
+    parts.append("\nFULL TRANSCRIPT:\n" + "\n".join(transcript_lines))
+
+    parts.append(
+        f"\nSelect the {max_picks} most viral, self-contained story clips (22-32 seconds long).\n"
+        "Return STRICT JSON only:\n"
+        "{\n"
+        '  "picks": [\n'
+        "    {\n"
+        '      "start": <float start timestamp in seconds>,\n'
+        '      "end": <float end timestamp in seconds>,\n'
+        '      "confidence": <float 0.5-1.0>,\n'
+        '      "title": "<3-6 words ALL CAPS viral title>",\n'
+        '      "hook": "<6-10 words opening hook line>",\n'
+        '      "retention_bridge": "<8-15 words what keeps them watching>",\n'
+        '      "caption": "<viral caption max 100 chars>",\n'
+        '      "hashtags": "<3-5 space-separated tags>",\n'
+        '      "reason": "<why this story beats random noise/screaming>"\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "Output ONLY valid JSON. No markdown fences, no explanation."
+    )
+
+    return "\n".join(parts)
+
+
 def parse_moment_response(llm_output: str) -> List[Dict]:
     """
     Parse the LLM's strict-JSON moment response into clip edits.
@@ -417,11 +502,15 @@ def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
     if not isinstance(picks, list):
         return None
     valid: List[Dict] = []
-    for p in picks:
+    for i, p in enumerate(picks):
         if not isinstance(p, dict):
             continue
-        if "moment_index" not in p:
+        idx_raw = p.get("moment_index")
+        start_val = p.get("start", p.get("start_s"))
+        end_val = p.get("end", p.get("end_s"))
+        if idx_raw is None and start_val is None:
             continue
+        idx = int(idx_raw) if idx_raw is not None else (i + 1)
         # Confidence: float 0.0-1.0. Backward compat with old "verified"
         # field — if confidence is missing but verified is present, map
         # True→0.9, False→0.2.
@@ -454,8 +543,8 @@ def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
             or hook[:60]
         )[:100].upper()
         reason_str = str(p.get("reason") or "")[:500]
-        valid.append({
-            "moment_index": int(p["moment_index"]),
+        item_dict = {
+            "moment_index": idx,
             "trim_start": float(p.get("trim_start", 0)),
             "trim_end": float(p.get("trim_end", 0)),
             "confidence": confidence,
@@ -469,7 +558,14 @@ def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
             "edit_reason": reason_str,  # explicit edit_reason field for rank_candidates
             "hashtags": str(p.get("hashtags", ""))[:200],
             "reason": reason_str,
-        })
+        }
+        if start_val is not None:
+            try:
+                item_dict["start"] = float(start_val)
+                item_dict["end"] = float(end_val) if end_val is not None else float(start_val) + 26.0
+            except (ValueError, TypeError):
+                pass
+        valid.append(item_dict)
     return valid if valid else None
 
 

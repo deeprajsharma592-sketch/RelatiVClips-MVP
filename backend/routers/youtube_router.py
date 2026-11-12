@@ -651,25 +651,36 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     # SIMPLIFIED 2026-06-15: dropped per-platform prompt guidance. All platforms
     # (TikTok/Reels/Shorts) now share the same universal 9:16 22-30s format.
     try:
-        # Quick archetype detection (fast, no LLM)
-        from ..pipeline.archetype import detect_archetype
-        # Build a transcript dict from moment snippets (each is 8-20 words)
-        synth_transcript = {
-            "segments": [
-                {"start": m.start, "end": m.end, "text": m.snippet}
-                for m in moments[:30]
-            ]
-        }
-        arch_result = detect_archetype(synth_transcript)
-        if arch_result.confidence > 0.1:
-            prompt = build_archetype_aware_prompt(
-                moments=moments, video_meta=video_meta,
-                archetype=arch_result.primary,
-                archetype_confidence=arch_result.confidence,
-                max_picks=4,  # LLM picks 1-4 based on actual viral content; "Honest > padded"
+        # Check if full transcript is available to eliminate false positives
+        orig_transcript_segs = info.get("transcript", {}).get("segments") if info.get("transcript") else None
+        if orig_transcript_segs and len(orig_transcript_segs) > 5:
+            from ..taste.icl import build_hybrid_narrative_prompt
+            _bridge("taste", f"Using full transcript ({len(orig_transcript_segs)} segs) + Librosa energy markers for story detection")
+            prompt = build_hybrid_narrative_prompt(
+                transcript_segments=orig_transcript_segs,
+                moments=moments,
+                video_meta=video_meta,
+                max_picks=4,
             )
         else:
-            prompt = build_moment_prompt(moments, video_meta, max_picks=4)
+            # Fall back to archetype-aware prompt on moments
+            from ..pipeline.archetype import detect_archetype
+            synth_transcript = {
+                "segments": [
+                    {"start": m.start, "end": m.end, "text": m.snippet}
+                    for m in moments[:30]
+                ]
+            }
+            arch_result = detect_archetype(synth_transcript)
+            if arch_result.confidence > 0.1:
+                prompt = build_archetype_aware_prompt(
+                    moments=moments, video_meta=video_meta,
+                    archetype=arch_result.primary,
+                    archetype_confidence=arch_result.confidence,
+                    max_picks=4,
+                )
+            else:
+                prompt = build_moment_prompt(moments, video_meta, max_picks=4)
     except Exception:
         # Fall back to legacy prompt on any error
         prompt = build_moment_prompt(moments, video_meta, max_picks=4)
@@ -1012,37 +1023,51 @@ def _run_moment_pipeline(
     if picks_sorted:
         for p in picks_sorted:
             m = moment_by_idx.get(int(p.get("moment_index", 0)))
-            if not m:
-                continue
             conf = float(p.get("confidence", 0.0))
-            # Threshold: include if confidence >= 0.4 (worth showing).
-            # Below 0.4, skip — too much filler.
             if conf < 0.4:
                 unverified_count += 1
                 _bridge(
                     "filter",
-                    f"  skipping low-conf pick #{m.index} (conf={conf:.2f}): "
+                    f"  skipping low-conf pick (conf={conf:.2f}): "
                     f"{p.get('reason', '')[:50]}",
                 )
                 continue
-            trim_s = float(p.get("trim_start", 0))
-            trim_e = float(p.get("trim_end", 0))
-            clip_start = max(0, m.start + trim_s)
-            clip_end = max(clip_start + 5, m.end - trim_e)
-            # Find the matching surgical segment
+
+            # Support direct narrative timestamps from full-transcript prompt
+            if "start" in p and "end" in p and float(p["end"]) > float(p["start"]):
+                clip_start = float(p["start"])
+                clip_end = float(p["end"])
+            elif m:
+                trim_s = float(p.get("trim_start", 0))
+                trim_e = float(p.get("trim_end", 0))
+                clip_start = max(0, m.start + trim_s)
+                clip_end = max(clip_start + 5, m.end - trim_e)
+            else:
+                continue
+
+            # Find matching segment or use clip bounds
             matching_seg = next(
                 (s for s in segments
-                 if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
+                 if abs(float(s.get("source_start", -1)) - clip_start) < 8.0),
                 None,
             )
+            title = p.get("title") or p.get("viral_title") or (m.snippet[:40] if m else "VIRAL STORY")
+            caption = p.get("retention_bridge") or p.get("caption") or ""
             final_clips.append({
                 "start": round(clip_start, 2),
                 "end": round(clip_end, 2),
-                "source_start": matching_seg.get("source_start") if matching_seg else m.start,
-                "source_end": matching_seg.get("source_end") if matching_seg else m.end,
+                "source_start": matching_seg.get("source_start") if matching_seg else round(clip_start, 2),
+                "source_end": matching_seg.get("source_end") if matching_seg else round(clip_end, 2),
                 "audio_path": matching_seg.get("audio_path") if matching_seg else None,
-                "viral_title": p.get("viral_title", m.snippet[:40]),
-                "caption": p.get("caption", ""),
+                "viral_title": title,
+                "caption": caption,
+                "hashtags": p.get("hashtags", "#shorts #viral"),
+                "reason": p.get("reason", m.snippet[:60] if m else "Story-driven narrative hook"),
+                "signal_type": m.signal_type if m else "narrative_story",
+                "llm_provider": provider_used or "claude",
+                "confidence": round(conf, 3),
+                "verified": True,
+            })
                 "hashtags": p.get("hashtags", "#shorts #viral"),
                 "reason": p.get("reason", m.snippet[:60]),
                 "signal_type": m.signal_type,
