@@ -181,6 +181,7 @@ def build_ffmpeg_command(
         print(f"[Renderer] 9:16 Crop: {target_crop_w}x{target_crop_h} at ({crop_x},{crop_y})")
         filters.append(f"crop={target_crop_w}:{target_crop_h}:{crop_x}:{crop_y}")
         filters.append("scale=1080:1920:flags=lanczos")
+        filters.append("unsharp=5:5:0.8:3:3:0.4")
 
     # Add subtitle if available
     subtitle_to_use = None

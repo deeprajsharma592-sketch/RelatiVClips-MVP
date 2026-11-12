@@ -116,8 +116,8 @@ CROP_WIDTH = 608
 CROP_HEIGHT = 1080
 
 FFMPEG_PRESET = "fast"
-FFMPEG_CQ = 18
-FFMPEG_AUDIO_BITRATE = "192k"
+FFMPEG_CQ = 16
+FFMPEG_AUDIO_BITRATE = "256k"
 
 # BUGFIX 2026-06-15: 24h was too short — users come back to "download my
 # clips" pages and find them gone. 7d is the sweet spot for a free tier
