@@ -114,7 +114,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         ),
         "--merge-output-format", "mp4",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=web,tv",
+        "--extractor-args", "youtube:player_client=ios,android,web",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
         "--no-check-certificates",

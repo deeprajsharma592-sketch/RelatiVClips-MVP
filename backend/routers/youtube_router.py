@@ -336,7 +336,7 @@ class YouTubeSurgicalFunnel:
             if COOKIES_PATH and COOKIES_PATH.exists():
                 ytdlp_cmd.extend(["--cookies", str(COOKIES_PATH)])
 
-            player_clients = ["web", "android", "ios", "tv"]
+            player_clients = ["ios", "android", "web"]
             success = False
 
             for client in player_clients:
