@@ -107,15 +107,14 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
             "bv*[height<=2160]+ba/"
             "bv*[height<=1440]+ba/"
             "bv*[height<=1080]+ba/"
+            "bv*+ba/"
             "b[height<=2160]/"
             "b[height<=1080]/"
-            "bv*+ba/"
-            "22/"
             "best"
         ),
         "--merge-output-format", "mp4",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=mweb,web,android",
+        "--extractor-args", "youtube:player_client=web,tv",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
         "--no-check-certificates",
@@ -380,10 +379,12 @@ def _download_one_video_segment(
                         import cv2
                         cap = cv2.VideoCapture(str(video_path))
                         frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         cap.release()
                         if frames > 0 and h > 0:
                             final_ok = True
+                            _log(f"  [video seg {seg_idx + 1}/{total}] Downloaded stream resolution: {w}x{h} ({video_path.stat().st_size / (1024*1024):.1f} MB)")
                             break
                     except Exception:
                         pass

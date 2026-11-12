@@ -168,7 +168,7 @@ def build_ffmpeg_command(
         # Proper 9:16 vertical crop from landscape without stretching
         target_crop_w = int(src_height * 9 / 16)
         target_crop_w = min(src_width, (target_crop_w // 2) * 2)
-        target_crop_h = src_height
+        target_crop_h = (src_height // 2) * 2
 
         if x_offset and 0 < x_offset < src_width:
             crop_x = int(x_offset - target_crop_w // 2)
@@ -178,10 +178,10 @@ def build_ffmpeg_command(
         crop_y = 0
 
         crop_x = (crop_x // 2) * 2
-        print(f"[Renderer] 9:16 Crop: {target_crop_w}x{target_crop_h} at ({crop_x},{crop_y})")
+        print(f"[Renderer] 9:16 Crop: {target_crop_w}x{target_crop_h} from source {src_width}x{src_height} at ({crop_x},{crop_y})")
         filters.append(f"crop={target_crop_w}:{target_crop_h}:{crop_x}:{crop_y}")
-        filters.append("scale=1080:1920:flags=lanczos")
-        filters.append("unsharp=5:5:0.8:3:3:0.4")
+        filters.append("scale=1080:1920:flags=lanczos+accurate_rnd")
+        filters.append("unsharp=lx=5:ly=5:la=1.0:cx=3:cy=3:ca=0.5")
 
     # Add subtitle if available
     subtitle_to_use = None
@@ -202,6 +202,9 @@ def build_ffmpeg_command(
         "-c:v", "libx264",
         "-preset", FFMPEG_PRESET if FFMPEG_PRESET in ("ultrafast","superfast","veryfast","faster","fast","medium","slow","slower","veryslow") else "veryfast",
         "-crf", str(FFMPEG_CQ),
+        "-b:v", "8M",
+        "-maxrate", "12M",
+        "-bufsize", "16M",
         "-pix_fmt", "yuv420p",
     ])
 

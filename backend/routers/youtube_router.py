@@ -325,7 +325,7 @@ class YouTubeSurgicalFunnel:
                 YTDLP_PATH,
                 "--download-sections", f"*{ts['start']}-{ts['end']}",
                 "--force-keyframes-at-cuts",
-                "-f", "best[height<=720]+bestaudio/best[height<=720]",
+                "-f", "bv*[height<=2160]+ba/bv*+ba/b[height<=2160]/best",
                 "--merge-output-format", "mp4",
                 "-o", str(video_path),
                 "--no-warnings",
