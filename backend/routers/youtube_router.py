@@ -1053,12 +1053,19 @@ def _run_moment_pipeline(
             )
             title = p.get("title") or p.get("viral_title") or (m.snippet[:40] if m else "VIRAL STORY")
             caption = p.get("retention_bridge") or p.get("caption") or ""
+            # Match original transcript segments inside [clip_start, clip_end]
+            all_orig_segs = info.get("transcript", {}).get("segments", []) if info.get("transcript") else []
+            clip_segs = [
+                s for s in all_orig_segs
+                if float(s.get("end", 0)) >= clip_start and float(s.get("start", 0)) <= clip_end
+            ]
             final_clips.append({
                 "start": round(clip_start, 2),
                 "end": round(clip_end, 2),
                 "source_start": matching_seg.get("source_start") if matching_seg else round(clip_start, 2),
                 "source_end": matching_seg.get("source_end") if matching_seg else round(clip_end, 2),
                 "audio_path": matching_seg.get("audio_path") if matching_seg else None,
+                "transcript": {"segments": clip_segs} if clip_segs else None,
                 "viral_title": title,
                 "caption": caption,
                 "hashtags": p.get("hashtags", "#shorts #viral"),
@@ -1335,8 +1342,11 @@ def _run_moment_pipeline(
             # Pass absolute start/end to render_clip — it computes rel_start/rel_end internally.
             # Only set video_source_start so render_clip knows where the file actually starts.
             render_clip = dict(clip)
+            render_clip["video_path"] = str(source_for_renderer)
             render_clip["video_source_start"] = _vsrc
             render_clip["video_source_end"] = clip.get("video_source_end", float(clip.get("source_end", clip.get("end", 0))) + SURGICAL_BUFFER_SECONDS)
+            if "transcript" in clip:
+                render_clip["transcript"] = clip["transcript"]
             out = renderer_module.render_clip(
                 video_path=source_for_renderer,
                 clip=render_clip,

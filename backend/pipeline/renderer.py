@@ -285,6 +285,8 @@ def render_clip(
     subtitle_path = None
     try:
         sub_file = TEMP_DIR / f"{task_id}_{clip_index}_captions.ass"
+        if video_path and not clip.get("video_path"):
+            clip["video_path"] = str(video_path)
         subtitle_path = generate_viral_ass_subtitles(clip, sub_file)
         if subtitle_path and Path(subtitle_path).exists():
             print(f"[Renderer] Dynamic captions generated: {subtitle_path}")

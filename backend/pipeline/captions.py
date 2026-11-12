@@ -99,7 +99,7 @@ def generate_viral_ass_subtitles(
 
     # Fallback 1: if no words from transcript, transcribe the local clip segment with Whisper
     if not raw_words:
-        local_media = clip.get("audio_path") or clip.get("video_path")
+        local_media = clip.get("video_path") or clip.get("audio_path")
         if local_media and Path(local_media).exists():
             try:
                 from faster_whisper import WhisperModel
@@ -109,40 +109,45 @@ def generate_viral_ass_subtitles(
                 dev = "cuda" if vram.get("cuda_available") else "cpu"
                 ctype = WHISPER_COMPUTE_TYPE if dev == "cuda" else "int8"
                 whisper_mod = WhisperModel(WHISPER_MODEL, device=dev, compute_type=ctype)
+                # Video file begins at video_source_start (padded boundary)
+                v_src = float(clip.get("video_source_start", clip_start))
+                rel_start = max(0.0, clip_start - v_src)
+
                 segs, _ = whisper_mod.transcribe(str(local_media), word_timestamps=True)
                 for seg in segs:
-                    if getattr(seg, "words", None):
-                        for w in seg.words:
-                            clean_w = _sanitize_text(w.word)
-                            if clean_w:
-                                raw_words.append({
-                                    "word": clean_w,
-                                    "start": round(w.start, 3),
-                                    "end": round(w.end, 3),
-                                })
+                    seg_words = getattr(seg, "words", None)
+                    if seg_words:
+                        for w in seg_words:
+                            w_rel_start = float(w.start) - rel_start
+                            w_rel_end = float(w.end) - rel_start
+                            if w_rel_end > 0.0 and w_rel_start < clip_duration:
+                                clean_w = _sanitize_text(w.word)
+                                if clean_w:
+                                    raw_words.append({
+                                        "word": clean_w,
+                                        "start": max(0.0, round(w_rel_start, 3)),
+                                        "end": min(clip_duration, round(w_rel_end, 3)),
+                                    })
+                    elif getattr(seg, "text", None):
+                        words = seg.text.strip().split()
+                        if words:
+                            s_start = max(0.0, float(seg.start) - rel_start)
+                            s_end = min(clip_duration, float(seg.end) - rel_start)
+                            if s_end > s_start:
+                                step = (s_end - s_start) / len(words)
+                                for idx, w in enumerate(words):
+                                    clean_w = _sanitize_text(w)
+                                    if clean_w:
+                                        raw_words.append({
+                                            "word": clean_w,
+                                            "start": round(s_start + idx * step, 3),
+                                            "end": round(s_start + (idx + 1) * step, 3),
+                                        })
             except Exception as e:
                 print(f"[Captions] Clip Whisper fallback skipped: {e}")
 
-    # Fallback 2 if still no words: synthesize from caption (strip debug text)
-    if not raw_words:
-        caption = clip.get("caption") or clip.get("viral_title") or ""
-        # Never display internal diagnostic strings like [AUDIO PEAK]
-        if "AUDIO PEAK" in caption or "LOUD SUSTAINED" in caption:
-            caption = clip.get("viral_title") or ""
-        if "AUDIO PEAK" in caption or "LOUD SUSTAINED" in caption or not caption.strip():
-            caption = "🔥 WATCH THIS MOMENT"
-
-        words = caption.split()
-        step = clip_duration / max(1, len(words))
-        for idx, w in enumerate(words):
-            clean_w = _sanitize_text(w)
-            if clean_w:
-                raw_words.append({
-                    "word": clean_w,
-                    "start": round(idx * step, 3),
-                    "end": round((idx + 1) * step, 3),
-                })
-
+    # No fake fallback! If there are genuinely no spoken words (music, silent scene, sound effects),
+    # return None so the video renders cleanly without absurd diagnostic text overlays like 'OPENING BEAT LANDS'.
     if not raw_words:
         return None
 

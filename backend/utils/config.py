@@ -75,8 +75,8 @@ RUNPOD_WHISPER_MODEL = os.getenv("RUNPOD_WHISPER_MODEL", "turbo")
 #   auto = use RunPod if key+id are set, else local faster-whisper
 TRANSCRIPTION_PROVIDER = os.getenv("TRANSCRIPTION_PROVIDER", "auto").lower().strip()
 
-WHISPER_MODEL = "base"
-WHISPER_COMPUTE_TYPE = "int8"  # CPU-friendly int8 quantization
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "turbo")
+WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
 
 TARGET_SAMPLE_RATE = 16000
 CLIP_DURATION_MIN = 10
