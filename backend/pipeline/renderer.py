@@ -416,6 +416,24 @@ def render_clip(
         if progress_callback:
             progress_callback(f"Clip {clip_index} rendered: {output_filename} ({file_size_mb}MB)")
 
+        # Generate thumbnail frame screenshot for frontend card display
+        thumb_filename = f"{clip_id}_thumb.jpg"
+        thumb_path = OUTPUTS_DIR / thumb_filename
+        try:
+            import cv2
+            cap = cv2.VideoCapture(str(output_path))
+            cap.set(cv2.CAP_PROP_POS_MSEC, 1500)
+            ret, frame = cap.read()
+            if not ret:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = cap.read()
+            cap.release()
+            if ret and frame is not None:
+                cv2.imwrite(str(thumb_path), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+                print(f"[Renderer] Saved thumbnail screenshot: {thumb_filename}")
+        except Exception as thumb_err:
+            print(f"[Renderer] Thumbnail generation skipped: {thumb_err}")
+
         return {
             "clip_id": clip_id,
             "start": start,
@@ -426,6 +444,7 @@ def render_clip(
             "hashtags": clip.get("hashtags", ""),
             "file_path": str(output_path),
             "file_size_mb": file_size_mb,
+            "thumbnail_url": f"/thumbnail/{clip_id}",
             "created_at": datetime.now().isoformat()
         }
 

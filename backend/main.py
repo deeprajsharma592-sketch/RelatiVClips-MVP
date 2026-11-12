@@ -453,6 +453,32 @@ async def download_clip(clip_id: str):
     raise HTTPException(status_code=404, detail="Clip not found")
 
 
+@app.get("/thumbnail/{clip_id}")
+async def get_clip_thumbnail(clip_id: str):
+    """Return an extracted thumbnail screenshot for a clip."""
+    thumb_path = OUTPUTS_DIR / f"{clip_id}_thumb.jpg"
+    if thumb_path.exists():
+        return FileResponse(path=thumb_path, media_type="image/jpeg")
+
+    # If thumbnail not yet extracted, extract on demand from the video file
+    for file_path in OUTPUTS_DIR.glob(f"{clip_id}.mp4"):
+        try:
+            import cv2
+            cap = cv2.VideoCapture(str(file_path))
+            cap.set(cv2.CAP_PROP_POS_MSEC, 1500)
+            ret, frame = cap.read()
+            if not ret:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = cap.read()
+            cap.release()
+            if ret and frame is not None:
+                cv2.imwrite(str(thumb_path), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+                return FileResponse(path=thumb_path, media_type="image/jpeg")
+        except Exception:
+            pass
+    raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+
 @app.get("/clips")
 async def list_clips(task_prefix: Optional[str] = None, limit: int = 50):
     """

@@ -57,6 +57,7 @@ const DEMO_CLIPS: Clip[] = [
       "Most founders optimize for building before testing the distribution hook. Don't build what nobody is searching for.",
     hashtags: "#startups #business #entrepreneurship #relativclips",
     file_path: "/demo-clip-1.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=720&q=80",
     file_size_mb: 18.4,
     created_at: new Date().toISOString(),
     hook_score: 96,
@@ -72,6 +73,7 @@ const DEMO_CLIPS: Clip[] = [
       "If anyone can replicate your workflow with a single API call, your moat is zero. Focus on proprietary distribution.",
     hashtags: "#growth #creator #marketing #shorts",
     file_path: "/demo-clip-2.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=720&q=80",
     file_size_mb: 21.1,
     created_at: new Date().toISOString(),
     hook_score: 91,
@@ -87,6 +89,7 @@ const DEMO_CLIPS: Clip[] = [
       "Clean framing, clear typography, and strong narrative pacing beat 50 random sound effects every single time.",
     hashtags: "#editing #podcasts #videoediting #viraltips",
     file_path: "/demo-clip-3.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=720&q=80",
     file_size_mb: 15.2,
     created_at: new Date().toISOString(),
     hook_score: 88,
@@ -465,6 +468,10 @@ function ClipCard({
     ? clip.file_path
     : apiPath(`/download/${clip.clip_id}`);
 
+  const posterUrl = clip.thumbnail_url
+    ? (clip.thumbnail_url.startsWith("http") ? clip.thumbnail_url : apiPath(clip.thumbnail_url))
+    : clip.clip_id ? apiPath(`/thumbnail/${clip.clip_id}`) : undefined;
+
   const handleCopyCaption = () => {
     const text = `${clip.viral_title || ""}\n\n${clip.caption || ""}\n\n${clip.hashtags || ""}`;
     navigator.clipboard.writeText(text).then(() => {
@@ -482,11 +489,12 @@ function ClipCard({
       transition={{ delay: index * 0.06 }}
       className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden flex flex-col justify-between shadow-xl group hover:border-white/20 transition-all"
     >
-      {/* 9:16 Phone Aspect Frame */}
+      {/* 9:16 Phone Aspect Frame with Screenshot / Thumbnail Display */}
       <div className="relative aspect-[9/16] w-full bg-slate-950 overflow-hidden flex items-center justify-center">
         {!videoError ? (
           <video
             src={videoUrl}
+            poster={posterUrl}
             className="w-full h-full object-cover"
             controls
             playsInline
@@ -494,10 +502,28 @@ function ClipCard({
             onError={() => setVideoError(true)}
           />
         ) : (
-          <div className="p-6 text-center space-y-2">
-            <Video className="w-10 h-10 text-slate-600 mx-auto" />
-            <span className="text-xs font-mono text-slate-400 block">9:16 HD Preview</span>
-            <span className="text-[10px] text-slate-500">Tap download below to save MP4</span>
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            {posterUrl ? (
+              <img
+                src={posterUrl}
+                alt={clip.viral_title || "Clip thumbnail"}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-b from-slate-900 via-[#101426] to-slate-950 flex items-center justify-center">
+                <Video className="w-10 h-10 text-slate-600" />
+              </div>
+            )}
+            {/* Cinematic gradient overlay & Frosted Play Button */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+            <button
+              onClick={onRequestDownload}
+              className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center transition-all shadow-2xl hover:scale-105 active:scale-95 group/btn cursor-pointer"
+              title="Download or preview clip"
+            >
+              <Play className="w-6 h-6 text-white ml-0.5 fill-white group-hover/btn:scale-110 transition-transform" />
+            </button>
           </div>
         )}
 
