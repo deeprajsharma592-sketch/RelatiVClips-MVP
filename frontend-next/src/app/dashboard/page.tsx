@@ -245,16 +245,9 @@ function DashboardContent() {
     setIsGenerating(false);
   };
 
-  // Trigger download with soft-gate check
+  // Download directly — no auth gate during beta
   const handleRequestDownload = (clip: Clip) => {
-    if (user) {
-      // User is logged in, download directly
-      executeDownload(clip);
-    } else {
-      // Open soft gate modal
-      setPendingDownloadClip(clip);
-      setExportModalOpen(true);
-    }
+    executeDownload(clip);
   };
 
   const executeDownload = (clip: Clip) => {
