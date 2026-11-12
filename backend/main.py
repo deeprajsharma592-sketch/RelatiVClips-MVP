@@ -130,6 +130,9 @@ app.add_middleware(
 # Include routers
 app.include_router(local_router.router)
 app.include_router(youtube_router.router)
+# Include /api/v1 aliases for frontend compatibility
+app.include_router(local_router.router, prefix="/api/v1")
+app.include_router(youtube_router.router, prefix="/api/v1")
 app.include_router(intake_router.router)
 app.include_router(auth_router.router)
 app.include_router(dashboard_router.router)
@@ -420,6 +423,7 @@ async def get_transcript(url: str):
 
 
 @app.get("/status/{task_id}", response_model=StatusResponse)
+@app.get("/api/v1/status/{task_id}", response_model=StatusResponse)
 async def get_status(task_id: str):
     status = task_store.get_task_status(task_id)
     if not status:
@@ -443,6 +447,7 @@ async def get_task_queue():
 
 
 @app.get("/download/{clip_id}")
+@app.get("/api/v1/download/{clip_id}")
 async def download_clip(clip_id: str):
     for file_path in OUTPUTS_DIR.glob(f"{clip_id}.*"):
         return FileResponse(
@@ -454,6 +459,7 @@ async def download_clip(clip_id: str):
 
 
 @app.get("/thumbnail/{clip_id}")
+@app.get("/api/v1/thumbnail/{clip_id}")
 async def get_clip_thumbnail(clip_id: str):
     """Return an extracted thumbnail screenshot for a clip."""
     thumb_path = OUTPUTS_DIR / f"{clip_id}_thumb.jpg"

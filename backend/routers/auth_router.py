@@ -355,12 +355,20 @@ async def logout(
 @router.get("/me", response_model=AuthResponse)
 async def me(
     request: Request,
-    user: UserModel = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
 ):
     """Return the current user. 401 if no/invalid session."""
-    profile = await _get_profile_for_role(session, user.id, user.role)
-    return AuthResponse(user=_user_to_response(user, profile))
+    token = get_session_cookie(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    from ..database.session import _DB_AVAILABLE, get_session
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=401, detail="Not authenticated (in-memory mode)")
+
+    async for session in get_session():
+        user = await get_current_user(request, session)
+        profile = await _get_profile_for_role(session, user.id, user.role)
+        return AuthResponse(user=_user_to_response(user, profile))
 
 
 # Re-export dependency for other routers
