@@ -49,6 +49,15 @@ def render_fit_blur_frame(frame: np.ndarray, target_w: int = 1080, target_h: int
     return blurred_bg
 
 
+def render_center_crop_frame(frame: np.ndarray, target_w: int = 1080, target_h: int = 1920) -> np.ndarray:
+    """Render direct center crop of source frame to target 9:16 (fallback style AB10)."""
+    src_h, src_w = frame.shape[:2]
+    crop_h = src_h
+    crop_w = crop_h * (target_w / target_h)
+    crop_x1 = max(0.0, (src_w - crop_w) / 2.0)
+    return warp_crop_affine(frame, crop_x1, 0.0, crop_w, crop_h, target_w, target_h)
+
+
 def warp_crop_affine(
     frame: np.ndarray,
     crop_x1: float,
@@ -182,8 +191,12 @@ def render_video(
                 frame_for_render = frame
 
             # Render frame layout
+            fallback_style = config.get("fallback", {}).get("style", "blur_fit")
             if state == "FIT_BLUR":
-                final_frame = render_fit_blur_frame(frame_for_render, target_w, target_h)
+                if fallback_style == "center_crop":
+                    final_frame = render_center_crop_frame(frame_for_render, target_w, target_h)
+                else:
+                    final_frame = render_fit_blur_frame(frame_for_render, target_w, target_h)
             elif state == "SINGLE":
                 c = plan["crop"]
                 if isinstance(c, dict):
@@ -204,9 +217,20 @@ def render_video(
                 top_panel = warp_crop_affine(frame_for_render, p1_c["x1"], p1_c["y1"], p1_c["w"], p1_c["h"], target_w, panel_h)
                 bot_panel = warp_crop_affine(frame_for_render, p2_c["x1"], p2_c["y1"], p2_c["w"], p2_c["h"], target_w, panel_h)
 
+                # Active speaker emphasis (AB8)
+                stack_emphasis = config.get("stack", {}).get("emphasis", "none")
+                if stack_emphasis == "dim_inactive":
+                    if active_speaker == "P1":
+                        bot_panel = (bot_panel.astype(np.float32) * 0.85).astype(np.uint8)
+                    elif active_speaker == "P2":
+                        top_panel = (top_panel.astype(np.float32) * 0.85).astype(np.uint8)
+
                 final_frame = np.vstack([top_panel, bot_panel])
             else:
-                final_frame = render_fit_blur_frame(frame_for_render, target_w, target_h)
+                if fallback_style == "center_crop":
+                    final_frame = render_center_crop_frame(frame_for_render, target_w, target_h)
+                else:
+                    final_frame = render_fit_blur_frame(frame_for_render, target_w, target_h)
 
             proc.stdin.write(final_frame.tobytes())
             frame_idx += 1

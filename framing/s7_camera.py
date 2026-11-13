@@ -8,6 +8,7 @@ Supports SINGLE (9:16) and STACK (9:8 panels for P1 and P2).
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
 
 
 def smooth_camera_path(
@@ -17,21 +18,46 @@ def smooth_camera_path(
     config: Dict[str, Any]
 ) -> np.ndarray:
     """
-    Apply Gaussian smoothing, dead-zone filtering, and velocity limits to camera coordinates.
-    Works on 1D position arrays (e.g. X center or Y center or scale).
+    Apply Gaussian, Savitzky-Golay, or One-Euro smoothing, dead-zone filtering,
+    and velocity limits to camera coordinates (spec-0.1 AB3).
     """
     cam_cfg = config.get("camera", {})
-    sigma_s = cam_cfg.get("gaussian_sigma_s", 0.25)
-    dead_zone_frac = cam_cfg.get("dead_zone_frac", 0.04)
-    max_pan_speed = cam_cfg.get("max_pan_px_per_s", 900.0)
+    smoothing_method = cam_cfg.get("smoothing", "gaussian")
+    sigma_s = float(cam_cfg.get("gaussian_sigma_s", 0.25))
+    dead_zone_frac = float(cam_cfg.get("dead_zone_frac", 0.04))
+    max_pan_speed = float(cam_cfg.get("max_pan_px_per_s", 900.0))
 
     n_samples = len(raw_positions)
     if n_samples <= 1:
         return np.array(raw_positions, dtype=np.float64)
 
-    # 1. Non-causal Gaussian smoothing
-    sigma_frames = max(1e-3, sigma_s * fps)
-    smoothed = gaussian_filter1d(raw_positions.astype(np.float64), sigma=sigma_frames, mode="nearest")
+    # 1. Smoothing filter selection (AB3)
+    if smoothing_method == "savgol":
+        win = max(3, int(round(sigma_s * fps * 2)) | 1)
+        win = min(win, n_samples if n_samples % 2 == 1 else n_samples - 1)
+        if win >= 3:
+            smoothed = savgol_filter(raw_positions.astype(np.float64), window_length=win, polyorder=2)
+        else:
+            smoothed = raw_positions.astype(np.float64)
+    elif smoothing_method == "one_euro":
+        # One Euro filter
+        min_cutoff = 1.0
+        beta = 0.007
+        d_cutoff = 1.0
+        dt = 1.0 / max(1.0, fps)
+        smoothed = np.empty(n_samples, dtype=np.float64)
+        smoothed[0] = raw_positions[0]
+        dx = 0.0
+        for i in range(1, n_samples):
+            a_d = (2 * np.pi * d_cutoff * dt) / (1 + 2 * np.pi * d_cutoff * dt)
+            dx = a_d * ((raw_positions[i] - smoothed[i-1]) / dt) + (1 - a_d) * dx
+            cutoff = min_cutoff + beta * abs(dx)
+            a = (2 * np.pi * cutoff * dt) / (1 + 2 * np.pi * cutoff * dt)
+            smoothed[i] = a * raw_positions[i] + (1 - a) * smoothed[i-1]
+    else:
+        # Default: Non-causal Gaussian smoothing
+        sigma_frames = max(1e-3, sigma_s * fps)
+        smoothed = gaussian_filter1d(raw_positions.astype(np.float64), sigma=sigma_frames, mode="nearest")
 
     min_raw = np.min(raw_positions)
     max_raw = np.max(raw_positions)
