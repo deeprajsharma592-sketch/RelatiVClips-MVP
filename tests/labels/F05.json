@@ -1,0 +1,12 @@
+{
+  "fixture_id": "F05",
+  "clip": "F05.mp4",
+  "duration_s": 5.0,
+  "speaker_intervals": [
+    {
+      "start_s": 0.0,
+      "end_s": 5.0,
+      "speaker": "P1"
+    }
+  ]
+}

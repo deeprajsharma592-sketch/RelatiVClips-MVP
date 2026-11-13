@@ -17,6 +17,8 @@ from .config import load_config
 from .s1_normalize import normalize_media, rebase_timestamps
 from .s2_shots import detect_shots
 from .s3_faces import detect_and_track_faces
+from .s4_speech import attribute_speech_pipeline
+from .s5_turns import compute_turns
 from .s7_camera import plan_camera_single_shot
 from .s9_render import render_video
 
@@ -71,10 +73,26 @@ def run_pipeline(
     # ── Stage 3: Faces & Tracks
     tracks = detect_and_track_faces(Path(norm_video), shots, workdir, config)
 
+    # ── Stage 4: Speech & Speaker Attribution
+    speech_data = attribute_speech_pipeline(
+        wav_path=Path(norm_result["audio_wav_path"]) if norm_result.get("has_audio") else None,
+        tracks_data=tracks,
+        total_frames=total_frames,
+        fps=fps,
+        workdir=workdir,
+        config=config,
+    )
+
+    # ── Stage 5: Turns
+    turns_data = compute_turns(
+        speech_intervals=speech_data.get("intervals", []),
+        workdir=workdir,
+        config=config,
+    )
+
     # ── Stage 7: Camera Path for SINGLE (or Fallback if no tracks)
     plan_frames = []
     if len(tracks) > 0:
-        # Use primary track (P1) for SINGLE camera path
         p1_track = tracks[0]
         samples = p1_track.get("samples", [])
         raw_plan = plan_camera_single_shot(
@@ -88,12 +106,15 @@ def run_pipeline(
         )
         for item in raw_plan:
             face_b = item.get("face_box")
+            f_idx = item["frame_idx"]
+            spk_info = speech_data["frames"][f_idx] if f_idx < len(speech_data["frames"]) else {}
             plan_frames.append({
-                "frame_idx": item["frame_idx"],
+                "frame_idx": f_idx,
                 "t": item["t"],
                 "state": "SINGLE",
                 "crop": item["crop"],
-                "speaker": p1_track.get("panel_label", "P1"),
+                "speaker": spk_info.get("speaker", p1_track.get("panel_label", "P1")),
+                "speaker_confidence": spk_info.get("confidence", 0.8),
                 "is_unsafe": item.get("is_unsafe", False),
                 "faces": [face_b] if face_b is not None else [],
                 "zoom_scale": 1.0,
@@ -101,11 +122,13 @@ def run_pipeline(
     else:
         # Fallback FIT_BLUR when no faces
         for f_idx in range(total_frames):
+            spk_info = speech_data["frames"][f_idx] if f_idx < len(speech_data.get("frames", [])) else {}
             plan_frames.append({
                 "frame_idx": f_idx,
                 "t": f_idx / fps,
                 "state": "FIT_BLUR",
-                "speaker": "unknown",
+                "speaker": spk_info.get("speaker", "unknown"),
+                "speaker_confidence": spk_info.get("confidence", 0.5),
                 "faces": [],
                 "zoom_scale": 1.0,
             })

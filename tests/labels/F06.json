@@ -1,0 +1,17 @@
+{
+  "fixture_id": "F06",
+  "clip": "F06.mp4",
+  "duration_s": 5.0,
+  "speaker_intervals": [
+    {
+      "start_s": 0.0,
+      "end_s": 3.2,
+      "speaker": "P1"
+    },
+    {
+      "start_s": 2.0,
+      "end_s": 5.0,
+      "speaker": "P2"
+    }
+  ]
+}
