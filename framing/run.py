@@ -19,7 +19,8 @@ from .s2_shots import detect_shots
 from .s3_faces import detect_and_track_faces
 from .s4_speech import attribute_speech_pipeline
 from .s5_turns import compute_turns
-from .s7_camera import plan_camera_single_shot
+from .s6_layout import generate_layout_artifact
+from .s7_camera import plan_camera_single_shot, plan_camera_stack_shot
 from .s9_render import render_video
 
 
@@ -90,46 +91,70 @@ def run_pipeline(
         config=config,
     )
 
-    # ── Stage 7: Camera Path for SINGLE (or Fallback if no tracks)
+    # ── Stage 6: Layout Planner
+    layout_segments = generate_layout_artifact(
+        turns=turns_data,
+        shots=shots,
+        tracks=tracks,
+        words=words_rebased,
+        workdir=workdir,
+        config=config,
+    )
+
+    # ── Stage 7: Camera Paths
+    p1_samples = tracks[0]["samples"] if len(tracks) > 0 else []
+    p2_samples = tracks[1]["samples"] if len(tracks) > 1 else []
+
+    single_p1_plan = plan_camera_single_shot(p1_samples, 0, total_frames, fps, src_w, src_h, config) if p1_samples else []
+    single_p2_plan = plan_camera_single_shot(p2_samples, 0, total_frames, fps, src_w, src_h, config) if p2_samples else []
+    stack_plan = plan_camera_stack_shot(p1_samples, p2_samples, 0, total_frames, fps, src_w, src_h, config) if (p1_samples and p2_samples) else []
+
     plan_frames = []
-    if len(tracks) > 0:
-        p1_track = tracks[0]
-        samples = p1_track.get("samples", [])
-        raw_plan = plan_camera_single_shot(
-            track_samples=samples,
-            start_frame=0,
-            end_frame=total_frames,
-            fps=fps,
-            src_w=src_w,
-            src_h=src_h,
-            config=config,
-        )
-        for item in raw_plan:
-            face_b = item.get("face_box")
-            f_idx = item["frame_idx"]
-            spk_info = speech_data["frames"][f_idx] if f_idx < len(speech_data["frames"]) else {}
+    for f_idx in range(total_frames):
+        t = f_idx / fps
+        seg = next((s for s in layout_segments if s["t_start"] <= t <= s["t_end"]), None)
+        state = seg["state"] if seg else "FIT_BLUR"
+        active_speaker = speech_data["frames"][f_idx]["speaker"] if f_idx < len(speech_data.get("frames", [])) else "unknown"
+
+        if state == "SINGLE":
+            track_label = seg.get("track", "P1")
+            chosen_single = single_p2_plan if (track_label == "P2" and single_p2_plan) else single_p1_plan
+            item = chosen_single[f_idx] if f_idx < len(chosen_single) else None
+            crop = item["crop"] if item else [0, 0, src_w, src_h]
+            is_unsafe = item["is_unsafe"] if item else False
+            faces = [item["face_box"]] if (item and item.get("face_box")) else []
             plan_frames.append({
                 "frame_idx": f_idx,
-                "t": item["t"],
+                "t": round(t, 4),
                 "state": "SINGLE",
-                "crop": item["crop"],
-                "speaker": spk_info.get("speaker", p1_track.get("panel_label", "P1")),
-                "speaker_confidence": spk_info.get("confidence", 0.8),
-                "is_unsafe": item.get("is_unsafe", False),
-                "faces": [face_b] if face_b is not None else [],
+                "crop": crop,
+                "speaker": active_speaker,
+                "is_unsafe": is_unsafe,
+                "faces": faces,
                 "zoom_scale": 1.0,
             })
-    else:
-        # Fallback FIT_BLUR when no faces
-        for f_idx in range(total_frames):
-            spk_info = speech_data["frames"][f_idx] if f_idx < len(speech_data.get("frames", [])) else {}
+        elif state == "STACK" and stack_plan:
+            item = stack_plan[f_idx] if f_idx < len(stack_plan) else None
+            panels = item["panels"] if item else []
+            is_unsafe = item["is_unsafe"] if item else False
             plan_frames.append({
                 "frame_idx": f_idx,
-                "t": f_idx / fps,
+                "t": round(t, 4),
+                "state": "STACK",
+                "panels": panels,
+                "speaker": active_speaker,
+                "is_unsafe": is_unsafe,
+                "faces": [p["face_box"] for p in panels if p.get("face_box")],
+                "zoom_scale": 1.0,
+            })
+        else:
+            plan_frames.append({
+                "frame_idx": f_idx,
+                "t": round(t, 4),
                 "state": "FIT_BLUR",
-                "speaker": spk_info.get("speaker", "unknown"),
-                "speaker_confidence": spk_info.get("confidence", 0.5),
+                "speaker": active_speaker,
                 "faces": [],
+                "is_unsafe": False,
                 "zoom_scale": 1.0,
             })
 
@@ -150,24 +175,37 @@ def run_pipeline(
         debug_overlay=debug_overlay,
     )
 
-    # ── Stage 10: Generate QA Report
+    # ── Stage 10: Generate QA Report (Metrics M3, M4, M5)
     fallback_count = sum(1 for p in plan_frames if p.get("state") == "FIT_BLUR")
     unsafe_count = sum(1 for p in plan_frames if p.get("is_unsafe", False))
     fallback_pct = (fallback_count / max(1, total_frames)) * 100.0
 
+    # Metric M4: switches per minute
+    num_switches = max(0, len(layout_segments) - 1)
+    switches_per_min = (num_switches / max(1.0, duration_s)) * 60.0
+
+    # Metric M5: states shorter than min hold (excluding shot boundaries)
+    min_hold_s = float(config.get("layout", {}).get("min_hold_s", 2.0))
+    short_states = sum(1 for s in layout_segments[:-1] if (s["t_end"] - s["t_start"]) < min_hold_s - 1e-3)
+
     qa_artifact = {
-        "status": "pass" if fallback_pct < 40.0 else "fail",
+        "status": "pass" if fallback_pct < 40.0 and short_states == 0 else "review",
         "clip_duration_s": duration_s,
         "frames_rendered": render_result["frames_rendered"],
         "total_source_frames": total_frames,
         "fallback_frames": fallback_count,
         "fallback_pct": round(fallback_pct, 2),
         "unsafe_frames": unsafe_count,
+        "layout_switches": num_switches,
+        "switches_per_minute": round(switches_per_min, 2),
+        "short_state_violations": short_states,
         "config_hash": config.get("_meta", {}).get("config_hash"),
         "versions": config.get("_meta", {}).get("versions"),
     }
     with open(workdir / "qa.json", "w", encoding="utf-8") as f:
         json.dump(qa_artifact, f, indent=2)
+
+    return qa_artifact
 
     return qa_artifact
 

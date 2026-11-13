@@ -2,6 +2,7 @@
 RelatiV Dynamic Framing: Stage S7 - Camera Path and Smoothing.
 Pure functional camera planner with subpixel coordinates, Gaussian smoothing,
 dead zone filtering, velocity clamping, and safe margin boundary verification.
+Supports SINGLE (9:16) and STACK (9:8 panels for P1 and P2).
 """
 
 from typing import List, Dict, Any, Tuple, Optional
@@ -124,28 +125,25 @@ def clamp_crop_to_frame(
     return clamped_cx, clamped_cy, crop_box, is_unsafe
 
 
-def plan_camera_single_shot(
+def plan_panel_camera_path(
     track_samples: List[Dict[str, Any]],
     start_frame: int,
     end_frame: int,
     fps: float,
     src_w: int,
     src_h: int,
+    aspect_ratio: float,
+    face_height_frac: float,
+    eye_line_frac: float,
     config: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
-    """
-    Computes smooth camera path for SINGLE speaker within a single shot.
-    """
+    """Generates smoothed and clamped camera path for an individual panel."""
     cam_cfg = config.get("camera", {})
-    single_face_height_frac = cam_cfg.get("single_face_height_frac", 0.22)
-    eye_line_frac = cam_cfg.get("eye_line_frac", 0.38)
-    aspect_ratio = 9.0 / 16.0
-
+    max_gap_s = float(cam_cfg.get("max_gap_s", 1.0))
     n_frames = end_frame - start_frame
     if n_frames <= 0:
         return []
 
-    # Map samples by frame index
     sample_by_t = {s["t"]: s["box"] for s in track_samples}
     sample_times = np.array(sorted(sample_by_t.keys()))
 
@@ -158,14 +156,12 @@ def plan_camera_single_shot(
         curr_frame = start_frame + i
         curr_t = curr_frame / fps
 
-        # Find closest sample or interpolate
         if len(sample_times) == 0:
             face_box = None
         else:
-            # Nearest sample
             idx = int(np.argmin(np.abs(sample_times - curr_t)))
             closest_t = sample_times[idx]
-            if abs(closest_t - curr_t) <= cam_cfg.get("max_gap_s", 1.0):
+            if abs(closest_t - curr_t) <= max_gap_s:
                 face_box = sample_by_t[closest_t]
             else:
                 face_box = None
@@ -177,7 +173,7 @@ def plan_camera_single_shot(
             fcx = fx + fw / 2.0
             fcy = fy + fh / 2.0
 
-            target_crop_h = fh / single_face_height_frac
+            target_crop_h = fh / face_height_frac
             target_crop_h = min(target_crop_h, float(src_h))
             target_crop_w = target_crop_h * aspect_ratio
             if target_crop_w > src_w:
@@ -201,16 +197,14 @@ def plan_camera_single_shot(
             raw_cy[i] = src_h / 2.0
             raw_h[i] = def_h
 
-    # Nominal crop width for dead zone
     median_h = float(np.median(raw_h))
     nominal_w = median_h * aspect_ratio
 
-    # Apply smoothing
     smooth_cx = smooth_camera_path(raw_cx, nominal_w, fps, config)
     smooth_cy = smooth_camera_path(raw_cy, nominal_w, fps, config)
     smooth_crop_h = smooth_camera_path(raw_h, nominal_w, fps, config)
 
-    frame_plans = []
+    panel_frames = []
     for i in range(n_frames):
         curr_frame = start_frame + i
         curr_t = curr_frame / fps
@@ -224,13 +218,124 @@ def plan_camera_single_shot(
             smooth_cx[i], smooth_cy[i], cw, ch, src_w, src_h, face_boxes[i], config
         )
 
-        frame_plans.append({
+        panel_frames.append({
             "frame_idx": curr_frame,
             "t": round(curr_t, 4),
-            "state": "SINGLE",
             "crop": [round(v, 2) for v in crop_box],
+            "crop_dict": {
+                "x1": round(crop_box[0], 2),
+                "y1": round(crop_box[1], 2),
+                "w": round(crop_box[2] - crop_box[0], 2),
+                "h": round(crop_box[3] - crop_box[1], 2),
+            },
             "is_unsafe": is_unsafe,
             "face_box": face_boxes[i]
         })
 
-    return frame_plans
+    return panel_frames
+
+
+def plan_camera_single_shot(
+    track_samples: List[Dict[str, Any]],
+    start_frame: int,
+    end_frame: int,
+    fps: float,
+    src_w: int,
+    src_h: int,
+    config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """Computes smooth camera path for SINGLE speaker (9:16) within a shot."""
+    cam_cfg = config.get("camera", {})
+    face_h_frac = float(cam_cfg.get("single_face_height_frac", 0.22))
+    eye_line_frac = float(cam_cfg.get("eye_line_frac", 0.38))
+    aspect_ratio = 9.0 / 16.0
+
+    plans = plan_panel_camera_path(
+        track_samples=track_samples,
+        start_frame=start_frame,
+        end_frame=end_frame,
+        fps=fps,
+        src_w=src_w,
+        src_h=src_h,
+        aspect_ratio=aspect_ratio,
+        face_height_frac=face_h_frac,
+        eye_line_frac=eye_line_frac,
+        config=config,
+    )
+    for p in plans:
+        p["state"] = "SINGLE"
+    return plans
+
+
+def plan_camera_stack_shot(
+    p1_samples: List[Dict[str, Any]],
+    p2_samples: List[Dict[str, Any]],
+    start_frame: int,
+    end_frame: int,
+    fps: float,
+    src_w: int,
+    src_h: int,
+    config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """Computes smooth camera paths for STACK panels (9:8 aspect ratio each)."""
+    cam_cfg = config.get("camera", {})
+    face_h_frac = float(cam_cfg.get("stack_face_height_frac", 0.35))
+    eye_line_frac = float(cam_cfg.get("eye_line_frac", 0.38))
+    # Each panel is 1080x960 -> 9:8
+    aspect_ratio = 9.0 / 8.0
+
+    p1_plans = plan_panel_camera_path(
+        track_samples=p1_samples,
+        start_frame=start_frame,
+        end_frame=end_frame,
+        fps=fps,
+        src_w=src_w,
+        src_h=src_h,
+        aspect_ratio=aspect_ratio,
+        face_height_frac=face_h_frac,
+        eye_line_frac=eye_line_frac,
+        config=config,
+    )
+
+    p2_plans = plan_panel_camera_path(
+        track_samples=p2_samples,
+        start_frame=start_frame,
+        end_frame=end_frame,
+        fps=fps,
+        src_w=src_w,
+        src_h=src_h,
+        aspect_ratio=aspect_ratio,
+        face_height_frac=face_h_frac,
+        eye_line_frac=eye_line_frac,
+        config=config,
+    )
+
+    stack_plans = []
+    n_frames = min(len(p1_plans), len(p2_plans))
+    for i in range(n_frames):
+        p1 = p1_plans[i]
+        p2 = p2_plans[i]
+        stack_plans.append({
+            "frame_idx": p1["frame_idx"],
+            "t": p1["t"],
+            "state": "STACK",
+            "panels": [
+                {
+                    "panel": "top",
+                    "track": "P1",
+                    "crop": p1["crop_dict"],
+                    "face_box": p1["face_box"],
+                    "is_unsafe": p1["is_unsafe"],
+                },
+                {
+                    "panel": "bottom",
+                    "track": "P2",
+                    "crop": p2["crop_dict"],
+                    "face_box": p2["face_box"],
+                    "is_unsafe": p2["is_unsafe"],
+                }
+            ],
+            "is_unsafe": p1["is_unsafe"] or p2["is_unsafe"],
+        })
+
+    return stack_plans
