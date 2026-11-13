@@ -15,6 +15,9 @@ from typing import Any, Dict
 
 from .config import load_config
 from .s1_normalize import normalize_media, rebase_timestamps
+from .s2_shots import detect_shots
+from .s3_faces import detect_and_track_faces
+from .s7_camera import plan_camera_single_shot
 from .s9_render import render_video
 
 
@@ -49,6 +52,8 @@ def run_pipeline(
     norm_video = norm_result["normalized_video_path"]
     duration_s = norm_result["duration_s"]
     fps = norm_result["fps"]
+    src_w = norm_result["width"]
+    src_h = norm_result["height"]
     total_frames = int(round(duration_s * fps))
 
     # Rebase words and impact timestamps to 0.0 clip start (Rule 3, U12)
@@ -60,17 +65,50 @@ def run_pipeline(
     with open(workdir / "impact_rebased.json", "w", encoding="utf-8") as f:
         json.dump(impact_rebased, f, indent=2)
 
-    # ── For Phase 0 (Scaffolding / Static Crop / Fallback):
-    # Generates plan.json fallback frames (FIT_BLUR or center crop)
+    # ── Stage 2: Shots
+    shots = detect_shots(Path(norm_video), workdir, config)
+
+    # ── Stage 3: Faces & Tracks
+    tracks = detect_and_track_faces(Path(norm_video), shots, workdir, config)
+
+    # ── Stage 7: Camera Path for SINGLE (or Fallback if no tracks)
     plan_frames = []
-    for f_idx in range(total_frames):
-        plan_frames.append({
-            "frame_idx": f_idx,
-            "t": f_idx / fps,
-            "state": "FIT_BLUR",
-            "speaker": "unknown",
-            "zoom_scale": 1.0,
-        })
+    if len(tracks) > 0:
+        # Use primary track (P1) for SINGLE camera path
+        p1_track = tracks[0]
+        samples = p1_track.get("samples", [])
+        raw_plan = plan_camera_single_shot(
+            track_samples=samples,
+            start_frame=0,
+            end_frame=total_frames,
+            fps=fps,
+            src_w=src_w,
+            src_h=src_h,
+            config=config,
+        )
+        for item in raw_plan:
+            face_b = item.get("face_box")
+            plan_frames.append({
+                "frame_idx": item["frame_idx"],
+                "t": item["t"],
+                "state": "SINGLE",
+                "crop": item["crop"],
+                "speaker": p1_track.get("panel_label", "P1"),
+                "is_unsafe": item.get("is_unsafe", False),
+                "faces": [face_b] if face_b is not None else [],
+                "zoom_scale": 1.0,
+            })
+    else:
+        # Fallback FIT_BLUR when no faces
+        for f_idx in range(total_frames):
+            plan_frames.append({
+                "frame_idx": f_idx,
+                "t": f_idx / fps,
+                "state": "FIT_BLUR",
+                "speaker": "unknown",
+                "faces": [],
+                "zoom_scale": 1.0,
+            })
 
     plan_json_path = workdir / "plan.json"
     with open(plan_json_path, "w", encoding="utf-8") as f:
@@ -90,13 +128,18 @@ def run_pipeline(
     )
 
     # ── Stage 10: Generate QA Report
+    fallback_count = sum(1 for p in plan_frames if p.get("state") == "FIT_BLUR")
+    unsafe_count = sum(1 for p in plan_frames if p.get("is_unsafe", False))
+    fallback_pct = (fallback_count / max(1, total_frames)) * 100.0
+
     qa_artifact = {
-        "status": "pass",
+        "status": "pass" if fallback_pct < 40.0 else "fail",
         "clip_duration_s": duration_s,
         "frames_rendered": render_result["frames_rendered"],
         "total_source_frames": total_frames,
-        "fallback_frames": total_frames,
-        "fallback_pct": 100.0,
+        "fallback_frames": fallback_count,
+        "fallback_pct": round(fallback_pct, 2),
+        "unsafe_frames": unsafe_count,
         "config_hash": config.get("_meta", {}).get("config_hash"),
         "versions": config.get("_meta", {}).get("versions"),
     }

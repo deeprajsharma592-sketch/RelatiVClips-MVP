@@ -44,8 +44,16 @@ def draw_debug_overlay(
     # 2. Draw Detected Face Boxes & Track IDs
     if face_boxes:
         for face in face_boxes:
-            box = face.get("box", [0, 0, 0, 0])  # [x, y, w, h]
-            track_id = face.get("track_id", "?")
+            if face is None:
+                continue
+            if isinstance(face, dict):
+                box = face.get("box", [0, 0, 0, 0])
+                track_id = face.get("track_id", "?")
+            elif isinstance(face, (list, tuple)) and len(face) >= 4:
+                box = face[:4]
+                track_id = "?"
+            else:
+                continue
             is_speaker = (str(track_id) == str(active_speaker))
 
             fx, fy, fw, fh = map(int, box)

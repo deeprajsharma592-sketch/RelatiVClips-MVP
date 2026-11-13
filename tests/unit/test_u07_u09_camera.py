@@ -85,6 +85,6 @@ def test_u09_face_at_frame_edge_clamped_with_margin(camera_config):
     assert x2 <= src_w + 1e-3
     assert y2 <= src_h + 1e-3
 
-    # 2. Face box [fx, fy, fw, fh] must lie within crop with safe margin
+    # 2. Face box [fx, fy, fw, fh] must lie within crop with safe margin, or marked unsafe
     safe_margin = 0.05 * crop_w
-    assert (face_box[0] >= x1 + safe_margin) or not is_unsafe
+    assert (face_box[0] >= x1 + safe_margin) or is_unsafe

@@ -154,11 +154,17 @@ def render_video(
                 crop_boxes_viz = []
                 if plan and state == "SINGLE" and "crop" in plan:
                     c = plan["crop"]
-                    crop_boxes_viz.append((c["x1"], c["y1"], c["x1"] + c["w"], c["y1"] + c["h"]))
+                    if isinstance(c, dict):
+                        crop_boxes_viz.append((c["x1"], c["y1"], c["x1"] + c["w"], c["y1"] + c["h"]))
+                    elif isinstance(c, (list, tuple)) and len(c) >= 4:
+                        crop_boxes_viz.append((c[0], c[1], c[2], c[3]))
                 elif plan and state == "STACK" and "panels" in plan:
                     for p in plan["panels"]:
-                        c = p["crop"]
-                        crop_boxes_viz.append((c["x1"], c["y1"], c["x1"] + c["w"], c["y1"] + c["h"]))
+                        c = p.get("crop")
+                        if isinstance(c, dict):
+                            crop_boxes_viz.append((c["x1"], c["y1"], c["x1"] + c["w"], c["y1"] + c["h"]))
+                        elif isinstance(c, (list, tuple)) and len(c) >= 4:
+                            crop_boxes_viz.append((c[0], c[1], c[2], c[3]))
 
                 frame_for_render = draw_debug_overlay(
                     frame=frame,
@@ -178,9 +184,13 @@ def render_video(
                 final_frame = render_fit_blur_frame(frame_for_render, target_w, target_h)
             elif state == "SINGLE":
                 c = plan["crop"]
+                if isinstance(c, dict):
+                    cx1, cy1, cw, ch = c["x1"], c["y1"], c["w"], c["h"]
+                else:
+                    cx1, cy1, cw, ch = c[0], c[1], c[2] - c[0], c[3] - c[1]
                 final_frame = warp_crop_affine(
                     frame_for_render,
-                    c["x1"], c["y1"], c["w"], c["h"],
+                    cx1, cy1, cw, ch,
                     target_w, target_h
                 )
             elif state == "STACK":
