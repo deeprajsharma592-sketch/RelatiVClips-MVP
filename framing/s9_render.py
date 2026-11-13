@@ -5,6 +5,7 @@ renders SINGLE, STACK (1080x960 x 2), or FIT_BLUR, and pipes BGR to ffmpeg (spec
 
 from __future__ import annotations
 
+import time
 import cv2
 import numpy as np
 import subprocess
@@ -138,6 +139,7 @@ def render_video(
         stderr=subprocess.PIPE,
     )
 
+    t0 = time.time()
     frame_idx = 0
     try:
         while True:
@@ -224,8 +226,11 @@ def render_video(
     if proc.returncode != 0:
         raise RuntimeError(f"FFmpeg render pipeline failed (rc={proc.returncode}): {stderr_output[:1000]}")
 
+    render_time_s = time.time() - t0
+
     return {
         "output_path": str(output_path),
         "frames_rendered": frame_idx,
         "total_source_frames": total_frames,
+        "render_time_s": render_time_s,
     }

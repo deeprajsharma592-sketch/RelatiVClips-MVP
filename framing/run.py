@@ -29,6 +29,7 @@ from .s8_zoom import (
     apply_zoom_to_crop,
 )
 from .s9_render import render_video
+from .s10_qa import generate_qa_report
 
 
 def run_pipeline(
@@ -224,55 +225,20 @@ def run_pipeline(
         debug_overlay=debug_overlay,
     )
 
-    # ── Stage 10: Generate QA Report (Metrics M3, M4, M5, M9)
-    fallback_count = sum(1 for p in plan_frames if p.get("state") == "FIT_BLUR")
-    unsafe_count = sum(1 for p in plan_frames if p.get("is_unsafe", False))
-    fallback_pct = (fallback_count / max(1, total_frames)) * 100.0
-
-    # Metric M4: switches per minute
-    num_switches = max(0, len(layout_segments) - 1)
-    switches_per_min = (num_switches / max(1.0, duration_s)) * 60.0
-
-    # Metric M5: states shorter than min hold (excluding shot boundaries)
-    min_hold_s = float(config.get("layout", {}).get("min_hold_s", 2.0))
-    short_states = sum(1 for s in layout_segments[:-1] if (s["t_end"] - s["t_start"]) < min_hold_s - 1e-3)
-
-    # Metric M9: Zoom rate <= 1 per 5s, none within 0.3s of a switch
-    zoom_count = len(zoom_events)
-    zoom_switch_violations = 0
-    for z in zoom_events:
-        for sw in layout_switches:
-            if sw <= z["t_start"] <= sw + 0.3 or abs(sw - z["t_impact"]) <= 0.25:
-                zoom_switch_violations += 1
-                break
-
-    zoom_spacing_violations = 0
-    for i in range(1, len(zoom_events)):
-        if (zoom_events[i]["t_start"] - zoom_events[i-1]["t_start"]) < 4.0 - 1e-3:
-            zoom_spacing_violations += 1
-
-    metric_m9_pass = (zoom_switch_violations == 0 and zoom_spacing_violations == 0)
-
-    qa_artifact = {
-        "status": "pass" if fallback_pct < 40.0 and short_states == 0 and metric_m9_pass else "review",
-        "clip_duration_s": duration_s,
-        "frames_rendered": render_result["frames_rendered"],
-        "total_source_frames": total_frames,
-        "fallback_frames": fallback_count,
-        "fallback_pct": round(fallback_pct, 2),
-        "unsafe_frames": unsafe_count,
-        "layout_switches": num_switches,
-        "switches_per_minute": round(switches_per_min, 2),
-        "short_state_violations": short_states,
-        "zoom_events_count": zoom_count,
-        "zoom_switch_violations": zoom_switch_violations,
-        "zoom_spacing_violations": zoom_spacing_violations,
-        "metric_m9_pass": metric_m9_pass,
-        "config_hash": config.get("_meta", {}).get("config_hash"),
-        "versions": config.get("_meta", {}).get("versions"),
-    }
-    with open(workdir / "qa.json", "w", encoding="utf-8") as f:
-        json.dump(qa_artifact, f, indent=2)
+    # ── Stage 10: Generate QA Report (Metrics M1-M10, Status pass/review/fail)
+    qa_artifact = generate_qa_report(
+        plan_frames=plan_frames,
+        layout_segments=layout_segments,
+        zoom_events=zoom_events,
+        tracks=tracks,
+        duration_s=duration_s,
+        fps=fps,
+        total_source_frames=total_frames,
+        frames_rendered=render_result["frames_rendered"],
+        render_time_s=render_result.get("render_time_s", 1.0),
+        workdir=workdir,
+        config=config,
+    )
 
     return qa_artifact
 
