@@ -14,3 +14,7 @@ junk/
 outputs/
 temp/
 yolov10n.pt
+.venv_framing/
+framing/models/
+*.mp4
+*.wav

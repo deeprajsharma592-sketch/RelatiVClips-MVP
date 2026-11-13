@@ -1,0 +1,80 @@
+output:
+  width: 1080
+  height: 1920
+  fps: null # fps null = keep source fps clamped
+  crf: 18
+  preset: medium
+
+normalize:
+  target_fps_min: 24
+  target_fps_max: 60
+  default_fps: 30
+
+shots:
+  detector: content
+  threshold: 27
+  min_scene_len_s: 0.5
+
+faces:
+  detector: yunet
+  detect_fps: 8
+  detect_width: 640
+  score_threshold: 0.7
+  min_face_height_frac: 0.03
+  min_track_persistence_s: 0.5
+  max_gap_s: 1.0
+  landmarks: mediapipe_facemesh
+
+speaker:
+  vad: silero
+  vad_threshold: 0.5
+  min_speech_s: 0.25
+  min_silence_s: 0.3
+  mouth_window_s: 0.4
+  switch_margin: 1.3
+  unknown_hold_s: 1.5
+  av_offset_search_ms: 300
+
+turns:
+  merge_gap_s: 0.4
+  backchannel_max_s: 0.6
+
+layout:
+  min_hold_s: 2.0
+  single_enter_hold_s: 3.0
+  stack_enter_changes: 2
+  stack_enter_window_s: 6.0
+  switch_lead_s: 0.12
+  snap_to_word_boundary: true
+  transition: hard_cut # hard_cut | crossfade_4f
+
+camera:
+  single_face_height_frac: 0.22
+  eye_line_frac: 0.38
+  stack_face_height_frac: 0.35
+  smoothing: gaussian
+  gaussian_sigma_s: 0.25
+  dead_zone_frac: 0.04
+  max_pan_px_per_s: 900
+  max_scale_rate_per_s: 0.5
+  safe_margin_frac: 0.05
+
+zoom:
+  max_scale: 1.12
+  ease_in_s: 0.15
+  hold_s: 0.35
+  ease_out_s: 0.40
+  min_spacing_s: 4.0
+  no_zoom_after_switch_s: 0.3
+  loudness_peaks: true
+  validate_impact_words: true
+
+fallback:
+  style: blur_fit
+  blur_sigma: 30
+
+render:
+  resample_up: lanczos
+  resample_down: area
+  subpixel_crop: true
+  even_dims: true
