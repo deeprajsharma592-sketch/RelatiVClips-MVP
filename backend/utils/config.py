@@ -147,9 +147,16 @@ FFPROBE_PATH = os.getenv("FFPROBE_PATH") or _shutil.which("ffprobe") or "ffprobe
 # Pin to venv-installed yt-dlp (2026+ has --js-runtimes, --remote-components
 # needed for YouTube's 2025+ challenge solver). System /usr/bin/yt-dlp is
 # typically the old 2024 version from apt and breaks.
-_DEFAULT_YTDLP = _shutil.which("yt-dlp") or "yt-dlp"
+import sys
+_py_dir = Path(sys.executable).parent
+_cand_venv = _py_dir / ("yt-dlp.exe" if sys.platform == "win32" else "yt-dlp")
+if _cand_venv.exists():
+    _DEFAULT_YTDLP = str(_cand_venv)
+else:
+    _DEFAULT_YTDLP = _shutil.which("yt-dlp") or "yt-dlp"
+
 _VENV_YTDLP = "/app/RelatiV/backend/.venv/bin/yt-dlp"
-if __import__("os").path.exists(_VENV_YTDLP):
+if os.path.exists(_VENV_YTDLP):
     _DEFAULT_YTDLP = _VENV_YTDLP
 YTDLP_PATH = os.getenv("YTDLP_PATH", _DEFAULT_YTDLP)
 

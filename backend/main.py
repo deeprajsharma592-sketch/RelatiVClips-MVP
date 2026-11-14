@@ -457,14 +457,21 @@ async def debug_ytdlp_version():
 @app.post("/admin/upgrade-ytdlp")
 async def admin_upgrade_ytdlp():
     import subprocess, sys
+    # Upgrade active venv
+    res1 = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"], capture_output=True, text=True, timeout=180)
+    # Also upgrade global if exists
+    global_py = r"C:\Users\Deepraj sharma\AppData\Local\Programs\Python\Python312\python.exe"
+    import os
+    if os.path.exists(global_py):
+        subprocess.run([global_py, "-m", "pip", "install", "--upgrade", "yt-dlp"], capture_output=True, text=True, timeout=180)
     from .utils.config import YTDLP_PATH
-    res = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"], capture_output=True, text=True, timeout=180)
     res_ver = subprocess.run([YTDLP_PATH, "--version"], capture_output=True, text=True, timeout=10)
     return {
-        "ok": res.returncode == 0,
+        "ok": res1.returncode == 0,
+        "ytdlp_path": YTDLP_PATH,
         "new_version": res_ver.stdout.strip(),
-        "stdout": res.stdout,
-        "stderr": res.stderr,
+        "stdout": res1.stdout,
+        "stderr": res1.stderr,
     }
 
 
