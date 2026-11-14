@@ -47,8 +47,8 @@ def _ytdlp_section_url(
     start: float,
     end: float,
     dest_path: Optional[str] = None,
-    use_cookies: bool = False,
-    extractor_client: str = "android_vr,android,ios",
+    use_cookies: bool = True,
+    extractor_client: str = "web_embedded,android_vr",
 ) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video.
 
@@ -73,6 +73,7 @@ def _ytdlp_section_url(
         YTDLP_PATH,
         "-f", "140/251/ba/b/best",
         "--download-sections", f"*{s_str}-{e_str}",
+        "--js-runtimes", "node",
         "--extractor-args", f"youtube:player_client={extractor_client}",
         "-o", out_template,
         "--no-warnings",
@@ -96,14 +97,13 @@ def _ytdlp_video_section_url(
     start: float,
     end: float,
     dest_path: Optional[str] = None,
-    use_cookies: bool = False,
-    extractor_client: str = "android_vr,android,ios",
+    use_cookies: bool = True,
+    extractor_client: str = "web_embedded,android_vr",
 ) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video
     AS A VIDEO FILE (with both video and audio streams) for the renderer.
 
-    Uses android_vr player client to cleanly bypass YouTube SABR adaptive stream blocking
-    and download true 1080p (format 137) + audio (format 140).
+    Uses web_embedded with Node JS runtime and cookies to download true 1080p/720p.
     """
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
@@ -120,7 +120,7 @@ def _ytdlp_video_section_url(
 
     cmd = [
         YTDLP_PATH,
-        # Native 1080p and 720p HD streams; android_vr bypasses SABR streaming wall
+        # Native 1080p and 720p HD streams
         "-f", (
             "137+140/"
             "bv*[height=1080]+ba/"
@@ -134,6 +134,7 @@ def _ytdlp_video_section_url(
         "--merge-output-format", "mp4",
         "--format-sort", "res:1080,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
+        "--js-runtimes", "node",
         "--extractor-args", f"youtube:player_client={extractor_client}",
         "-o", out_template,
         "--no-warnings",
@@ -184,8 +185,8 @@ def _download_one_segment(
     final_ok = False
     try:
         for seg_attempt in range(1, 5):
-            use_cookies = (seg_attempt >= 2)
-            cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=use_cookies)
+            client = "web_embedded" if seg_attempt <= 2 else "android_vr"
+            cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=True, extractor_client=client)
             try:
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=120
@@ -395,13 +396,13 @@ def _download_one_video_segment(
     except Exception as resi_err:
         _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
         for seg_attempt in range(1, 4):
-            # Attempt 1: android_vr without cookies (clean CDN stream, FFmpeg HTTP range requests succeed without 403)
+            # Attempt 1: web_embedded with cookies and Node JS challenge solver (verified 1080p download)
             # Attempt 2: android_vr with cookies
             # Attempt 3: android with missing_pot
             if seg_attempt == 1:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android_vr,android")
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="web_embedded")
             elif seg_attempt == 2:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="android_vr,android")
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="android_vr")
             else:
                 cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android;formats=missing_pot")
             try:
