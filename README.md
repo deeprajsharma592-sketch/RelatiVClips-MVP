@@ -1,6 +1,6 @@
 # RelatiV
 
-AI video clipping engine. Privacy-first, scaling your content to the world. 
+AI video clipping engine. With media Intelligence and interms help you make your content viral. It learns your taste with time and gets better at clipping for you.
 
 ## Architecture
 
