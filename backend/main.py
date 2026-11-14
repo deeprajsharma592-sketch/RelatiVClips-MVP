@@ -624,6 +624,22 @@ async def admin_upgrade_ytdlp():
     }
 
 
+@app.post("/admin/install-deps")
+async def admin_install_deps(packages: Optional[str] = "scenedetect[opencv]"):
+    import subprocess, sys
+    pkgs = [p.strip() for p in (packages or "").split(",") if p.strip()]
+    if not pkgs:
+        pkgs = ["scenedetect[opencv]"]
+    cmd = [sys.executable, "-m", "pip", "install"] + pkgs
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    return {
+        "ok": res.returncode == 0,
+        "cmd": cmd,
+        "stdout": res.stdout,
+        "stderr": res.stderr,
+    }
+
+
 @app.get("/debug/test-clip")
 async def debug_test_clip(url: str, client: str = "web_embedded", use_cookies: bool = True, use_sections: bool = True):
     import subprocess

@@ -11,7 +11,13 @@ import math
 import json
 import cv2
 import numpy as np
-import mediapipe as mp
+
+try:
+    import mediapipe as mp
+    MEDIAPIPE_AVAILABLE = True
+except ImportError:
+    mp = None
+    MEDIAPIPE_AVAILABLE = False
 
 from .config import compute_config_hash, get_library_versions
 
@@ -90,7 +96,7 @@ def compute_iou(boxA: List[float], boxB: List[float]) -> float:
 
 def compute_mar_from_crop(face_crop: np.ndarray, face_mesh: Any) -> float:
     """Computes mouth aspect ratio (MAR) from inner lip landmarks (13, 14) and corners (78, 308)."""
-    if face_crop is None or face_crop.shape[0] < 10 or face_crop.shape[1] < 10:
+    if face_mesh is None or face_crop is None or face_crop.shape[0] < 10 or face_crop.shape[1] < 10:
         return 0.0
 
     rgb = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
@@ -161,13 +167,18 @@ def detect_and_track_faces(
         str(model_path), "", (detect_width, detect_h), score_threshold=score_threshold
     )
 
-    # Initialize MediaPipe FaceMesh
-    face_mesh = mp.solutions.face_mesh.FaceMesh(
-        static_image_mode=True,
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5
-    )
+    # Initialize MediaPipe FaceMesh (optional)
+    face_mesh = None
+    if MEDIAPIPE_AVAILABLE and hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
+        try:
+            face_mesh = mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=True,
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5
+            )
+        except Exception:
+            face_mesh = None
 
     step_frames = max(1, int(round(video_fps / detect_fps)))
     min_face_h_px = min_face_height_frac * src_h

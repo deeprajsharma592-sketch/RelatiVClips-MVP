@@ -7,8 +7,13 @@ Outputs shots.json to workdir.
 from pathlib import Path
 from typing import List, Dict, Any
 import json
-import scenedetect
-from scenedetect import open_video, SceneManager, ContentDetector
+
+try:
+    import scenedetect
+    from scenedetect import open_video, SceneManager, ContentDetector
+    SCENEDETECT_AVAILABLE = True
+except ImportError:
+    SCENEDETECT_AVAILABLE = False
 
 from .config import compute_config_hash, get_library_versions
 
@@ -29,23 +34,15 @@ def detect_shots(
     threshold = float(shots_cfg.get("threshold", 27.0))
     min_scene_len_s = float(shots_cfg.get("min_scene_len_s", 0.5))
 
-    video = open_video(str(norm_video_path))
-    fps = video.frame_rate
-    total_frames = video.duration.get_frames()
-    total_seconds = float(video.duration.get_seconds())
-
-    min_scene_frames = max(1, int(round(min_scene_len_s * fps)))
-
-    scene_manager = SceneManager()
-    scene_manager.add_detector(
-        ContentDetector(threshold=threshold, min_scene_len=min_scene_frames)
-    )
-
-    scene_manager.detect_scenes(video=video)
-    scene_list = scene_manager.get_scene_list()
-
     shots_data = []
-    if not scene_list:
+
+    if not SCENEDETECT_AVAILABLE:
+        import cv2
+        cap = cv2.VideoCapture(str(norm_video_path))
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        total_seconds = total_frames / fps if fps > 0 else 0.0
+        cap.release()
         shots_data.append({
             "shot_id": 0,
             "start_s": 0.0,
@@ -54,14 +51,38 @@ def detect_shots(
             "end_frame": total_frames
         })
     else:
-        for idx, (start_time, end_time) in enumerate(scene_list):
+        video = open_video(str(norm_video_path))
+        fps = video.frame_rate
+        total_frames = video.duration.get_frames()
+        total_seconds = float(video.duration.get_seconds())
+
+        min_scene_frames = max(1, int(round(min_scene_len_s * fps)))
+
+        scene_manager = SceneManager()
+        scene_manager.add_detector(
+            ContentDetector(threshold=threshold, min_scene_len=min_scene_frames)
+        )
+
+        scene_manager.detect_scenes(video=video)
+        scene_list = scene_manager.get_scene_list()
+
+        if not scene_list:
             shots_data.append({
-                "shot_id": idx,
-                "start_s": round(float(start_time.get_seconds()), 4),
-                "end_s": round(float(end_time.get_seconds()), 4),
-                "start_frame": start_time.get_frames(),
-                "end_frame": end_time.get_frames()
+                "shot_id": 0,
+                "start_s": 0.0,
+                "end_s": round(total_seconds, 4),
+                "start_frame": 0,
+                "end_frame": total_frames
             })
+        else:
+            for idx, (start_time, end_time) in enumerate(scene_list):
+                shots_data.append({
+                    "shot_id": idx,
+                    "start_s": round(float(start_time.get_seconds()), 4),
+                    "end_s": round(float(end_time.get_seconds()), 4),
+                    "start_frame": start_time.get_frames(),
+                    "end_frame": end_time.get_frames()
+                })
 
     output_payload = {
         "_meta": {
