@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_BASE = process.env.BACKEND_BASE_URL
-  || "http://91.98.144.72";
+  || "https://summer-clearing-ambien-builders.trycloudflare.com";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
