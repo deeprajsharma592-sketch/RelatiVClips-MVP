@@ -488,7 +488,7 @@ Rules for the output:
 - Set chosen: true for at most the top 3 per hour of source, and only for candidates scoring 65 or higher.
 - Keep reason to one sentence (max 25 words).
 - Timestamps must come directly from the transcript. Never invent them.
-- Return rejected candidates too (they are training data for later).
+- Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65). DO NOT return rejected or unchosen candidates to guarantee complete valid JSON without token exhaustion.
 """
 
 
@@ -547,7 +547,7 @@ def build_relativsauce_prompt(
 
     parts.append("\n## Transcript with Acoustic Energy Markers\n" + "\n".join(transcript_lines))
     parts.append(
-        "\nApply the RelatiVSauce rubric strictly. Score every candidate and return the JSON object with rubric_ver='sauce-0.1'. "
+        "\nApply the RelatiVSauce rubric strictly. Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65) in the JSON object with rubric_ver='sauce-0.1'. Do NOT output unchosen or rejected candidates to avoid output token limits. "
         "MANDATORY REQUIREMENT: Candidates MUST be between 45 and 90 seconds (end_s - start_s >= 45.0) and contain a full, self-contained story arc with Hook -> Build/Escalation -> Punchline/Landing. Every suggested_title MUST be an exciting, specific 3-6 word ALL CAPS headline (e.g. 'THE $500,000 MISTAKE'). NEVER output generic placeholders like 'THIS MOMENT HITS' or short 20s fragments. "
         "Output ONLY valid JSON. No markdown code fences, no introductory remarks."
     )

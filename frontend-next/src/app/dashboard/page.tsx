@@ -143,11 +143,12 @@ function DashboardContent() {
     let pollInterval: any = null;
 
     const startPolling = (tid: string) => {
-      const startTime = Date.now();
+      let consecutiveErrors = 0;
       pollInterval = setInterval(async () => {
         try {
           const status = await checkProcessingStatus(tid);
           if (!isMounted) return;
+          consecutiveErrors = 0;
 
           if (status.status === "complete" && status.clips && status.clips.length > 0) {
             clearInterval(pollInterval);
@@ -162,14 +163,17 @@ function DashboardContent() {
             updateProjectStatus(newProj.id, "failed", [], 0);
             setProjects(getStoredProjects());
           } else {
-            // Processing: calculate progress smoothly
-            const progress = Math.min(95, Math.max(25, (status.progress || 0) * 100));
+            // Processing: calculate progress smoothly (handles 0-100 or 0.0-1.0 formats)
+            const raw = typeof status.progress === "number"
+              ? (status.progress > 1 ? status.progress : status.progress * 100)
+              : 25;
+            const progress = Math.min(95, Math.max(15, raw));
             setGenerationProgress(progress);
           }
         } catch (e: any) {
-          // If backend offline or 502, surface clear connection error
-          const elapsed = Date.now() - startTime;
-          if (elapsed > 8000) {
+          consecutiveErrors++;
+          // Only abort after 15 consecutive errors (approx 35-40s of persistent outage)
+          if (consecutiveErrors > 15) {
             clearInterval(pollInterval);
             setIsGenerating(false);
             setGenerationError("Backend unreachable (502 / Host not found). Please verify your LOQ backend and tunnel are active.");
@@ -251,9 +255,12 @@ function DashboardContent() {
 
   const executeDownload = (clip: Clip) => {
     const a = document.createElement("a");
-    a.href = clip.file_path.startsWith("http")
-      ? clip.file_path
-      : apiPath(`/download/${clip.clip_id}`);
+    const downloadHref = clip.download_url
+      ? (clip.download_url.startsWith("http") ? clip.download_url : apiPath(clip.download_url))
+      : (clip.file_path && clip.file_path.startsWith("http")
+          ? clip.file_path
+          : apiPath(`/download/${clip.clip_id}`));
+    a.href = downloadHref;
     a.download = `${clip.clip_id || "relativ_clip"}.mp4`;
     document.body.appendChild(a);
     a.click();
@@ -456,9 +463,11 @@ function ClipCard({
   const [copied, setCopied] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
-  const videoUrl = clip.file_path?.startsWith("http")
-    ? clip.file_path
-    : apiPath(`/download/${clip.clip_id}`);
+  const videoUrl = clip.download_url
+    ? (clip.download_url.startsWith("http") ? clip.download_url : apiPath(clip.download_url))
+    : (clip.file_path && clip.file_path.startsWith("http")
+        ? clip.file_path
+        : apiPath(`/download/${clip.clip_id}`));
 
   const posterUrl = clip.thumbnail_url
     ? (clip.thumbnail_url.startsWith("http") ? clip.thumbnail_url : apiPath(clip.thumbnail_url))
