@@ -169,6 +169,10 @@ def _download_one_segment(
     `on_segment_done(idx, total, ok)` is invoked after each attempt outcome
     so callers can update a progress bar without parsing log messages.
     """
+    pad = SURGICAL_BUFFER_SECONDS
+    source_start = max(0.0, start - pad)
+    source_end = end + pad
+
     if audio_path.exists():
         try:
             audio_path.unlink()
@@ -222,7 +226,14 @@ def _download_one_segment(
             _log(f"  Segment {seg_idx + 1} download failed (rc={getattr(result, 'returncode', 'n/a')})")
             return {"audio_path": None, "source_start": start, "source_end": end}
         _log(f"  Segment {seg_idx + 1} ready ({audio_path.stat().st_size / 1024:.0f} KB)")
-        return {"audio_path": str(audio_path), "source_start": start, "source_end": end}
+        # yt-dlp downloads the padded interval (see _ytdlp_section_url).
+        # Keep the file's real source timeline so local Whisper timestamps can
+        # be mapped back to the original video accurately.
+        return {
+            "audio_path": str(audio_path),
+            "source_start": source_start,
+            "source_end": source_end,
+        }
     except Exception as e:
         _log(f"  Segment {seg_idx + 1} error: {str(e)[:80]}")
         return {"audio_path": None, "source_start": start, "source_end": end}

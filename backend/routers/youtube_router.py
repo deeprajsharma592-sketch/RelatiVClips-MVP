@@ -1041,10 +1041,15 @@ def _run_moment_pipeline(
                 continue
 
             # Find matching segment or use clip bounds
-            matching_seg = next(
-                (s for s in segments
-                 if abs(float(s.get("source_start", -1)) - clip_start) < 8.0),
-                None,
+            matching_seg = max(
+                (
+                    s for s in segments
+                    if min(clip_end, float(s.get("source_end", -1)))
+                    > max(clip_start, float(s.get("source_start", -1)))
+                ),
+                key=lambda s: min(clip_end, float(s.get("source_end", clip_end)))
+                - max(clip_start, float(s.get("source_start", clip_start))),
+                default=None,
             )
             title = p.get("title") or p.get("viral_title") or (m.snippet[:40] if m else "VIRAL STORY")
             caption = p.get("retention_bridge") or p.get("caption") or ""
@@ -1093,10 +1098,15 @@ def _run_moment_pipeline(
                 f"All {len(picks_sorted)} picks had low confidence; "
                 f"returning top 1 (best effort) so user sees SOMETHING",
             )
-            matching_seg = next(
-                (s for s in segments
-                 if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
-                None,
+            matching_seg = max(
+                (
+                    s for s in segments
+                    if min(m.end, float(s.get("source_end", -1)))
+                    > max(m.start, float(s.get("source_start", -1)))
+                ),
+                key=lambda s: min(m.end, float(s.get("source_end", m.end)))
+                - max(m.start, float(s.get("source_start", m.start))),
+                default=None,
             )
             final_clips.append({
                 "start": round(m.start, 2),
@@ -1119,10 +1129,15 @@ def _run_moment_pipeline(
         # by score as a last resort so the user still gets SOMETHING.
         _bridge("taste", "LLM didn't return picks — using moment-based fallback (top 3 by score)")
         for m in moments[:3]:
-            matching_seg = next(
-                (s for s in segments
-                 if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
-                None,
+            matching_seg = max(
+                (
+                    s for s in segments
+                    if min(m.end, float(s.get("source_end", -1)))
+                    > max(m.start, float(s.get("source_start", -1)))
+                ),
+                key=lambda s: min(m.end, float(s.get("source_end", m.end)))
+                - max(m.start, float(s.get("source_start", m.start))),
+                default=None,
             )
             # Generate a dynamic, contextual title from the moment's snippet rather than a generic placeholder
             snippet_words = (m.snippet or "").strip().split()
@@ -1164,6 +1179,16 @@ def _run_moment_pipeline(
             clip["end"] = round(new_end, 2)
             clip["source_start"] = round(new_start, 2)
             clip["source_end"] = round(new_end, 2)
+            # Formatting may extend a short moment around the hook. Refresh
+            # source captions to cover the final interval so fallback caption
+            # timing does not stop at the original moment boundary.
+            all_orig_segs = info.get("transcript", {}).get("segments", []) if info.get("transcript") else []
+            clip_segs = [
+                seg for seg in all_orig_segs
+                if float(seg.get("end", 0)) >= new_start
+                and float(seg.get("start", 0)) <= new_end
+            ]
+            clip["transcript"] = {"segments": clip_segs} if clip_segs else None
             clip["_platform_adjustment"] = reason
             # Apply universal caption styling + hashtag limit
             clip["caption"] = style_caption(clip.get("caption", ""))
@@ -1259,7 +1284,7 @@ def _run_moment_pipeline(
                 # Use cand["start"] as proxy for the file's actual content start:
                 # the file = (cand["start"] - pad) to (cand["end"] + pad).
                 from ..utils.config import SURGICAL_BUFFER_SECONDS as _PAD
-                clip["video_source_start"] = cand["start"] - _PAD
+                clip["video_source_start"] = max(0.0, cand["start"] - _PAD)
                 clip["video_source_end"] = cand["end"] + _PAD
                 clip.pop("_needs_video_download", None)
                 cached_segs.append(clip)
@@ -1321,7 +1346,19 @@ def _run_moment_pipeline(
             vp = clip.get("video_path")
             if vp and Path(vp).exists():
                 try:
-                    face_data = face_stage.get_batch_face_data(vp, [clip])
+                    # The downloaded file is a padded local segment, while
+                    # clip start/end remain source-video timestamps. Convert
+                    # the face-sampling interval into that file's local time.
+                    video_start = float(clip.get("video_source_start", 0.0))
+                    face_clip = {
+                        **clip,
+                        "start": max(0.0, float(clip["start"]) - video_start),
+                        "end": max(0.0, float(clip["end"]) - video_start),
+                    }
+                    face_data = face_stage.get_batch_face_data(vp, [face_clip])
+                    if face_data:
+                        clip["x_offset"] = face_data[0].get("x_offset", 0)
+                        clip["face_detected"] = face_data[0].get("face_detected", False)
                     clip["face_data"] = face_data[0] if face_data else None
                 except Exception as e:
                     _bridge("face", f"  face {i+1} failed: {e}")

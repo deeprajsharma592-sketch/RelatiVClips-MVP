@@ -272,6 +272,7 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
             segments, info = model.transcribe(
                 audio_path,
                 beam_size=5,
+                word_timestamps=True,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
             )
@@ -280,16 +281,28 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
             segments, info = model.transcribe(
                 audio_path,
                 beam_size=5,
+                word_timestamps=True,
                 vad_filter=False,
             )
 
         segment_list = []
         for seg in segments:
-            segment_list.append({
+            seg_dict = {
                 "start": round(seg.start, 3),
                 "end": round(seg.end, 3),
                 "text": seg.text.strip(),
-            })
+            }
+            if getattr(seg, "words", None):
+                seg_dict["words"] = [
+                    {
+                        "word": w.word.strip(),
+                        "start": round(w.start, 3),
+                        "end": round(w.end, 3),
+                    }
+                    for w in seg.words
+                    if w.word.strip()
+                ]
+            segment_list.append(seg_dict)
 
         clear_gpu()
         log(f"  Whisper transcribed: {len(segment_list)} segments in {info.language}")

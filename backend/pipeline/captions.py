@@ -64,6 +64,7 @@ def generate_viral_ass_subtitles(
     raw_words = []
     transcript = clip.get("transcript") or {}
     segments = transcript.get("segments", [])
+    has_word_timestamps = any(seg.get("words") for seg in segments)
 
     for seg in segments:
         seg_words = seg.get("words", [])
@@ -101,8 +102,26 @@ def generate_viral_ass_subtitles(
                                 "end": round(s_rel + (idx + 1) * step, 3),
                             })
 
-    # Fallback 1: if no words from transcript, transcribe the local clip segment with Whisper
-    if not raw_words:
+    raw_words.sort(key=lambda word: (word["start"], word["end"]))
+    # Hook windows can overlap, so the same source word may be present in
+    # more than one stitched Whisper segment. Suppress near-identical repeats
+    # while retaining genuinely repeated speech later in the clip.
+    unique_words = []
+    for word in raw_words:
+        normalized = re.sub(r"[^A-Z0-9']", "", word["word"])
+        duplicate = any(
+            normalized == re.sub(r"[^A-Z0-9']", "", prev["word"])
+            and abs(word["start"] - prev["start"]) <= 0.15
+            for prev in unique_words[-4:]
+        )
+        if not duplicate:
+            unique_words.append(word)
+    raw_words = unique_words
+
+    # YouTube VTT cues contain phrase timestamps, not word timestamps. For
+    # karaoke-style captions, prefer a local word-timestamped pass whenever a
+    # rendered source segment is available, retaining VTT timing as fallback.
+    if not has_word_timestamps:
         local_media = clip.get("video_path") or clip.get("audio_path")
         if local_media and Path(local_media).exists():
             try:
@@ -130,7 +149,11 @@ def generate_viral_ass_subtitles(
                 v_src = float(clip.get("video_source_start", clip_start))
                 rel_start = max(0.0, clip_start - v_src)
 
-                segs, _ = whisper_mod.transcribe(str(local_media), word_timestamps=True)
+                segs, _ = whisper_mod.transcribe(
+                    str(local_media), word_timestamps=True, beam_size=5,
+                    vad_filter=True,
+                )
+                whisper_words = []
                 for seg in segs:
                     seg_words = getattr(seg, "words", None)
                     if seg_words:
@@ -140,7 +163,7 @@ def generate_viral_ass_subtitles(
                             if w_rel_end > 0.0 and w_rel_start < clip_duration:
                                 clean_w = _sanitize_text(w.word)
                                 if clean_w:
-                                    raw_words.append({
+                                    whisper_words.append({
                                         "word": clean_w,
                                         "start": max(0.0, round(w_rel_start, 3)),
                                         "end": min(clip_duration, round(w_rel_end, 3)),
@@ -155,11 +178,13 @@ def generate_viral_ass_subtitles(
                                 for idx, w in enumerate(words):
                                     clean_w = _sanitize_text(w)
                                     if clean_w:
-                                        raw_words.append({
+                                        whisper_words.append({
                                             "word": clean_w,
                                             "start": round(s_start + idx * step, 3),
                                             "end": round(s_start + (idx + 1) * step, 3),
                                         })
+                if whisper_words:
+                    raw_words = sorted(whisper_words, key=lambda word: word["start"])
             except Exception as e:
                 print(f"[Captions] Clip Whisper fallback skipped: {e}")
 
