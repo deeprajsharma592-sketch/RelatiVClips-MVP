@@ -133,10 +133,11 @@ def render_video(
         "-map", "1:a?",
     ]
 
-    # Subtitle burn-in filter if provided
+    # Subtitle burn-in filter if provided (animated kinetic captions)
     if subtitle_path and Path(subtitle_path).exists() and Path(subtitle_path).stat().st_size > 50:
         escaped_sub = str(Path(subtitle_path).as_posix()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
         ffmpeg_cmd.extend(["-vf", f"ass='{escaped_sub}'"])
+        print(f"[Framing Render] Burning viral subtitles from {subtitle_path}")
 
     ffmpeg_cmd.extend([
         "-c:v", "libx264",

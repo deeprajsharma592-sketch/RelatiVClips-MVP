@@ -87,7 +87,9 @@ def generate_viral_ass_subtitles(
                 if words:
                     s_rel = max(0.0, seg_start - clip_start)
                     e_rel = min(clip_duration, seg_end - clip_start)
-                    step = (e_rel - s_rel) / len(words)
+                    if e_rel <= s_rel:
+                        e_rel = min(clip_duration, s_rel + max(1.0, len(words) * 0.35))
+                    step = max(0.15, (e_rel - s_rel) / len(words))
                     for idx, w in enumerate(words):
                         clean_w = _sanitize_text(w)
                         if clean_w:
@@ -159,8 +161,25 @@ def generate_viral_ass_subtitles(
             except Exception as e:
                 print(f"[Captions] Clip Whisper fallback skipped: {e}")
 
-    # No fake fallback! If there are genuinely no spoken words (music, silent scene, sound effects),
-    # return None so the video renders cleanly without absurd diagnostic text overlays like 'OPENING BEAT LANDS'.
+    # Fallback 2: if still no words, synthesize kinetic subtitles from caption / viral title
+    if not raw_words:
+        summary_text = clip.get("caption") or clip.get("viral_title")
+        if summary_text and len(summary_text.strip()) > 3:
+            words = [w for w in summary_text.strip().split() if not w.startswith("#")]
+            if words:
+                step = min(0.45, max(0.25, (clip_duration - 1.0) / len(words)))
+                for idx, w in enumerate(words):
+                    clean_w = _sanitize_text(w)
+                    if clean_w:
+                        w_start = round(0.5 + idx * step, 3)
+                        w_end = round(w_start + step, 3)
+                        if w_end <= clip_duration:
+                            raw_words.append({
+                                "word": clean_w,
+                                "start": w_start,
+                                "end": w_end,
+                            })
+
     if not raw_words:
         return None
 
