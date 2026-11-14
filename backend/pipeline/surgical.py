@@ -56,6 +56,13 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     from datetime import datetime, timedelta
     s_str = str(timedelta(seconds=int(s)))
     e_str = str(timedelta(seconds=int(e)))
+    
+    # yt-dlp requires .%(ext)s template when post-processing with --extract-audio
+    out_template = "-"
+    if dest_path and dest_path != "-":
+        p = Path(dest_path)
+        out_template = str(p.parent / f"{p.stem}.%(ext)s")
+
     cmd = [
         YTDLP_PATH,
         "-f", "bestaudio/best",
@@ -64,7 +71,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
         "--audio-quality", "0",
         "--extractor-args", "youtube:player_client=android,web",
         "--download-sections", f"*{s_str}-{e_str}",
-        "-o", dest_path if dest_path else "-",
+        "-o", out_template,
         "--no-warnings",
         "--",
         url,
@@ -100,6 +107,13 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     from datetime import timedelta
     s_str = str(timedelta(seconds=int(s)))
     e_str = str(timedelta(seconds=int(e)))
+
+    # yt-dlp requires .%(ext)s template when merging video+audio streams
+    out_template = "-"
+    if dest_path and dest_path != "-":
+        p = Path(dest_path)
+        out_template = str(p.parent / f"{p.stem}.%(ext)s")
+
     cmd = [
         YTDLP_PATH,
         # Allow 4K (2160p) and 2K (1440p) downloads so a 9:16 vertical crop has true 1080p+ native horizontal detail
@@ -115,7 +129,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         "--merge-output-format", "mp4",
         "--download-sections", f"*{s_str}-{e_str}",
         "--extractor-args", "youtube:player_client=ios,android,web",
-        "-o", dest_path if dest_path else "-",
+        "-o", out_template,
         "--no-warnings",
         "--",
         url,
@@ -174,6 +188,12 @@ def _download_one_segment(
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=120
                 )
+                if not audio_path.exists():
+                    for ext in (".m4a", ".opus", ".webm", ".aac", ".mp3"):
+                        cand = audio_path.with_suffix(ext)
+                        if cand.exists() and cand.stat().st_size > 0:
+                            cand.rename(audio_path)
+                            break
                 if result.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 0:
                     final_ok = True
                     break
@@ -373,6 +393,17 @@ def _download_one_video_segment(
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=180
                 )
+                if not video_path.exists():
+                    for ext in (".mp4", ".mkv", ".webm"):
+                        cand = video_path.with_suffix(ext)
+                        if cand.exists() and cand.stat().st_size > 1024:
+                            if ext != ".mp4":
+                                remux_cmd = [FFMPEG_PATH, "-y", "-i", str(cand), "-c", "copy", str(video_path)]
+                                subprocess.run(remux_cmd, capture_output=True, timeout=30)
+                                cand.unlink(missing_ok=True)
+                            else:
+                                cand.rename(video_path)
+                            break
                 if (result.returncode == 0 and video_path.exists()
                         and video_path.stat().st_size > 1024):
                     try:

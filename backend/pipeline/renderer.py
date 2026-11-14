@@ -330,10 +330,16 @@ def render_clip(
             print(f"[Renderer] Audio-only input but no still available — falling back to original path")
 
     dynamic_rendered = False
-    if not used_still_audio and not _is_audio_only(video_path):
+    valid_video_file = (
+        video_path
+        and isinstance(video_path, (str, Path))
+        and not str(video_path).startswith("http")
+        and Path(str(video_path)).exists()
+    )
+    if not used_still_audio and valid_video_file and not _is_audio_only(str(video_path)):
         try:
             import cv2
-            cap = cv2.VideoCapture(video_path)
+            cap = cv2.VideoCapture(str(video_path))
             ret, _ = cap.read()
             cap.release()
             if ret:
@@ -341,7 +347,7 @@ def render_clip(
                 pretrim_path = TEMP_DIR / f"pretrim_{task_id}_{clip_index}.mp4"
                 trim_cmd = [
                     FFMPEG_PATH, "-y", "-ss", str(rel_start), "-t", str(duration),
-                    "-i", str(video_path), "-c:v", "copy", "-c:a", "copy", str(pretrim_path)
+                    "-i", str(video_path), "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-c:a", "aac", str(pretrim_path)
                 ]
                 subprocess.run(trim_cmd, capture_output=True, timeout=30)
                 input_for_framing = str(pretrim_path) if (pretrim_path.exists() and pretrim_path.stat().st_size > 1024) else str(video_path)

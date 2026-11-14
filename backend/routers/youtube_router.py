@@ -1327,7 +1327,7 @@ def _run_moment_pipeline(
             source_for_renderer = (
                 clip.get("video_path")
                 or clip.get("audio_path")
-                or clip.get("source_start", url)
+                or url
             )
             # FIX 2026-06-16: use video_source_start (padded) not source_start (audio, unpadded).
             # video_source_start is set when video segment is attached to clip.
