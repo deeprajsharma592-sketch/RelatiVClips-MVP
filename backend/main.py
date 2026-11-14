@@ -446,6 +446,35 @@ async def debug_formats(url: str):
     return {"stdout": res.stdout, "stderr": res.stderr}
 
 
+@app.get("/debug/ytdlp-version")
+async def debug_ytdlp_version():
+    import subprocess
+    from .utils.config import YTDLP_PATH
+    res = subprocess.run([YTDLP_PATH, "--version"], capture_output=True, text=True, timeout=10)
+    return {"version": res.stdout.strip(), "stderr": res.stderr}
+
+
+@app.get("/debug/test-clip")
+async def debug_test_clip(url: str, client: str = "android_vr"):
+    import subprocess
+    from .utils.config import YTDLP_PATH, FFMPEG_PATH, TEMP_DIR
+    out = str(TEMP_DIR / "debug_clip.%(ext)s")
+    cmd = [
+        YTDLP_PATH,
+        "-f", "137+140/bv*[height>=1080]+ba/136+140/bv*[height>=720]+ba/bv*+ba",
+        "--download-sections", "*00:00:10-00:00:20",
+        "--extractor-args", f"youtube:player_client={client}",
+        "-o", out,
+        "--verbose",
+        "--force-overwrites",
+    ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
+    cmd.extend(["--", url])
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    return {"returncode": res.returncode, "stdout": res.stdout, "stderr": res.stderr}
+
+
 SAFE_CLIP_ID_REGEX = re.compile(r'^[A-Za-z0-9_-]+$')
 
 
