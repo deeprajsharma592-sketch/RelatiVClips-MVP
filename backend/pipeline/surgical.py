@@ -76,15 +76,8 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
-    # Working copy of cookies (so yt-dlp's save_cookies can't corrupt source)
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            cmd.extend(["--cookies", _working])
-        except Exception:
-            cmd.extend(["--cookies", str(COOKIES_PATH)])
+    from ..utils.config import get_cookie_args
+    cmd.extend(get_cookie_args())
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -136,14 +129,8 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            cmd.extend(["--cookies", _working])
-        except Exception:
-            cmd.extend(["--cookies", str(COOKIES_PATH)])
+    from ..utils.config import get_cookie_args
+    cmd.extend(get_cookie_args())
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])

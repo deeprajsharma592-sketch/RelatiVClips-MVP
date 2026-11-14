@@ -176,6 +176,46 @@ _possible_cookies = [
 ]
 COOKIES_PATH = next((p for p in _possible_cookies if p and p.exists()), BASE_DIR / "cookies.txt")
 
+
+def get_cookie_args() -> List[str]:
+    """Returns the yt-dlp arguments for cookies.
+    1. Checks if a known cookies.txt exists on disk.
+    2. If not found, attempts to extract from Chrome / Edge to BASE_DIR / 'cookies.txt'.
+    3. If extraction fails, falls back to direct --cookies-from-browser flag.
+    """
+    import subprocess
+    import shutil
+
+    for p in _possible_cookies:
+        if p and p.exists() and p.stat().st_size > 100:
+            _working = TEMP_DIR / "youtube_cookies_working.txt"
+            try:
+                shutil.copy2(str(p), str(_working))
+                return ["--cookies", str(_working)]
+            except Exception:
+                return ["--cookies", str(p)]
+
+    # Attempt automatic extraction into BASE_DIR / "cookies.txt"
+    target = BASE_DIR / "cookies.txt"
+    for b in ("chrome", "edge", "brave", "firefox"):
+        try:
+            cmd = [
+                YTDLP_PATH,
+                "--cookies-from-browser", b,
+                "--cookies", str(target),
+                "--skip-download",
+                "https://www.youtube.com",
+            ]
+            res = subprocess.run(cmd, capture_output=True, timeout=15)
+            if target.exists() and target.stat().st_size > 100:
+                print(f"[Cookies] Extracted YouTube cookies from {b} to {target}")
+                return ["--cookies", str(target)]
+        except Exception:
+            pass
+
+    # Fallback to direct browser extraction in yt-dlp
+    return ["--cookies-from-browser", "chrome"]
+
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 VISION_ENABLED = os.getenv("VISION_ENABLED", "false").lower() == "true"
 
