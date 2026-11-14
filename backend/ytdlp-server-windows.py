@@ -43,16 +43,26 @@ def run_yt_dlp(url: str, format_spec: str) -> tuple[list[str], str]:
     return urls, result.stderr.strip()
 
 
+HIGH_RES_FORMAT = (
+    "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/"
+    "bv*[height<=1080]+ba/"
+    "b[height<=1080]/"
+    "bestvideo+bestaudio/"
+    "best"
+)
+
+
 def download_video(url: str, output_path: Path, start: Optional[float] = None,
-                   end: Optional[float] = None) -> Path:
-    cmd = [YT_DLP_CMD, "-f", "worst[height>=360]/worst", "--no-playlist",
+                   end: Optional[float] = None, format_spec: Optional[str] = None) -> Path:
+    fmt = format_spec or HIGH_RES_FORMAT
+    cmd = [YT_DLP_CMD, "-f", fmt, "--merge-output-format", "mp4", "--no-playlist",
            "-o", str(output_path)]
     if COOKIES_PATH and os.path.exists(COOKIES_PATH):
         cmd.extend(["--cookies", COOKIES_PATH])
     if start is not None or end is not None:
         cmd.extend(["--download-sections", f"*{start or 0}_{end or ''}"])
     cmd.append(url)
-    print(f"[yt-dlp] Downloading: {url}")
+    print(f"[yt-dlp] Downloading: {url} (format={fmt})")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"yt-dlp failed:\n{result.stderr}")
@@ -74,7 +84,7 @@ async def health():
 @app.get("/download")
 async def download_video_endpoint(
     url: str = Query(...),
-    format_spec: str = Query("worst[height>=360]/worst"),
+    format_spec: str = Query("bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/best"),
 ):
     if not url.startswith("http"):
         raise HTTPException(400, "Invalid URL")

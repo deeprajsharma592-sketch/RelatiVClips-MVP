@@ -13,14 +13,24 @@ TEMP_DIR = Path(os.environ.get("TEMP", tempfile.gettempdir()))
 YT_DLP_CMD = "yt-dlp"
 
 
-def download_video(url, output_path, start=None, end=None):
-    cmd = [YT_DLP_CMD, "-f", "worst[height>=360]/worst", "--no-playlist", "-o", str(output_path)]
+HIGH_RES_FORMAT = (
+    "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/"
+    "bv*[height<=1080]+ba/"
+    "b[height<=1080]/"
+    "bestvideo+bestaudio/"
+    "best"
+)
+
+
+def download_video(url, output_path, start=None, end=None, format_spec=None):
+    fmt = format_spec or HIGH_RES_FORMAT
+    cmd = [YT_DLP_CMD, "-f", fmt, "--merge-output-format", "mp4", "--no-playlist", "-o", str(output_path)]
     if COOKIES_PATH and os.path.exists(COOKIES_PATH):
         cmd.extend(["--cookies", COOKIES_PATH])
     if start is not None or end is not None:
         cmd.extend(["--download-sections", f"*{start or 0}_{end or ''}"])
     cmd.append(url)
-    print(f"[yt-dlp] Downloading: {url}")
+    print(f"[yt-dlp] Downloading: {url} (format={fmt})")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError("yt-dlp failed:\n" + result.stderr)
@@ -36,12 +46,12 @@ async def health():
 
 
 @app.get("/download")
-async def download_video_endpoint(url=Query(...), format_spec=Query("worst[height>=360]/worst")):
+async def download_video_endpoint(url=Query(...), format_spec=Query(None)):
     if not url.startswith("http"):
         raise HTTPException(400, "Invalid URL")
     out_path = TEMP_DIR / f"relativ_{os.getpid()}_{abs(hash(url))}.mp4"
     try:
-        download_video(url, out_path)
+        download_video(url, out_path, format_spec=format_spec)
         return FileResponse(path=out_path, filename="video.mp4", media_type="video/mp4", headers={"Content-Length": str(out_path.stat().st_size)})
     finally:
         if out_path.exists():
@@ -49,10 +59,10 @@ async def download_video_endpoint(url=Query(...), format_spec=Query("worst[heigh
 
 
 @app.post("/segment")
-async def download_segment_endpoint(url, start=None, end=None):
+async def download_segment_endpoint(url, start=None, end=None, format_spec=None):
     out_path = TEMP_DIR / f"relativ_seg_{abs(hash(url))}_{start or 0}_{end or 'end'}.mp4"
     try:
-        download_video(url, out_path, start, end)
+        download_video(url, out_path, start, end, format_spec=format_spec)
         def iter_file():
             with open(out_path, "rb") as f:
                 while chunk := f.read(1048576):

@@ -94,6 +94,7 @@ def render_video(
     config: Dict[str, Any],
     debug_overlay: bool = False,
     progress_cb: Optional[Callable[[float], None]] = None,
+    subtitle_path: Optional[str | Path] = None,
 ) -> Dict[str, Any]:
     """
     Stream source video frame-by-frame, transform per plan_frames, and pipe BGR to FFmpeg.
@@ -130,6 +131,14 @@ def render_video(
         "-i", str(norm_video_path),
         "-map", "0:v",
         "-map", "1:a?",
+    ]
+
+    # Subtitle burn-in filter if provided
+    if subtitle_path and Path(subtitle_path).exists() and Path(subtitle_path).stat().st_size > 50:
+        escaped_sub = str(Path(subtitle_path).as_posix()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+        ffmpeg_cmd.extend(["-vf", f"ass='{escaped_sub}'"])
+
+    ffmpeg_cmd.extend([
         "-c:v", "libx264",
         "-crf", str(crf),
         "-preset", preset,
@@ -139,7 +148,7 @@ def render_video(
         "-shortest",
         "-movflags", "+faststart",
         str(output_path),
-    ]
+    ])
 
     proc = subprocess.Popen(
         ffmpeg_cmd,

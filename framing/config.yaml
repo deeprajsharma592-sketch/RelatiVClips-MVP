@@ -43,21 +43,24 @@ layout:
   min_hold_s: 2.0
   single_enter_hold_s: 3.0
   stack_enter_changes: 2
-  stack_enter_window_s: 6.0
+  stack_enter_window_s: 5.0
   switch_lead_s: 0.12
   snap_to_word_boundary: true
   transition: hard_cut # hard_cut | crossfade_4f
 
 camera:
-  single_face_height_frac: 0.22
+  single_face_height_frac: 0.30
   eye_line_frac: 0.38
   stack_face_height_frac: 0.35
+  min_source_height_frac: 0.90
+  min_stack_source_height_frac: 0.55
   smoothing: gaussian
   gaussian_sigma_s: 0.25
   dead_zone_frac: 0.04
   max_pan_px_per_s: 900
   max_scale_rate_per_s: 0.5
   safe_margin_frac: 0.05
+  debug_overlay: false
 
 zoom:
   max_scale: 1.12

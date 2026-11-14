@@ -56,6 +56,7 @@ def download_video(
     output_path: str,
     start: Optional[float] = None,
     end: Optional[float] = None,
+    format_spec: Optional[str] = None,
 ) -> str:
     """
     Download a YouTube video (or segment) via the residential server (laptop).
@@ -72,6 +73,8 @@ def download_video(
         params["start"] = str(start)
     if end is not None:
         params["end"] = str(end)
+    if format_spec is not None:
+        params["format_spec"] = str(format_spec)
 
     try:
         with requests.get(

@@ -183,16 +183,14 @@ def plan_layout(
 
             if spk in [p1_label, p2_label]:
                 # If currently in STACK: check if this speaker holds floor for >= single_enter_hold_s
-                # Look ahead to see if floor is held
                 dur = t_e - t_s
                 if dur >= single_enter_hold_s:
-                    # Switch to SINGLE(spk) at t_s + single_enter_hold_s
-                    trigger_t = t_s + single_enter_hold_s
+                    # Switch to SINGLE(spk) at t_s + single_enter_hold_s with switch_lead_s
+                    trigger_t = max(shot_start + min_hold_s, t_s + single_enter_hold_s - switch_lead_s)
                     raw_events.append({"t": trigger_t, "to_state": "SINGLE", "to_track": spk})
 
-                # If currently in SINGLE(other): if a different speaker starts non-backchannel turn, switch to STACK
-                # Schedule switch_lead_s before the turn
-                lead_trigger = t_s - switch_lead_s
+                # If in SINGLE(other) or speaker switch: lead with STACK before the new turn
+                lead_trigger = max(shot_start, t_s - switch_lead_s)
                 raw_events.append({"t": lead_trigger, "to_state": "STACK", "to_track": None, "for_speaker": spk})
 
         # Sort raw events by time

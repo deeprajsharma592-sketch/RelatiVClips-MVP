@@ -285,24 +285,59 @@ def detect_and_track_faces(
                 if duration >= min_track_persistence_s:
                     stable_tracks.append(trk)
 
-            # Assign panel order by mean horizontal position (leftmost = P1, next = P2)
-            track_mean_xs = []
-            for trk in stable_tracks:
-                mean_x = np.mean([s["box"][0] + s["box"][2] / 2.0 for s in trk.samples])
-                track_mean_xs.append((mean_x, trk))
+            if not stable_tracks:
+                continue
 
-            track_mean_xs.sort(key=lambda item: item[0])
+            # Check if there are truly multiple distinct simultaneous subjects in this shot.
+            # Two tracks represent distinct subjects ONLY IF:
+            # 1. They co-occur simultaneously in time (overlap duration >= 0.5s)
+            # 2. Their horizontal positions are significantly separated (delta_x >= 0.12 * src_w)
+            # If no pair co-occurs simultaneously with spatial separation, then ALL tracks
+            # in this shot belong to the SAME individual (P1) whose track broke temporarily.
+            distinct_pairs = []
+            for i in range(len(stable_tracks)):
+                for j in range(i + 1, len(stable_tracks)):
+                    t1, t2 = stable_tracks[i], stable_tracks[j]
+                    overlap = min(t1.last_seen_t, t2.last_seen_t) - max(t1.start_t, t2.start_t)
+                    if overlap >= 0.5:
+                        mean_x1 = float(np.mean([s["box"][0] + s["box"][2] / 2.0 for s in t1.samples]))
+                        mean_x2 = float(np.mean([s["box"][0] + s["box"][2] / 2.0 for s in t2.samples]))
+                        if abs(mean_x1 - mean_x2) >= (0.12 * src_w):
+                            distinct_pairs.append((t1, t2, mean_x1, mean_x2, overlap))
 
-            for order_idx, (_, trk) in enumerate(track_mean_xs):
-                panel_label = f"P{order_idx + 1}"
-                all_tracks_output.append({
-                    "track_id": trk.track_id,
-                    "shot_id": shot_id,
-                    "panel_label": panel_label,
-                    "start_s": round(trk.start_t, 4),
-                    "end_s": round(trk.last_seen_t, 4),
-                    "samples": trk.samples
-                })
+            if distinct_pairs:
+                # We have at least 2 distinct simultaneous subjects!
+                # Pick the pair with the most simultaneous co-presence
+                distinct_pairs.sort(key=lambda p: -p[4])
+                best_t1, best_t2, x1, x2, _ = distinct_pairs[0]
+                left_x = min(x1, x2)
+                right_x = max(x1, x2)
+
+                # Cluster every stable track to P1 (left) or P2 (right) based on horizontal proximity
+                for trk in stable_tracks:
+                    trk_mean_x = float(np.mean([s["box"][0] + s["box"][2] / 2.0 for s in trk.samples]))
+                    dist_to_left = abs(trk_mean_x - left_x)
+                    dist_to_right = abs(trk_mean_x - right_x)
+                    panel_label = "P1" if dist_to_left <= dist_to_right else "P2"
+                    all_tracks_output.append({
+                        "track_id": trk.track_id,
+                        "shot_id": shot_id,
+                        "panel_label": panel_label,
+                        "start_s": round(trk.start_t, 4),
+                        "end_s": round(trk.last_seen_t, 4),
+                        "samples": trk.samples
+                    })
+            else:
+                # Shot has only ONE person! All tracks belong to P1
+                for trk in stable_tracks:
+                    all_tracks_output.append({
+                        "track_id": trk.track_id,
+                        "shot_id": shot_id,
+                        "panel_label": "P1",
+                        "start_s": round(trk.start_t, 4),
+                        "end_s": round(trk.last_seen_t, 4),
+                        "samples": trk.samples
+                    })
 
     finally:
         cap.release()

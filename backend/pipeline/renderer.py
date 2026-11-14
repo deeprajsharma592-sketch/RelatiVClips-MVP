@@ -329,81 +329,115 @@ def render_clip(
         else:
             print(f"[Renderer] Audio-only input but no still available — falling back to original path")
 
-    if ffmpeg_cmd is None:
-        ffmpeg_cmd = build_ffmpeg_command(
-            video_path,
-            str(output_path),
-            rel_start,
-            rel_end,
-            x_offset,
-            str(subtitle_path),
-            accurate_seek=True,
-            face_tracking_data=face_tracking
-        )
+    dynamic_rendered = False
+    if not used_still_audio and not _is_audio_only(video_path):
+        try:
+            import cv2
+            cap = cv2.VideoCapture(video_path)
+            ret, _ = cap.read()
+            cap.release()
+            if ret:
+                print(f"[Renderer] Attempting RelatiV Dynamic Framing Engine for clip {clip_index}...")
+                pretrim_path = TEMP_DIR / f"pretrim_{task_id}_{clip_index}.mp4"
+                trim_cmd = [
+                    FFMPEG_PATH, "-y", "-ss", str(rel_start), "-t", str(duration),
+                    "-i", str(video_path), "-c:v", "copy", "-c:a", "copy", str(pretrim_path)
+                ]
+                subprocess.run(trim_cmd, capture_output=True, timeout=30)
+                input_for_framing = str(pretrim_path) if (pretrim_path.exists() and pretrim_path.stat().st_size > 1024) else str(video_path)
 
-    try:
-        print(f"[Renderer] Running FFmpeg command:")
-        print(f"[Renderer]   Input: {video_path}")
-        print(f"[Renderer]   Output: {output_path}")
-        print(f"[Renderer]   rel_start: {rel_start:.1f}s, rel_end: {rel_end:.1f}s (orig {orig_duration:.0f}s)")
-        print(f"[Renderer]   x_offset: {x_offset}")
-        print(f"[Renderer]   CMD: {' '.join(ffmpeg_cmd)}")
-        
-        result = subprocess.run(
-            ffmpeg_cmd,
-            capture_output=True,
-            text=True,
-            timeout=90
-        )
+                from framing.run import run_pipeline
+                framing_workdir = TEMP_DIR / f"framing_{task_id}_{clip_index}"
+                run_pipeline(
+                    clip_path=input_for_framing,
+                    output_path=str(output_path),
+                    workdir=framing_workdir,
+                    subtitles_path=str(subtitle_path) if (subtitle_path and Path(subtitle_path).exists()) else None,
+                    debug_overlay=False,
+                )
+                if output_path.exists() and output_path.stat().st_size > 1024:
+                    print(f"[Renderer] Dynamic framing engine produced {output_path} ({output_path.stat().st_size // 1024} KB)")
+                    dynamic_rendered = True
+        except Exception as dynamic_err:
+            print(f"[Renderer] Dynamic framing engine fallback to legacy ffmpeg: {dynamic_err}")
+            dynamic_rendered = False
 
-        # Always print stderr for debugging (ffmpeg can return 0 but write 0 bytes)
-        if result.stderr:
-            print(f"[Renderer] FFmpeg stderr: {result.stderr[:500]}")
-        if result.stdout:
-            print(f"[Renderer] FFmpeg stdout: {result.stdout[:200]}")
-
-        if result.returncode != 0:
-            print(f"FFmpeg error for clip {clip_index}: returncode={result.returncode}")
-            print(f"FFmpeg stderr: {result.stderr[:1000]}")
-            
-            # Try simpler filter chain as fallback
-            if progress_callback:
-                progress_callback("Retrying with simpler filter chain...")
-            
-            simpler_cmd = build_ffmpeg_command(
+    if not dynamic_rendered:
+        if ffmpeg_cmd is None:
+            ffmpeg_cmd = build_ffmpeg_command(
                 video_path,
                 str(output_path),
                 rel_start,
                 rel_end,
-                0,  # center crop
-                None,
-                accurate_seek=False,
-                face_tracking_data=None
+                x_offset,
+                str(subtitle_path),
+                accurate_seek=True,
+                face_tracking_data=face_tracking
             )
+
+        try:
+            print(f"[Renderer] Running FFmpeg command:")
+            print(f"[Renderer]   Input: {video_path}")
+            print(f"[Renderer]   Output: {output_path}")
+            print(f"[Renderer]   rel_start: {rel_start:.1f}s, rel_end: {rel_end:.1f}s (orig {orig_duration:.0f}s)")
+            print(f"[Renderer]   x_offset: {x_offset}")
+            print(f"[Renderer]   CMD: {' '.join(ffmpeg_cmd)}")
             
-            print(f"[Renderer] Running simpler FFmpeg command...")
-            print(f"[Renderer]   Simpler CMD: {' '.join(simpler_cmd)}")
             result = subprocess.run(
-                simpler_cmd,
+                ffmpeg_cmd,
                 capture_output=True,
                 text=True,
                 timeout=90
             )
-            
+
+            # Always print stderr for debugging (ffmpeg can return 0 but write 0 bytes)
             if result.stderr:
-                print(f"[Renderer] Simpler stderr: {result.stderr[:500]}")
-            
+                print(f"[Renderer] FFmpeg stderr: {result.stderr[:500]}")
+            if result.stdout:
+                print(f"[Renderer] FFmpeg stdout: {result.stdout[:200]}")
+
             if result.returncode != 0:
-                print(f"Simpler FFmpeg also failed: {result.returncode}")
-                print(f"stderr: {result.stderr[:500]}")
+                print(f"FFmpeg error for clip {clip_index}: returncode={result.returncode}")
+                print(f"FFmpeg stderr: {result.stderr[:1000]}")
+                
+                # Try simpler filter chain as fallback
                 if progress_callback:
-                    progress_callback(f"FFmpeg error: {result.stderr[:200]}")
-            else:
-                print(f"[Renderer] Simpler command succeeded!")
-                if progress_callback:
-                    progress_callback("Render succeeded with simpler filter")
-    except subprocess.TimeoutExpired:
-        raise RuntimeError(f"Render timeout for clip {clip_index}")
+                    progress_callback("Retrying with simpler filter chain...")
+                
+                simpler_cmd = build_ffmpeg_command(
+                    video_path,
+                    str(output_path),
+                    rel_start,
+                    rel_end,
+                    0,  # center crop
+                    None,
+                    accurate_seek=False,
+                    face_tracking_data=None
+                )
+                
+                print(f"[Renderer] Running simpler FFmpeg command...")
+                print(f"[Renderer]   Simpler CMD: {' '.join(simpler_cmd)}")
+                result = subprocess.run(
+                    simpler_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=90
+                )
+                
+                if result.stderr:
+                    print(f"[Renderer] Simpler stderr: {result.stderr[:500]}")
+                
+                if result.returncode != 0:
+                    print(f"Simpler FFmpeg also failed: {result.returncode}")
+                    print(f"stderr: {result.stderr[:500]}")
+                    if progress_callback:
+                        progress_callback(f"FFmpeg error: {result.stderr[:200]}")
+                else:
+                    print(f"[Renderer] Simpler command succeeded!")
+                    if progress_callback:
+                        progress_callback("Render succeeded with simpler filter")
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"Render timeout for clip {clip_index}")
 
     if output_path.exists():
         file_size_mb = round(output_path.stat().st_size / (1024 * 1024), 2)

@@ -192,6 +192,14 @@ def plan_panel_camera_path(
         # Stable nominal crop height for this entire shot (prevents vertical scale breathing)
         median_face_h = float(np.median(sample_h))
         target_crop_h = median_face_h / max(1e-3, face_height_frac)
+
+        # Guard against extreme zoom-in and pixelation on landscape sources
+        # Enforce minimum crop height (preserves source sensor vertical detail)
+        if aspect_ratio < 1.0:  # 9:16 vertical crop
+            min_src_frac = float(cam_cfg.get("min_source_height_frac", 0.90))
+        else:  # STACK panels (9:8)
+            min_src_frac = float(cam_cfg.get("min_stack_source_height_frac", 0.55))
+        target_crop_h = max(target_crop_h, float(src_h) * min_src_frac)
         target_crop_h = min(target_crop_h, float(src_h))
         target_crop_w = target_crop_h * aspect_ratio
         if target_crop_w > src_w:
@@ -207,6 +215,7 @@ def plan_panel_camera_path(
         nominal_h = target_crop_h
 
         face_boxes: List[Optional[List[float]]] = []
+        is_offscreen_list: List[bool] = []
         for i in range(n_frames):
             t = frame_times[i]
             # Check if within track time range + max_gap
@@ -217,7 +226,10 @@ def plan_panel_camera_path(
                     round(float(interp_w[i]), 2),
                     round(float(interp_h[i]), 2),
                 ])
+                is_offscreen_list.append(False)
             else:
+                face_boxes.append(None)
+                is_offscreen_list.append(True)
                 face_boxes.append(None)
     else:
         # Default center framing when no face samples exist
@@ -258,6 +270,7 @@ def plan_panel_camera_path(
                 "h": round(crop_box[3] - crop_box[1], 2),
             },
             "is_unsafe": is_unsafe,
+            "is_offscreen": is_offscreen_list[i] if is_offscreen_list else False,
             "face_box": face_boxes[i]
         })
 
@@ -275,7 +288,7 @@ def plan_camera_single_shot(
 ) -> List[Dict[str, Any]]:
     """Computes smooth camera path for SINGLE speaker (9:16) within a shot."""
     cam_cfg = config.get("camera", {})
-    face_h_frac = float(cam_cfg.get("single_face_height_frac", 0.22))
+    face_h_frac = float(cam_cfg.get("single_face_height_frac", 0.30))
     eye_line_frac = float(cam_cfg.get("eye_line_frac", 0.38))
     aspect_ratio = 9.0 / 16.0
 
@@ -344,24 +357,33 @@ def plan_camera_stack_shot(
     for i in range(n_frames):
         p1 = p1_plans[i]
         p2 = p2_plans[i]
+        p1_off = p1.get("is_offscreen", False)
+        p2_off = p2.get("is_offscreen", False)
+        single_fallback = None
+        if p1_off and not p2_off:
+            single_fallback = "P2"
+        elif p2_off and not p1_off:
+            single_fallback = "P1"
+
         stack_plans.append({
             "frame_idx": p1["frame_idx"],
             "t": p1["t"],
             "state": "STACK",
+            "single_fallback": single_fallback,
             "panels": [
                 {
                     "panel": "top",
                     "track": "P1",
                     "crop": p1["crop_dict"],
                     "face_box": p1["face_box"],
-                    "is_unsafe": p1["is_unsafe"],
+                    "is_unsafe": p1["is_unsafe"] or p1_off,
                 },
                 {
                     "panel": "bottom",
                     "track": "P2",
                     "crop": p2["crop_dict"],
                     "face_box": p2["face_box"],
-                    "is_unsafe": p2["is_unsafe"],
+                    "is_unsafe": p2["is_unsafe"] or p2_off,
                 }
             ],
             "is_unsafe": p1["is_unsafe"] or p2["is_unsafe"],

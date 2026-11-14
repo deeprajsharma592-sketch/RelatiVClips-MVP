@@ -40,6 +40,7 @@ def run_pipeline(
     words_path: str | Path | None = None,
     impact_path: str | Path | None = None,
     debug_overlay: bool = False,
+    subtitles_path: str | Path | None = None,
 ) -> Dict[str, Any]:
     """Execute the framing pipeline end-to-end writing artifacts to workdir."""
     config = load_config(config_path)
@@ -200,18 +201,37 @@ def run_pipeline(
             })
         elif state == "STACK" and stack_plan:
             item = stack_plan[f_idx] if f_idx < len(stack_plan) else None
-            panels = item["panels"] if item else []
-            is_unsafe = item["is_unsafe"] if item else False
-            plan_frames.append({
-                "frame_idx": f_idx,
-                "t": round(t, 4),
-                "state": "STACK",
-                "panels": panels,
-                "speaker": active_speaker,
-                "is_unsafe": is_unsafe,
-                "faces": [p["face_box"] for p in panels if p.get("face_box")],
-                "zoom_scale": 1.0,
-            })
+            fallback_track = item.get("single_fallback") if item else None
+            if fallback_track:
+                # One person is offscreen: fallback seamlessly to SINGLE of the visible person
+                chosen_single = single_p2_plan if (fallback_track == "P2" and single_p2_plan) else single_p1_plan
+                s_item = chosen_single[f_idx] if f_idx < len(chosen_single) else None
+                crop = s_item["crop"] if s_item else [0, 0, src_w, src_h]
+                is_unsafe = s_item["is_unsafe"] if s_item else False
+                faces = [s_item["face_box"]] if (s_item and s_item.get("face_box")) else []
+                plan_frames.append({
+                    "frame_idx": f_idx,
+                    "t": round(t, 4),
+                    "state": "SINGLE",
+                    "crop": crop,
+                    "speaker": active_speaker,
+                    "is_unsafe": is_unsafe,
+                    "faces": faces,
+                    "zoom_scale": 1.0,
+                })
+            else:
+                panels = item["panels"] if item else []
+                is_unsafe = item["is_unsafe"] if item else False
+                plan_frames.append({
+                    "frame_idx": f_idx,
+                    "t": round(t, 4),
+                    "state": "STACK",
+                    "panels": panels,
+                    "speaker": active_speaker,
+                    "is_unsafe": is_unsafe,
+                    "faces": [p["face_box"] for p in panels if p.get("face_box")],
+                    "zoom_scale": 1.0,
+                })
         else:
             plan_frames.append({
                 "frame_idx": f_idx,
@@ -239,6 +259,7 @@ def run_pipeline(
         output_path=output_path,
         config=config,
         debug_overlay=debug_overlay,
+        subtitle_path=subtitles_path,
     )
 
     # ── Stage 10: Generate QA Report (Metrics M1-M10, Status pass/review/fail)

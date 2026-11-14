@@ -107,7 +107,7 @@ def _download_video_locked(url, task_id, video_id, video_path, audio_path, progr
 
         ytdlp_cmd = [
             YTDLP_PATH,
-            "-f", "best[height<=480]/best",
+            "-f", "bv*[height<=1080]+ba/b[height<=1080]/best",
             "--merge-output-format", "mp4",
             "-o", str(video_path),
             "--extract-audio",
