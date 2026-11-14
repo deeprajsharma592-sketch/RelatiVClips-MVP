@@ -109,10 +109,19 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
 
     cmd = [
         YTDLP_PATH,
-        # Universal robust selector: pick highest resolution stream up to 1080p, with audio
-        "-f", "bv*[height<=2160]+ba/bv*+ba/b[height<=2160]/b/best",
+        # Strictly prioritize native 1080p and 720p HD streams with audio; never fall back to 360p (format 18)
+        "-f", (
+            "bv*[height=1080]+ba/"
+            "bv*[height>=1080]+ba/"
+            "bv*[height=720]+ba/"
+            "bv*[height>=720]+ba/"
+            "bv*+ba/"
+            "b[height>=720]/"
+            "best"
+        ),
+        "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
-        "--format-sort", "res:1080,fps,codec:h264,size,br",
+        "--format-sort", "res:1080,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
         "-o", out_template,
         "--no-warnings",

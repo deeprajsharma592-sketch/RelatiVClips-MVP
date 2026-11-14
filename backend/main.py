@@ -423,6 +423,15 @@ async def get_transcript(url: str):
     )
 
 
+@app.get("/debug/formats")
+async def debug_formats(url: str):
+    import subprocess
+    from .utils.config import YTDLP_PATH, get_cookie_args
+    cmd = [YTDLP_PATH, "-F", url] + get_cookie_args()
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    return {"stdout": res.stdout, "stderr": res.stderr}
+
+
 SAFE_CLIP_ID_REGEX = re.compile(r'^[A-Za-z0-9_-]+$')
 
 
