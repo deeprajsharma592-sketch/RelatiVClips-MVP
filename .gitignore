@@ -20,3 +20,4 @@ framing/models/
 *.wav
 demo_test/
 e2e_youtube_run/
+cloudflared.exe
