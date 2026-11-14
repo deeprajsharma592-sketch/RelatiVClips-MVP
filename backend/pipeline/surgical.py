@@ -116,19 +116,20 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
 
     cmd = [
         YTDLP_PATH,
-        # Allow 4K (2160p) and 2K (1440p) downloads so a 9:16 vertical crop has true 1080p+ native horizontal detail
+        # Prioritize 4K / 1440p / 1080p so the 9:16 vertical crop has pristine horizontal sharpness
         "-f", (
-            "bv*[height<=2160]+ba/"
+            "bv*[height<=2160][height>=1080]+ba/"
             "bv*[height<=1440]+ba/"
             "bv*[height<=1080]+ba/"
             "bv*+ba/"
             "b[height<=2160]/"
             "b[height<=1080]/"
+            "bestvideo+bestaudio/"
             "best"
         ),
         "--merge-output-format", "mp4",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=ios,android,web",
+        "--extractor-args", "youtube:player_client=web,ios",
         "-o", out_template,
         "--no-warnings",
         "--",

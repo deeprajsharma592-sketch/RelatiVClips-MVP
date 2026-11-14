@@ -337,7 +337,7 @@ class YouTubeSurgicalFunnel:
             if COOKIES_PATH and COOKIES_PATH.exists():
                 ytdlp_cmd.extend(["--cookies", str(COOKIES_PATH)])
 
-            player_clients = ["ios", "android", "web"]
+            player_clients = ["web", "ios", "android"]
             success = False
 
             for client in player_clients:
@@ -895,11 +895,13 @@ def _run_moment_pipeline(
                 for p in picks:
                     mid = int(p.get("moment_index", 0))
                     m = moment_by_idx.get(mid)
-                    if not m:
+                    p_start = float(p.get("start", m.start if m else 0))
+                    p_end = float(p.get("end", m.end if m else 0))
+                    if p_end <= p_start:
                         continue
                     bounds = design_clip(
-                        start=float(m.start),
-                        end=float(m.end),
+                        start=p_start,
+                        end=p_end,
                         transcript=transcript_dict,
                         audio_features={},
                         video_duration=video_duration_s,
@@ -979,11 +981,13 @@ def _run_moment_pipeline(
         for p in picks_sorted:
             mid = int(p.get("moment_index", 0))
             m = moment_by_idx.get(mid)
-            if not m:
+            p_start = float(p.get("start", m.start if m else 0))
+            p_end = float(p.get("end", m.end if m else 0))
+            if p_end <= p_start:
                 continue
             bounds = design_clip(
-                start=float(m.start),
-                end=float(m.end),
+                start=p_start,
+                end=p_end,
                 transcript=transcript_dict,
                 audio_features={},
                 video_duration=video_duration_s,
@@ -1146,12 +1150,9 @@ def _run_moment_pipeline(
                 "verified": False,
             })
 
-    # 3a. Apply universal format adjustments (SIMPLIFIED 2026-06-15)
-    #      Single 22-30s sweet spot for all platforms. Stretches short clips
-    #      to 26s, trims long ones. Always delivers in_target_range.
+    # 3a. Apply universal format adjustments (45-90s self-contained narrative arc)
     try:
-        _bridge("platform", f"Applying universal format adjustments "
-                            f"(22-30s, target 26s)")
+        _bridge("platform", f"Applying universal format adjustments (45-90s, target 65s)")
         adjusted = []
         for clip in final_clips:
             new_start, new_end, reason = adjust_clip_for_platform(

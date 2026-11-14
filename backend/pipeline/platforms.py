@@ -31,11 +31,11 @@ from typing import List
 
 @dataclass
 class ClipFormat:
-    """Single universal output format. Replaces the old 3-platform spec."""
+    """Single universal output format. 45-90s self-contained viral stories."""
     name: str = "universal"
-    min_duration_s: float = 22.0
-    max_duration_s: float = 30.0
-    target_duration_s: float = 26.0
+    min_duration_s: float = 45.0
+    max_duration_s: float = 90.0
+    target_duration_s: float = 65.0
     n_hashtags_min: int = 5
     n_hashtags_max: int = 8
     caption_style: str = "all_caps"

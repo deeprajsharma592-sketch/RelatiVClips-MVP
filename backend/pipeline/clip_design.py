@@ -26,13 +26,13 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 
-# Minimum / maximum clip duration in seconds
-MIN_CLIP_S = 10.0
-MAX_CLIP_S = 22.0
-TARGET_CLIP_S = 16.0
-# Window for "midpoint rehook" — if clip is longer than this, force rehook at 7-9s
-REHOOK_START_S = 7.0
-REHOOK_END_S = 9.0
+# Minimum / maximum clip duration in seconds (45s - 90s narrative story arc)
+MIN_CLIP_S = 45.0
+MAX_CLIP_S = 90.0
+TARGET_CLIP_S = 65.0
+# Window for "midpoint rehook" — dynamic retention check
+REHOOK_START_S = 20.0
+REHOOK_END_S = 30.0
 
 # Sentence boundary markers. We treat any of these as "the clip can safely
 # start or end here".
@@ -245,31 +245,16 @@ def design_clip(
                 snap_end_reason_final = "extended_to_sentence"
         duration = new_end - new_start
 
-    # --- 4. If duration too long, trim at midpoint rehook ---
+    # --- 4. If duration too long, trim to MAX_CLIP_S at sentence boundary ---
     if duration > MAX_CLIP_S:
-        # Look for an energy peak in the rehook window
-        midpoint = new_start + (new_end - new_start) / 2
-        rehook_target = new_start + REHOOK_START_S + 1.0
-        rehook_peak = _nearest_energy_peak(audio_features, rehook_target, window_s=2.0)
-        if rehook_peak is not None and rehook_peak < new_end - 2.0:
-            # Find a sentence boundary just after the rehook
-            rehook_end = _nearest_sentence_after(sentences, rehook_peak + 0.5, max_forward_s=1.5)
-            if rehook_end is not None and rehook_end < new_end:
-                new_end = rehook_end
-                rehook_pos = rehook_peak
-                snap_end_reason_final = "trimmed_at_rehook"
-            else:
-                # Just use the peak
-                new_end = rehook_peak + 1.0
-                rehook_pos = rehook_peak
-                snap_end_reason_final = "trimmed_at_rehook"
+        target = new_start + MAX_CLIP_S
+        cut = _nearest_sentence_after(sentences, target - 2.0, max_forward_s=4.0)
+        if cut is not None and cut < new_end and (cut - new_start) >= MIN_CLIP_S:
+            new_end = cut
+            snap_end_reason_final = "trimmed_to_sentence"
         else:
-            # No rehook peak available — just trim to MAX_CLIP_S at a sentence boundary
-            target = new_start + TARGET_CLIP_S
-            cut = _nearest_sentence_after(sentences, target - 1.0, max_forward_s=2.0)
-            if cut is not None and cut < new_end:
-                new_end = cut
-                snap_end_reason_final = "trimmed_to_target"
+            new_end = new_start + MAX_CLIP_S
+            snap_end_reason_final = "trimmed_to_max"
         duration = new_end - new_start
 
     # --- 5. Clamp to video bounds ---

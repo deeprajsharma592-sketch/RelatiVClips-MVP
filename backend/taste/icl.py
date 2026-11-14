@@ -378,7 +378,7 @@ def build_hybrid_narrative_prompt(
     parts.append("\nFULL TRANSCRIPT:\n" + "\n".join(transcript_lines))
 
     parts.append(
-        f"\nSelect the {max_picks} most viral, self-contained story clips (22-32 seconds long).\n"
+        f"\nSelect the {max_picks} most viral, self-contained story clips (45-90 seconds long, complete narrative arc).\n"
         "Return STRICT JSON only:\n"
         "{\n"
         '  "picks": [\n'
@@ -386,7 +386,7 @@ def build_hybrid_narrative_prompt(
         '      "start": <float start timestamp in seconds>,\n'
         '      "end": <float end timestamp in seconds>,\n'
         '      "confidence": <float 0.5-1.0>,\n'
-        '      "title": "<3-6 words ALL CAPS viral title>",\n'
+        '      "title": "<3-6 words ALL CAPS viral title summarizing the specific story>",\n'
         '      "hook": "<6-10 words opening hook line>",\n'
         '      "retention_bridge": "<8-15 words what keeps them watching>",\n'
         '      "caption": "<viral caption max 100 chars>",\n'
@@ -408,7 +408,7 @@ Version: rubric_ver = "sauce-0.1". Return this string in every output so results
 These weights and heuristics are starting hypotheses drawn from practitioner experience, not proven facts. They are meant to be tuned against real retention and view data.
 
 ## Process
-1. Find candidate moments. A candidate is one complete thought or exchange, usually 15-60 seconds. Never start or end mid-sentence. Prefer 8-20 candidates per hour of source.
+1. Find candidate moments. A candidate is one complete, self-contained story arc between 45 and 90 seconds (target: 55-80 seconds). NEVER extract short 15-30s fragments that cut off mid-thought or before the punchline/conclusion. The clip must have a distinct Hook (0-5s), Build/Tension (5-45s), and Payoff/Resolution (45-80s). Prefer 8-20 candidates per hour of source.
 2. Find the hook. The best clips open on the hook, not on setup. If the strongest line is in the middle, propose starting there and check that it still makes sense without what came before.
 3. Classify the hook type (below). A candidate with no hook type is weak unless the payoff is exceptional.
 4. Check reach. Does the topic connect to something broad (health, money, relationships, status, fear of falling behind)? See "Wide-funnel check".
@@ -439,7 +439,7 @@ Technical or niche content usually fails as a clip when presented as a technical
 |---|---|---|
 | Hook strength | 0-30 | Strong hook in the first 2-3 seconds, clearly one of the types above |
 | Reach | 0-25 | Broad topic or human stakes; viewer needs no prior knowledge |
-| Completeness | 0-20 | Clear start, build, and landing; self-contained |
+| Completeness | 0-20 | Clear start, build, and landing; self-contained story (45-90s). Score 0 if cut off mid-sentence or before conclusion! |
 | Payoff / ending | 0-10 | Ends on a punch, answer, or line worth rewatching; no trailing filler |
 | Delivery | 0-10 | Energy, pacing, emotion, confidence; no long pauses or tangents |
 | Risk penalty | 0 to -20 | Subtract for factual uncertainty, blacklisted topics, or needing missing context |
@@ -478,12 +478,13 @@ Return ONLY valid JSON, no preamble, no markdown fences:
       "chosen": false,
       "is_experiment": false,
       "reason": "one sentence on why, max 25 words",
-      "suggested_title": "short, plain, no clickbait that the clip cannot deliver"
+      "suggested_title": "3-6 words ALL CAPS specific viral headline, NEVER generic placeholders like THIS MOMENT HITS"
     }
   ]
 }
 
 Rules for the output:
+- Candidates MUST be between 45 and 90 seconds (end_s - start_s >= 45.0).
 - Set chosen: true for at most the top 3 per hour of source, and only for candidates scoring 65 or higher.
 - Keep reason to one sentence (max 25 words).
 - Timestamps must come directly from the transcript. Never invent them.
@@ -547,6 +548,7 @@ def build_relativsauce_prompt(
     parts.append("\n## Transcript with Acoustic Energy Markers\n" + "\n".join(transcript_lines))
     parts.append(
         "\nApply the RelatiVSauce rubric strictly. Score every candidate and return the JSON object with rubric_ver='sauce-0.1'. "
+        "MANDATORY REQUIREMENT: Candidates MUST be between 45 and 90 seconds (end_s - start_s >= 45.0) and contain a full, self-contained story arc with Hook -> Build/Escalation -> Punchline/Landing. Every suggested_title MUST be an exciting, specific 3-6 word ALL CAPS headline (e.g. 'THE $500,000 MISTAKE'). NEVER output generic placeholders like 'THIS MOMENT HITS' or short 20s fragments. "
         "Output ONLY valid JSON. No markdown code fences, no introductory remarks."
     )
 

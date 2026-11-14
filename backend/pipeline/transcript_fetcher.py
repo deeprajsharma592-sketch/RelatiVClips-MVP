@@ -267,11 +267,13 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
         from ..utils.vram_manager import get_vram_usage, clear_gpu
 
         vram = get_vram_usage()
-        if not vram.get("cuda_available"):
-            log("  No CUDA GPU available, cannot run Whisper")
-            return None
-
-        model = WhisperModel(WHISPER_MODEL, device="cuda", compute_type=WHISPER_COMPUTE_TYPE)
+        device = "cuda" if vram.get("cuda_available") else "cpu"
+        compute_type = WHISPER_COMPUTE_TYPE if device == "cuda" else "int8"
+        try:
+            model = WhisperModel(WHISPER_MODEL, device=device, compute_type=compute_type)
+        except Exception as init_err:
+            log(f"  Whisper {device} init failed ({init_err}), running on CPU...")
+            model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
         try:
             segments, info = model.transcribe(
                 audio_path,
