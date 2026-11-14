@@ -437,7 +437,20 @@ async def admin_git_pull():
     }
 
 
-@app.get("/debug/formats")
+@app.get("/debug/check-setup")
+async def debug_check_setup():
+    import shutil, os
+    from .utils.config import COOKIES_PATH, YTDLP_PATH, FFMPEG_PATH
+    return {
+        "cookies_path": str(COOKIES_PATH),
+        "cookies_exists": COOKIES_PATH.exists(),
+        "cookies_size": COOKIES_PATH.stat().st_size if COOKIES_PATH.exists() else 0,
+        "ytdlp_path": str(YTDLP_PATH),
+        "ffmpeg_path": str(FFMPEG_PATH),
+        "node_installed": bool(shutil.which("node")),
+        "deno_installed": bool(shutil.which("deno")),
+        "docker_installed": bool(shutil.which("docker")),
+    }
 async def debug_formats(url: str):
     import subprocess
     from .utils.config import YTDLP_PATH, get_cookie_args
