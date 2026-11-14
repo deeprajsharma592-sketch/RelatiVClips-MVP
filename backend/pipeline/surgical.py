@@ -42,7 +42,14 @@ from ..utils.config import (
 log = logging.getLogger(__name__)
 
 
-def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[str] = None) -> List[str]:
+def _ytdlp_section_url(
+    url: str,
+    start: float,
+    end: float,
+    dest_path: Optional[str] = None,
+    use_cookies: bool = False,
+    extractor_client: str = "android_vr,android,ios",
+) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video.
 
     yt-dlp's `--download-sections` accepts a time-range string like
@@ -52,8 +59,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
     e = end + pad
-    fmt = "%H:%M:%S"
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     s_str = str(timedelta(seconds=int(s)))
     e_str = str(timedelta(seconds=int(e)))
     
@@ -67,16 +73,17 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
         YTDLP_PATH,
         "-f", "140/251/ba/b/best",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=android_vr,android,ios",
+        "--extractor-args", f"youtube:player_client={extractor_client}",
         "-o", out_template,
         "--no-warnings",
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
-    from ..utils.config import get_cookie_args
-    cookie_args = get_cookie_args()
-    if cookie_args:
-        cmd.extend(cookie_args)
+    if use_cookies:
+        from ..utils.config import get_cookie_args
+        cookie_args = get_cookie_args()
+        if cookie_args:
+            cmd.extend(cookie_args)
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -84,7 +91,14 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     return cmd
 
 
-def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Optional[str] = None) -> List[str]:
+def _ytdlp_video_section_url(
+    url: str,
+    start: float,
+    end: float,
+    dest_path: Optional[str] = None,
+    use_cookies: bool = False,
+    extractor_client: str = "android_vr,android,ios",
+) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video
     AS A VIDEO FILE (with both video and audio streams) for the renderer.
 
@@ -120,16 +134,17 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         "--merge-output-format", "mp4",
         "--format-sort", "res:1080,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=android_vr,android,ios",
+        "--extractor-args", f"youtube:player_client={extractor_client}",
         "-o", out_template,
         "--no-warnings",
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
-    from ..utils.config import get_cookie_args
-    cookie_args = get_cookie_args()
-    if cookie_args:
-        cmd.extend(cookie_args)
+    if use_cookies:
+        from ..utils.config import get_cookie_args
+        cookie_args = get_cookie_args()
+        if cookie_args:
+            cmd.extend(cookie_args)
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -159,8 +174,6 @@ def _download_one_segment(
         except Exception:
             pass
 
-    cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path))
-
     def _log(msg: str) -> None:
         with log_lock:
             log_fn(msg)
@@ -171,6 +184,8 @@ def _download_one_segment(
     final_ok = False
     try:
         for seg_attempt in range(1, 5):
+            use_cookies = (seg_attempt >= 2)
+            cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=use_cookies)
             try:
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=120
@@ -379,8 +394,16 @@ def _download_one_video_segment(
         final_ok = True
     except Exception as resi_err:
         _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
-        cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path))
         for seg_attempt in range(1, 4):
+            # Attempt 1: android_vr without cookies (clean CDN stream, FFmpeg HTTP range requests succeed without 403)
+            # Attempt 2: android_vr with cookies
+            # Attempt 3: android with missing_pot
+            if seg_attempt == 1:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android_vr,android")
+            elif seg_attempt == 2:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="android_vr,android")
+            else:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android;formats=missing_pot")
             try:
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=180
