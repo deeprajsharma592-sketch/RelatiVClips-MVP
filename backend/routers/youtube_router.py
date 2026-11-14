@@ -321,13 +321,14 @@ class YouTubeSurgicalFunnel:
 
             video_path = TEMP_DIR / f"{self.task_id}_segment_{i+1}.mp4"
 
+            out_template = str(Path(video_path).parent / f"{Path(video_path).stem}.%(ext)s")
             ytdlp_cmd = [
                 YTDLP_PATH,
                 "--download-sections", f"*{ts['start']}-{ts['end']}",
                 "--force-keyframes-at-cuts",
                 "-f", "bv*[height<=2160]+ba/bv*+ba/b[height<=2160]/best",
                 "--merge-output-format", "mp4",
-                "-o", str(video_path),
+                "-o", out_template,
                 "--no-warnings",
                 "--no-check-certificates",
                 self.url

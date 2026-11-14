@@ -55,8 +55,9 @@ HIGH_RES_FORMAT = (
 def download_video(url: str, output_path: Path, start: Optional[float] = None,
                    end: Optional[float] = None, format_spec: Optional[str] = None) -> Path:
     fmt = format_spec or HIGH_RES_FORMAT
+    out_tmpl = str(output_path.parent / f"{output_path.stem}.%(ext)s")
     cmd = [YT_DLP_CMD, "-f", fmt, "--merge-output-format", "mp4", "--no-playlist",
-           "-o", str(output_path)]
+           "-o", out_tmpl]
     if COOKIES_PATH and os.path.exists(COOKIES_PATH):
         cmd.extend(["--cookies", COOKIES_PATH])
     if start is not None or end is not None:
@@ -64,7 +65,13 @@ def download_video(url: str, output_path: Path, start: Optional[float] = None,
     cmd.append(url)
     print(f"[yt-dlp] Downloading: {url} (format={fmt})")
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
+    if not output_path.exists():
+        for ext in (".mp4", ".mkv", ".webm"):
+            cand = output_path.with_suffix(ext)
+            if cand.exists():
+                cand.rename(output_path)
+                break
+    if result.returncode != 0 and not output_path.exists():
         raise RuntimeError(f"yt-dlp failed:\n{result.stderr}")
     if not output_path.exists():
         raise RuntimeError(f"No file produced")
