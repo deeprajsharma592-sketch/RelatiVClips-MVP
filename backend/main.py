@@ -441,10 +441,21 @@ async def admin_git_pull():
 async def debug_check_setup():
     import shutil, os
     from .utils.config import COOKIES_PATH, YTDLP_PATH, FFMPEG_PATH
+    cookie_names = []
+    if COOKIES_PATH.exists():
+        try:
+            with open(COOKIES_PATH, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 6 and not line.startswith("#"):
+                        cookie_names.append(parts[5])
+        except Exception as e:
+            cookie_names.append(f"error: {e}")
     return {
         "cookies_path": str(COOKIES_PATH),
         "cookies_exists": COOKIES_PATH.exists(),
         "cookies_size": COOKIES_PATH.stat().st_size if COOKIES_PATH.exists() else 0,
+        "cookie_names": cookie_names,
         "ytdlp_path": str(YTDLP_PATH),
         "ffmpeg_path": str(FFMPEG_PATH),
         "node_installed": bool(shutil.which("node")),
