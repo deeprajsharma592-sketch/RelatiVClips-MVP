@@ -455,19 +455,22 @@ async def debug_ytdlp_version():
 
 
 @app.get("/debug/test-clip")
-async def debug_test_clip(url: str, client: str = "android_vr"):
+async def debug_test_clip(url: str, client: str = "android_vr", use_sections: bool = False, max_bytes: str = "10M"):
     import subprocess
     from .utils.config import YTDLP_PATH, FFMPEG_PATH, TEMP_DIR
     out = str(TEMP_DIR / "debug_clip.%(ext)s")
     cmd = [
         YTDLP_PATH,
-        "-f", "137+140/bv*[height>=1080]+ba/136+140/bv*[height>=720]+ba/bv*+ba",
-        "--download-sections", "*00:00:10-00:00:20",
+        "-f", "137+140/136+140/bv*[height>=720]+ba/best",
         "--extractor-args", f"youtube:player_client={client}",
         "-o", out,
         "--verbose",
         "--force-overwrites",
     ]
+    if use_sections:
+        cmd.extend(["--download-sections", "*00:00:10-00:00:20"])
+    else:
+        cmd.extend(["--max-filesize", max_bytes])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     cmd.extend(["--", url])
