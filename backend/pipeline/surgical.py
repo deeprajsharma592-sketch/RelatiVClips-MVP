@@ -57,7 +57,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     s_str = str(timedelta(seconds=int(s)))
     e_str = str(timedelta(seconds=int(e)))
     
-    # yt-dlp requires .%(ext)s template when post-processing with --extract-audio
+    # yt-dlp requires .%(ext)s template when merging streams
     out_template = "-"
     if dest_path and dest_path != "-":
         p = Path(dest_path)
@@ -65,11 +65,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
 
     cmd = [
         YTDLP_PATH,
-        "-f", "ba/b/bestaudio/best",
-        "--extract-audio",
-        "--audio-format", "m4a",
-        "--audio-quality", "0",
-        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
+        "-f", "ba/b/best",
         "--download-sections", f"*{s_str}-{e_str}",
         "-o", out_template,
         "--no-warnings",
@@ -77,7 +73,12 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     from ..utils.config import get_cookie_args
-    cmd.extend(get_cookie_args())
+    cookie_args = get_cookie_args()
+    if cookie_args:
+        cmd.extend(cookie_args)
+        cmd.extend(["--extractor-args", "youtube:player_client=web,android,ios"])
+    else:
+        cmd.extend(["--extractor-args", "youtube:player_client=android,web,ios"])
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -108,29 +109,23 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
 
     cmd = [
         YTDLP_PATH,
-        # Prioritize 4K / 1440p / 1080p so the 9:16 vertical crop has pristine horizontal sharpness
-        "-f", (
-            "bv*[ext=mp4][height>=1080]+ba[ext=m4a]/"
-            "bv*[height>=1080]+ba/"
-            "b[height>=1080]/"
-            "bv*[ext=mp4][height>=720]+ba[ext=m4a]/"
-            "bv*[height>=720]+ba/"
-            "b[height>=720]/"
-            "bestvideo[height>=720]+bestaudio/"
-            "best[height>=720]/"
-            "bv*+ba/best"
-        ),
+        # Universal robust selector: pick highest resolution stream up to 1080p, with audio
+        "-f", "bv*[height<=2160]+ba/bv*+ba/b[height<=2160]/b/best",
         "--merge-output-format", "mp4",
         "--format-sort", "res:1080,fps,codec:h264,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,ios",
         "-o", out_template,
         "--no-warnings",
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     from ..utils.config import get_cookie_args
-    cmd.extend(get_cookie_args())
+    cookie_args = get_cookie_args()
+    if cookie_args:
+        cmd.extend(cookie_args)
+        cmd.extend(["--extractor-args", "youtube:player_client=web,android,ios"])
+    else:
+        cmd.extend(["--extractor-args", "youtube:player_client=android,web,ios"])
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -177,12 +172,17 @@ def _download_one_segment(
                     cmd, capture_output=True, timeout=120
                 )
                 if not audio_path.exists():
-                    for ext in (".m4a", ".opus", ".webm", ".aac", ".mp3"):
+                    for ext in (".m4a", ".opus", ".webm", ".aac", ".mp3", ".ogg"):
                         cand = audio_path.with_suffix(ext)
                         if cand.exists() and cand.stat().st_size > 0:
-                            cand.rename(audio_path)
+                            if ext != ".m4a":
+                                trans_cmd = [FFMPEG_PATH, "-y", "-i", str(cand), "-vn", "-c:a", "aac", "-b:a", "128k", str(audio_path)]
+                                subprocess.run(trans_cmd, capture_output=True, timeout=30)
+                                cand.unlink(missing_ok=True)
+                            else:
+                                cand.rename(audio_path)
                             break
-                if result.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 0:
+                if audio_path.exists() and audio_path.stat().st_size > 0:
                     final_ok = True
                     break
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
@@ -392,8 +392,7 @@ def _download_one_video_segment(
                             else:
                                 cand.rename(video_path)
                             break
-                if (result.returncode == 0 and video_path.exists()
-                        and video_path.stat().st_size > 1024):
+                if video_path.exists() and video_path.stat().st_size > 1024:
                     try:
                         import cv2
                         cap = cv2.VideoCapture(str(video_path))

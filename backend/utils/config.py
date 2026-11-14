@@ -169,6 +169,7 @@ SURGICAL_BUFFER_SECONDS = 10
 _possible_cookies = [
     Path(os.getenv("COOKIES_PATH", "")) if os.getenv("COOKIES_PATH") else None,
     BASE_DIR / "cookies.txt",
+    BASE_DIR / "backend" / "cookies.txt",
     BASE_DIR.parent / "cookies.txt",
     Path.home() / "Documents" / "youtube_cookies.txt",
     Path.home() / "youtube_cookies.txt",
@@ -177,13 +178,18 @@ _possible_cookies = [
 ]
 COOKIES_PATH = next((p for p in _possible_cookies if p and p.exists()), BASE_DIR / "cookies.txt")
 
+_CACHED_COOKIE_ARGS: Optional[List[str]] = None
 
 def get_cookie_args() -> List[str]:
     """Returns the yt-dlp arguments for cookies.
     1. Checks if a known cookies.txt exists on disk.
     2. If not found, attempts to extract from Chrome / Edge to BASE_DIR / 'cookies.txt'.
-    3. If extraction fails, falls back to direct --cookies-from-browser flag.
+    3. Caches the result so subsequent calls never incur disk / subprocess overhead.
     """
+    global _CACHED_COOKIE_ARGS
+    if _CACHED_COOKIE_ARGS is not None:
+        return list(_CACHED_COOKIE_ARGS)
+
     import subprocess
     import shutil
 
@@ -192,9 +198,11 @@ def get_cookie_args() -> List[str]:
             _working = TEMP_DIR / "youtube_cookies_working.txt"
             try:
                 shutil.copy2(str(p), str(_working))
-                return ["--cookies", str(_working)]
+                _CACHED_COOKIE_ARGS = ["--cookies", str(_working)]
+                return list(_CACHED_COOKIE_ARGS)
             except Exception:
-                return ["--cookies", str(p)]
+                _CACHED_COOKIE_ARGS = ["--cookies", str(p)]
+                return list(_CACHED_COOKIE_ARGS)
 
     # Attempt automatic extraction into BASE_DIR / "cookies.txt"
     target = BASE_DIR / "cookies.txt"
@@ -207,14 +215,16 @@ def get_cookie_args() -> List[str]:
                 "--skip-download",
                 "https://www.youtube.com",
             ]
-            res = subprocess.run(cmd, capture_output=True, timeout=15)
+            res = subprocess.run(cmd, capture_output=True, timeout=10)
             if target.exists() and target.stat().st_size > 100:
                 print(f"[Cookies] Extracted YouTube cookies from {b} to {target}")
-                return ["--cookies", str(target)]
+                _CACHED_COOKIE_ARGS = ["--cookies", str(target)]
+                return list(_CACHED_COOKIE_ARGS)
         except Exception:
             pass
 
-    # If extraction is unavailable or DPAPI blocked, return empty list so yt-dlp proceeds cleanly
+    # If extraction is unavailable or DPAPI blocked, return empty list
+    _CACHED_COOKIE_ARGS = []
     return []
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
