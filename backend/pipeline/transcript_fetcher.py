@@ -150,9 +150,10 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "--js-runtimes", "node",
-        "--remote-components", "ejs:github",
     ]
+    import shutil
+    if shutil.which("node"):
+        cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
 
     _cookies_arg = None
     if COOKIES_PATH and COOKIES_PATH.exists():
