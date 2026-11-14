@@ -360,7 +360,8 @@ def detect_and_track_faces(
 
     finally:
         cap.release()
-        face_mesh.close()
+        if face_mesh is not None and hasattr(face_mesh, "close"):
+            face_mesh.close()
 
     output_payload = {
         "_meta": {
