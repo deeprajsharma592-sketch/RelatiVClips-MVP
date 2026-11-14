@@ -38,9 +38,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 # Ensure project root is on path so `from backend.X import Y` works
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -465,33 +465,135 @@ async def get_task_queue():
     return TaskQueueInfo(**task_store.get_queue_info())
 
 
-@app.get("/download/{clip_id}")
-@app.get("/api/v1/download/{clip_id}")
-async def download_clip(clip_id: str):
+def stream_video_file(
+    path: Path,
+    request: Request,
+    download: bool = False,
+    media_type: str = "video/mp4"
+):
+    """
+    Stream video file supporting:
+    - HTTP Range requests (206 Partial Content) for smooth browser seeking
+    - HEAD requests (200 with headers) for player pre-flight checks
+    - Inline disposition for in-browser <video> tag playback
+    - Attachment disposition when explicitly downloading (?download=1)
+    """
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    file_size = path.stat().st_size
+    filename = path.name
+
+    disposition = "attachment" if download else "inline"
+    content_disposition = f'{disposition}; filename="{filename}"'
+
+    base_headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": content_disposition,
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length, Content-Disposition",
+    }
+
+    # Handle HEAD preflight from browsers
+    if request.method == "HEAD":
+        headers = {
+            **base_headers,
+            "Content-Type": media_type,
+            "Content-Length": str(file_size),
+        }
+        return Response(status_code=200, headers=headers)
+
+    range_header = request.headers.get("Range") or request.headers.get("range")
+    if range_header and range_header.startswith("bytes="):
+        try:
+            range_val = range_header[len("bytes="):].strip()
+            parts = range_val.split("-")
+            start = int(parts[0]) if parts[0] else 0
+            end = int(parts[1]) if len(parts) > 1 and parts[1] else file_size - 1
+
+            if start >= file_size or end >= file_size or start > end:
+                return Response(
+                    status_code=416,
+                    headers={
+                        "Content-Range": f"bytes */{file_size}",
+                        **base_headers
+                    }
+                )
+
+            chunk_size = (end - start) + 1
+
+            def iter_file_chunk():
+                with open(path, "rb") as f:
+                    f.seek(start)
+                    remaining = chunk_size
+                    while remaining > 0:
+                        read_len = min(remaining, 64 * 1024)
+                        chunk = f.read(read_len)
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                        yield chunk
+
+            headers = {
+                **base_headers,
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Content-Length": str(chunk_size),
+                "Content-Type": media_type,
+            }
+            return StreamingResponse(
+                iter_file_chunk(),
+                status_code=206,
+                headers=headers,
+                media_type=media_type,
+            )
+        except Exception:
+            pass
+
+    def iter_full_file():
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(64 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+
+    headers = {
+        **base_headers,
+        "Content-Length": str(file_size),
+        "Content-Type": media_type,
+    }
+    return StreamingResponse(
+        iter_full_file(),
+        status_code=200,
+        headers=headers,
+        media_type=media_type,
+    )
+
+
+@app.api_route("/download/{clip_id}", methods=["GET", "HEAD"])
+@app.api_route("/api/v1/download/{clip_id}", methods=["GET", "HEAD"])
+async def download_clip(clip_id: str, request: Request, download: bool = False):
     if not SAFE_CLIP_ID_REGEX.match(clip_id):
         raise HTTPException(status_code=400, detail="Invalid clip identifier")
 
     for ext in (".mp4", ".mov", ".m4v"):
         candidate = OUTPUTS_DIR / f"{clip_id}{ext}"
         if candidate.is_file():
-            return FileResponse(
-                path=candidate,
-                filename=candidate.name,
-                media_type="video/mp4",
-                headers={"Accept-Ranges": "bytes"},
-            )
+            return stream_video_file(candidate, request, download=download)
     raise HTTPException(status_code=404, detail="Clip not found")
 
 
-@app.get("/thumbnail/{clip_id}")
-@app.get("/api/v1/thumbnail/{clip_id}")
-async def get_clip_thumbnail(clip_id: str):
+@app.api_route("/thumbnail/{clip_id}", methods=["GET", "HEAD"])
+@app.api_route("/api/v1/thumbnail/{clip_id}", methods=["GET", "HEAD"])
+async def get_clip_thumbnail(clip_id: str, request: Request):
     """Return an extracted thumbnail screenshot for a clip."""
     if not SAFE_CLIP_ID_REGEX.match(clip_id):
         raise HTTPException(status_code=400, detail="Invalid clip identifier")
 
     thumb_path = OUTPUTS_DIR / f"{clip_id}_thumb.jpg"
     if thumb_path.is_file():
+        if request.method == "HEAD":
+            return Response(status_code=200, headers={"Content-Type": "image/jpeg", "Content-Length": str(thumb_path.stat().st_size)})
         return FileResponse(path=thumb_path, media_type="image/jpeg")
 
     # If thumbnail not yet extracted, extract on demand from the video file
@@ -508,6 +610,8 @@ async def get_clip_thumbnail(clip_id: str):
             cap.release()
             if ret and frame is not None:
                 cv2.imwrite(str(thumb_path), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+                if request.method == "HEAD":
+                    return Response(status_code=200, headers={"Content-Type": "image/jpeg", "Content-Length": str(thumb_path.stat().st_size)})
                 return FileResponse(path=thumb_path, media_type="image/jpeg")
         except Exception:
             pass

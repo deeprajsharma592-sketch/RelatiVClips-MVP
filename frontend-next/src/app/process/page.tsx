@@ -693,22 +693,28 @@ function ProcessInner() {
 function ClipCard({ clip, index }: { clip: Clip; index: number }) {
   const [copied, setCopied] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
-    if (!clip.file_path && !clip.clip_id) return;
+    if (!clip.file_path && !clip.clip_id && !clip.download_url) return;
     const cid =
       clip.clip_id ||
+      (clip.download_url ? clip.download_url.split(/[/\\]/).pop() : null) ||
       (clip.file_path ? clip.file_path.split(/[/\\]/).pop()?.replace(/\.mp4$/i, "") : null);
     if (cid) {
       setVideoUrl(apiPath(`/download/${cid}`));
+      setPosterUrl(apiPath(`/thumbnail/${cid}`));
     }
-  }, [clip.clip_id, clip.file_path]);
+  }, [clip.clip_id, clip.file_path, clip.download_url]);
 
   const handleDownload = useCallback(() => {
     if (!videoUrl) return;
     const a = document.createElement("a");
-    a.href = videoUrl;
+    const downloadUrl = videoUrl.includes("?")
+      ? `${videoUrl}&download=1`
+      : `${videoUrl}?download=1`;
+    a.href = downloadUrl;
     a.download = `${clip.clip_id || "relativ_clip"}.mp4`;
     a.click();
   }, [videoUrl, clip.clip_id]);
@@ -750,6 +756,7 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
         {videoUrl && !videoError ? (
           <video
             src={videoUrl}
+            poster={posterUrl || undefined}
             className="w-full h-full object-cover"
             controls
             preload="metadata"

@@ -457,7 +457,7 @@ function ClipCard({
   const [copied, setCopied] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
-  const videoUrl = clip.file_path.startsWith("http")
+  const videoUrl = clip.file_path?.startsWith("http")
     ? clip.file_path
     : apiPath(`/download/${clip.clip_id}`);
 
