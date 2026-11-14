@@ -11,6 +11,7 @@ export interface Clip {
   viral_title: string;
   hashtags: string;
   file_path: string;
+  download_url?: string;
   file_size_mb: number;
   created_at: string;
   thumbnail_url?: string;

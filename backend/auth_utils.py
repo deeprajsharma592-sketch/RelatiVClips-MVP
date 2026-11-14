@@ -91,13 +91,14 @@ def create_access_token(
     role: str,
     email: str,
     jti: Optional[str] = None,
+    ttl_days: Optional[int] = None,
 ) -> tuple[str, str, datetime]:
     """Issue a new JWT. Returns (token, jti, expires_at)."""
     secret = ensure_secret()
     jti = jti or secrets.token_urlsafe(24)
     # Use offset-naive UTC — DB columns are TIMESTAMP WITHOUT TIME ZONE
     now = datetime.utcnow()
-    exp = now + timedelta(days=JWT_TTL_DAYS)
+    exp = now + timedelta(days=ttl_days or JWT_TTL_DAYS)
     payload = {
         "sub": user_id,
         "role": role,

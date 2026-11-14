@@ -26,7 +26,7 @@ interface AuthContextValue {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (redirectTo?: string) => Promise<void>;
   loginAsDemo: (name?: string, email?: string, role?: UserRole) => void;
 }
 
@@ -61,21 +61,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      // Check if demo user is stored locally
+      const r = await meFetch();
+      if (r?.user) {
+        // A real backend session always takes precedence over a leftover demo
+        // identity from this browser.
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(DEMO_STORAGE_KEY);
+          document.cookie = "relativ_demo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+        }
+        setUser(r.user);
+        return;
+      }
+
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem(DEMO_STORAGE_KEY);
         if (stored) {
           try {
             setUser(JSON.parse(stored));
-            setLoading(false);
             return;
           } catch {}
         }
       }
-
-      const r = await meFetch();
-      setUser(r?.user || null);
-    } catch (e: any) {
+      setUser(null);
+    } catch (e: unknown) {
       // If backend is offline but demo user exists
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem(DEMO_STORAGE_KEY);
@@ -87,14 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch {}
         }
       }
-      setError(e?.message || "Failed to load user");
+      setError(e instanceof Error ? e.message : "Failed to load user");
       setUser(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (redirectTo = "/") => {
     try {
       if (typeof window !== "undefined") {
         localStorage.removeItem(DEMO_STORAGE_KEY);
@@ -104,16 +112,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       // Force a hard refresh so server components re-render
-      window.location.href = "/";
+      window.location.href = redirectTo;
     }
   }, []);
 
   useEffect(() => {
+    // Initial session lookup hydrates the auth state from the backend.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, refresh, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, refresh, logout, loginAsDemo }}>
       {children}
     </AuthContext.Provider>
   );

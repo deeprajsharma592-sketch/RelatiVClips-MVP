@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono, Fraunces, Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
+import { Space_Grotesk, Fraunces, Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";

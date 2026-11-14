@@ -308,8 +308,8 @@ export default function CreatorsDashboard() {
     try {
       const d = await fetchCreatorDashboard();
       setData(d);
-    } catch (e: any) {
-      setDataError(e?.message || "Failed to load dashboard");
+    } catch (e: unknown) {
+      setDataError(e instanceof Error ? e.message : "Failed to load dashboard");
       setData(null);
     } finally {
       setDataLoading(false);
@@ -320,6 +320,8 @@ export default function CreatorsDashboard() {
     // Only fetch once we know the user is authenticated.
     if (authLoading) return;
     if (!user) {
+      // Session state comes from the auth provider and controls this loading state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDataLoading(false);
       return;
     }
@@ -375,7 +377,7 @@ export default function CreatorsDashboard() {
       .slice(0, 2)
       .toUpperCase() || "U";
   const sidebarUser = { name: user.name, handle: user.email, initials };
-  const isWrongRole = user.role !== "creator";
+  const isWrongRole = user.role !== "creator" && !user.can_access_creator_workspace;
 
   const TITLE: Record<SidebarKey, { t: string; s?: string }> = {
     overview: { t: "Creator workspace", s: "Auto-clips, channels, and brand deals — at a glance." },

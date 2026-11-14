@@ -23,6 +23,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  can_access_creator_workspace?: boolean;
   is_verified: boolean;
   created_at: string;
   last_login_at: string | null;
@@ -97,8 +98,8 @@ export async function logout(): Promise<void> {
 export async function me(): Promise<AuthResponse | null> {
   try {
     return await authFetch<AuthResponse>("/api/v1/auth/me");
-  } catch (e: any) {
-    if (e?.message?.includes("Not authenticated") || e?.message?.includes("401")) {
+  } catch (e: unknown) {
+    if (e instanceof Error && (e.message.includes("Not authenticated") || e.message.includes("401"))) {
       return null;
     }
     throw e;
