@@ -2,6 +2,7 @@
 Viral ASS subtitle generator for 9:16 short-form video.
 Produces word-level karaoke highlighting (Opus Clip / Submagic style).
 """
+import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -38,6 +39,7 @@ def generate_viral_ass_subtitles(
     highlight_color: str = "&H0000E5FF",  # Bright Yellow/Amber in &HAABBGGRR
     text_color: str = "&H00FFFFFF",       # Pure White
     outline_color: str = "&H00000000",    # Deep Black
+    lead_time_s: float = float(os.getenv("CAPTION_LEAD_TIME_SECONDS", "0.5")),  # 0.5s visual anticipation
 ) -> Optional[str]:
     """
     Generate an ASS subtitle file with word-by-word active highlighting.
@@ -220,10 +222,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     for chunk in grouped_chunks:
         c_words = chunk["words"]
         for active_idx, active_word in enumerate(c_words):
-            w_start = _format_ass_timestamp(active_word["start"])
-            w_end = _format_ass_timestamp(active_word["end"])
-            if active_word["start"] >= active_word["end"]:
+            # Apply 0.5s pre-sync anticipation so viewer reads right as word is voiced
+            raw_s = active_word["start"] - lead_time_s
+            raw_e = active_word["end"] - lead_time_s
+            s_adj = max(0.0, raw_s)
+            e_adj = max(s_adj + 0.18, raw_e)
+            if s_adj >= clip_duration:
                 continue
+            e_adj = min(clip_duration, e_adj)
+            if s_adj >= e_adj:
+                continue
+
+            w_start = _format_ass_timestamp(s_adj)
+            w_end = _format_ass_timestamp(e_adj)
 
             # Render words in this chunk: active word gets highlight color + slight scale pop
             rendered_words = []
