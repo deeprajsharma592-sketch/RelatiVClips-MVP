@@ -85,7 +85,25 @@ async def lifespan(app: FastAPI):
         print(f"[DB] Database unavailable, running in memory-only mode: {e}")
 
     start_cleanup_scheduler()
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            # Prevent Windows from sleeping or suspending network/CPU while backend runs
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 | 0x00000040)
+            print("[Power] Windows sleep prevention activated (SetThreadExecutionState)")
+        except Exception as e:
+            print(f"[Power] Sleep prevention error: {e}")
+
     yield
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+        except Exception:
+            pass
+
     stop_cleanup_scheduler()
     set_event_loop(None)
     try:

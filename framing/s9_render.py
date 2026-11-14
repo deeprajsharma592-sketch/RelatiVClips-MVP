@@ -151,11 +151,14 @@ def render_video(
         str(output_path),
     ])
 
+    stderr_log_path = output_path.parent / f"render_ffmpeg_{output_path.stem}.log"
+    err_file = open(stderr_log_path, "wb")
+
     proc = subprocess.Popen(
         ffmpeg_cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=err_file,
     )
 
     t0 = time.time()
@@ -253,12 +256,20 @@ def render_video(
     finally:
         cap.release()
         if proc.stdin:
-            proc.stdin.close()
-        stderr_output = proc.stderr.read().decode("utf-8", errors="replace") if proc.stderr else ""
-        proc.wait(timeout=30)
+            try:
+                proc.stdin.close()
+            except Exception:
+                pass
+        err_file.close()
+        proc.wait(timeout=60)
 
+    stderr_output = ""
     if proc.returncode != 0:
+        if stderr_log_path.exists():
+            stderr_output = stderr_log_path.read_text(encoding="utf-8", errors="replace")
         raise RuntimeError(f"FFmpeg render pipeline failed (rc={proc.returncode}): {stderr_output[:1000]}")
+    else:
+        stderr_log_path.unlink(missing_ok=True)
 
     render_time_s = time.time() - t0
 
