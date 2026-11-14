@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.BACKEND_BASE_URL || "https://perth-lovers-coalition-margaret.trycloudflare.com";
+const BACKEND = (
+  process.env.BACKEND_BASE_URL && !process.env.BACKEND_BASE_URL.includes("summer-clearing")
+) ? process.env.BACKEND_BASE_URL : "https://perth-lovers-coalition-margaret.trycloudflare.com";
 const TIMEOUT_MS = 120_000; // 2 min for full pipeline
 
 export async function POST(req: NextRequest) {
