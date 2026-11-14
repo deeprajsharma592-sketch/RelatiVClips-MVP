@@ -67,8 +67,12 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     responseHeaders.set("access-control-allow-methods", "GET,POST,PUT,DELETE,OPTIONS");
     responseHeaders.set("access-control-allow-headers", "content-type,authorization");
 
-    // Forward important upstream response headers (cookies for auth!)
+    // Forward important upstream response headers (media streaming & auth!)
     const headersToForward = [
+      "content-length",
+      "content-range",
+      "accept-ranges",
+      "content-disposition",
       "set-cookie",
       "x-request-id",
       "x-rate-limit-limit",

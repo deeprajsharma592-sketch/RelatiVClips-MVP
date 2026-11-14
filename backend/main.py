@@ -478,6 +478,7 @@ async def download_clip(clip_id: str):
                 path=candidate,
                 filename=candidate.name,
                 media_type="video/mp4",
+                headers={"Accept-Ranges": "bytes"},
             )
     raise HTTPException(status_code=404, detail="Clip not found")
 

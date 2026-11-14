@@ -699,7 +699,7 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
     if (!clip.file_path && !clip.clip_id) return;
     const cid =
       clip.clip_id ||
-      (clip.file_path ? clip.file_path.split("/").pop()?.replace(/\.mp4$/i, "") : null);
+      (clip.file_path ? clip.file_path.split(/[/\\]/).pop()?.replace(/\.mp4$/i, "") : null);
     if (cid) {
       setVideoUrl(apiPath(`/download/${cid}`));
     }
