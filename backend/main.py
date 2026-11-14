@@ -423,6 +423,20 @@ async def get_transcript(url: str):
     )
 
 
+@app.post("/admin/git-pull")
+async def admin_git_pull():
+    """Trigger git pull origin main on the host machine to update code."""
+    import subprocess
+    cmd = ["git", "pull", "origin", "main"]
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    return {
+        "ok": res.returncode == 0,
+        "stdout": res.stdout,
+        "stderr": res.stderr,
+        "returncode": res.returncode
+    }
+
+
 @app.get("/debug/formats")
 async def debug_formats(url: str):
     import subprocess

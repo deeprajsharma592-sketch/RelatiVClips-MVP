@@ -65,8 +65,9 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
 
     cmd = [
         YTDLP_PATH,
-        "-f", "ba/b/best",
+        "-f", "140/251/ba/b/best",
         "--download-sections", f"*{s_str}-{e_str}",
+        "--extractor-args", "youtube:player_client=android_vr,android,ios",
         "-o", out_template,
         "--no-warnings",
     ]
@@ -76,9 +77,6 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     cookie_args = get_cookie_args()
     if cookie_args:
         cmd.extend(cookie_args)
-        cmd.extend(["--extractor-args", "youtube:player_client=web,android,ios"])
-    else:
-        cmd.extend(["--extractor-args", "youtube:player_client=android,web,ios"])
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -90,9 +88,8 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     """Build a yt-dlp command that downloads only [start, end] of the video
     AS A VIDEO FILE (with both video and audio streams) for the renderer.
 
-    Used AFTER the LLM picks the winning moments — we re-fetch the picked
-    segments with both video and audio so the renderer can crop real video
-    frames (instead of falling back to a still image).
+    Uses android_vr player client to cleanly bypass YouTube SABR adaptive stream blocking
+    and download true 1080p (format 137) + audio (format 140).
     """
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
@@ -109,20 +106,21 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
 
     cmd = [
         YTDLP_PATH,
-        # Strictly prioritize native 1080p and 720p HD streams with audio; never fall back to 360p (format 18)
+        # Native 1080p and 720p HD streams; android_vr bypasses SABR streaming wall
         "-f", (
+            "137+140/"
             "bv*[height=1080]+ba/"
             "bv*[height>=1080]+ba/"
+            "136+140/"
             "bv*[height=720]+ba/"
             "bv*[height>=720]+ba/"
-            "bv*+ba/"
-            "b[height>=720]/"
-            "best"
+            "bv*+ba"
         ),
         "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
         "--format-sort", "res:1080,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
+        "--extractor-args", "youtube:player_client=android_vr,android,ios",
         "-o", out_template,
         "--no-warnings",
     ]
@@ -132,9 +130,6 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     cookie_args = get_cookie_args()
     if cookie_args:
         cmd.extend(cookie_args)
-        cmd.extend(["--extractor-args", "youtube:player_client=web,android,ios"])
-    else:
-        cmd.extend(["--extractor-args", "youtube:player_client=android,web,ios"])
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
