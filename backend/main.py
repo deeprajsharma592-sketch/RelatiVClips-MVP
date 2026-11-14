@@ -475,9 +475,18 @@ async def debug_read_captions(task_id: str = "0ebe5d51-cad2-4ea9-9fe9-97f5874a72
         return {"error": "File not found", "found_files": ass_files[:10]}
     with open(sub_file, "r", encoding="utf-8", errors="ignore") as f:
         all_lines = [l.strip() for l in f.readlines()]
-        if from_start:
-            return {"lines": all_lines[20:60]}
-        return {"lines": all_lines[-30:]}
+        # find where [Events] starts
+        ev_idx = 0
+        for i, l in enumerate(all_lines):
+            if l.startswith("[Events]"):
+                ev_idx = i + 2
+                break
+        events = all_lines[ev_idx:]
+        return {
+            "total_dialogues": len(events),
+            "first_10": events[:10],
+            "last_10": events[-10:],
+        }
 async def debug_formats(url: str):
     import subprocess
     from .utils.config import YTDLP_PATH, get_cookie_args
