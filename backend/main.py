@@ -467,14 +467,17 @@ async def debug_check_setup():
 
 
 @app.get("/debug/read-captions")
-async def debug_read_captions(task_id: str = "0ebe5d51-cad2-4ea9-9fe9-97f5874a7204", index: int = 1):
+async def debug_read_captions(task_id: str = "0ebe5d51-cad2-4ea9-9fe9-97f5874a7204", index: int = 1, from_start: bool = True):
     from .utils.config import TEMP_DIR
     sub_file = TEMP_DIR / f"{task_id}_{index}_captions.ass"
     if not sub_file.exists():
         ass_files = [f.name for f in TEMP_DIR.glob("*captions.ass")]
         return {"error": "File not found", "found_files": ass_files[:10]}
     with open(sub_file, "r", encoding="utf-8", errors="ignore") as f:
-        return {"lines": [l.strip() for l in f.readlines()[-30:]]}
+        all_lines = [l.strip() for l in f.readlines()]
+        if from_start:
+            return {"lines": all_lines[20:60]}
+        return {"lines": all_lines[-30:]}
 async def debug_formats(url: str):
     import subprocess
     from .utils.config import YTDLP_PATH, get_cookie_args
