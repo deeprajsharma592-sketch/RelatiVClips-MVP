@@ -73,8 +73,6 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
         "--download-sections", f"*{s_str}-{e_str}",
         "-o", out_template,
         "--no-warnings",
-        "--",
-        url,
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
@@ -90,6 +88,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
+    cmd.extend(["--", url])
     return cmd
 
 
@@ -134,8 +133,6 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         "--extractor-args", "youtube:player_client=android,web,ios",
         "-o", out_template,
         "--no-warnings",
-        "--",
-        url,
     ]
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
@@ -150,6 +147,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
+    cmd.extend(["--", url])
     return cmd
 
 
