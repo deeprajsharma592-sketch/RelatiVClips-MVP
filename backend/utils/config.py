@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import List, Optional, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -213,8 +214,8 @@ def get_cookie_args() -> List[str]:
         except Exception:
             pass
 
-    # Fallback to direct browser extraction in yt-dlp
-    return ["--cookies-from-browser", "chrome"]
+    # If extraction is unavailable or DPAPI blocked, return empty list so yt-dlp proceeds cleanly
+    return []
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 VISION_ENABLED = os.getenv("VISION_ENABLED", "false").lower() == "true"
