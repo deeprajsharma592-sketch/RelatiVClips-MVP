@@ -437,7 +437,33 @@ async def admin_git_pull():
     }
 
 
-@app.get("/debug/check-setup")
+@app.get("/debug/test-captions")
+async def debug_test_captions(task_id: str = "0ebe5d51-cad2-4ea9-9fe9-97f5874a7204", clip_index: int = 1):
+    from .utils.config import TEMP_DIR
+    from .pipeline.captions import generate_viral_ass_subtitles
+    # find the clip video file
+    vid_files = list(TEMP_DIR.glob(f"*{task_id}*vidseg*.mp4"))
+    if not vid_files:
+        return {"error": "No vidseg found", "all_vids": [f.name for f in TEMP_DIR.glob("*.mp4")][:10]}
+    target_vid = str(vid_files[0])
+    test_clip = {
+        "start": 0.78,
+        "end": 65.3,
+        "video_source_start": 0.0,
+        "video_source_end": 75.3,
+        "video_path": target_vid,
+    }
+    sub_file = TEMP_DIR / "debug_test_captions.ass"
+    try:
+        res = generate_viral_ass_subtitles(test_clip, sub_file)
+        if sub_file.exists():
+            with open(sub_file, "r", encoding="utf-8") as f:
+                lines = [l.strip() for l in f if l.startswith("Dialogue:")]
+            return {"ok": True, "count": len(lines), "sample": lines[:10]}
+        return {"ok": False, "res": res}
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "trace": traceback.format_exc()}
 async def debug_check_setup():
     import shutil, os
     from .utils.config import COOKIES_PATH, YTDLP_PATH, FFMPEG_PATH
