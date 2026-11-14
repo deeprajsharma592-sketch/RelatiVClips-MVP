@@ -102,6 +102,19 @@ def generate_viral_ass_subtitles(
         local_media = clip.get("video_path") or clip.get("audio_path")
         if local_media and Path(local_media).exists():
             try:
+                # Monkey-patch PyAV if av>=18 where metadata_errors was removed
+                try:
+                    import av
+                    if not hasattr(av, "_patched_metadata_errors"):
+                        _orig_av_open = av.open
+                        def _safe_av_open(*args, **kwargs):
+                            kwargs.pop("metadata_errors", None)
+                            return _orig_av_open(*args, **kwargs)
+                        av.open = _safe_av_open
+                        av._patched_metadata_errors = True
+                except Exception:
+                    pass
+
                 from faster_whisper import WhisperModel
                 from ..utils.config import WHISPER_MODEL, WHISPER_COMPUTE_TYPE
                 from ..utils.vram_manager import get_vram_usage

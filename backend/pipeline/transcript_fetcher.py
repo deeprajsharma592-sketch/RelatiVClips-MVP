@@ -142,7 +142,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         YTDLP_PATH,
         "--write-subs",
         "--write-auto-subs",
-        "--sub-lang", "en.*,en,hi.*",
+        "--sub-lang", "en,en-US,en-GB,en.*",
         "--sub-format", "vtt/srt/best",
         "--skip-download",
         "--extractor-args", "youtube:player_client=android,web",
@@ -202,17 +202,34 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     source = None
     sub_file = None
 
-    vtt_candidates = sorted(list(TEMP_DIR.glob(f"{task_id}_subs*.vtt")), key=lambda p: p.stat().st_size, reverse=True)
-    srt_candidates = sorted(list(TEMP_DIR.glob(f"{task_id}_subs*.srt")), key=lambda p: p.stat().st_size, reverse=True)
+    vtt_candidates = list(TEMP_DIR.glob(f"{task_id}_subs*.vtt"))
+    srt_candidates = list(TEMP_DIR.glob(f"{task_id}_subs*.srt"))
 
-    if vtt_candidates and vtt_candidates[0].stat().st_size > 50:
-        sub_file = vtt_candidates[0]
-        log(f"  VTT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+    # Strictly prioritize English subtitles (.en.vtt or .en.srt)
+    en_vtts = sorted([p for p in vtt_candidates if ".en" in p.name and p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+    en_srts = sorted([p for p in srt_candidates if ".en" in p.name and p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+
+    other_vtts = sorted([p for p in vtt_candidates if p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+    other_srts = sorted([p for p in srt_candidates if p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+
+    if en_vtts:
+        sub_file = en_vtts[0]
+        log(f"  English VTT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
         segments = _parse_vtt(str(sub_file))
         source = "ytdlp_vtt"
-    elif srt_candidates and srt_candidates[0].stat().st_size > 50:
-        sub_file = srt_candidates[0]
-        log(f"  SRT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+    elif en_srts:
+        sub_file = en_srts[0]
+        log(f"  English SRT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_srt(str(sub_file))
+        source = "ytdlp_srt"
+    elif other_vtts:
+        sub_file = other_vtts[0]
+        log(f"  VTT subtitles found (non-English): {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_vtt(str(sub_file))
+        source = "ytdlp_vtt"
+    elif other_srts:
+        sub_file = other_srts[0]
+        log(f"  SRT subtitles found (non-English): {sub_file.name} ({sub_file.stat().st_size} bytes)")
         segments = _parse_srt(str(sub_file))
         source = "ytdlp_srt"
 
@@ -233,6 +250,18 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
     """Fall back to faster-whisper local transcription."""
     log("  Running faster-whisper on audio...")
     try:
+        try:
+            import av
+            if not hasattr(av, "_patched_metadata_errors"):
+                _orig_av_open = av.open
+                def _safe_av_open(*args, **kwargs):
+                    kwargs.pop("metadata_errors", None)
+                    return _orig_av_open(*args, **kwargs)
+                av.open = _safe_av_open
+                av._patched_metadata_errors = True
+        except Exception:
+            pass
+
         from faster_whisper import WhisperModel
         from ..utils.config import WHISPER_MODEL, WHISPER_COMPUTE_TYPE
         from ..utils.vram_manager import get_vram_usage, clear_gpu

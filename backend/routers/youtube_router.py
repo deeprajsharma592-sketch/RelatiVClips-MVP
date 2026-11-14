@@ -1118,12 +1118,18 @@ def _run_moment_pipeline(
                  if abs(float(s.get("source_start", -1)) - m.start) < 0.5),
                 None,
             )
-            default_title = {
-                "peak": "THIS MOMENT HITS",
-                "valley": "THE AWKWARD PAUSE",
-                "density": "FAST FORWARD",
-                "silence": "WAIT FOR IT",
-            }.get((m.signal_type or "").split("+")[-1] if m.signal_type else "", "TOP MOMENT")
+            # Generate a dynamic, contextual title from the moment's snippet rather than a generic placeholder
+            snippet_words = (m.snippet or "").strip().split()
+            if len(snippet_words) >= 3:
+                clean_snippet_title = " ".join(snippet_words[:6]).strip(".,?!-:;\"' ")
+                default_title = f"{clean_snippet_title}..."
+            else:
+                default_title = {
+                    "peak": "The Key Moment",
+                    "valley": "The Turning Point",
+                    "density": "Core Takeaway",
+                    "silence": "Watch Carefully",
+                }.get((m.signal_type or "").split("+")[-1] if m.signal_type else "", "Key Highlight")
             final_clips.append({
                 "start": round(m.start, 2),
                 "end": round(m.end, 2),
