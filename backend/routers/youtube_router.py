@@ -495,6 +495,7 @@ def create_progress_callback(task_id: str):
     sub_counter = {"value": 0.0, "step": 0, "denominator": 1}
 
     def callback(message: str, step: int = None, sub_progress: float = None, progress: int = None):
+        print(f"[YouTubePipeline:{task_id[:8]}] {message}", flush=True)
         # Backward-compat: legacy callers (v1 funnel + orchestrator completion
         # notifications) pass `progress=N` as a literal 0-100 value. Map that
         # to a direct progress override so old code keeps working.
