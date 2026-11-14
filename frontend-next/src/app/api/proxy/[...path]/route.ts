@@ -27,12 +27,28 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
 
   const targetUrl = `${BACKEND_BASE}/${cleanedPath}${search}`;
 
-  // Stream-friendly headers
-  const headers = new Headers(req.headers);
-  headers.delete("host");
-  headers.delete("connection");
-  headers.delete("content-length");
-  headers.set("x-forwarded-host", req.headers.get("host") || "relativclips.com");
+  // Forward only clean headers — strip Cloudflare / Vercel CDN loop headers
+  const headers = new Headers();
+  for (const [key, val] of req.headers.entries()) {
+    const k = key.toLowerCase();
+    if (
+      k.startsWith("cf-") ||
+      k === "cdn-loop" ||
+      k.startsWith("x-vercel-") ||
+      k === "host" ||
+      k === "connection" ||
+      k === "content-length"
+    ) {
+      continue;
+    }
+    headers.set(key, val);
+  }
+  try {
+    headers.set("host", new URL(BACKEND_BASE).host);
+  } catch (e) {
+    // ignore
+  }
+  headers.set("x-forwarded-host", "relativclips.com");
   headers.set("x-forwarded-proto", "https");
   headers.set("x-relativ-proxy", "vercel-edge-v2");
 
