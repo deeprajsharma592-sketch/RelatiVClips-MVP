@@ -101,12 +101,28 @@ def run_pipeline(
     )
 
     # ── Stage 7: Camera Paths
-    p1_samples = tracks[0]["samples"] if len(tracks) > 0 else []
-    p2_samples = tracks[1]["samples"] if len(tracks) > 1 else []
+    # Aggregate samples by panel label across all track chunks
+    p1_samples = sorted(
+        [s for t in tracks if t.get("panel_label") == "P1" for s in t.get("samples", [])],
+        key=lambda s: s["t"]
+    )
+    p2_samples = sorted(
+        [s for t in tracks if t.get("panel_label") == "P2" for s in t.get("samples", [])],
+        key=lambda s: s["t"]
+    )
+
+    # Fallback to raw tracks[0] / tracks[1] if panel_label was not set
+    if not p1_samples and len(tracks) > 0:
+        p1_samples = tracks[0].get("samples", [])
+    if not p2_samples and len(tracks) > 1:
+        p2_samples = tracks[1].get("samples", [])
 
     single_p1_plan = plan_camera_single_shot(p1_samples, 0, total_frames, fps, src_w, src_h, config) if p1_samples else []
     single_p2_plan = plan_camera_single_shot(p2_samples, 0, total_frames, fps, src_w, src_h, config) if p2_samples else []
-    stack_plan = plan_camera_stack_shot(p1_samples, p2_samples, 0, total_frames, fps, src_w, src_h, config) if (p1_samples and p2_samples) else []
+    
+    # STACK is only possible if both P1 and P2 exist AND represent distinct subjects
+    has_two_distinct_subjects = bool(p1_samples and p2_samples and any(seg.get("state") == "STACK" for seg in layout_segments))
+    stack_plan = plan_camera_stack_shot(p1_samples, p2_samples, 0, total_frames, fps, src_w, src_h, config) if has_two_distinct_subjects else []
 
     # ── Stage 8: Zoom Planner
     impact_candidates = []

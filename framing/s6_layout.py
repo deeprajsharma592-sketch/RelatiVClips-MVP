@@ -38,6 +38,7 @@ def plan_layout(
     stable_tracks: List[str],
     words: Optional[List[Dict[str, Any]]] = None,
     config: Optional[Dict[str, Any]] = None,
+    tracks: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Pure logic layout planner.
@@ -48,6 +49,13 @@ def plan_layout(
     if config is None:
         config = {}
 
+    # Deduplicate stable_tracks preserving order
+    unique_tracks = []
+    for trk in stable_tracks:
+        if trk and trk not in unique_tracks:
+            unique_tracks.append(trk)
+    stable_tracks = unique_tracks
+
     layout_cfg = config.get("layout", {})
     min_hold_s = float(layout_cfg.get("min_hold_s", 2.0))
     single_enter_hold_s = float(layout_cfg.get("single_enter_hold_s", 3.0))
@@ -56,6 +64,22 @@ def plan_layout(
     unknown_hold_s = float(config.get("speaker", {}).get("unknown_hold_s", 1.5))
 
     layout_segments: List[Dict[str, Any]] = []
+
+    # If exactly 1 stable face/speaker: whole video is SINGLE(stable_tracks[0])
+    if len(stable_tracks) == 1:
+        solo_track = stable_tracks[0]
+        for shot in shots:
+            shot_start = float(shot.get("start_s", shot.get("t_start", 0.0)))
+            shot_end = float(shot.get("end_s", shot.get("t_end", 0.0)))
+            if shot_end > shot_start:
+                layout_segments.append({
+                    "t_start": round(shot_start, 4),
+                    "t_end": round(shot_end, 4),
+                    "state": "SINGLE",
+                    "track": solo_track,
+                    "tracks": [solo_track]
+                })
+        return layout_segments
 
     # Process shot by shot (layout strictly resets at shot boundaries)
     for shot in shots:
@@ -66,11 +90,42 @@ def plan_layout(
         if shot_dur <= 0:
             continue
 
+        # Check which faces are present in this specific shot
+        shot_faces = []
+        if tracks:
+            for trk in tracks:
+                ts = float(trk.get("start_s", 0.0))
+                te = float(trk.get("end_s", 0.0))
+                lbl = trk.get("panel_label")
+                if te > shot_start and ts < shot_end and lbl:
+                    if lbl not in shot_faces:
+                        shot_faces.append(lbl)
+
+        # If tracks were provided and shot has only 1 face: never STACK, always SINGLE
+        if tracks is not None and len(shot_faces) == 1:
+            layout_segments.append({
+                "t_start": round(shot_start, 4),
+                "t_end": round(shot_end, 4),
+                "state": "SINGLE",
+                "track": shot_faces[0],
+                "tracks": [shot_faces[0]]
+            })
+            continue
+
+        if tracks is not None and len(shot_faces) == 0:
+            layout_segments.append({
+                "t_start": round(shot_start, 4),
+                "t_end": round(shot_end, 4),
+                "state": "FIT_BLUR",
+                "tracks": []
+            })
+            continue
+
         n_faces = len(stable_tracks)
         if n_faces == 0:
             layout_segments.append({
-                "t_start": shot_start,
-                "t_end": shot_end,
+                "t_start": round(shot_start, 4),
+                "t_end": round(shot_end, 4),
                 "state": "FIT_BLUR",
                 "tracks": []
             })
@@ -78,8 +133,8 @@ def plan_layout(
 
         if n_faces == 1:
             layout_segments.append({
-                "t_start": shot_start,
-                "t_end": shot_end,
+                "t_start": round(shot_start, 4),
+                "t_end": round(shot_end, 4),
                 "state": "SINGLE",
                 "track": stable_tracks[0],
                 "tracks": [stable_tracks[0]]
@@ -244,9 +299,32 @@ def generate_layout_artifact(
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
 
-    stable_track_labels = [
-        t.get("panel_label", f"P{idx+1}") for idx, t in enumerate(tracks)
+    # Aggregate duration per panel label across tracks to filter fleeting detections
+    label_durations: Dict[str, float] = {}
+    for t in tracks:
+        lbl = t.get("panel_label")
+        if not lbl:
+            continue
+        dur = float(t.get("end_s", 0.0)) - float(t.get("start_s", 0.0))
+        label_durations[lbl] = label_durations.get(lbl, 0.0) + max(0.0, dur)
+
+    # Minimum duration for a face to be considered a stable conversational subject
+    total_clip_dur = max(1.0, sum(float(s.get("end_s", s.get("t_end", 0.0))) - float(s.get("start_s", s.get("t_start", 0.0))) for s in shots)) if shots else 1.0
+    min_face_persistence_s = float(config.get("face", {}).get("min_track_persistence_s", 1.5))
+    valid_labels = [
+        lbl for lbl, dur in sorted(label_durations.items(), key=lambda item: -item[1])
+        if dur >= min_face_persistence_s and (dur / total_clip_dur >= 0.15 or dur >= 3.0)
     ]
+
+    # If no labels met the persistence threshold, fallback to top label if any
+    if not valid_labels and label_durations:
+        valid_labels = [max(label_durations.items(), key=lambda item: item[1])[0]]
+
+    # Stable tracks is strictly unique labels
+    stable_track_labels: List[str] = []
+    for lbl in valid_labels:
+        if lbl not in stable_track_labels:
+            stable_track_labels.append(lbl)
 
     segments = plan_layout(
         turns=turns,
@@ -254,6 +332,7 @@ def generate_layout_artifact(
         stable_tracks=stable_track_labels,
         words=words,
         config=config,
+        tracks=tracks,
     )
 
     output_payload = {

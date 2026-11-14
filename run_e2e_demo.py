@@ -197,7 +197,7 @@ def main():
         workdir=workdir,
         words_path=words_file,
         impact_path=impact_file,
-        debug_overlay=True,
+        debug_overlay=False,
     )
 
     print("\n" + "=" * 70)
