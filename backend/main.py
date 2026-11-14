@@ -489,22 +489,24 @@ async def admin_upgrade_ytdlp():
 
 
 @app.get("/debug/test-clip")
-async def debug_test_clip(url: str, client: str = "android_vr", use_sections: bool = False, max_bytes: str = "10M"):
+async def debug_test_clip(url: str, client: str = "web", use_cookies: bool = True):
     import subprocess
-    from .utils.config import YTDLP_PATH, FFMPEG_PATH, TEMP_DIR
+    from .utils.config import YTDLP_PATH, FFMPEG_PATH, TEMP_DIR, COOKIES_PATH
     out = str(TEMP_DIR / "debug_clip.%(ext)s")
     cmd = [
         YTDLP_PATH,
         "-f", "137+140/136+140/bv*[height>=720]+ba/best",
-        "--extractor-args", f"youtube:player_client={client}",
+        "--js-runtimes", "node",
+        "--no-plugins",
         "-o", out,
         "--verbose",
         "--force-overwrites",
+        "--max-filesize", "15M",
     ]
-    if use_sections:
-        cmd.extend(["--download-sections", "*00:00:10-00:00:20"])
-    else:
-        cmd.extend(["--max-filesize", max_bytes])
+    if use_cookies and COOKIES_PATH.exists():
+        cmd.extend(["--cookies", str(COOKIES_PATH)])
+    if client:
+        cmd.extend(["--extractor-args", f"youtube:player_client={client}"])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     cmd.extend(["--", url])
