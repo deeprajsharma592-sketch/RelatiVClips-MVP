@@ -165,7 +165,16 @@ PARALLEL_SURGICAL_WORKERS = int(os.getenv("PARALLEL_SURGICAL_WORKERS", "3"))
 AUDIO_FALLBACK_LIMIT_MB = 50
 SURGICAL_BUFFER_SECONDS = 10
 
-COOKIES_PATH = BASE_DIR / "cookies.txt"
+_possible_cookies = [
+    Path(os.getenv("COOKIES_PATH", "")) if os.getenv("COOKIES_PATH") else None,
+    BASE_DIR / "cookies.txt",
+    BASE_DIR.parent / "cookies.txt",
+    Path.home() / "Documents" / "youtube_cookies.txt",
+    Path.home() / "youtube_cookies.txt",
+    Path(r"C:\Users\Deepraj sharma\Documents\youtube_cookies.txt"),
+    Path(r"C:\Users\DEEPRAJ\Documents\youtube_cookies.txt"),
+]
+COOKIES_PATH = next((p for p in _possible_cookies if p and p.exists()), BASE_DIR / "cookies.txt")
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 VISION_ENABLED = os.getenv("VISION_ENABLED", "false").lower() == "true"
