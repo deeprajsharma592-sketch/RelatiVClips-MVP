@@ -121,15 +121,17 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
             "bv*[height<=2160][height>=1080]+ba/"
             "bv*[height<=1440]+ba/"
             "bv*[height<=1080]+ba/"
+            "bv*[height<=720]+ba/"
             "bv*+ba/"
             "b[height<=2160]/"
             "b[height<=1080]/"
             "bestvideo+bestaudio/"
+            "b/"
             "best"
         ),
         "--merge-output-format", "mp4",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--extractor-args", "youtube:player_client=web,ios",
+        "--extractor-args", "youtube:player_client=android,web,ios",
         "-o", out_template,
         "--no-warnings",
         "--",

@@ -110,10 +110,26 @@ def get_cached_result(
 
     if verify_files:
         clips = data.get("clips", [])
+        if not clips:
+            return None
+        from ..utils.config import OUTPUTS_DIR
         for c in clips:
-            file_path = c.get("file_path")
-            if file_path and not Path(file_path).exists():
-                log.debug(f"[CACHE] Result references missing file {file_path}, invalidating")
+            # 1. Invalidate legacy short clips (< 40s) so new 45-90s format is generated
+            dur = float(c.get("end", 0)) - float(c.get("start", 0))
+            if dur < 40.0:
+                log.info(f"[CACHE] Result contains old short clip ({dur:.1f}s < 45s), invalidating cache")
+                return None
+            # 2. Check if the rendered video actually exists on disk
+            fp = c.get("file_path")
+            dl = c.get("download_url", "")
+            fname = dl.split("/")[-1] if dl else ""
+            candidates = [
+                Path(fp) if fp else None,
+                OUTPUTS_DIR / fname if fname else None,
+                OUTPUTS_DIR / f"{fname}.mp4" if fname else None,
+            ]
+            if not any(p and p.exists() and p.stat().st_size > 1024 for p in candidates):
+                log.info(f"[CACHE] Rendered video file missing on disk ({fname or fp}), invalidating cache")
                 return None
 
     # Annotate hit metadata
