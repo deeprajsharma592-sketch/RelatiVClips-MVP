@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const TARGETS: Array<{ name: string; url: string }> = [
-  { name: "loq-tunnel", url: "https://summer-clearing-ambien-builders.trycloudflare.com/health" },
+  { name: "loq-tunnel", url: "https://perth-lovers-coalition-margaret.trycloudflare.com/health" },
   { name: "hetzner-9000", url: "http://91.98.144.72:9000/api/v1/auth/me" },
   { name: "hetzner-80", url: "http://91.98.144.72/health" },
   { name: "google", url: "https://www.google.com/" },
