@@ -454,6 +454,20 @@ async def debug_ytdlp_version():
     return {"version": res.stdout.strip(), "stderr": res.stderr}
 
 
+@app.post("/admin/upgrade-ytdlp")
+async def admin_upgrade_ytdlp():
+    import subprocess, sys
+    from .utils.config import YTDLP_PATH
+    res = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"], capture_output=True, text=True, timeout=180)
+    res_ver = subprocess.run([YTDLP_PATH, "--version"], capture_output=True, text=True, timeout=10)
+    return {
+        "ok": res.returncode == 0,
+        "new_version": res_ver.stdout.strip(),
+        "stdout": res.stdout,
+        "stderr": res.stderr,
+    }
+
+
 @app.get("/debug/test-clip")
 async def debug_test_clip(url: str, client: str = "android_vr", use_sections: bool = False, max_bytes: str = "10M"):
     import subprocess
