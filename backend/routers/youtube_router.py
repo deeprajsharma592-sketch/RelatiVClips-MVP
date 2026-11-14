@@ -1211,12 +1211,15 @@ def _run_moment_pipeline(
     for c in final_clips:
         # Try speculative match
         c_src_start = float(c.get("source_start", c.get("start", 0)))
+        c_src_end = float(c.get("source_end", c.get("end", 0)))
         spec_match = None
         for spec in spec_results.values():
             if not spec.get("video_path"):
                 continue
             spec_start = float(spec.get("source_start", 0))
-            if abs(spec_start - c_src_start) < 0.5:
+            spec_end = float(spec.get("source_end", 0))
+            # Must strictly cover the entire clip duration (both start and end)
+            if abs(spec_start - c_src_start) < 2.0 and spec_end >= (c_src_end - 2.0):
                 spec_match = spec
                 break
         if spec_match:

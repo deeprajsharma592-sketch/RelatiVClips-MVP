@@ -256,18 +256,20 @@ def render_clip(
     # (no padding), while video segments have source_start = PADDED download start.
     # The video_path is the source of truth for where the file actually starts.
     # audio_path segments start at their source_start; video files at their padded start.
-    video_src_start = float(clip.get("video_source_start", 0))  # from video seg
-    audio_src_start = float(clip.get("source_start", start))       # from audio seg
-    # Use whichever source_start is meaningful; prefer video_source_start when set
-    if video_src_start > 0 and abs(video_src_start - audio_src_start) < 5:
-        source_start = video_src_start
+    # video_source_start is the exact timestamp in the source video where the downloaded file begins.
+    # Surgical downloads pad by SURGICAL_BUFFER_SECONDS (10s), so video_source_start = start - 10.0.
+    if clip.get("video_source_start") is not None:
+        source_start = float(clip["video_source_start"])
+    elif clip.get("source_start") is not None:
+        source_start = float(clip["source_start"])
     else:
-        source_start = audio_src_start
+        source_start = float(start)
+
     source_end = float(clip.get("video_source_end", clip.get("source_end", end)))
     # Relative positions within the local segment file
     rel_start = max(0.0, start - source_start)
     rel_end = max(rel_start, min(end, source_end) - source_start)
-    duration = rel_end - rel_start  # actual duration we CAN encode
+    duration = end - start  # target clip duration
     orig_duration = end - start  # original intended duration for metadata
 
     # Validate timestamps - prevent 0 KB files from invalid timestamps
@@ -346,10 +348,11 @@ def render_clip(
                 print(f"[Renderer] Attempting RelatiV Dynamic Framing Engine for clip {clip_index}...")
                 pretrim_path = TEMP_DIR / f"pretrim_{task_id}_{clip_index}.mp4"
                 trim_cmd = [
-                    FFMPEG_PATH, "-y", "-ss", str(rel_start), "-t", str(duration),
-                    "-i", str(video_path), "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-c:a", "aac", str(pretrim_path)
+                    FFMPEG_PATH, "-y", "-ss", str(rel_start),
+                    "-i", str(video_path), "-t", str(duration),
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-c:a", "aac", str(pretrim_path)
                 ]
-                subprocess.run(trim_cmd, capture_output=True, timeout=30)
+                subprocess.run(trim_cmd, capture_output=True, timeout=120)
                 input_for_framing = str(pretrim_path) if (pretrim_path.exists() and pretrim_path.stat().st_size > 1024) else str(video_path)
 
                 from framing.run import run_pipeline

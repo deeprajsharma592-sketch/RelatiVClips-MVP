@@ -117,19 +117,18 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         YTDLP_PATH,
         # Prioritize 4K / 1440p / 1080p so the 9:16 vertical crop has pristine horizontal sharpness
         "-f", (
-            "bv*[height<=2160][height>=1080]+ba/"
-            "bv*[height<=1440]+ba/"
-            "bv*[height<=1080]+ba/"
-            "bv*[height<=720]+ba/"
-            "bv*+ba/"
-            "b[height<=2160]/"
-            "b[height<=1080]/"
-            "bestvideo+bestaudio/"
-            "b/"
-            "best"
+            "bv*[ext=mp4][height>=1080]+ba[ext=m4a]/"
+            "bv*[height>=1080]+ba/"
+            "b[height>=1080]/"
+            "bv*[ext=mp4][height>=720]+ba[ext=m4a]/"
+            "bv*[height>=720]+ba/"
+            "b[height>=720]/"
+            "bestvideo[height>=720]+bestaudio/"
+            "best[height>=720]/"
+            "bv*+ba/best"
         ),
         "--merge-output-format", "mp4",
-        "--format-sort", "res:1080,fps,codec:h264",
+        "--format-sort", "res:1080,fps,codec:h264,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
         "--extractor-args", "youtube:player_client=web,web_safari,android,ios",
         "-o", out_template,
