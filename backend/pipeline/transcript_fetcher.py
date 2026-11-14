@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Optional, Callable
 
-from ..utils.config import TEMP_DIR, YTDLP_PATH, COOKIES_PATH, get_proxy
+from ..utils.config import TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, COOKIES_PATH, get_proxy, get_cookie_args
 
 
 def _extract_video_id(url: str) -> str:
@@ -145,31 +145,24 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         "--sub-langs", "en.*,en,en-orig,en-US,en-GB",
         "--sub-format", "vtt/srt/best",
         "--skip-download",
-        "--extractor-args", "youtube:player_client=android,web",
+        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
         "-o", str(subs_base) + ".%(ext)s",
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     import shutil
     if shutil.which("node"):
         cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
 
-    _cookies_arg = None
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            _cookies_arg = _working
-        except Exception:
-            _cookies_arg = str(COOKIES_PATH)
-        cmd.extend(["--cookies", _cookies_arg])
+    cmd.extend(get_cookie_args())
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
 
-    cmd.append(url)
+    cmd.extend(["--", url])
 
     last_stderr = ""
     success = False
@@ -321,31 +314,25 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
 
     cmd = [
         YTDLP_PATH,
-        "-f", "bestaudio/best",
+        "-f", "ba/b/bestaudio/best",
         "--extract-audio",
         "--audio-format", "wav",
         "--audio-quality", "0",
-        "--extractor-args", "youtube:player_client=android,web",
+        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
         "-o", str(audio_path),
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        url,
     ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
 
-    _cookies_arg = None
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = str(TEMP_DIR / "youtube_cookies_working.txt")
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            _cookies_arg = _working
-        except Exception:
-            _cookies_arg = str(COOKIES_PATH)
-        cmd.extend(["--cookies", _cookies_arg])
+    cmd.extend(get_cookie_args())
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
+
+    cmd.extend(["--", url])
 
     try:
         log("  Downloading audio...")

@@ -65,11 +65,11 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
 
     cmd = [
         YTDLP_PATH,
-        "-f", "bestaudio/best",
+        "-f", "ba/b/bestaudio/best",
         "--extract-audio",
         "--audio-format", "m4a",
         "--audio-quality", "0",
-        "--extractor-args", "youtube:player_client=android,web",
+        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
         "--download-sections", f"*{s_str}-{e_str}",
         "-o", out_template,
         "--no-warnings",
