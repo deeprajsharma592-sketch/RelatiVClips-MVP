@@ -464,6 +464,9 @@ async def debug_test_captions(task_id: str = "0ebe5d51-cad2-4ea9-9fe9-97f5874a72
     except Exception as e:
         import traceback
         return {"error": str(e), "trace": traceback.format_exc()}
+
+
+@app.get("/debug/check-setup")
 async def debug_check_setup():
     import shutil, os
     from .utils.config import COOKIES_PATH, YTDLP_PATH, FFMPEG_PATH
@@ -490,6 +493,77 @@ async def debug_check_setup():
         "deno_installed": bool(shutil.which("deno")),
         "docker_installed": bool(shutil.which("docker")),
     }
+
+
+@app.get("/debug/test-framing")
+async def debug_test_framing():
+    results = {}
+    import importlib
+    for mod in ["cv2", "mediapipe", "scenedetect", "torch", "yaml", "scipy"]:
+        try:
+            m = importlib.import_module(mod)
+            results[mod] = {"ok": True, "version": getattr(m, "__version__", "unknown")}
+        except Exception as e:
+            results[mod] = {"ok": False, "error": str(e)}
+
+    from pathlib import Path
+    repo_root = Path(__file__).resolve().parent.parent
+    model_path = repo_root / "framing" / "models" / "face_detection_yunet_2023mar.onnx"
+    results["yunet_model"] = {
+        "path": str(model_path),
+        "exists": model_path.exists(),
+        "size": model_path.stat().st_size if model_path.exists() else 0,
+    }
+
+    try:
+        from framing.config import get_binary_paths
+        results["binary_paths"] = get_binary_paths()
+    except Exception as e:
+        results["binary_paths"] = {"error": str(e)}
+
+    try:
+        from framing.run import run_pipeline
+        results["framing_import"] = {"ok": True}
+    except Exception as e:
+        import traceback
+        results["framing_import"] = {"ok": False, "error": str(e), "trace": traceback.format_exc()}
+
+    try:
+        import cv2
+        detector = cv2.FaceDetectorYN.create(str(model_path), "", (320, 320))
+        results["yunet_create"] = {"ok": True}
+    except Exception as e:
+        results["yunet_create"] = {"ok": False, "error": str(e)}
+
+    # Check a sample video if present in TEMP_DIR
+    from .utils.config import TEMP_DIR
+    sample_vids = list(TEMP_DIR.glob("*vidseg*.mp4")) or list(TEMP_DIR.glob("*.mp4"))
+    if sample_vids:
+        test_in = sample_vids[0]
+        results["test_vid_found"] = str(test_in.name)
+        test_out = TEMP_DIR / "debug_framing_test_out.mp4"
+        test_workdir = TEMP_DIR / "debug_framing_workdir"
+        try:
+            from framing.run import run_pipeline
+            # run framing on test_in
+            plan_res = run_pipeline(
+                clip_path=str(test_in),
+                output_path=str(test_out),
+                workdir=test_workdir,
+            )
+            results["framing_execution"] = {
+                "ok": True,
+                "out_exists": test_out.exists(),
+                "out_size": test_out.stat().st_size if test_out.exists() else 0,
+                "layout_states": list(set(f.get("state") for f in plan_res.get("frames", []))) if isinstance(plan_res, dict) else [],
+            }
+        except Exception as e:
+            import traceback
+            results["framing_execution"] = {"ok": False, "error": str(e), "trace": traceback.format_exc()}
+    else:
+        results["test_vid_found"] = None
+
+    return results
 
 
 @app.get("/debug/read-captions")

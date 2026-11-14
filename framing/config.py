@@ -16,17 +16,28 @@ import yaml
 
 
 def get_binary_paths() -> Dict[str, str]:
-    """Find ffmpeg and ffprobe, checking venv bin, static-ffmpeg, and PATH."""
+    """Find ffmpeg and ffprobe, checking env vars, venv bin, static-ffmpeg, and PATH."""
+    env_ffmpeg = os.environ.get("FFMPEG_PATH")
+    env_ffprobe = os.environ.get("FFPROBE_PATH")
+
     venv_bin = Path(__file__).resolve().parent.parent / ".venv_framing" / "bin"
     ffmpeg_cand = str(venv_bin / "ffmpeg")
     ffprobe_cand = str(venv_bin / "ffprobe")
 
-    ffmpeg_bin = ffmpeg_cand if os.path.exists(ffmpeg_cand) else shutil.which("ffmpeg") or "ffmpeg"
-    ffprobe_bin = ffprobe_cand if os.path.exists(ffprobe_cand) else shutil.which("ffprobe") or "ffprobe"
+    ffmpeg_bin = env_ffmpeg or (ffmpeg_cand if os.path.exists(ffmpeg_cand) else shutil.which("ffmpeg") or shutil.which("ffmpeg.exe") or "ffmpeg")
+
+    if not env_ffprobe and ffmpeg_bin and os.path.isabs(str(ffmpeg_bin)):
+        f_dir = Path(ffmpeg_bin).parent
+        for cand in ("ffprobe.exe", "ffprobe"):
+            if (f_dir / cand).exists():
+                env_ffprobe = str(f_dir / cand)
+                break
+
+    ffprobe_bin = env_ffprobe or (ffprobe_cand if os.path.exists(ffprobe_cand) else shutil.which("ffprobe") or shutil.which("ffprobe.exe") or "ffprobe")
 
     return {
-        "ffmpeg": ffmpeg_bin,
-        "ffprobe": ffprobe_bin,
+        "ffmpeg": str(ffmpeg_bin),
+        "ffprobe": str(ffprobe_bin),
     }
 
 

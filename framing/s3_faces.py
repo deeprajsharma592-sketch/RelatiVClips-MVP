@@ -146,6 +146,14 @@ def detect_and_track_faces(
 
     # Initialize YuNet detector
     model_path = Path(__file__).parent / "models" / "face_detection_yunet_2023mar.onnx"
+    if not model_path.exists():
+        try:
+            model_path.parent.mkdir(parents=True, exist_ok=True)
+            import urllib.request
+            url = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+            urllib.request.urlretrieve(url, str(model_path))
+        except Exception:
+            pass
     scale_factor = src_w / float(detect_width)
     detect_h = int(round(src_h / scale_factor))
 
