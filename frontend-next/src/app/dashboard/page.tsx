@@ -167,12 +167,13 @@ function DashboardContent() {
             setGenerationProgress(progress);
           }
         } catch (e: any) {
-          // If backend offline or 502, provide smooth fallback after 8s
+          // If backend offline or 502, surface clear connection error
           const elapsed = Date.now() - startTime;
           if (elapsed > 8000) {
             clearInterval(pollInterval);
             setIsGenerating(false);
-            updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
+            setGenerationError("Backend unreachable (502 / Host not found). Please verify your LOQ backend and tunnel are active.");
+            updateProjectStatus(newProj.id, "failed", [], 0);
             setProjects(getStoredProjects());
           }
         }
@@ -192,20 +193,18 @@ function DashboardContent() {
             setTimeout(() => {
               if (!isMounted) return;
               setIsGenerating(false);
-              updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
+              setGenerationError("Backend did not return a task ID. Check backend logs.");
+              updateProjectStatus(newProj.id, "failed", [], 0);
               setProjects(getStoredProjects());
-            }, 3000);
+            }, 1000);
           }
         })
-        .catch(() => {
+        .catch((err) => {
           if (!isMounted) return;
-          // Smooth fallback if backend is in standby
-          setTimeout(() => {
-            if (!isMounted) return;
-            setIsGenerating(false);
-            updateProjectStatus(newProj.id, "ready", DEMO_CLIPS, 100);
-            setProjects(getStoredProjects());
-          }, 4000);
+          setIsGenerating(false);
+          setGenerationError(`Cannot connect to backend: ${err?.message || "Tunnel offline / 502"}. Please start cloudflared tunnel on your LOQ.`);
+          updateProjectStatus(newProj.id, "failed", [], 0);
+          setProjects(getStoredProjects());
         });
     }
 
