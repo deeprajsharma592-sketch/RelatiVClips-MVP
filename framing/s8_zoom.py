@@ -275,15 +275,11 @@ def apply_zoom_to_crop(
     # Preserve 9:16 aspect ratio
     w_zoomed = h_zoomed * (9.0 / 16.0)
 
-    # Determine focal center: face center if available, else center of current crop
-    if face_box and len(face_box) >= 4:
-        fc_x = (float(face_box[0]) + float(face_box[2])) / 2.0
-        fc_y = (float(face_box[1]) + float(face_box[3])) / 2.0
-    else:
-        fc_x = x1 + w / 2.0
-        fc_y = y1 + h / 2.0
+    # Zoom smoothly around current smoothed crop center (guarantees continuous motion)
+    fc_x = x1 + w / 2.0
+    fc_y = y1 + h / 2.0
 
-    # Scale crop around focal center
+    # Scale crop around center
     scale_factor = h_zoomed / h
     x1_zoomed = fc_x - (fc_x - x1) * scale_factor
     y1_zoomed = fc_y - (fc_y - y1) * scale_factor
@@ -294,10 +290,13 @@ def apply_zoom_to_crop(
     x2_zoomed = x1_zoomed + w_zoomed
     y2_zoomed = y1_zoomed + h_zoomed
 
-    # Check safe margins if face box is present
+    # Check safe margins if face box is present [x, y, w, h]
     is_unsafe = False
     if face_box and len(face_box) >= 4:
-        fx1, fy1, fx2, fy2 = face_box[0], face_box[1], face_box[2], face_box[3]
+        fx1 = float(face_box[0])
+        fy1 = float(face_box[1])
+        fx2 = fx1 + float(face_box[2])
+        fy2 = fy1 + float(face_box[3])
         margin_x = safe_margin_frac * w_zoomed
         margin_y = safe_margin_frac * h_zoomed
         if (
@@ -306,8 +305,6 @@ def apply_zoom_to_crop(
             or fy1 < (y1_zoomed + margin_y)
             or fy2 > (y2_zoomed - margin_y)
         ):
-            # Spec S8: "skip if the zoomed crop would violate the min source size or push the face past the safe margin"
-            # Return original unzoomed crop
-            return [x1, y1, x1 + w, y1 + h], False
+            is_unsafe = True
 
     return [x1_zoomed, y1_zoomed, x2_zoomed, y2_zoomed], is_unsafe

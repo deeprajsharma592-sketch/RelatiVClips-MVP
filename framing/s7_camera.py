@@ -18,74 +18,77 @@ def smooth_camera_path(
     config: Dict[str, Any]
 ) -> np.ndarray:
     """
-    Apply Gaussian, Savitzky-Golay, or One-Euro smoothing, dead-zone filtering,
+    Apply cinematic continuous dead-zone filtering, Gaussian / Savgol / One-Euro smoothing,
     and velocity limits to camera coordinates (spec-0.1 AB3).
+    Ensures zero step discontinuities and buttery-smooth camera pans.
     """
     cam_cfg = config.get("camera", {})
     smoothing_method = cam_cfg.get("smoothing", "gaussian")
-    sigma_s = float(cam_cfg.get("gaussian_sigma_s", 0.25))
-    dead_zone_frac = float(cam_cfg.get("dead_zone_frac", 0.04))
+    sigma_s = float(cam_cfg.get("gaussian_sigma_s", 0.4))
+    dead_zone_frac = float(cam_cfg.get("dead_zone_frac", 0.05))
     max_pan_speed = float(cam_cfg.get("max_pan_px_per_s", 900.0))
 
     n_samples = len(raw_positions)
     if n_samples <= 1:
         return np.array(raw_positions, dtype=np.float64)
 
-    # 1. Smoothing filter selection (AB3)
+    # 1. Soft continuous deadband filter (locks camera when motion is within deadband)
+    dead_zone = dead_zone_frac * crop_w
+    deadbanded = np.empty(n_samples, dtype=np.float64)
+    anchor = float(raw_positions[0])
+    deadbanded[0] = anchor
+
+    for i in range(1, n_samples):
+        diff = float(raw_positions[i]) - anchor
+        if abs(diff) > dead_zone:
+            excess = diff - np.sign(diff) * dead_zone
+            # Continuous pull towards subject outside deadband
+            anchor += excess * 0.15
+        deadbanded[i] = anchor
+
+    # 2. Smoothing filter selection (applied over deadbanded path for C^inf continuity)
     if smoothing_method == "savgol":
         win = max(3, int(round(sigma_s * fps * 2)) | 1)
         win = min(win, n_samples if n_samples % 2 == 1 else n_samples - 1)
         if win >= 3:
-            smoothed = savgol_filter(raw_positions.astype(np.float64), window_length=win, polyorder=2)
+            smoothed = savgol_filter(deadbanded.astype(np.float64), window_length=win, polyorder=2)
         else:
-            smoothed = raw_positions.astype(np.float64)
+            smoothed = deadbanded.astype(np.float64)
     elif smoothing_method == "one_euro":
-        # One Euro filter
         min_cutoff = 1.0
         beta = 0.007
         d_cutoff = 1.0
         dt = 1.0 / max(1.0, fps)
         smoothed = np.empty(n_samples, dtype=np.float64)
-        smoothed[0] = raw_positions[0]
+        smoothed[0] = deadbanded[0]
         dx = 0.0
         for i in range(1, n_samples):
             a_d = (2 * np.pi * d_cutoff * dt) / (1 + 2 * np.pi * d_cutoff * dt)
-            dx = a_d * ((raw_positions[i] - smoothed[i-1]) / dt) + (1 - a_d) * dx
+            dx = a_d * ((deadbanded[i] - smoothed[i-1]) / dt) + (1 - a_d) * dx
             cutoff = min_cutoff + beta * abs(dx)
             a = (2 * np.pi * cutoff * dt) / (1 + 2 * np.pi * cutoff * dt)
-            smoothed[i] = a * raw_positions[i] + (1 - a) * smoothed[i-1]
+            smoothed[i] = a * deadbanded[i] + (1 - a) * smoothed[i-1]
     else:
-        # Default: Non-causal Gaussian smoothing
-        sigma_frames = max(1e-3, sigma_s * fps)
-        smoothed = gaussian_filter1d(raw_positions.astype(np.float64), sigma=sigma_frames, mode="nearest")
+        # Non-causal Gaussian smoothing
+        sigma_frames = max(1.0, sigma_s * fps)
+        smoothed = gaussian_filter1d(deadbanded.astype(np.float64), sigma=sigma_frames, mode="nearest")
 
     min_raw = np.min(raw_positions)
     max_raw = np.max(raw_positions)
     smoothed = np.clip(smoothed, min_raw, max_raw)
 
-    # 2. Dead zone filtering
-    dead_zone = dead_zone_frac * crop_w
-    output = np.empty_like(smoothed)
-    output[0] = smoothed[0]
-    for i in range(1, n_samples):
-        diff = smoothed[i] - output[i - 1]
-        if abs(diff) < dead_zone:
-            output[i] = output[i - 1]
-        else:
-            output[i] = smoothed[i]
-
     # 3. Velocity limit
     max_step = max_pan_speed / fps
-    limited = np.empty_like(output)
-    limited[0] = output[0]
+    limited = np.empty_like(smoothed)
+    limited[0] = smoothed[0]
     for i in range(1, n_samples):
-        delta = output[i] - limited[i - 1]
+        delta = smoothed[i] - limited[i - 1]
         if delta > max_step:
             limited[i] = limited[i - 1] + max_step
         elif delta < -max_step:
             limited[i] = limited[i - 1] - max_step
         else:
-            limited[i] = output[i]
+            limited[i] = smoothed[i]
 
     return limited
 
@@ -170,75 +173,75 @@ def plan_panel_camera_path(
     if n_frames <= 0:
         return []
 
-    sample_by_t = {s["t"]: s["box"] for s in track_samples}
-    sample_times = np.array(sorted(sample_by_t.keys()))
+    frame_times = np.array([(start_frame + i) / fps for i in range(n_frames)], dtype=np.float64)
 
-    raw_cx = np.zeros(n_frames, dtype=np.float64)
-    raw_cy = np.zeros(n_frames, dtype=np.float64)
-    raw_h = np.zeros(n_frames, dtype=np.float64)
-    face_boxes: List[Optional[List[float]]] = [None] * n_frames
+    # If track samples exist, interpolate continuously across time to eliminate 4-frame stair steps
+    if track_samples:
+        sample_times = np.array([s["t"] for s in track_samples], dtype=np.float64)
+        sample_boxes = [s["box"] for s in track_samples]
+        sample_cx = np.array([b[0] + b[2] / 2.0 for b in sample_boxes], dtype=np.float64)
+        sample_cy = np.array([b[1] + b[3] / 2.0 for b in sample_boxes], dtype=np.float64)
+        sample_w = np.array([b[2] for b in sample_boxes], dtype=np.float64)
+        sample_h = np.array([b[3] for b in sample_boxes], dtype=np.float64)
 
-    for i in range(n_frames):
-        curr_frame = start_frame + i
-        curr_t = curr_frame / fps
+        interp_cx = np.interp(frame_times, sample_times, sample_cx)
+        interp_cy = np.interp(frame_times, sample_times, sample_cy)
+        interp_w = np.interp(frame_times, sample_times, sample_w)
+        interp_h = np.interp(frame_times, sample_times, sample_h)
 
-        if len(sample_times) == 0:
-            face_box = None
-        else:
-            idx = int(np.argmin(np.abs(sample_times - curr_t)))
-            closest_t = sample_times[idx]
-            if abs(closest_t - curr_t) <= max_gap_s:
-                face_box = sample_by_t[closest_t]
+        # Stable nominal crop height for this entire shot (prevents vertical scale breathing)
+        median_face_h = float(np.median(sample_h))
+        target_crop_h = median_face_h / max(1e-3, face_height_frac)
+        target_crop_h = min(target_crop_h, float(src_h))
+        target_crop_w = target_crop_h * aspect_ratio
+        if target_crop_w > src_w:
+            target_crop_w = float(src_w)
+            target_crop_h = target_crop_w / aspect_ratio
+
+        # Eye-line framing target
+        target_cy = interp_cy + (0.5 - eye_line_frac) * target_crop_h
+
+        raw_cx = interp_cx
+        raw_cy = target_cy
+        nominal_w = target_crop_w
+        nominal_h = target_crop_h
+
+        face_boxes: List[Optional[List[float]]] = []
+        for i in range(n_frames):
+            t = frame_times[i]
+            # Check if within track time range + max_gap
+            if (sample_times[0] - max_gap_s) <= t <= (sample_times[-1] + max_gap_s):
+                face_boxes.append([
+                    round(float(interp_cx[i] - interp_w[i] / 2.0), 2),
+                    round(float(interp_cy[i] - interp_h[i] / 2.0), 2),
+                    round(float(interp_w[i]), 2),
+                    round(float(interp_h[i]), 2),
+                ])
             else:
-                face_box = None
+                face_boxes.append(None)
+    else:
+        # Default center framing when no face samples exist
+        def_h = float(src_h)
+        def_w = def_h * aspect_ratio
+        if def_w > src_w:
+            def_w = float(src_w)
+            def_h = def_w / aspect_ratio
+        raw_cx = np.full(n_frames, src_w / 2.0, dtype=np.float64)
+        raw_cy = np.full(n_frames, src_h / 2.0, dtype=np.float64)
+        nominal_w = def_w
+        nominal_h = def_h
+        face_boxes = [None] * n_frames
 
-        face_boxes[i] = face_box
-
-        if face_box is not None:
-            fx, fy, fw, fh = face_box
-            fcx = fx + fw / 2.0
-            fcy = fy + fh / 2.0
-
-            target_crop_h = fh / face_height_frac
-            target_crop_h = min(target_crop_h, float(src_h))
-            target_crop_w = target_crop_h * aspect_ratio
-            if target_crop_w > src_w:
-                target_crop_w = float(src_w)
-                target_crop_h = target_crop_w / aspect_ratio
-
-            target_crop_cy = fcy + (0.5 - eye_line_frac) * target_crop_h
-
-            raw_cx[i] = fcx
-            raw_cy[i] = target_crop_cy
-            raw_h[i] = target_crop_h
-        else:
-            # Default center framing
-            def_h = float(src_h)
-            def_w = def_h * aspect_ratio
-            if def_w > src_w:
-                def_w = float(src_w)
-                def_h = def_w / aspect_ratio
-
-            raw_cx[i] = src_w / 2.0
-            raw_cy[i] = src_h / 2.0
-            raw_h[i] = def_h
-
-    median_h = float(np.median(raw_h))
-    nominal_w = median_h * aspect_ratio
-
+    # Smooth camera coordinates with continuous deadband and gentle Gaussian ease
     smooth_cx = smooth_camera_path(raw_cx, nominal_w, fps, config)
     smooth_cy = smooth_camera_path(raw_cy, nominal_w, fps, config)
-    smooth_crop_h = smooth_camera_path(raw_h, nominal_w, fps, config)
 
     panel_frames = []
     for i in range(n_frames):
         curr_frame = start_frame + i
-        curr_t = curr_frame / fps
-        ch = float(smooth_crop_h[i])
-        cw = ch * aspect_ratio
-        if cw > src_w:
-            cw = float(src_w)
-            ch = cw / aspect_ratio
+        curr_t = frame_times[i]
+        ch = float(nominal_h)
+        cw = float(nominal_w)
 
         cx, cy, crop_box, is_unsafe = clamp_crop_to_frame(
             smooth_cx[i], smooth_cy[i], cw, ch, src_w, src_h, face_boxes[i], config
