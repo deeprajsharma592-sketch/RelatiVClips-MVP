@@ -451,11 +451,13 @@ async def debug_check_setup():
                         cookie_names.append(parts[5])
         except Exception as e:
             cookie_names.append(f"error: {e}")
+    bgutil_exists = os.path.exists(r"C:\Users\Deepraj sharma\bgutil-ytdlp-pot-provider")
     return {
         "cookies_path": str(COOKIES_PATH),
         "cookies_exists": COOKIES_PATH.exists(),
         "cookies_size": COOKIES_PATH.stat().st_size if COOKIES_PATH.exists() else 0,
         "cookie_names": cookie_names,
+        "bgutil_folder_exists": bgutil_exists,
         "ytdlp_path": str(YTDLP_PATH),
         "ffmpeg_path": str(FFMPEG_PATH),
         "node_installed": bool(shutil.which("node")),
