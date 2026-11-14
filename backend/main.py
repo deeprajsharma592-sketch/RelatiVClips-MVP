@@ -497,7 +497,6 @@ async def debug_test_clip(url: str, client: str = "web", use_cookies: bool = Tru
         YTDLP_PATH,
         "-f", "137+140/136+140/bv*[height>=720]+ba/best",
         "--js-runtimes", "node",
-        "--no-plugins",
         "-o", out,
         "--verbose",
         "--force-overwrites",
