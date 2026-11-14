@@ -66,7 +66,7 @@ def _ytdlp_section_url(url: str, start: float, end: float, dest_path: Optional[s
         "--download-sections", f"*{s_str}-{e_str}",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
-        "--no-check-certificates",
+        "--",
         url,
     ]
     if FFMPEG_PATH:
@@ -117,7 +117,7 @@ def _ytdlp_video_section_url(url: str, start: float, end: float, dest_path: Opti
         "--extractor-args", "youtube:player_client=ios,android,web",
         "-o", dest_path if dest_path else "-",
         "--no-warnings",
-        "--no-check-certificates",
+        "--",
         url,
     ]
     if FFMPEG_PATH:

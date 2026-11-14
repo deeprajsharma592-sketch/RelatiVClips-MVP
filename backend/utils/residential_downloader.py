@@ -34,11 +34,18 @@ except ImportError:
 BASE_URL = RESIDENTIAL_DOWNLOAD_URL.rstrip("/")
 
 
+def is_configured() -> bool:
+    """Check if the residential download server URL is set and valid."""
+    return bool(BASE_URL and BASE_URL.startswith("http"))
+
+
 def is_reachable() -> bool:
     """Check if the residential download server is online."""
+    if not is_configured():
+        return False
     try:
         import requests
-        r = requests.get(f"{BASE_URL}/health", timeout=10, verify=True)
+        r = requests.get(f"{BASE_URL}/health", timeout=5, verify=True)
         return r.status_code == 200
     except Exception:
         return False
@@ -53,19 +60,10 @@ def download_video(
     """
     Download a YouTube video (or segment) via the residential server (laptop).
     The laptop's residential IP is used to access YouTube CDN.
-
-    Args:
-        url: YouTube video URL
-        output_path: Local path to save the video
-        start: Optional start time in seconds
-        end: Optional end time in seconds
-
-    Returns:
-        Path to the downloaded file
-
-    Raises:
-        RuntimeError: If download fails
     """
+    if not is_configured():
+        raise RuntimeError("Residential downloader not configured, skipping to direct yt-dlp")
+
     import requests
 
     params = {"url": url}

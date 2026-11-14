@@ -32,6 +32,7 @@ except ImportError:
     sys.modules["pkg_resources"] = pr
 
 import asyncio
+import re
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -422,13 +423,31 @@ async def get_transcript(url: str):
     )
 
 
+SAFE_CLIP_ID_REGEX = re.compile(r'^[A-Za-z0-9_-]+$')
+
+
 @app.get("/status/{task_id}", response_model=StatusResponse)
 @app.get("/api/v1/status/{task_id}", response_model=StatusResponse)
 async def get_status(task_id: str):
     status = task_store.get_task_status(task_id)
     if not status:
         raise HTTPException(status_code=404, detail="Task not found")
-    return StatusResponse(**status)
+
+    # Sanitize clips: strip raw host filesystem paths from public response
+    sanitized = dict(status)
+    if "clips" in sanitized and isinstance(sanitized["clips"], list):
+        clean_clips = []
+        for c in sanitized["clips"]:
+            c_dict = dict(c)
+            c_dict.pop("file_path", None)
+            c_dict.pop("video_path", None)
+            c_dict.pop("audio_path", None)
+            if "clip_id" in c_dict and not c_dict.get("download_url"):
+                c_dict["download_url"] = f"/download/{c_dict['clip_id']}"
+            clean_clips.append(c_dict)
+        sanitized["clips"] = clean_clips
+
+    return StatusResponse(**sanitized)
 
 
 @app.get("/logs/{task_id}")
@@ -449,12 +468,17 @@ async def get_task_queue():
 @app.get("/download/{clip_id}")
 @app.get("/api/v1/download/{clip_id}")
 async def download_clip(clip_id: str):
-    for file_path in OUTPUTS_DIR.glob(f"{clip_id}.*"):
-        return FileResponse(
-            path=file_path,
-            filename=file_path.name,
-            media_type="video/mp4",
-        )
+    if not SAFE_CLIP_ID_REGEX.match(clip_id):
+        raise HTTPException(status_code=400, detail="Invalid clip identifier")
+
+    for ext in (".mp4", ".mov", ".m4v"):
+        candidate = OUTPUTS_DIR / f"{clip_id}{ext}"
+        if candidate.is_file():
+            return FileResponse(
+                path=candidate,
+                filename=candidate.name,
+                media_type="video/mp4",
+            )
     raise HTTPException(status_code=404, detail="Clip not found")
 
 
@@ -462,15 +486,19 @@ async def download_clip(clip_id: str):
 @app.get("/api/v1/thumbnail/{clip_id}")
 async def get_clip_thumbnail(clip_id: str):
     """Return an extracted thumbnail screenshot for a clip."""
+    if not SAFE_CLIP_ID_REGEX.match(clip_id):
+        raise HTTPException(status_code=400, detail="Invalid clip identifier")
+
     thumb_path = OUTPUTS_DIR / f"{clip_id}_thumb.jpg"
-    if thumb_path.exists():
+    if thumb_path.is_file():
         return FileResponse(path=thumb_path, media_type="image/jpeg")
 
     # If thumbnail not yet extracted, extract on demand from the video file
-    for file_path in OUTPUTS_DIR.glob(f"{clip_id}.mp4"):
+    candidate_mp4 = OUTPUTS_DIR / f"{clip_id}.mp4"
+    if candidate_mp4.is_file():
         try:
             import cv2
-            cap = cv2.VideoCapture(str(file_path))
+            cap = cv2.VideoCapture(str(candidate_mp4))
             cap.set(cv2.CAP_PROP_POS_MSEC, 1500)
             ret, frame = cap.read()
             if not ret:

@@ -1543,14 +1543,23 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
     task_store.try_promote_queued()
 
 
+import re
+
+YOUTUBE_URL_REGEX = re.compile(
+    r'^(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/|youtube\.com/embed/)[A-Za-z0-9_-]{11}',
+    re.IGNORECASE
+)
+
 router = APIRouter(prefix="/process/youtube", tags=["YouTube"])
 
 
 @router.post("", response_model=ProcessResponse)
 async def process_youtube_url(request: dict):
-    url = request.get("url")
+    url = (request.get("url") or "").strip()
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
+    if not YOUTUBE_URL_REGEX.match(url):
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL format. Must be a valid youtube.com or youtu.be link.")
     # SIMPLIFIED 2026-06-15: `platform` is now cosmetic/analytics-only.
     # All platforms (TikTok/Reels/Shorts) produce the same universal 9:16 22-30s
     # clip. We keep the param for downstream analytics/logging, but no longer
