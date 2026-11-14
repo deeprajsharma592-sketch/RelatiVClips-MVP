@@ -18,3 +18,5 @@ yolov10n.pt
 framing/models/
 *.mp4
 *.wav
+demo_test/
+e2e_youtube_run/
