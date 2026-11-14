@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_BASE = (
   process.env.BACKEND_BASE_URL && !process.env.BACKEND_BASE_URL.includes("summer-clearing")
-) ? process.env.BACKEND_BASE_URL : "https://perth-lovers-coalition-margaret.trycloudflare.com";
+) ? process.env.BACKEND_BASE_URL : "https://russia-dos-profits-dressed.trycloudflare.com";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
