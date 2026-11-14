@@ -502,7 +502,7 @@ async def admin_upgrade_ytdlp():
 
 
 @app.get("/debug/test-clip")
-async def debug_test_clip(url: str, client: str = "web", use_cookies: bool = True):
+async def debug_test_clip(url: str, client: str = "web_embedded", use_cookies: bool = True, use_sections: bool = True):
     import subprocess
     from .utils.config import YTDLP_PATH, FFMPEG_PATH, TEMP_DIR, COOKIES_PATH
     out = str(TEMP_DIR / "debug_clip.%(ext)s")
@@ -513,8 +513,11 @@ async def debug_test_clip(url: str, client: str = "web", use_cookies: bool = Tru
         "-o", out,
         "--verbose",
         "--force-overwrites",
-        "--max-filesize", "15M",
     ]
+    if use_sections:
+        cmd.extend(["--download-sections", "*00:00:10-00:00:20"])
+    else:
+        cmd.extend(["--max-filesize", "15M"])
     if use_cookies and COOKIES_PATH.exists():
         cmd.extend(["--cookies", str(COOKIES_PATH)])
     if client:
