@@ -439,8 +439,8 @@ Technical or niche content usually fails as a clip when presented as a technical
 |---|---|---|
 | Hook strength | 0-30 | Strong hook in the first 2-3 seconds, clearly one of the types above |
 | Reach | 0-25 | Broad topic or human stakes; viewer needs no prior knowledge |
-| Completeness | 0-20 | Clear start, build, and landing; self-contained story (45-90s). Score 0 if cut off mid-sentence or before conclusion! |
-| Payoff / ending | 0-10 | Ends on a punch, answer, or line worth rewatching; no trailing filler |
+| Completeness | 0-20 | Clear start, build, and landing; self-contained story (20-35s). Score 0 if cut off mid-sentence or before the lesson/payoff! |
+| Payoff / ending | 0-10 | Ends on a punch, answer, insight or lesson worth rewatching; no trailing filler |
 | Delivery | 0-10 | Energy, pacing, emotion, confidence; no long pauses or tangents |
 | Risk penalty | 0 to -20 | Subtract for factual uncertainty, blacklisted topics, or needing missing context |
 
@@ -453,6 +453,7 @@ Calibration guidance:
 - If a clip contains numbers, dates, prices, or claims, flag needs_fact_check: true when you cannot verify them from the transcript itself. Do not fix numbers from memory.
 - Never select moments that include: price predictions or financial advice presented as certain, attacks on named competitors, illegal activity, or anything on the creator's blacklist if one is provided.
 - Do not select a moment whose meaning flips when clipped (sarcasm, setup-and-reversal, a quote the speaker goes on to reject). Set context_risk: "high" instead.
+- INTRO BANTER BAN: In videos longer than 3 minutes, NEVER select intro greetings, sponsor reads, or generic 'welcome back' chat. The clip MUST deliver standalone value to a stranger.
 
 ## 5% Experiment Policy
 In ~5% of runs, include one experimental candidate marked "is_experiment": true. An experimental candidate is an unconventional, high-variance moment that would normally fall just under the 65 cutoff (score 50-64) or has an unusual angle (bizarre imagery, sudden intense confession, eccentric contrarian claim) with potential breakout upside.
@@ -484,10 +485,11 @@ Return ONLY valid JSON, no preamble, no markdown fences:
 }
 
 Rules for the output:
-- Candidates MUST be between 45 and 90 seconds (end_s - start_s >= 45.0).
+- Candidates MUST be between 20 and 35 seconds (end_s - start_s between 20.0 and 35.0s, ideal ~28s).
 - Set chosen: true for at most the top 3 per hour of source, and only for candidates scoring 65 or higher.
 - Keep reason to one sentence (max 25 words).
 - Timestamps must come directly from the transcript. Never invent them.
+- Ensure chosen candidates do NOT overlap each other (minimum 45s separation between clips).
 - Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65). DO NOT return rejected or unchosen candidates to guarantee complete valid JSON without token exhaustion.
 """
 
@@ -548,7 +550,7 @@ def build_relativsauce_prompt(
     parts.append("\n## Transcript with Acoustic Energy Markers\n" + "\n".join(transcript_lines))
     parts.append(
         "\nApply the RelatiVSauce rubric strictly. Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65) in the JSON object with rubric_ver='sauce-0.1'. Do NOT output unchosen or rejected candidates to avoid output token limits. "
-        "MANDATORY REQUIREMENT: Candidates MUST be between 45 and 90 seconds (end_s - start_s >= 45.0) and contain a full, self-contained story arc with Hook -> Build/Escalation -> Punchline/Landing. Every suggested_title MUST be an exciting, specific 3-6 word ALL CAPS headline (e.g. 'THE $500,000 MISTAKE'). NEVER output generic placeholders like 'THIS MOMENT HITS' or short 20s fragments. "
+        "MANDATORY REQUIREMENT: Candidates MUST be between 20 and 35 seconds (end_s - start_s between 20.0 and 35.0s, ideal ~28s) and deliver clear value to the viewer: Hook (0-3s) -> Escalation/Proof (3-20s) -> Payoff/Takeaway/Punchline (End). Do NOT pick intro banter or greetings. Each candidate must come from a distinct, non-overlapping moment. Every suggested_title MUST be an exciting, specific 3-6 word ALL CAPS headline (e.g. 'THE $500,000 MISTAKE'). NEVER output generic placeholders like 'THIS MOMENT HITS'. "
         "Output ONLY valid JSON. No markdown code fences, no introductory remarks."
     )
 

@@ -26,13 +26,13 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 
-# Minimum / maximum clip duration in seconds (45s - 90s narrative story arc)
-MIN_CLIP_S = 45.0
-MAX_CLIP_S = 90.0
-TARGET_CLIP_S = 65.0
+# Minimum / maximum clip duration in seconds (18s - 38s viral short-form window)
+MIN_CLIP_S = 18.0
+MAX_CLIP_S = 38.0
+TARGET_CLIP_S = 28.0
 # Window for "midpoint rehook" — dynamic retention check
-REHOOK_START_S = 20.0
-REHOOK_END_S = 30.0
+REHOOK_START_S = 10.0
+REHOOK_END_S = 16.0
 
 # Sentence boundary markers. We treat any of these as "the clip can safely
 # start or end here".

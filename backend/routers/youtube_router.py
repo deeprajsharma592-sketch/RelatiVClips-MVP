@@ -626,8 +626,23 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     callback("Preparing source media for clip extraction...", step=3, sub_progress=0.5)
 
     # --- STAGE 3-5: surgical download of top moments ---
-    # We use the top 8 moments (more than LLM picks so the LLM has good candidates)
-    top_for_surgery = moments[:8]
+    # Intelligently filter out intro banter for long videos (>180s)
+    INTRO_FILLER_PHRASES = (
+        "welcome back", "welcome to", "today's episode", "today we are", "today we have",
+        "sponsored by", "hit subscribe", "in this video", "leave a comment", "let's get into it",
+        "before we begin", "before we start", "hey guys", "make sure to subscribe"
+    )
+    is_long_form = float(info.get("duration_s", 0)) > 180.0
+    filtered_moments = []
+    for m in moments:
+        if is_long_form and m.start < 45.0:
+            snippet_lower = (m.snippet or "").lower()
+            if any(phrase in snippet_lower for phrase in INTRO_FILLER_PHRASES):
+                continue
+        filtered_moments.append(m)
+
+    active_moments = filtered_moments if len(filtered_moments) >= 3 else moments
+    top_for_surgery = active_moments[:8]
     surgical_candidates = []
     for m in top_for_surgery:
         surgical_candidates.append({
@@ -1040,6 +1055,22 @@ def _run_moment_pipeline(
             else:
                 continue
 
+            # Prevent duplicate / overlapping clips (must have minimum 20s separation or IoU < 0.15)
+            is_overlapping = False
+            for prev in final_clips:
+                p_s, p_e = prev["start"], prev["end"]
+                inter = max(0.0, min(clip_end, p_e) - max(clip_start, p_s))
+                union = max(clip_end, p_e) - min(clip_start, p_s)
+                if union > 0 and (inter / union) > 0.15:
+                    is_overlapping = True
+                    break
+                if abs(clip_start - p_s) < 20.0:
+                    is_overlapping = True
+                    break
+            if is_overlapping:
+                _bridge("filter", f"  skipping overlapping pick [{clip_start:.1f}-{clip_end:.1f}s]")
+                continue
+
             # Find matching segment or use clip bounds
             matching_seg = max(
                 (
@@ -1125,10 +1156,32 @@ def _run_moment_pipeline(
                 "best_effort": True,
             })
     if not final_clips:
-        # LLM didn't return picks (network error, etc.) — fall back to top-3
-        # by score as a last resort so the user still gets SOMETHING.
-        _bridge("taste", "LLM didn't return picks — using moment-based fallback (top 3 by score)")
-        for m in moments[:3]:
+        # LLM didn't return picks (network error, etc.) — fall back to non-overlapping
+        # moments by score as a last resort so the user still gets SOMETHING.
+        _bridge("taste", "LLM didn't return picks — using moment-based fallback (top non-overlapping by score)")
+        for m in moments:
+            if len(final_clips) >= 3:
+                break
+            # Skip intro filler in fallback for long videos
+            if is_long_form and m.start < 45.0:
+                snippet_lower = (m.snippet or "").lower()
+                if any(phrase in snippet_lower for phrase in INTRO_FILLER_PHRASES):
+                    continue
+            # Check overlap against already chosen fallback clips
+            is_dup = False
+            for prev in final_clips:
+                p_s, p_e = prev["start"], prev["end"]
+                inter = max(0.0, min(m.end, p_e) - max(m.start, p_s))
+                union = max(m.end, p_e) - min(m.start, p_s)
+                if union > 0 and (inter / union) > 0.15:
+                    is_dup = True
+                    break
+                if abs(m.start - p_s) < 25.0:
+                    is_dup = True
+                    break
+            if is_dup:
+                continue
+
             matching_seg = max(
                 (
                     s for s in segments
@@ -1166,14 +1219,15 @@ def _run_moment_pipeline(
                 "verified": False,
             })
 
-    # 3a. Apply universal format adjustments (45-90s self-contained narrative arc)
+    # 3a. Apply universal format adjustments (20-35s viral short-form window)
     try:
-        _bridge("platform", f"Applying universal format adjustments (45-90s, target 65s)")
+        _bridge("platform", f"Applying universal format adjustments (20-35s, target 28s)")
         adjusted = []
         for clip in final_clips:
             new_start, new_end, reason = adjust_clip_for_platform(
                 float(clip.get("start", 0)),
                 float(clip.get("end", 0)),
+                video_duration=float(video_duration_s),
             )
             clip["start"] = round(new_start, 2)
             clip["end"] = round(new_end, 2)
