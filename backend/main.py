@@ -60,6 +60,7 @@ from .routers import (
     clips_router,
     verification_router,
     taste_router,
+    admin_router,
 )
 from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
 from .utils.task_store import set_event_loop, task_store
@@ -162,6 +163,7 @@ app.include_router(claims_router.router)
 app.include_router(clips_router.router)
 app.include_router(verification_router.router)
 app.include_router(taste_router.router)
+app.include_router(admin_router.router)
 
 
 # ─── App identity ───────────────────────────────────────────────────────────

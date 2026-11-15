@@ -54,6 +54,9 @@ async function authFetch<T>(
     } catch {
       // body wasn't JSON
     }
+    if ([502, 503, 504].includes(r.status) && detail === `HTTP ${r.status}`) {
+      detail = "RelatiV cannot reach its account service right now. Sign-in and signup are temporarily unavailable.";
+    }
     throw new Error(detail);
   }
   // 204 No Content (logout) returns empty

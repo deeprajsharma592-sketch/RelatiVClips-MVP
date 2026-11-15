@@ -58,6 +58,9 @@ export async function fetchAdminOverview(): Promise<AdminOverview> {
     try {
       message = (await response.json()).detail || message;
     } catch {}
+    if ([502, 503, 504].includes(response.status) && message === "Could not load the admin dashboard.") {
+      message = "The backend is unreachable. Admin sign-in and account setup are unavailable until the API connection is restored.";
+    }
     throw new AdminApiError(message, response.status);
   }
   return response.json();

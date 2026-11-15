@@ -6,12 +6,23 @@
 // Fallback uses HTTP on the Hetzner IP (Caddy handles HTTPS termination).
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE = (
-  process.env.BACKEND_BASE_URL && !process.env.BACKEND_BASE_URL.includes("summer-clearing")
-) ? process.env.BACKEND_BASE_URL : "https://russia-dos-profits-dressed.trycloudflare.com";
+const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
+const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing")
+  ? configuredBackendBase.replace(/\/$/, "")
+  : "";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  if (!BACKEND_BASE) {
+    return NextResponse.json(
+      {
+        error: "BACKEND_NOT_CONFIGURED",
+        detail: "RelatiV’s processing service is not connected yet. Please try again later.",
+      },
+      { status: 503 },
+    );
+  }
+
   const { path } = await ctx.params;
   const pathStr = path.join("/");
   const search = req.nextUrl.search;
@@ -45,7 +56,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   }
   try {
     headers.set("host", new URL(BACKEND_BASE).host);
-  } catch (e) {
+  } catch {
     // ignore
   }
   headers.set("x-forwarded-host", "relativclips.com");
@@ -111,7 +122,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     const isTimeout = err instanceof Error && err.name === "AbortError";
 
     // Detailed error for diagnosis
-    let detail = (err as Error).message;
+    let detail = err instanceof Error ? err.message : "Unknown proxy error";
     let code = "unknown";
 
     if (isTimeout) {
@@ -119,20 +130,24 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       code = "ETIMEDOUT";
     } else if (err instanceof Error) {
       // Vercel/Node.js fetch errors include a .cause with the underlying error
-      const cause = (err as any).cause;
+      const rawCause = err.cause;
+      const cause = rawCause && typeof rawCause === "object" ? rawCause as Record<string, unknown> : null;
       if (cause) {
-        code = cause.code || cause.name || "fetch_error";
-        detail = `${cause.code || cause.name}: ${cause.message || ""} (syscall=${cause.syscall || "n/a"})`;
+        const causeCode = typeof cause.code === "string" ? cause.code : typeof cause.name === "string" ? cause.name : "fetch_error";
+        const causeMessage = typeof cause.message === "string" ? cause.message : "";
+        const syscall = typeof cause.syscall === "string" ? cause.syscall : "n/a";
+        code = causeCode;
+        detail = `${causeCode}: ${causeMessage} (syscall=${syscall})`;
       }
     }
 
     // Log to Vercel's function logs (visible in dashboard)
-    console.error(`[proxy] FAILED ${req.method} ${targetUrl}`, {
+    console.error(`[proxy] FAILED ${req.method} ${pathStr}`, {
       code,
       detail,
       latency_ms: latency,
       method: req.method,
-      target: targetUrl,
+      backend_host: (() => { try { return new URL(BACKEND_BASE).host; } catch { return "invalid_backend_url"; } })(),
       host: req.headers.get("host"),
       user_agent: req.headers.get("user-agent")?.slice(0, 80),
     });
@@ -140,8 +155,9 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     return NextResponse.json(
       {
         error: code,
-        detail,
-        target: targetUrl,
+        detail: isTimeout
+          ? "The RelatiV processing service did not respond in time. Please try again shortly."
+          : "The RelatiV processing service could not be reached. The service connection needs attention.",
         latency_ms: latency,
       },
       {
