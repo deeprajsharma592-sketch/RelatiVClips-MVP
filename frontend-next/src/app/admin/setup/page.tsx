@@ -26,6 +26,7 @@ export default function AdminSetupPage() {
         password,
         role: "creator",
         accept_tos: acceptTerms,
+        redirectTo: "/admin",
       });
       setCreated(true);
     } catch (err) {
@@ -45,7 +46,7 @@ export default function AdminSetupPage() {
         <div className={styles.lockBadge}><CheckCircle2 size={19} /></div>
         <p className={styles.eyebrow}>One more step</p>
         <h1 id="setup-heading">Verify your email.</h1>
-        <p className={styles.loginCopy}>We created your creator workspace. Open the verification link sent to <strong>{email}</strong>, then sign in at the Control Room. Founder access is enabled only after the email is verified. Check spam if it isn’t there; production email delivery requires a configured sender.</p>
+        <p className={styles.loginCopy}>We created your creator workspace. Open the Supabase verification link sent to <strong>{email}</strong>. After verification, you’ll return to the Control Room. Founder access is only enabled for a verified allowlisted address.</p>
         <div className={styles.setupNotice}><ShieldCheck size={16} />These credentials also work in the creator studio, so you can generate clips from the same account.</div>
         <Link href="/admin" className={styles.primaryButton}>Continue to sign in <ArrowUpRight size={17} /></Link>
       </> : <>

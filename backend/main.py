@@ -64,6 +64,7 @@ from .routers import (
 )
 from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
 from .utils.task_store import set_event_loop, task_store
+from .services.supabase_auth import is_supabase_auth_configured
 
 # Upload directory — sibling to TEMP_DIR, holds raw uploads before pipeline run
 UPLOADS_DIR = TEMP_DIR / "uploads"
@@ -156,7 +157,10 @@ app.include_router(youtube_router.router, prefix="/api/v1")
 app.include_router(intake_router.router)
 app.include_router(auth_router.router)
 app.include_router(dashboard_router.router)
-app.include_router(email_auth_router.router)
+if not is_supabase_auth_configured():
+    # Keep legacy email-token auth available only during local migration.
+    # Configured Supabase deployments must use Supabase Auth flows.
+    app.include_router(email_auth_router.router)
 app.include_router(billing_router.router)
 app.include_router(campaigns_router.router)
 app.include_router(claims_router.router)

@@ -438,9 +438,6 @@ function DashboardContent() {
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
         clipTitle={pendingDownloadClip?.viral_title}
-        onSuccessDownload={() => {
-          if (pendingDownloadClip) executeDownload(pendingDownloadClip);
-        }}
       />
     </>
   );

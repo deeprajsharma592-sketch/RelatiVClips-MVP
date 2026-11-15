@@ -23,6 +23,7 @@
  * role gate. Belt + suspenders.
  */
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 // Workspace routes that REQUIRE auth. Note: /brands, /creators, /clippers
 // at the TOP level are public marketing pages — only the workspace subpaths
@@ -45,14 +46,18 @@ const COOKIE_NAMES = [
   "relativ_session",       // canonical name (current)
   "relativ_access_token",  // legacy / dev
   "session",               // alt dev name
-  "relativ_demo_session",  // demo / sandbox session
 ];
 
 function hasSessionCookie(req: NextRequest): boolean {
-  for (const name of COOKIE_NAMES) {
-    if (req.cookies.get(name)?.value) return true;
+  const config = getSupabasePublicConfig();
+  if (!config) return COOKIE_NAMES.some((name) => req.cookies.get(name)?.value);
+  try {
+    const projectRef = new URL(config.url).hostname.split(".")[0];
+    const authCookie = `sb-${projectRef}-auth-token`;
+    return req.cookies.getAll().some(({ name, value }) => value && (name === authCookie || name.startsWith(`${authCookie}.`)));
+  } catch {
+    return false;
   }
-  return false;
 }
 
 export function middleware(req: NextRequest) {

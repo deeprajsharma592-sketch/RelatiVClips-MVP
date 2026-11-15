@@ -28,7 +28,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth_utils import (
@@ -51,6 +51,8 @@ from ..database.models import (
 )
 from ..database.session import get_session
 from ..services.anonymized_logger import hash_ip as _hash_ip_from_logger  # noqa: F401  (kept for consistency)
+from ..services.supabase_auth import get_verified_supabase_user, is_supabase_auth_configured
+from ..utils.admin_access import is_admin_email
 
 import logging as _logging
 log = _logging.getLogger("relativ.auth")
@@ -153,6 +155,67 @@ async def get_current_user(
 ) -> UserModel:
     """FastAPI dependency: extract the user from the session cookie. Returns
     the UserModel or raises 401. Used by protected endpoints."""
+    authorization = request.headers.get("authorization", "")
+    scheme, _, bearer_token = authorization.partition(" ")
+    if scheme.lower() == "bearer" and bearer_token.strip():
+        identity = await get_verified_supabase_user(bearer_token.strip())
+        auth_user_id = str(identity["id"])
+        email = str(identity["email"]).strip().lower()
+        confirmed_at = identity.get("email_confirmed_at") or identity.get("confirmed_at")
+
+        user = (await session.execute(
+            select(UserModel).where(UserModel.auth_user_id == auth_user_id)
+        )).scalar_one_or_none()
+        if user is None:
+            # Link existing legacy rows by verified email, preserving all their
+            # marketplace foreign keys and profile data.
+            user = (await session.execute(
+                select(UserModel).where(func.lower(UserModel.email) == email)
+            )).scalar_one_or_none()
+
+        if user is None:
+            user = UserModel(
+                id=auth_user_id,
+                auth_user_id=auth_user_id,
+                email=email,
+                hashed_password=None,
+                role=UserRole.CREATOR.value,
+                name=str((identity.get("user_metadata") or {}).get("name") or email.split("@")[0]),
+                is_active=True,
+                is_verified=bool(confirmed_at),
+                created_at=datetime.utcnow(),
+                email_verified_at=datetime.utcnow() if confirmed_at else None,
+            )
+            session.add(user)
+            await session.flush()
+            session.add(CreatorProfileModel(user_id=user.id))
+        else:
+            if user.auth_user_id and user.auth_user_id != auth_user_id:
+                raise HTTPException(status_code=409, detail="This account is linked to a different sign-in identity")
+            user.auth_user_id = auth_user_id
+            user.email = email
+            user.hashed_password = None
+            if confirmed_at:
+                user.is_verified = True
+                if not user.email_verified_at:
+                    user.email_verified_at = datetime.utcnow()
+            if not user.name:
+                user.name = str((identity.get("user_metadata") or {}).get("name") or email.split("@")[0])
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="This account is disabled")
+        if not confirmed_at:
+            await session.commit()
+            raise HTTPException(status_code=403, detail="Verify your email before using RelatiV")
+        user.last_login_at = datetime.utcnow()
+        await session.commit()
+        return user
+
+    if is_supabase_auth_configured():
+        # A stale legacy cookie must not keep authorizing protected actions
+        # after this deployment has switched its identity provider.
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     token = get_session_cookie(request)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -202,6 +265,8 @@ async def signup(
     session: AsyncSession = Depends(get_session),
 ):
     """Create a new user with role-specific profile, issue a session cookie."""
+    if is_supabase_auth_configured():
+        raise HTTPException(status_code=410, detail="Sign up is managed by Supabase Auth")
     if body.role not in (r.value for r in UserRole):
         raise HTTPException(status_code=400, detail=f"role must be one of: creator, brand, clipper")
     if not body.accept_tos:
@@ -306,6 +371,8 @@ async def login(
     session: AsyncSession = Depends(get_session),
 ):
     """Verify password, issue a new session cookie."""
+    if is_supabase_auth_configured():
+        raise HTTPException(status_code=410, detail="Sign in is managed by Supabase Auth")
     user = (await session.execute(
         select(UserModel).where(UserModel.email == body.email.lower())
     )).scalar_one_or_none()
@@ -346,6 +413,9 @@ async def logout(
 ):
     """Revoke the current session and clear the cookie."""
     token = get_session_cookie(request)
+    if not token:
+        clear_session_cookie(response)
+        return Response(status_code=204)
     if token:
         try:
             claims = decode_access_token(token)
@@ -367,20 +437,15 @@ async def logout(
 @router.get("/me", response_model=AuthResponse)
 async def me(
     request: Request,
+    session: AsyncSession = Depends(get_session),
 ):
     """Return the current user. 401 if no/invalid session."""
-    token = get_session_cookie(request)
-    if not token:
+    authorization = request.headers.get("authorization", "")
+    if not get_session_cookie(request) and not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
-
-    from ..database.session import _DB_AVAILABLE, get_session
-    if not _DB_AVAILABLE:
-        raise HTTPException(status_code=401, detail="Not authenticated (in-memory mode)")
-
-    async for session in get_session():
-        user = await get_current_user(request, session)
-        profile = await _get_profile_for_role(session, user.id, user.role)
-        return AuthResponse(user=_user_to_response(user, profile))
+    user = await get_current_user(request, session)
+    profile = await _get_profile_for_role(session, user.id, user.role)
+    return AuthResponse(user=_user_to_response(user, profile))
 
 
 # Re-export dependency for other routers

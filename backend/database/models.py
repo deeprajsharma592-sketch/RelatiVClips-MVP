@@ -89,8 +89,11 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    auth_user_id: Mapped[Optional[str]] = mapped_column(String(36), unique=True, nullable=True, index=True)
     email: Mapped[str] = mapped_column(String(200), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Passwords are managed by Supabase Auth. Nullable while legacy accounts
+    # are linked; new identities never store a password hash in the app DB.
+    hashed_password: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # UserRole enum
     name: Mapped[str] = mapped_column(String(200), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

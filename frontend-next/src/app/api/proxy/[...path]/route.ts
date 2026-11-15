@@ -5,11 +5,13 @@
 // BACKEND_BASE comes from the BACKEND_BASE_URL env var (set in Vercel dashboard).
 // Fallback uses HTTP on the Hetzner IP (Caddy handles HTTPS termination).
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
 const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing")
   ? configuredBackendBase.replace(/\/$/, "")
-  : "";
+  : process.env.NODE_ENV === "development" ? "http://127.0.0.1:9000" : "";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
@@ -48,7 +50,9 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       k.startsWith("x-vercel-") ||
       k === "host" ||
       k === "connection" ||
-      k === "content-length"
+      k === "content-length" ||
+      k === "cookie" ||
+      k === "authorization"
     ) {
       continue;
     }
@@ -62,6 +66,28 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   headers.set("x-forwarded-host", "relativclips.com");
   headers.set("x-forwarded-proto", "https");
   headers.set("x-relativ-proxy", "vercel-edge-v2");
+
+  let supabaseCookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
+  const supabaseConfig = getSupabasePublicConfig();
+  if (supabaseConfig) {
+    const supabase = createServerClient(supabaseConfig.url, supabaseConfig.key, {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookies) => { supabaseCookiesToSet = cookies; },
+      },
+    });
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      headers.set("authorization", `Bearer ${data.session.access_token}`);
+    }
+  }
+
+  const withSupabaseCookies = (response: NextResponse) => {
+    for (const cookie of supabaseCookiesToSet) {
+      response.cookies.set(cookie.name, cookie.value, cookie.options as never);
+    }
+    return response;
+  };
 
   const ac = new AbortController();
   const timeoutId = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
@@ -112,10 +138,10 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       if (v) responseHeaders.set(h, v);
     }
 
-    return new NextResponse(upstream.body, {
+    return withSupabaseCookies(new NextResponse(upstream.body, {
       status: upstream.status,
       headers: responseHeaders,
-    });
+    }));
   } catch (err) {
     clearTimeout(timeoutId);
     const latency = Date.now() - startTime;
@@ -152,7 +178,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       user_agent: req.headers.get("user-agent")?.slice(0, 80),
     });
 
-    return NextResponse.json(
+    return withSupabaseCookies(NextResponse.json(
       {
         error: code,
         detail: isTimeout
@@ -167,7 +193,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
           "x-proxy-latency-ms": String(latency),
         },
       }
-    );
+    ));
   }
 }
 
