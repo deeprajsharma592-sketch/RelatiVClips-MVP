@@ -1,6 +1,13 @@
-import type { ProcessInitResponse, StatusResponse, Clip as PipelineClip } from "@/types";
+import type { ProcessInitResponse, StatusResponse } from "@/types";
 
 import { apiPath } from "./apiBase";
+import {
+  requestPasswordReset as requestSupabasePasswordReset,
+  setNewPassword,
+  resendSignupVerification,
+  me as getCurrentUser,
+} from "./auth";
+import { getSupabaseBrowserClient } from "./supabase/client";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -209,55 +216,28 @@ export async function fetchCreatorDashboard(): Promise<CreatorDashboardData> {
 */
 
 export async function requestPasswordReset(email: string): Promise<{ message: string }> {
-  const res = await fetch("/api/proxy/api/v1/auth/forgot-password", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Request failed with status ${res.status}`);
-  }
-  return res.json();
+  await requestSupabasePasswordReset(email);
+  return { message: "If an account uses that email, a password reset link is on its way." };
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-  const res = await fetch("/api/proxy/api/v1/auth/reset-password", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, new_password: newPassword }),
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Reset failed (${res.status})`);
-  }
-  return res.json();
+  void token; // Supabase PKCE callback establishes the recovery session in cookies.
+  await setNewPassword(newPassword);
+  return { message: "Password updated." };
 }
 
 export async function verifyEmail(token: string): Promise<{ message: string }> {
-  const res = await fetch(`/api/proxy/api/v1/auth/verify-email?token=${encodeURIComponent(token)}`, {
-    method: "GET",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Verification failed (${res.status})`);
-  }
-  return res.json();
+  void token;
+  const current = await getCurrentUser();
+  if (!current?.user.is_verified) throw new Error("Open the confirmation link from your email to verify your account.");
+  return { message: "Your email is verified." };
 }
 
 export async function resendVerification(): Promise<{ message: string }> {
-  const res = await fetch("/api/proxy/api/v1/auth/resend-verification", {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Resend failed (${res.status})`);
-  }
-  return res.json();
+  const { data, error } = await getSupabaseBrowserClient().auth.getUser();
+  if (error || !data.user?.email) throw new Error("Sign in again before requesting a new verification email.");
+  await resendSignupVerification(data.user.email);
+  return { message: "Verification email sent." };
 }
 
 

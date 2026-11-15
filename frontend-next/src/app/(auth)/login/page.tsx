@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, Sparkles, Shield } from "lucide-react";
-import { login, type User } from "@/lib/auth";
-import { useAuth } from "@/lib/AuthContext";
+import { login, signInWithGoogle, type User } from "@/lib/auth";
 
 /**
  * Where to send a freshly-authenticated user when no explicit `next` param
@@ -29,60 +28,29 @@ function roleDestination(user: User): string {
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const nextPath = search.get("next") || "/dashboard";
-  const { loginAsDemo } = useAuth();
+  const nextPath = search.get("next");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => search.get("email") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [backendOffline, setBackendOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const emailValid = email ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) : null;
   const [focused, setFocused] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
     setSocialLoading("google");
     setError(null);
 
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (googleClientId) {
-      const redirectUri = `${window.location.origin}/api/v1/auth/google/callback`;
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=code&scope=openid%20email%20profile&access_type=offline`;
-      window.location.href = googleAuthUrl;
-      return;
+    try {
+      await signInWithGoogle(nextPath || "/creators/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in is unavailable right now.");
+      setSocialLoading(null);
     }
-
-    setTimeout(() => {
-      loginAsDemo("Creator", "creator@gmail.com", "creator");
-      const dest = nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard";
-      router.push(dest);
-    }, 600);
   };
-
-  const handleDemoBypass = () => {
-    loginAsDemo(email ? email.split("@")[0] : "Deepraj Sharma", email || "deepraj@relativclips.com", "creator");
-    const dest = nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard";
-    router.push(dest);
-  };
-
-  // Pre-fill from query param (e.g. ?email=foo@bar) for retry-UX
-  useEffect(() => {
-    const e = search.get("email");
-    if (e) setEmail(e);
-  }, [search]);
-
-  // Live email validation
-  useEffect(() => {
-    if (!email) {
-      setEmailValid(null);
-      return;
-    }
-    setEmailValid(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
-  }, [email]);
 
   const onSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -101,15 +69,16 @@ function LoginForm() {
       try {
         const result = await login({ email: email.trim().toLowerCase(), password });
         // Honour ?next= if it points to a real, safe path; otherwise route by role
-        const dest = nextPath && nextPath.startsWith("/") ? nextPath : roleDestination(result.user);
+        const safeNext = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
+        const dest = safeNext || roleDestination(result.user);
         router.push(dest);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Surface backend error verbatim if it's a string, otherwise generic
-        const msg = err?.message || "Invalid email or password.";
+        const msg = err instanceof Error ? err.message : "Invalid email or password.";
         // Map common errors to user-friendly copy
         if (msg.includes("502") || msg.includes("503") || msg.includes("504") || msg.toLowerCase().includes("fetch")) {
           setBackendOffline(true);
-          setError("GPU backend worker is currently in standby mode.");
+          setError("RelatiV’s account service is temporarily unavailable. Please try again shortly.");
         } else if (msg.toLowerCase().includes("401") || msg.toLowerCase().includes("invalid")) {
           setError("Invalid email or password. Try again, or reset below.");
         } else if (msg.toLowerCase().includes("locked")) {
@@ -349,22 +318,12 @@ function LoginForm() {
                     <p>{error}</p>
                     {backendOffline && (
                       <p className="mt-1 text-xs opacity-90">
-                        You can explore the studio in Demo Sandbox mode without backend credentials.
+                        Sign-in is temporarily unavailable. Your account and saved projects remain safe.
                       </p>
                     )}
                   </div>
                 </div>
 
-                {backendOffline && (
-                  <button
-                    type="button"
-                    onClick={handleDemoBypass}
-                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold bg-amber-400 text-slate-950 hover:bg-amber-300 transition-all shadow"
-                  >
-                    <span>⚡ Enter Studio in Demo Mode</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -396,27 +355,17 @@ function LoginForm() {
           {/* Security note */}
           <div className="flex items-center justify-center gap-1.5 text-[11px]" style={{ color: "var(--color-text-faint)" }}>
             <Shield className="h-3 w-3" />
-            <span>Encrypted with bcrypt · 7-day JWT session</span>
+            <span>Secure Supabase Auth session</span>
           </div>
           </form>
 
-          {/* Quick Demo Bypass */}
-          <div className="pt-2 text-center border-t border-slate-200/50 dark:border-white/5">
-            <button
-              type="button"
-              onClick={handleDemoBypass}
-              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-mono transition-colors"
-            >
-              Skip sign in · Explore in Demo Mode →
-            </button>
-          </div>
         </motion.div>
 
         {/* Footer */}
         <p className="mt-6 text-center text-[13px]" style={{ color: "var(--color-text-muted)" }}>
           Don&apos;t have an account?{" "}
           <Link
-            href={`/signup${nextPath !== "/account" ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
+            href={`/signup${nextPath && nextPath !== "/account" ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
             className="font-semibold transition-colors"
             style={{ color: "var(--color-accent)" }}
           >

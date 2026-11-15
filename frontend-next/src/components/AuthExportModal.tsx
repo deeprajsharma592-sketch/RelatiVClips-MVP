@@ -1,52 +1,36 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Sparkles, X, ArrowRight, ShieldCheck, Zap } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
+import { Download, X, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { signInWithGoogle } from "@/lib/auth";
 import { useState } from "react";
 
 interface AuthExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccessDownload: () => void;
   clipTitle?: string;
 }
 
 export default function AuthExportModal({
   isOpen,
   onClose,
-  onSuccessDownload,
   clipTitle,
 }: AuthExportModalProps) {
-  const { loginAsDemo } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
-  const handleGoogleAuth = () => {
+  const handleGoogleAuth = async () => {
     setLoading(true);
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (googleClientId) {
-      const redirectUri = `${window.location.origin}/api/v1/auth/google/callback`;
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=code&scope=openid%20email%20profile&access_type=offline`;
-      window.location.href = googleAuthUrl;
-      return;
-    }
-
-    setTimeout(() => {
-      loginAsDemo("Creator", "creator@gmail.com", "creator");
+    setError("");
+    try {
+      await signInWithGoogle(`${window.location.pathname}${window.location.search}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Google sign-in is unavailable.");
       setLoading(false);
-      onSuccessDownload();
-      onClose();
-    }, 500);
-  };
-
-  const handleGuestDownload = () => {
-    loginAsDemo("Guest Creator", "guest@relativclips.com", "creator");
-    onSuccessDownload();
-    onClose();
+    }
   };
 
   return (
@@ -85,7 +69,7 @@ export default function AuthExportModal({
             Your 9:16 clips are ready!
           </h3>
           <p className="mt-2 text-xs sm:text-sm text-slate-400 leading-relaxed">
-            Continue with Google to download in full 1080p HD and keep your clips saved in your 4-day temporary vault.
+            Sign in to save clips to your creator workspace. Once you return, choose the clip again to export it.
           </p>
 
           {clipTitle && (
@@ -93,6 +77,8 @@ export default function AuthExportModal({
               📹 {clipTitle}
             </div>
           )}
+
+          {error && <p className="mt-4 text-xs text-rose-300" role="alert">{error}</p>}
 
           <div className="mt-6 space-y-3">
             {/* 1-Click Google OAuth */}
@@ -122,19 +108,14 @@ export default function AuthExportModal({
               <span>Continue with Google</span>
             </button>
 
-            {/* Instant Guest Download Fallback */}
-            <button
-              onClick={handleGuestDownload}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5 border border-white/5 transition-all"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Instant Download as Guest</span>
-            </button>
+            <Link href={`/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`} onClick={onClose} className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs text-slate-400 hover:text-white hover:bg-white/5 border border-white/5 transition-all">
+              Sign in with email
+            </Link>
           </div>
 
           <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-slate-500 font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>4-day secure temporary vault · No spam</span>
+            <span>Protected by Supabase Auth</span>
           </div>
         </motion.div>
       </div>

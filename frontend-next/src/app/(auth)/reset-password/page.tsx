@@ -15,17 +15,16 @@
  * the user lands on this page with no token, we redirect to /forgot-password.
  */
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, Shield } from "lucide-react";
 import { resetPassword } from "@/lib/api";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function ResetPasswordForm() {
   const router = useRouter();
-  const search = useSearchParams();
-  const token = search.get("token") || "";
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -33,9 +32,25 @@ function ResetPasswordForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
-  // Token missing → friendly empty state with link back
-  if (!token) {
+  useEffect(() => {
+    let cancelled = false;
+    getSupabaseBrowserClient().auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      setHasSession(Boolean(data.session));
+      setCheckingSession(false);
+    }).catch(() => {
+      if (!cancelled) setCheckingSession(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (checkingSession) {
+    return <div className="glass-panel p-7 text-center">Checking your secure reset link…</div>;
+  }
+  if (!hasSession) {
     return (
       <div className="glass-panel p-7 text-center space-y-4">
         <div
@@ -48,10 +63,10 @@ function ResetPasswordForm() {
           <KeyRound className="h-6 w-6" style={{ color: "#FB7185" }} />
         </div>
         <h2 className="font-display font-semibold text-2xl" style={{ color: "var(--color-text-primary)" }}>
-          Missing reset link
+          Missing reset session
         </h2>
         <p className="text-[14px]" style={{ color: "var(--color-text-secondary)" }}>
-          This page needs the reset link from your email. We didn&apos;t find a token in the URL.
+          Open the password reset link from your email to set a new password.
         </p>
         <Link href="/forgot-password" className="btn-primary btn-shine inline-flex">
           Request a new reset link
@@ -74,12 +89,12 @@ function ResetPasswordForm() {
     setSubmitting(true);
     setError(null);
     try {
-      await resetPassword(token, password);
+      await resetPassword("", password);
       setDone(true);
       // Auto-redirect to /login after 2s
       setTimeout(() => router.push("/login?reset=success"), 2000);
-    } catch (err: any) {
-      setError(err?.message || "Reset failed. The link may have expired — try requesting a new one.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Reset failed. The link may have expired — try requesting a new one.");
     } finally {
       setSubmitting(false);
     }
@@ -232,7 +247,7 @@ function ResetPasswordForm() {
 
       <div className="flex items-center justify-center gap-1.5 text-[11px]" style={{ color: "var(--color-text-faint)" }}>
         <Shield className="h-3 w-3" />
-        <span>Encrypted with bcrypt</span>
+        <span>Secured by Supabase Auth</span>
       </div>
     </motion.form>
   );

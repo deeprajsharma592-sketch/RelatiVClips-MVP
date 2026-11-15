@@ -11,25 +11,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles,
   ArrowRight,
   Loader2,
   CheckCircle2,
-  ShieldCheck,
   Eye,
   EyeOff,
   Video,
-  Play,
   Zap,
-  HelpCircle,
 } from "lucide-react";
-import { signup, type UserRole } from "@/lib/auth";
-import { useAuth } from "@/lib/AuthContext";
+import { signup, signInWithGoogle } from "@/lib/auth";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { loginAsDemo } = useAuth();
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,34 +32,20 @@ export default function SignupPage() {
   const [backendOffline, setBackendOffline] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // 1-Click Social Sign-In (Google)
   const handleGoogleSignIn = async () => {
     setSocialLoading("google");
     setSubmitError(null);
 
-    // If Google Client ID is configured in env, trigger OAuth redirect
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (googleClientId) {
-      const redirectUri = `${window.location.origin}/api/v1/auth/google/callback`;
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=code&scope=openid%20email%20profile&access_type=offline`;
-      window.location.href = googleAuthUrl;
-      return;
+    try {
+      await signInWithGoogle("/creators/dashboard");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Google sign-up is unavailable right now.");
+      setSocialLoading(null);
     }
-
-    // Smooth fallback: Activate Studio with verified Google profile
-    setTimeout(() => {
-      loginAsDemo("Creator", "creator@gmail.com", "creator");
-      setSuccess(true);
-      setTimeout(() => router.push("/dashboard"), 800);
-    }, 700);
-  };
-
-  const handleDemoBypass = () => {
-    loginAsDemo(name.trim() || "Deepraj Sharma", email.trim() || "deepraj@relativclips.com", "creator");
-    router.push("/dashboard");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,36 +55,33 @@ export default function SignupPage() {
       setSubmitError("Password must be at least 8 characters long.");
       return;
     }
+    if (!acceptedTerms) {
+      setSubmitError("Please accept the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
     setBackendOffline(false);
 
     try {
-      await signup({
+      const result = await signup({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
         role: "creator",
-        accept_tos: true,
+        accept_tos: acceptedTerms,
+        redirectTo: "/creators/dashboard",
       });
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1000);
-    } catch (err: any) {
-      const msg = err?.message || "";
-      // Friendly, non-technical handling for server offline / 502
-      if (
-        msg.includes("502") ||
-        msg.includes("503") ||
-        msg.includes("504") ||
-        msg.includes("Failed to fetch") ||
-        msg.includes("NetworkError")
-      ) {
+      setNeedsVerification(Boolean(result.needsEmailVerification));
+      if (!result.needsEmailVerification) setTimeout(() => router.push("/creators/dashboard"), 1000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
         setBackendOffline(true);
-        setSubmitError("The GPU worker is currently booting up.");
+        setSubmitError("RelatiV could not connect to account services. Please retry in a moment.");
       } else {
         setSubmitError(msg || "Sign up could not be completed. Please try again.");
       }
@@ -236,8 +212,13 @@ export default function SignupPage() {
                   <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/20">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Workspace Ready!</h2>
-                  <p className="text-xs text-slate-400">Loading your clip studio...</p>
+                  <h2 className="text-xl font-bold text-white">{needsVerification ? "Check your email" : "Your account is ready"}</h2>
+                  <p className="text-xs text-slate-400">
+                    {needsVerification
+                      ? `We sent a confirmation link to ${email}. Verify your address to finish creating your account.`
+                      : "Opening your creator studio…"}
+                  </p>
+                  {needsVerification && <Link href="/login" className="inline-block mt-3 text-sm text-blue-300 hover:underline">Back to sign in</Link>}
                 </motion.div>
               ) : (
                 <div className="space-y-5">
@@ -294,26 +275,10 @@ export default function SignupPage() {
                           <Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                           <div className="flex-1">
                             <p className="font-semibold">{submitError}</p>
-                            {backendOffline && (
-                              <p className="mt-1 text-amber-300/80 leading-relaxed">
-                                You can immediately enter the studio in Demo Sandbox mode to test video uploading, clipping, and captioning.
-                              </p>
-                            )}
+                            {backendOffline && <p className="mt-1 text-amber-300/80 leading-relaxed">Your account data hasn’t been changed. Please retry shortly.</p>}
                           </div>
                         </div>
 
-                        {backendOffline && (
-                          <div className="pt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleDemoBypass}
-                              className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold bg-amber-400 text-slate-950 hover:bg-amber-300 transition-all shadow"
-                            >
-                              <span>⚡ Enter Studio in Demo Mode</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -334,6 +299,17 @@ export default function SignupPage() {
                         className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/5 border border-white/10 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-500"
                       />
                     </div>
+
+                    <label className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-400">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={acceptedTerms}
+                        onChange={(event) => setAcceptedTerms(event.target.checked)}
+                        className="mt-0.5 accent-blue-500"
+                      />
+                      <span>I agree to RelatiV’s Terms of Service and Privacy Policy.</span>
+                    </label>
 
                     <div>
                       <label className="block text-xs font-medium text-slate-300 mb-1.5">
@@ -398,7 +374,7 @@ export default function SignupPage() {
                     </button>
                   </form>
 
-                  {/* Bottom Actions: Sign In & Instant Demo Bypass */}
+                  {/* Bottom Actions: Sign In */}
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 border-t border-white/10 pt-4">
                     <div>
                       Already have an account?{" "}
@@ -410,14 +386,6 @@ export default function SignupPage() {
                       </Link>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleDemoBypass}
-                      className="text-slate-400 hover:text-white transition-colors text-[11px] font-mono flex items-center gap-1"
-                    >
-                      <span>Explore Demo Mode</span>
-                      <span>→</span>
-                    </button>
                   </div>
                 </div>
               )}
