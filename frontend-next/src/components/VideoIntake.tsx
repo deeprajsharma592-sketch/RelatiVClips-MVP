@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * VideoIntake — Primary Video Input with Local Upload First + YouTube Mockup/Secondary
+ * VideoIntake — Primary Video Input with Local Upload First + YouTube Secondary
+ * Completely aligned with the RelatiV Cinematic Dark Design System
  */
 
 import { useState, useRef, useCallback } from "react";
@@ -11,11 +12,9 @@ import {
   UploadCloud,
   Link2,
   FileVideo,
-  Sparkles,
   ArrowRight,
   Loader2,
   AlertCircle,
-  Check,
 } from "lucide-react";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
 
@@ -26,9 +25,12 @@ interface VideoIntakeProps {
   onStartProcess?: (taskId: string) => void;
 }
 
-export default function VideoIntake({ className = "", onStartProcess }: VideoIntakeProps) {
+export default function VideoIntake({
+  className = "",
+  onStartProcess,
+}: VideoIntakeProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"upload" | "youtube">("upload");
+  const [activeTab, setActiveTab] = useState<"url" | "upload">("url");
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
@@ -108,63 +110,120 @@ export default function VideoIntake({ className = "", onStartProcess }: VideoInt
   };
 
   return (
-    <div className={`w-full max-w-2xl mx-auto ${className}`}>
-      {/* Tab Switcher */}
-      <div className="flex items-center justify-center gap-2 mb-4">
+    <div className={`w-full max-w-[840px] mx-auto ${className}`}>
+      {/* ── Connected Tab Bar ── */}
+      <div className="flex items-end px-3 sm:px-6">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("url");
+            setError(null);
+          }}
+          className={`relative flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-t-2xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer z-10 ${
+            activeTab === "url"
+              ? "bg-white dark:bg-[#090b11] text-zinc-900 dark:text-white border-t border-x border-black/10 dark:border-white/10 shadow-sm dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)]"
+              : "bg-black/[0.03] dark:bg-white/[0.02] text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] border-t border-x border-transparent"
+          }`}
+        >
+          <Link2 className={`w-4 h-4 ${activeTab === "url" ? "text-cyan-500 dark:text-cyan-400" : "text-zinc-500"}`} />
+          <span>CLIP LONG VIDEO</span>
+        </button>
+
         <button
           type="button"
           onClick={() => {
             setActiveTab("upload");
             setError(null);
           }}
-          className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold transition-all duration-200 ${
+          className={`relative flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-t-2xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer z-10 ml-1.5 ${
             activeTab === "upload"
-              ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-              : "bg-white/80 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 border border-slate-200 dark:border-white/10"
+              ? "bg-white dark:bg-[#090b11] text-zinc-900 dark:text-white border-t border-x border-black/10 dark:border-white/10 shadow-sm dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)]"
+              : "bg-black/[0.03] dark:bg-white/[0.02] text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] border-t border-x border-transparent"
           }`}
         >
-          <UploadCloud className="w-3.5 h-3.5" />
-          <span>Upload Video (Recommended)</span>
-          <span className="px-1.5 py-0.2 text-[9px] rounded-full bg-blue-500 text-white font-mono">Fast</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("youtube");
-            setError(null);
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
-            activeTab === "youtube"
-              ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-              : "bg-white/80 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 border border-slate-200 dark:border-white/10"
-          }`}
-        >
-          <Link2 className="w-3.5 h-3.5" />
-          <span>YouTube Link</span>
-          <span className="px-1.5 py-0.2 text-[9px] rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono">Beta</span>
+          <UploadCloud className={`w-4 h-4 ${activeTab === "upload" ? "text-cyan-500 dark:text-cyan-400" : "text-zinc-500"}`} />
+          <span>UPLOAD FOOTAGE</span>
         </button>
       </div>
 
-      {/* Main Intake Container */}
-      <div
-        className="rounded-3xl p-3 sm:p-5 transition-all duration-200"
-        style={{
-          background: "rgba(255, 255, 255, 0.88)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          border: "1px solid rgba(255, 255, 255, 0.95)",
-          boxShadow: "0 12px 40px rgba(59, 130, 246, 0.12), 0 2px 10px rgba(0, 0, 0, 0.04)",
-        }}
-      >
+      {/* ── Connected Main Intake Panel ── */}
+      <div className="relative rounded-3xl bg-white dark:bg-[#090b11] border border-black/10 dark:border-white/10 p-6 sm:p-9 shadow-lg dark:shadow-[0_25px_60px_rgba(0,0,0,0.9)] backdrop-blur-xl -mt-px transition-all">
+        {/* Ambient Top Light */}
+        <div
+          className="absolute inset-x-0 top-0 h-px pointer-events-none rounded-t-3xl"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.4) 30%, rgba(139, 92, 246, 0.4) 70%, transparent 100%)",
+          }}
+        />
+
         <AnimatePresence mode="wait">
-          {activeTab === "upload" ? (
+          {activeTab === "url" ? (
+            /* ── TAB 1: CLIP LONG VIDEO (URL Workflow) ── */
+            <motion.div
+              key="tab-url"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h3 className="font-display font-bold text-xl sm:text-2xl text-zinc-950 dark:text-white tracking-tight mb-2">
+                  Turn any long video into short clips
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-xl">
+                  Paste a public YouTube, Zoom, or Google Drive link. RelatiV AI detects key talking hooks, re-frames for 9:16 vertical video, and generates word-level animated subtitles.
+                </p>
+              </div>
+
+              <form onSubmit={handleYoutubeSubmit} className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-[#F0F2F6] dark:bg-black/60 rounded-2xl border border-black/10 dark:border-white/15 p-2 sm:p-2.5 focus-within:border-cyan-500 shadow-sm transition-all">
+                  <div className="pl-3 pr-1 text-zinc-400 hidden sm:block">
+                    <Link2 className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                  </div>
+                  <input
+                    type="url"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="flex-1 min-w-0 bg-transparent py-2.5 px-3 sm:px-0 text-sm sm:text-base text-zinc-950 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 font-sans"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!youtubeUrl.trim()}
+                    className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 text-sm font-semibold shadow-md transition-all active:scale-[0.98] disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-white/10 dark:disabled:text-white/30 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                  >
+                    <span>Get clips</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Secondary Actions & Helpers */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="text-zinc-500 dark:text-zinc-400">
+                    Supports YouTube, Zoom, or Google Drive public links
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("upload")}
+                    className="text-zinc-600 dark:text-zinc-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors text-left sm:text-right cursor-pointer"
+                  >
+                    Have a raw video file? <span className="underline underline-offset-2">Upload footage →</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          ) : (
+            /* ── TAB 2: UPLOAD FOOTAGE (File Dropzone Workflow) ── */
             <motion.div
               key="tab-upload"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
+              className="space-y-6"
             >
               <input
                 ref={fileInputRef}
@@ -175,100 +234,83 @@ export default function VideoIntake({ className = "", onStartProcess }: VideoInt
               />
 
               {uploadProgress !== null ? (
-                /* Uploading State */
-                <div className="py-8 px-6 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto text-blue-600">
+                /* ── Uploading State ── */
+                <div className="py-12 px-6 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto text-cyan-500 dark:text-cyan-400">
                     <Loader2 className="w-7 h-7 animate-spin" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">{uploadStatus}</p>
-                    <p className="text-xs text-slate-500 mt-1">{selectedFile?.name}</p>
+                    <p className="text-base font-semibold text-zinc-950 dark:text-white">{uploadStatus}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 truncate max-w-sm mx-auto font-sans">
+                      {selectedFile?.name}
+                    </p>
                   </div>
-                  <div className="w-full max-w-md mx-auto bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full max-w-md mx-auto bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
                 </div>
               ) : (
-                /* Ready / Dropzone State */
+                /* ── Dropzone State ── */
                 <div
                   onDragOver={onDragOver}
                   onDragLeave={onDragLeave}
                   onDrop={onDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-200 ${
+                  className={`border border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
                     isDragging
-                      ? "border-blue-500 bg-blue-50/60 scale-[0.99]"
-                      : "border-slate-300 hover:border-blue-400 hover:bg-slate-50/50"
+                      ? "border-cyan-500 bg-cyan-500/[0.08] scale-[0.99]"
+                      : "border-black/15 dark:border-white/15 hover:border-cyan-500/40 bg-[#F7F8FA] dark:bg-white/[0.015] hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"
                   }`}
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center mx-auto mb-3 shadow-inner">
-                    <UploadCloud className="w-6 h-6" />
+                  <div className="w-14 h-14 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <UploadCloud className="w-7 h-7" />
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900 mb-1">
-                    Drag & Drop your video file here
+
+                  <h3 className="font-display font-semibold text-lg sm:text-xl text-zinc-950 dark:text-white mb-2 tracking-tight">
+                    Drop your footage here
                   </h3>
-                  <p className="text-xs text-slate-500 mb-4 max-w-sm mx-auto">
-                    MP4, MOV, or WEBM up to 2GB. Pristine 9:16 vertical crop with word-level subtitles.
+
+                  <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mb-6 max-w-md mx-auto leading-relaxed">
+                    Drag and drop your raw MP4, MOV, or WEBM video here, or browse files on your computer.
                   </p>
+
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-semibold shadow-md shadow-blue-500/20 hover:opacity-95 transition-all"
+                    className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 text-sm font-semibold shadow-md transition-all active:scale-[0.98] cursor-pointer"
                   >
-                    <FileVideo className="w-3.5 h-3.5" />
-                    <span>Select Video from Device</span>
+                    <FileVideo className="w-4 h-4 text-white dark:text-black" />
+                    <span>Select video file</span>
                   </button>
+
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+                    <span>Supported formats: MP4, MOV, MKV, WEBM (up to 2GB)</span>
+                    <span className="hidden sm:inline text-zinc-400 dark:text-zinc-600">·</span>
+                    <span>Auto 9:16 vertical crop & subtitles</span>
+                  </div>
                 </div>
               )}
-            </motion.div>
-          ) : (
-            /* YouTube URL Tab (Mockup / Beta Preview) */
-            <motion.div
-              key="tab-youtube"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.15 }}
-            >
-              <form onSubmit={handleYoutubeSubmit} className="space-y-3">
-                <div className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 p-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                  <div className="pl-3 pr-2 text-slate-400">
-                    <Link2 className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="url"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="flex-1 min-w-0 bg-transparent py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!youtubeUrl.trim()}
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-semibold shadow-md shadow-blue-500/20 hover:opacity-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <span>Extract</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between px-2 text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                    <AlertCircle className="w-3 h-3" />
-                    YouTube imports may experience queueing or anti-bot delays.
-                  </span>
-                  <span>Direct MP4 upload is instant</span>
-                </div>
-              </form>
+
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1">
+                <span>Direct file upload processes at maximum speed</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("url")}
+                  className="text-zinc-600 dark:text-zinc-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors"
+                >
+                  Have a YouTube link? <span className="underline underline-offset-2">Clip long video →</span>
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Error message */}
         {error && (
-          <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-600">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2 text-xs text-rose-300">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{error}</span>
           </div>
         )}

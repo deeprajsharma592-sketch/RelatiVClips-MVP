@@ -7,20 +7,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { ROLE_LABEL, type UserRole } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
+import { getAppDashboardUrl } from "@/lib/domain";
 
 interface NavLink {
   href: string;
   label: string;
   highlight?: boolean;
 }
-
-const NAV_LINKS: NavLink[] = [
-  { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard", highlight: true },
-  { href: "/plans", label: "Pricing" },
-  { href: "/changelog", label: "Changelog" },
-  { href: "/about", label: "About" },
-];
 
 const ROLE_GRADIENT: Record<UserRole, string> = {
   creator: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)",
@@ -41,11 +34,21 @@ export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, loading, logout } = useAuth();
 
+  const navLinks: NavLink[] = [
+    { href: "/", label: "Home" },
+    { href: getAppDashboardUrl(), label: "Dashboard", highlight: true },
+    { href: "/plans", label: "Pricing" },
+    { href: "/changelog", label: "Changelog" },
+    { href: "/about", label: "About" },
+  ];
+
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href.startsWith("http")) return false;
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  };
 
   const handleLogout = async () => {
     closeUserMenu();
@@ -60,60 +63,61 @@ export default function Header() {
           background: "var(--glass-light-strong)",
           backdropFilter: "blur(20px) saturate(180%)",
           WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "var(--color-border)",
+          borderBottom: "1px solid var(--color-border)",
           boxShadow: "var(--shadow-md)",
         }}
       />
       <div className="max-w-7xl mx-auto px-6 h-[68px] flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMenu}>
-          <motion.div
-            className="relative overflow-hidden rounded-xl"
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 400 }}
-          >
-            <img
-              src="/relativ-logo.webp"
-              alt="RelatiV Clips"
-              width={80}
-              height={36}
-              className="object-contain h-9 w-auto"
-              decoding="async"
-            />
-          </motion.div>
-          <div className="flex items-baseline gap-2">
+        {/* Logo and Status */}
+        <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMenu}>
+            <motion.div
+              className="relative overflow-hidden rounded-xl"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 400 }}
+            >
+              <img
+                src="/relativ-logo.webp"
+                alt="RelatiV Clips"
+                width={80}
+                height={36}
+                className="object-contain h-9 w-auto"
+                decoding="async"
+              />
+            </motion.div>
             <span className="font-display text-lg font-semibold tracking-tight" style={{ color: "var(--color-text-primary)" }}>
               Relati<span className="text-gradient-sunset">V</span>
             </span>
-            {/* BETA pill — site-wide product status marker, links to /beta */}
-            <Link
-              href="/beta"
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold uppercase tracking-wider transition-all hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, rgba(252, 211, 77, 0.18) 0%, rgba(255, 119, 233, 0.18) 100%)",
-                border: "1px solid rgba(252, 211, 77, 0.35)",
-                color: "var(--color-text-primary)",
-                letterSpacing: "0.08em",
-              }}
-              title="RelatiV is in public beta — learn more"
-            >
-              <span
-                className="inline-block w-1 h-1 rounded-full"
-                style={{ background: "#FCD34D" }}
-              />
-              Beta
-            </Link>
-            {pathname === "/" && (
-              <span className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
-                [Φ]
-              </span>
-            )}
-          </div>
-        </Link>
+          </Link>
+
+          {/* BETA pill — site-wide product status marker, links to /beta */}
+          <Link
+            href="/beta"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold uppercase tracking-wider transition-all hover:scale-105"
+            style={{
+              background: "linear-gradient(135deg, rgba(252, 211, 77, 0.18) 0%, rgba(255, 119, 233, 0.18) 100%)",
+              border: "1px solid rgba(252, 211, 77, 0.35)",
+              color: "var(--color-text-primary)",
+              letterSpacing: "0.08em",
+            }}
+            title="RelatiV is in public beta — learn more"
+          >
+            <span
+              className="inline-block w-1 h-1 rounded-full"
+              style={{ background: "#FCD34D" }}
+            />
+            Beta
+          </Link>
+          {pathname === "/" && (
+            <span className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
+              [Φ]
+            </span>
+          )}
+        </div>
 
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV_LINKS.map((link) => {
+          {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
               <Link
@@ -148,7 +152,7 @@ export default function Header() {
         {/* Right section */}
         <div className="flex items-center gap-2">
           {/* Online indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "var(--glass-light)", border: "var(--color-border)" }}>
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "var(--glass-light)", border: "1px solid var(--color-border)" }}>
             <motion.div
               className="w-1.5 h-1.5 rounded-full"
               style={{ background: "#10B981" }}
@@ -173,7 +177,7 @@ export default function Header() {
               <ThemeToggle />
               <Link
                 href="/signup"
-                className="hidden md:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all"
+                className="hidden md:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] hover:shadow-[0_6px_22px_rgba(252,211,77,0.45)] cursor-pointer"
                 style={{
                   background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
                   color: "#1A1814",
@@ -328,7 +332,7 @@ export default function Header() {
                 boxShadow: "var(--shadow-xl)",
               }}
             >
-              {NAV_LINKS.map((link, i) => (
+              {navLinks.map((link, i) => (
                 <motion.div
                   key={link.href}
                   initial={{ opacity: 0, x: 20 }}

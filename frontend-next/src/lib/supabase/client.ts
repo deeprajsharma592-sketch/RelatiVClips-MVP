@@ -12,6 +12,15 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   if (!config) {
     throw new Error("Supabase is not configured. Add the public project URL and publishable key.");
   }
-  browserClient = createBrowserClient(config.url, config.key);
+  const isProd =
+    typeof window !== "undefined" && window.location.hostname.endsWith("relativclips.com");
+  browserClient = createBrowserClient(config.url, config.key, {
+    cookieOptions: {
+      domain: isProd ? ".relativclips.com" : undefined,
+      path: "/",
+      sameSite: "lax",
+      secure: isProd,
+    },
+  });
   return browserClient;
 }

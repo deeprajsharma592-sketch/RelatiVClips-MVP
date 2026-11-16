@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
 const FOOTER_COLS = [
@@ -50,6 +51,15 @@ const SOCIAL = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password";
+
+  if (isAuthRoute) return null;
+
   return (
     <footer
       className="relative overflow-hidden"
@@ -152,7 +162,7 @@ export default function Footer() {
             {FOOTER_COLS.map((col) => (
               <div key={col.title}>
                 <p
-                  className="text-[11px] font-mono uppercase tracking-wider mb-4"
+                  className="text-[11px] font-sans font-semibold uppercase tracking-wider mb-4"
                   style={{ color: "var(--color-text-muted)" }}
                 >
                   {col.title}

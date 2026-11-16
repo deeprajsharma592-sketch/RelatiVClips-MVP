@@ -21,8 +21,14 @@ export function getStoredProjects(): StoredProject[] {
     if (!raw) return [];
     const list: StoredProject[] = JSON.parse(raw);
     const now = Date.now();
-    // Filter out expired items (older than 4 days)
-    const valid = list.filter((p) => p.expiresAt > now);
+    // Filter out expired items and any legacy demo projects
+    const valid = list.filter(
+      (p) =>
+        p.expiresAt > now &&
+        !p.id.startsWith("proj-demo-") &&
+        !p.title.toLowerCase().includes("joe rogan") &&
+        !p.title.toLowerCase().includes("huberman")
+    );
     if (valid.length !== list.length) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
     }

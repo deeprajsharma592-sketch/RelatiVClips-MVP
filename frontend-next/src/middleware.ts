@@ -64,6 +64,38 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isAuthed = hasSessionCookie(req);
 
+  // 0. Hostname-Aware Subdomain Routing
+  const rawHost = req.headers.get("host")?.toLowerCase() || req.nextUrl.hostname.toLowerCase();
+  const host = rawHost.split(":")[0];
+  const isAppHost = host === "app.relativclips.com" || host.startsWith("app.");
+  const isMarketingHost = host === "relativclips.com" || host === "www.relativclips.com";
+
+  // Case A: app.relativclips.com (or app.localhost) -> Creator Studio Workspace
+  if (isAppHost) {
+    // If root path on app subdomain, rewrite to /dashboard
+    if (pathname === "/") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.rewrite(url);
+    }
+    // If user accesses /dashboard on app subdomain, redirect to root for clean URL
+    if (pathname === "/dashboard") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Case B: Production marketing domain (relativclips.com) accessing /dashboard
+  // Redirect to https://app.relativclips.com while preserving query parameters
+  if (isMarketingHost && (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))) {
+    const target = new URL(
+      `https://app.relativclips.com${pathname === "/dashboard" ? "/" : pathname.replace(/^\/dashboard/, "")}`
+    );
+    req.nextUrl.searchParams.forEach((val, key) => target.searchParams.set(key, val));
+    return NextResponse.redirect(target, 307);
+  }
+
   // 1. Authed users hitting /login or /signup → send to /account
   if (isAuthed && AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     const url = req.nextUrl.clone();

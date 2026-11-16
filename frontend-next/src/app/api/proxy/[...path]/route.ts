@@ -63,7 +63,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   } catch {
     // ignore
   }
-  headers.set("x-forwarded-host", "relativclips.com");
+  headers.set("x-forwarded-host", req.headers.get("host") || "relativclips.com");
   headers.set("x-forwarded-proto", "https");
   headers.set("x-relativ-proxy", "vercel-edge-v2");
 

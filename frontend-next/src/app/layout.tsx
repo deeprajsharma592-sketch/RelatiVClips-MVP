@@ -1,45 +1,35 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Fraunces, Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
+import Script from "next/script";
+import { Geist, Geist_Mono, Inter, Fraunces } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SmoothScroll from "@/components/SmoothScroll";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
 
-// Display: Space Grotesk for headlines, with explicit weight + optical size
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-display",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-// Body: Geist Sans — Vercel's own font, modern, premium, tight tracking
+// ── FONT 1: GEIST — Primary display and headings (Variable font)
 const geist = Geist({
-  variable: "--font-sans",
+  variable: "--font-geist",
   subsets: ["latin"],
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
 });
 
-// Mono: Geist Mono — pairs with Geist Sans for code, KPIs, technical labels
+// ── FONT 2: INTER — Interface and readable body typography (Variable font)
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+// ── FONT 3: GEIST MONO — Restricted technical metadata only (Variable font)
 const geistMono = Geist_Mono({
-  variable: "--font-mono",
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-// Bebas Neue — condensed display font for massive Apple-style headlines
-const bebasNeue = Bebas_Neue({
-  variable: "--font-bebas",
-  subsets: ["latin"],
-  weight: "400",
   display: "swap",
 });
 
-// Italic display: Fraunces (variable, opsz, SOFT, WONK axes) — premium serif italic accents
-// Dropped Instrument Serif — Fraunces handles all italic display duties
+// Auxiliary display serif for brand wordmark accent
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
@@ -169,7 +159,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${geist.variable} ${geistMono.variable} ${fraunces.variable} ${bebasNeue.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geist.variable} ${inter.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a
@@ -179,19 +170,23 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <AuthProvider>
-            <Header />
-            <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
-            <Footer />
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSON_LD) }}
-            />
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD) }}
-            />
-          </AuthProvider>
+          <SmoothScroll>
+            <AuthProvider>
+              <Header />
+              <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
+              <Footer />
+              <Script
+                id="org-ld-json"
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSON_LD) }}
+              />
+              <Script
+                id="app-ld-json"
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD) }}
+              />
+            </AuthProvider>
+          </SmoothScroll>
         </ThemeProvider>
       </body>
     </html>
