@@ -93,8 +93,13 @@ export function middleware(req: NextRequest) {
   }
 
   // Case B: Production marketing domain (relativclips.com) accessing /dashboard
-  // Redirect to https://studio.relativclips.com while preserving query parameters
-  if (isMarketingHost && (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))) {
+  // Only redirect if NEXT_PUBLIC_ENABLE_STUDIO_SUBDOMAIN is explicitly enabled,
+  // otherwise serve /dashboard on the current domain so missing DNS never drops users!
+  if (
+    process.env.NEXT_PUBLIC_ENABLE_STUDIO_SUBDOMAIN === "true" &&
+    isMarketingHost &&
+    (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))
+  ) {
     const target = new URL(
       `https://studio.relativclips.com${pathname === "/dashboard" ? "/" : pathname.replace(/^\/dashboard/, "")}`
     );

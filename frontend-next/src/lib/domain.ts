@@ -68,12 +68,16 @@ export function getStudioDashboardUrl(
       return buildQuery(`/dashboard${cleanPath === "/" ? "" : cleanPath}`);
     }
     
-    // In production on relativclips.com or other domains
-    return buildQuery(`https://studio.relativclips.com${cleanPath || "/"}`);
+    // In production: if subdomain routing is enabled via env, target studio.relativclips.com;
+    // otherwise fallback to safe /dashboard on current host so missing DNS never drops users!
+    if (process.env.NEXT_PUBLIC_ENABLE_STUDIO_SUBDOMAIN === "true") {
+      return buildQuery(`https://studio.relativclips.com${cleanPath || "/"}`);
+    }
+    return buildQuery(`/dashboard${cleanPath === "/" ? "" : cleanPath}`);
   }
   
   // Server-side fallback
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NEXT_PUBLIC_ENABLE_STUDIO_SUBDOMAIN === "true") {
     return buildQuery(`https://studio.relativclips.com${cleanPath || "/"}`);
   }
   return buildQuery(`/dashboard${cleanPath === "/" ? "" : cleanPath}`);
