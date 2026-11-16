@@ -2,55 +2,89 @@
  * Subdomain and Host Routing Utilities for RelatiV Clips
  * 
  * Supports:
- * - Production: relativclips.com (marketing) and app.relativclips.com (creator studio)
- * - Local development: localhost:3005 (marketing / fallback) and app.localhost:3005 (subdomain test)
+ * - Production: relativclips.com (marketing) and dash.relativclips.com (creator studio / dashboard)
+ *   (with app.relativclips.com supported as legacy alias)
+ * - Local development: localhost:3000 (marketing / fallback) and dash.localhost:3000 (subdomain test)
  */
 
-export function isAppSubdomain(host?: string | null): boolean {
+export function isDashSubdomain(host?: string | null): boolean {
   if (typeof window !== "undefined" && !host) {
     host = window.location.host;
   }
   if (!host) return false;
   const cleanHost = host.toLowerCase().split(":")[0];
-  return cleanHost === "app.relativclips.com" || cleanHost.startsWith("app.");
+  return (
+    cleanHost === "dash.relativclips.com" ||
+    cleanHost.startsWith("dash.") ||
+    cleanHost === "app.relativclips.com" ||
+    cleanHost.startsWith("app.")
+  );
 }
 
-export function getAppDashboardUrl(path = ""): string {
+// Backward-compatible alias
+export const isAppSubdomain = isDashSubdomain;
+
+export function getDashDashboardUrl(
+  path = "",
+  queryParams?: Record<string, string | null | undefined>
+): string {
   const cleanPath = path.startsWith("/") ? path : (path ? `/${path}` : "");
   
+  const buildQuery = (base: string) => {
+    if (!queryParams) return base;
+    const searchParams = new URLSearchParams();
+    Object.entries(queryParams).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") {
+        searchParams.set(k, v);
+      }
+    });
+    const qs = searchParams.toString();
+    if (!qs) return base;
+    return base.includes("?") ? `${base}&${qs}` : `${base}?${qs}`;
+  };
+
   // Client-side detection
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname.toLowerCase();
     
-    // If already on app.relativclips.com or app.localhost, dashboard is at root "/"
-    if (hostname === "app.relativclips.com" || hostname.startsWith("app.")) {
-      return cleanPath || "/";
+    // If already on dash.relativclips.com, app.relativclips.com, or dash.localhost, dashboard is at root "/"
+    if (
+      hostname === "dash.relativclips.com" ||
+      hostname.startsWith("dash.") ||
+      hostname === "app.relativclips.com" ||
+      hostname.startsWith("app.")
+    ) {
+      return buildQuery(cleanPath || "/");
     }
     
     // In local development on standard localhost / 127.0.0.1
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `/dashboard${cleanPath === "/" ? "" : cleanPath}`;
+      const port = window.location.port ? `:${window.location.port}` : "";
+      return buildQuery(`/dashboard${cleanPath === "/" ? "" : cleanPath}`);
     }
     
     // In production on relativclips.com or other domains
-    return `https://app.relativclips.com${cleanPath || "/"}`;
+    return buildQuery(`https://dash.relativclips.com${cleanPath || "/"}`);
   }
   
   // Server-side fallback
   if (process.env.NODE_ENV === "production") {
-    return `https://app.relativclips.com${cleanPath || "/"}`;
+    return buildQuery(`https://dash.relativclips.com${cleanPath || "/"}`);
   }
-  return `/dashboard${cleanPath === "/" ? "" : cleanPath}`;
+  return buildQuery(`/dashboard${cleanPath === "/" ? "" : cleanPath}`);
 }
+
+// Backward-compatible alias
+export const getAppDashboardUrl = getDashDashboardUrl;
 
 export function getMarketingUrl(path = "/"): string {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname.toLowerCase();
-    if (hostname === "app.relativclips.com") {
+    if (hostname === "dash.relativclips.com" || hostname === "app.relativclips.com") {
       return `https://relativclips.com${cleanPath}`;
     }
-    if (hostname.startsWith("app.localhost")) {
+    if (hostname.startsWith("dash.localhost") || hostname.startsWith("app.localhost")) {
       const port = window.location.port ? `:${window.location.port}` : "";
       return `http://localhost${port}${cleanPath}`;
     }

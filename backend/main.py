@@ -128,8 +128,11 @@ import os
 _default_cors = ",".join([
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://dash.localhost:3000",
     "https://relativclips.com",
     "https://www.relativclips.com",
+    "https://dash.relativclips.com",
+    "https://app.relativclips.com",
     "https://relativ.app",
     "https://www.relativ.app",
 ])

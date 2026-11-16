@@ -38,6 +38,8 @@ import StickyInputBar from "@/components/StickyInputBar";
 import { StageAnimation } from "@/components/StageAnimation";
 import { ActivityFeed, type FeedEvent } from "@/components/ActivityFeed";
 import VideoIntake from "@/components/VideoIntake";
+import SickLoadingTransition from "@/components/SickLoadingTransition";
+import { getDashDashboardUrl } from "@/lib/domain";
 import { submitYouTubeUrl, checkProcessingStatus } from "@/lib/api";
 import { apiPath } from "@/lib/apiBase";
 import type { ProcessState, Clip, PipelineStep, StatusResponse } from "@/types";
@@ -92,13 +94,32 @@ function ProcessInner() {
   const params = useSearchParams();
   const router = useRouter();
 
-  useEffect(() => {
-    const q = params.toString();
-    router.replace(q ? `/dashboard?${q}` : "/dashboard");
-  }, [params, router]);
-
   const initialUrl = params.get("url") || "";
   const initialTaskId = params.get("taskId") || params.get("task_id") || "";
+
+  // If a video URL is provided, display the sick loading transition before routing to dash.relativclips.com
+  if (initialUrl) {
+    return (
+      <SickLoadingTransition
+        url={initialUrl}
+        autoRedirect={true}
+      />
+    );
+  }
+
+  useEffect(() => {
+    const queryObj: Record<string, string> = {};
+    params.forEach((v, k) => {
+      queryObj[k] = v;
+    });
+    const target = getDashDashboardUrl(
+      "",
+      Object.keys(queryObj).length > 0 ? queryObj : undefined
+    );
+    window.location.href = target;
+  }, [params]);
+
+  return <ProcessFallback />;
 
   const [url, setUrl] = useState(initialUrl);
   const [state, setState] = useState<ProcessState>(initialUrl || initialTaskId ? "processing" : "idle");

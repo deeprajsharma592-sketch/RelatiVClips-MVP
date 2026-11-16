@@ -17,6 +17,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
+import SickLoadingTransition from "./SickLoadingTransition";
+import { getDashDashboardUrl } from "@/lib/domain";
 
 const URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/i;
 
@@ -37,6 +39,7 @@ export default function VideoIntake({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle local file selection
@@ -106,7 +109,7 @@ export default function VideoIntake({
       return;
     }
     setError(null);
-    router.push(`/dashboard?url=${encodeURIComponent(trimmed)}`);
+    setIsTransitioning(true);
   };
 
   return (
@@ -315,6 +318,27 @@ export default function VideoIntake({
           </div>
         )}
       </div>
+
+      {/* ── SICK LOADING TRANSITION OVERLAY ── */}
+      {isTransitioning && youtubeUrl && (
+        <SickLoadingTransition
+          url={youtubeUrl}
+          autoRedirect={false}
+          onComplete={(taskId) => {
+            setIsTransitioning(false);
+            if (onStartProcess && taskId) {
+              onStartProcess(taskId);
+            } else {
+              router.push(
+                getDashDashboardUrl("", {
+                  url: youtubeUrl.trim(),
+                  taskId: taskId || undefined,
+                })
+              );
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

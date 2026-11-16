@@ -12,6 +12,7 @@ import {
 import { uploadVideoFile } from "@/lib/api";
 import AnimatedHeadlinePill from "./AnimatedHeadlinePill";
 import HeroDataNetwork from "./HeroDataNetwork";
+import SickLoadingTransition from "./SickLoadingTransition";
 
 // ── 5 Visually Rich Long-Form Video Cards (Left Zone — Staggered In-Out Hierarchy) ──
 const SOURCE_CARDS = [
@@ -196,13 +197,11 @@ export default function HeroStudio() {
     e.preventDefault();
     if (!url.trim()) return;
     setIsSubmitting(true);
-    router.push(`/process?url=${encodeURIComponent(url.trim())}`);
   };
 
   const handleSampleClick = (sampleUrl: string) => {
     setUrl(sampleUrl);
     setIsSubmitting(true);
-    router.push(`/process?url=${encodeURIComponent(sampleUrl)}`);
   };
 
   const processFile = async (file: File) => {
@@ -622,6 +621,14 @@ export default function HeroStudio() {
           </div>
         </div>
       </div>
+
+      {/* ── SICK LOADING TRANSITION OVERLAY ── */}
+      {isSubmitting && url && (
+        <SickLoadingTransition
+          url={url}
+          autoRedirect={true}
+        />
+      )}
     </section>
   );
 }

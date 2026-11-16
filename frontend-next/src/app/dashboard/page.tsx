@@ -46,6 +46,7 @@ function DashboardContent() {
   // Active generation state (triggered by genuine URL or file intake)
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(15);
+  const [currentStepName, setCurrentStepName] = useState<string>("Analyzing video stream...");
   const [elapsedSec, setElapsedSec] = useState(0);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
@@ -107,6 +108,9 @@ function DashboardContent() {
                 : 25;
             const progress = Math.min(95, Math.max(15, raw));
             setGenerationProgress(progress);
+            if (status.step_name || status.current_step) {
+              setCurrentStepName(status.step_name || status.current_step || "Analyzing video stream...");
+            }
           }
         } catch {
           consecutiveErrors++;
@@ -246,11 +250,33 @@ function DashboardContent() {
 
             <div className="max-w-md mx-auto space-y-3">
               <h2 className="text-xl sm:text-2xl font-display font-bold text-white tracking-tight">
-                RelatiV Engine is analyzing your video...
+                {currentStepName || "RelatiV Engine is analyzing your video..."}
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
                 Detecting dialogue peaks, centering speakers for vertical video, and generating animated subtitles.
               </p>
+            </div>
+
+            {/* Live Audio Equalizer Waveform */}
+            <div className="flex items-center justify-center gap-1 h-6 max-w-xs mx-auto">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{
+                    height: [
+                      "20%",
+                      `${Math.max(25, Math.sin((i + generationProgress * 0.2) * 0.9) * 90 + 10)}%`,
+                      "30%",
+                    ],
+                  }}
+                  transition={{
+                    duration: 0.5 + (i % 4) * 0.1,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="w-1 rounded-full bg-cyan-400/80"
+                />
+              ))}
             </div>
 
             {/* Smooth Progress Bar */}
