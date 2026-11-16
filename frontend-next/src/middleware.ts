@@ -67,22 +67,24 @@ export function middleware(req: NextRequest) {
   // 0. Hostname-Aware Subdomain Routing
   const rawHost = req.headers.get("host")?.toLowerCase() || req.nextUrl.hostname.toLowerCase();
   const host = rawHost.split(":")[0];
-  const isDashHost =
+  const isStudioHost =
+    host === "studio.relativclips.com" ||
+    host.startsWith("studio.") ||
     host === "dash.relativclips.com" ||
     host.startsWith("dash.") ||
     host === "app.relativclips.com" ||
     host.startsWith("app.");
   const isMarketingHost = host === "relativclips.com" || host === "www.relativclips.com";
 
-  // Case A: dash.relativclips.com (or app.relativclips.com / dash.localhost) -> Creator Studio Workspace
-  if (isDashHost) {
-    // If root path on dash subdomain, rewrite to /dashboard
+  // Case A: studio.relativclips.com (or studio.localhost / dash. / app.) -> Creator Studio Workspace
+  if (isStudioHost) {
+    // If root path on studio subdomain, rewrite to /dashboard
     if (pathname === "/") {
       const url = req.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.rewrite(url);
     }
-    // If user accesses /dashboard on dash subdomain, redirect to root for clean URL while preserving search params
+    // If user accesses /dashboard on studio subdomain, redirect to root for clean URL while preserving search params
     if (pathname === "/dashboard") {
       const url = req.nextUrl.clone();
       url.pathname = "/";
@@ -91,10 +93,10 @@ export function middleware(req: NextRequest) {
   }
 
   // Case B: Production marketing domain (relativclips.com) accessing /dashboard
-  // Redirect to https://dash.relativclips.com while preserving query parameters
+  // Redirect to https://studio.relativclips.com while preserving query parameters
   if (isMarketingHost && (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))) {
     const target = new URL(
-      `https://dash.relativclips.com${pathname === "/dashboard" ? "/" : pathname.replace(/^\/dashboard/, "")}`
+      `https://studio.relativclips.com${pathname === "/dashboard" ? "/" : pathname.replace(/^\/dashboard/, "")}`
     );
     req.nextUrl.searchParams.forEach((val, key) => target.searchParams.set(key, val));
     return NextResponse.redirect(target, 307);

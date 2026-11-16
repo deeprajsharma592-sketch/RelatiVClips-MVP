@@ -97,7 +97,7 @@ function ProcessInner() {
   const initialUrl = params.get("url") || "";
   const initialTaskId = params.get("taskId") || params.get("task_id") || "";
 
-  // If a video URL is provided, display the sick loading transition before routing to dash.relativclips.com
+  // If a video URL is provided, display the sick loading transition before routing to studio.relativclips.com
   if (initialUrl) {
     return (
       <SickLoadingTransition

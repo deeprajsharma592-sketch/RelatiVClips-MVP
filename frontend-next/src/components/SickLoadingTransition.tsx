@@ -443,7 +443,7 @@ export default function SickLoadingTransition({
             <span>COMPLETED</span>
           </div>
           <div className="flex items-center gap-2 text-cyan-300">
-            <span>Routing to dash.relativclips.com</span>
+            <span>Routing to studio.relativclips.com</span>
             <ArrowRight className="w-3.5 h-3.5 animate-pulse" />
           </div>
         </div>

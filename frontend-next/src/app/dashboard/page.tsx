@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import VideoIntake from "@/components/VideoIntake";
+import StudioHero from "@/components/dashboard/StudioHero";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
 import { apiPath } from "@/lib/apiBase";
@@ -216,25 +217,16 @@ function DashboardContent() {
         <div className="absolute inset-0 bg-[#050507]/15" />
       </div>
 
-      <div className="relative z-10 w-full max-w-[1120px] mx-auto space-y-8">
-        {/* ── Studio Workspace Header ── */}
-        <div className="pb-6 border-b border-black/[0.08] dark:border-white/[0.08]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400" />
-            <span>STUDIO WORKSPACE</span>
-          </div>
-          <h1 className="font-display font-bold text-2xl sm:text-3xl text-zinc-900 dark:text-white tracking-tight">
-            Studio Workspace
-          </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1.5 max-w-xl leading-relaxed">
-            Turn long-form videos into ready-to-share short clips.
-          </p>
-        </div>
-
-        {/* ── Video Intake Workspace ── */}
-        <div className="w-full flex justify-center">
-          <VideoIntake />
-        </div>
+      <div className="relative z-10 w-full max-w-[1140px] mx-auto space-y-8">
+        {/* ── Studio Hero Interface (Matches Creative Studio Screenshot) ── */}
+        <StudioHero
+          onStartProcess={(tid) => {
+            router.push(`/dashboard?taskId=${tid}`);
+          }}
+          onSubmitUrl={(u) => {
+            router.push(`/dashboard?url=${encodeURIComponent(u)}`);
+          }}
+        />
 
         {/* ── ACTIVE GENERATION / WAITING STATE (Only on real job submission) ── */}
         {isGenerating && (

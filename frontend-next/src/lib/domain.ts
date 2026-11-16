@@ -2,18 +2,20 @@
  * Subdomain and Host Routing Utilities for RelatiV Clips
  * 
  * Supports:
- * - Production: relativclips.com (marketing) and dash.relativclips.com (creator studio / dashboard)
- *   (with app.relativclips.com supported as legacy alias)
- * - Local development: localhost:3000 (marketing / fallback) and dash.localhost:3000 (subdomain test)
+ * - Production: relativclips.com (marketing) and studio.relativclips.com (creator studio / dashboard)
+ *   (with dash.relativclips.com and app.relativclips.com supported as legacy aliases)
+ * - Local development: localhost:3000 (marketing / fallback) and studio.localhost:3000 (subdomain test)
  */
 
-export function isDashSubdomain(host?: string | null): boolean {
+export function isStudioSubdomain(host?: string | null): boolean {
   if (typeof window !== "undefined" && !host) {
     host = window.location.host;
   }
   if (!host) return false;
   const cleanHost = host.toLowerCase().split(":")[0];
   return (
+    cleanHost === "studio.relativclips.com" ||
+    cleanHost.startsWith("studio.") ||
     cleanHost === "dash.relativclips.com" ||
     cleanHost.startsWith("dash.") ||
     cleanHost === "app.relativclips.com" ||
@@ -21,10 +23,11 @@ export function isDashSubdomain(host?: string | null): boolean {
   );
 }
 
-// Backward-compatible alias
-export const isAppSubdomain = isDashSubdomain;
+// Backward-compatible aliases
+export const isDashSubdomain = isStudioSubdomain;
+export const isAppSubdomain = isStudioSubdomain;
 
-export function getDashDashboardUrl(
+export function getStudioDashboardUrl(
   path = "",
   queryParams?: Record<string, string | null | undefined>
 ): string {
@@ -47,8 +50,10 @@ export function getDashDashboardUrl(
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname.toLowerCase();
     
-    // If already on dash.relativclips.com, app.relativclips.com, or dash.localhost, dashboard is at root "/"
+    // If already on studio.relativclips.com, dash.relativclips.com, or studio.localhost, dashboard is at root "/"
     if (
+      hostname === "studio.relativclips.com" ||
+      hostname.startsWith("studio.") ||
       hostname === "dash.relativclips.com" ||
       hostname.startsWith("dash.") ||
       hostname === "app.relativclips.com" ||
@@ -64,27 +69,36 @@ export function getDashDashboardUrl(
     }
     
     // In production on relativclips.com or other domains
-    return buildQuery(`https://dash.relativclips.com${cleanPath || "/"}`);
+    return buildQuery(`https://studio.relativclips.com${cleanPath || "/"}`);
   }
   
   // Server-side fallback
   if (process.env.NODE_ENV === "production") {
-    return buildQuery(`https://dash.relativclips.com${cleanPath || "/"}`);
+    return buildQuery(`https://studio.relativclips.com${cleanPath || "/"}`);
   }
   return buildQuery(`/dashboard${cleanPath === "/" ? "" : cleanPath}`);
 }
 
-// Backward-compatible alias
-export const getAppDashboardUrl = getDashDashboardUrl;
+// Backward-compatible aliases
+export const getDashDashboardUrl = getStudioDashboardUrl;
+export const getAppDashboardUrl = getStudioDashboardUrl;
 
 export function getMarketingUrl(path = "/"): string {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname.toLowerCase();
-    if (hostname === "dash.relativclips.com" || hostname === "app.relativclips.com") {
+    if (
+      hostname === "studio.relativclips.com" ||
+      hostname === "dash.relativclips.com" ||
+      hostname === "app.relativclips.com"
+    ) {
       return `https://relativclips.com${cleanPath}`;
     }
-    if (hostname.startsWith("dash.localhost") || hostname.startsWith("app.localhost")) {
+    if (
+      hostname.startsWith("studio.localhost") ||
+      hostname.startsWith("dash.localhost") ||
+      hostname.startsWith("app.localhost")
+    ) {
       const port = window.location.port ? `:${window.location.port}` : "";
       return `http://localhost${port}${cleanPath}`;
     }
