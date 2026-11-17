@@ -409,25 +409,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-}
-
-/* ─── Lenis Inertial Momentum Scroll Styles ─── */
-html.lenis, html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
 }
 
 body {
