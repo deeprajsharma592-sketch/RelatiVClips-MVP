@@ -464,24 +464,36 @@ export default function HeroStudio() {
             <span className="text-[#477DFF] hidden sm:inline">10010 x + o 10 NH</span>
           </div>
 
-          {/* ── THE TWO-LEVEL GLASS CONTAINER ── */}
+          {/* ── THE TWO-LEVEL GLASS CONTAINER (Subtle Graphite-Blue Smoked Physical Glass) ── */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`group/panel relative rounded-[28px] p-[1.25px] transition-all duration-300 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_25px_rgba(0,0,0,0.7)] ${
+            className={`group/panel relative rounded-[28px] p-[1px] transition-all duration-300 ${
               isDragging ? "ring-2 ring-cyan-400" : ""
             }`}
             style={{
               background:
-                "linear-gradient(90deg, rgba(255,106,61,0.65) 0%, rgba(255,140,90,0.3) 22%, rgba(255,255,255,0.08) 50%, rgba(71,125,255,0.35) 78%, rgba(52,120,255,0.75) 100%)",
+                "linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 32%, rgba(255, 255, 255, 0.03) 100%)",
+              boxShadow:
+                "0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 10px 24px -6px rgba(0, 0, 0, 0.6)",
             }}
           >
             {/* Inner Glass Surface */}
-            <div className="relative rounded-[27px] bg-[#090b11]/95 backdrop-blur-2xl overflow-hidden transition-colors">
+            <div
+              className="relative rounded-[27px] overflow-hidden transition-colors"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(26, 33, 46, 0.72) 0%, rgba(18, 23, 32, 0.78) 50%, rgba(11, 14, 20, 0.84) 100%)",
+                backdropFilter: "blur(12px) saturate(115%)",
+                WebkitBackdropFilter: "blur(12px) saturate(115%)",
+                boxShadow:
+                  "inset 0 1px 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04)",
+              }}
+            >
               {/* Drag & Drop Visual Overlay */}
               {isDragging && (
-                <div className="absolute inset-0 z-30 flex items-center justify-center rounded-[27px] bg-black/95 backdrop-blur-md border-2 border-dashed border-cyan-400 text-cyan-300 font-semibold text-sm">
+                <div className="absolute inset-0 z-30 flex items-center justify-center rounded-[27px] bg-[#0c1018]/90 backdrop-blur-md border border-cyan-400/60 text-cyan-200 font-semibold text-sm shadow-[inset_0_0_20px_rgba(6,182,212,0.15)]">
                   <UploadCloud className="w-5 h-5 mr-2 animate-bounce text-cyan-400" />
                   Drop video file here to extract clips
                 </div>
@@ -513,27 +525,48 @@ export default function HeroStudio() {
                 </div>
 
                 {/* AREA B — SECONDARY ACTION ROW (Bottom Level) */}
-                <div className="flex items-center justify-between px-5 sm:px-6 pb-3.5 pt-1.5 border-t border-white/[0.04]">
-                  {/* Left: Compact Upload video control */}
+                <div className="flex items-center justify-between px-5 sm:px-6 pb-3.5 pt-2 border-t border-white/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.35)]">
+                  {/* Left: Compact Upload video control (Raised Glass Bevel) */}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 hover:border-white/20 text-xs text-zinc-300 hover:text-white transition-all font-medium group/upload cursor-pointer"
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs text-zinc-200 hover:text-white transition-all duration-200 font-medium group/upload cursor-pointer active:scale-95 hover:border-white/25"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)",
+                      backgroundColor: "rgba(32, 40, 56, 0.65)",
+                      backdropFilter: "blur(8px) saturate(115%)",
+                      WebkitBackdropFilter: "blur(8px) saturate(115%)",
+                      border: "1px solid rgba(255, 255, 255, 0.18)",
+                      boxShadow:
+                        "inset 0 1px 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 1.5px 0 rgba(0, 0, 0, 0.4), 0 3px 8px -1px rgba(0, 0, 0, 0.45)",
+                    }}
                     title="Upload video file from computer"
                   >
-                    <UploadCloud className="w-3.5 h-3.5 text-zinc-400 group-hover/upload:text-white transition-colors" />
+                    <UploadCloud className="w-3.5 h-3.5 text-zinc-300 group-hover/upload:text-white transition-colors" />
                     <span>Upload video</span>
                   </button>
 
-                  {/* Right: Primary CTA "Get clips" */}
+                  {/* Right: Primary CTA "Get clips" (Polished Reflective Glass Finish) */}
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-100 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-[0_4px_16px_rgba(255,255,255,0.2)] hover:shadow-[0_6px_24px_rgba(255,255,255,0.32)] active:scale-[0.98] disabled:opacity-50 group/cta cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 group/cta cursor-pointer text-white hover:border-white/60"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.08) 100%)",
+                      backgroundColor: "rgba(38, 48, 68, 0.82)",
+                      backdropFilter: "blur(12px) saturate(120%)",
+                      WebkitBackdropFilter: "blur(12px) saturate(120%)",
+                      border: "1px solid rgba(255, 255, 255, 0.48)",
+                      boxShadow:
+                        "inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.88), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.45), 0 4px 18px -2px rgba(0, 0, 0, 0.5), 0 1px 3px 0 rgba(0, 0, 0, 0.3)",
+                      textShadow: "0 1px 2px rgba(0, 0, 0, 0.6)",
+                    }}
                     title="Get clips"
                   >
                     <span>{isSubmitting ? "Processing..." : "Get clips"}</span>
-                    <ArrowUpRight className="w-4 h-4 text-black group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform duration-200" />
+                    <ArrowUpRight className="w-4 h-4 text-white group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform duration-200" />
                   </button>
                 </div>
               </form>
