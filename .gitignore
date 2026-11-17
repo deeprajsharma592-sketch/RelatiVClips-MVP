@@ -7,7 +7,6 @@ node_modules/
 *.egg-info/
 
 # Local env + secrets
-.env
 cookies.txt
 graphify-out/
 junk/
