@@ -479,16 +479,16 @@ export default function HeroStudio() {
                 "0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 10px 24px -6px rgba(0, 0, 0, 0.6)",
             }}
           >
-            {/* Inner Glass Surface */}
+            {/* Inner Glass Surface: Genuine Translucent Smoked Glass */}
             <div
               className="relative rounded-[27px] overflow-hidden transition-colors"
               style={{
                 background:
-                  "linear-gradient(180deg, rgba(26, 33, 46, 0.72) 0%, rgba(18, 23, 32, 0.78) 50%, rgba(11, 14, 20, 0.84) 100%)",
-                backdropFilter: "blur(12px) saturate(115%)",
-                WebkitBackdropFilter: "blur(12px) saturate(115%)",
+                  "linear-gradient(180deg, rgba(30, 39, 54, 0.46) 0%, rgba(18, 24, 34, 0.50) 50%, rgba(11, 15, 22, 0.56) 100%)",
+                backdropFilter: "blur(14px) saturate(120%)",
+                WebkitBackdropFilter: "blur(14px) saturate(120%)",
                 boxShadow:
-                  "inset 0 1px 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04)",
+                  "inset 0 1px 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
               }}
             >
               {/* Drag & Drop Visual Overlay */}
@@ -530,16 +530,16 @@ export default function HeroStudio() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs text-zinc-200 hover:text-white transition-all duration-200 font-medium group/upload cursor-pointer active:scale-95 hover:border-white/25"
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs text-zinc-200 hover:text-white transition-all duration-200 font-medium group/upload cursor-pointer active:scale-95 hover:border-white/30"
                     style={{
                       background:
-                        "linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)",
-                      backgroundColor: "rgba(32, 40, 56, 0.65)",
+                        "linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%)",
+                      backgroundColor: "rgba(32, 42, 60, 0.45)",
                       backdropFilter: "blur(8px) saturate(115%)",
                       WebkitBackdropFilter: "blur(8px) saturate(115%)",
-                      border: "1px solid rgba(255, 255, 255, 0.18)",
+                      border: "1px solid rgba(255, 255, 255, 0.20)",
                       boxShadow:
-                        "inset 0 1px 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 1.5px 0 rgba(0, 0, 0, 0.4), 0 3px 8px -1px rgba(0, 0, 0, 0.45)",
+                        "inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 1.5px 0 rgba(0, 0, 0, 0.4), 0 3px 8px -1px rgba(0, 0, 0, 0.45)",
                     }}
                     title="Upload video file from computer"
                   >
@@ -551,16 +551,16 @@ export default function HeroStudio() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 group/cta cursor-pointer text-white hover:border-white/60"
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 group/cta cursor-pointer text-white hover:border-white/70"
                     style={{
                       background:
-                        "linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.08) 100%)",
-                      backgroundColor: "rgba(38, 48, 68, 0.82)",
+                        "linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0.08) 100%)",
+                      backgroundColor: "rgba(42, 54, 76, 0.58)",
                       backdropFilter: "blur(12px) saturate(120%)",
                       WebkitBackdropFilter: "blur(12px) saturate(120%)",
-                      border: "1px solid rgba(255, 255, 255, 0.48)",
+                      border: "1px solid rgba(255, 255, 255, 0.52)",
                       boxShadow:
-                        "inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.88), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.45), 0 4px 18px -2px rgba(0, 0, 0, 0.5), 0 1px 3px 0 rgba(0, 0, 0, 0.3)",
+                        "inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.45), 0 4px 18px -2px rgba(0, 0, 0, 0.5), 0 1px 3px 0 rgba(0, 0, 0, 0.3)",
                       textShadow: "0 1px 2px rgba(0, 0, 0, 0.6)",
                     }}
                     title="Get clips"
