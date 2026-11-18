@@ -9,9 +9,10 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
+const DEFAULT_TUNNEL_BACKEND = "https://original-trek-compressed-nav.trycloudflare.com";
 const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing")
   ? configuredBackendBase.replace(/\/$/, "")
-  : process.env.NODE_ENV === "development" ? "http://127.0.0.1:9000" : "";
+  : DEFAULT_TUNNEL_BACKEND;
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
