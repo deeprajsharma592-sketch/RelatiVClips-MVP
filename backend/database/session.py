@@ -1,4 +1,12 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Ensure .env is loaded from project root even if session.py is imported first
+_root_env = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(_root_env)
+load_dotenv()
+
 from fastapi import HTTPException
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -7,6 +15,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://relativ_admin:relativ_secure_pass@localhost:5432/relativ_db"
 )
+
 
 _database_url = make_url(DATABASE_URL)
 if _database_url.drivername in ("postgres", "postgresql"):
