@@ -7,14 +7,12 @@ import {
   UploadCloud,
   ArrowRight,
   Link2,
-  Play,
   Film,
   Sparkles,
   CheckCircle2,
 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
-import { YoutubeIcon, TiktokIcon, InstagramIcon } from "./dashboard/SocialAccountsView";
 
 export default function HeroStudio() {
   const router = useRouter();
@@ -44,7 +42,7 @@ export default function HeroStudio() {
   };
 
   return (
-    <section className="relative w-full min-h-[740px] flex flex-col items-center justify-start bg-black text-white pt-24 sm:pt-28 pb-16 font-sans">
+    <section className="relative w-full min-h-[480px] flex flex-col items-center justify-start bg-black text-white pt-24 sm:pt-28 pb-20 font-sans">
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center space-y-6">
         {/* Eyebrow Badge (OpusClip exact match) */}
         <motion.div
@@ -138,72 +136,6 @@ export default function HeroStudio() {
           </form>
 
           {error && <p className="text-xs text-rose-400 mt-2">{error}</p>}
-        </motion.div>
-
-        {/* ── PRODUCT SHOWCASE MOCKUP (OpusClip exact match from Image 3) ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="w-full max-w-3xl mx-auto pt-6"
-        >
-          <div className="relative rounded-2xl border border-white/10 bg-[#0E0E12] overflow-hidden shadow-2xl p-4 sm:p-6 text-left space-y-4">
-            {/* Top Video Preview Thumbnail */}
-            <div className="relative aspect-video max-h-[340px] w-full rounded-xl bg-black overflow-hidden flex items-center justify-center">
-              <img
-                src="/thumb_r2.webp"
-                alt="Product preview demo"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = "none";
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-
-              {/* Timecode badge like reference */}
-              <div className="absolute bottom-3 right-3">
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium bg-black/80 text-zinc-300 border border-white/10">
-                  1:40:35
-                </span>
-              </div>
-
-              {/* Center play button */}
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center transition cursor-pointer"
-              >
-                <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
-              </button>
-            </div>
-
-            {/* Bottom Bar: Quick 1-click prompt & Social Icons */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-400 w-full sm:w-72">
-                  <span className="truncate">Drop a long video and...</span>
-                  <span className="ml-auto text-[11px] font-semibold text-white px-2 py-0.5 rounded bg-white/10">
-                    Get clips
-                  </span>
-                </div>
-              </div>
-
-              {/* Social destinations */}
-              <div className="flex items-center gap-3 text-xs text-zinc-400">
-                <span>Auto-post to:</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-red-600/80 flex items-center justify-center text-white">
-                    <YoutubeIcon className="w-3 h-3" />
-                  </div>
-                  <div className="w-6 h-6 rounded bg-zinc-800 border border-white/20 flex items-center justify-center text-white">
-                    <TiktokIcon className="w-3 h-3" />
-                  </div>
-                  <div className="w-6 h-6 rounded bg-zinc-800 border border-white/20 flex items-center justify-center text-white">
-                    <InstagramIcon className="w-3 h-3" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </motion.div>
       </div>
 
