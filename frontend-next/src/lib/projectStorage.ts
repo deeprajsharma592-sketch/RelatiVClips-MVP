@@ -82,6 +82,14 @@ export function updateProjectStatus(
   } catch {}
 }
 
+export function deleteProject(id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredProjects().filter((p) => p.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {}
+}
+
 export function getRemainingTimeFormatted(expiresAt: number): string {
   const diff = expiresAt - Date.now();
   if (diff <= 0) return "Expired";
