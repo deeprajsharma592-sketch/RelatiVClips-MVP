@@ -7,6 +7,7 @@ import HeroStudio from "@/components/HeroStudio";
 import CreatorProof from "@/components/CreatorProof";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import StickyInputBar from "@/components/StickyInputBar";
+import SolutionsSection from "@/components/SolutionsSection";
 
 const STEPS = [
   {
@@ -46,6 +47,9 @@ export default function HomePage() {
 
       {/* ── SECTION 02: THE OUTPUT SHOWCASE (6 Vertical 9:16 Clips) ── */}
       <MovingClipsGrid />
+
+      {/* ── SECTION: SOLUTIONS FOR EVERY CREATOR & TEAM ── */}
+      <SolutionsSection />
 
       {/* ── SECTION 03: HOW IT WORKS (3 Simple Steps) ── */}
       <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#F0F2F6] dark:bg-[#07080C] border-t border-black/[0.06] dark:border-white/5">

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { ROLE_LABEL, type UserRole } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getAppDashboardUrl } from "@/lib/domain";
+import { SOLUTIONS_COLUMNS, SOLUTIONS_LIST } from "@/lib/solutionsData";
 
 interface NavLink {
   href: string;
@@ -25,12 +27,26 @@ export default function Header() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const [mobileSolutionsOpen, setMobileSolutionsOpen] = useState(false);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user, loading, logout } = useAuth();
 
   // Hide the global website header completely on Studio Dashboard and Onboarding
   if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/onboarding")) {
     return null;
   }
+
+  const handleMouseEnter = () => {
+    if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    setSolutionsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setSolutionsOpen(false);
+    }, 150);
+  };
 
   // Clean nav links matching OpusClip reference (no changelog!)
   const navLinks: NavLink[] = [
@@ -40,7 +56,10 @@ export default function Header() {
     { href: "/about", label: "About" },
   ];
 
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setSolutionsOpen(false);
+  }, []);
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
 
   const isActive = (href: string) => {
@@ -70,21 +89,96 @@ export default function Header() {
 
         {/* Center Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => {
-            const active = isActive(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={active ? "page" : undefined}
-                className={`text-sm font-medium transition-colors ${
-                  active ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
+          <Link
+            href="/"
+            aria-current={pathname === "/" ? "page" : undefined}
+            className={`text-sm font-medium transition-colors ${
+              pathname === "/" ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Home
+          </Link>
+
+          {/* Solutions Dropdown Menu (Exact match to uploaded image) */}
+          <div
+            className="relative"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button
+              onClick={() => setSolutionsOpen((v) => !v)}
+              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors cursor-pointer py-2 ${
+                solutionsOpen ? "text-white" : "text-zinc-400 hover:text-white"
+              }`}
+              aria-expanded={solutionsOpen}
+            >
+              <span>Solutions</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  solutionsOpen ? "rotate-180 text-white" : "text-zinc-500"
                 }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+              />
+            </button>
+
+            <AnimatePresence>
+              {solutionsOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.99 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.99 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[820px] rounded-2xl border border-white/10 bg-[#0B0B0F]/98 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 text-left"
+                >
+                  <div className="grid grid-cols-3 gap-6">
+                    {SOLUTIONS_COLUMNS.map((col, colIdx) => (
+                      <div key={colIdx} className="space-y-4">
+                        {col.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={item.href}
+                            onClick={() => setSolutionsOpen(false)}
+                            className="group block p-2 rounded-lg hover:bg-white/[0.04] transition-colors"
+                          >
+                            <h4 className="text-[14px] font-semibold text-white group-hover:text-amber-300 transition-colors">
+                              {item.title}
+                            </h4>
+                            <p className="text-[12px] text-zinc-400 leading-snug mt-1 group-hover:text-zinc-300 transition-colors">
+                              {item.description}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <Link
+            href="/plans"
+            className={`text-sm font-medium transition-colors ${
+              pathname?.startsWith("/plans") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/blog"
+            className={`text-sm font-medium transition-colors ${
+              pathname?.startsWith("/blog") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Blog
+          </Link>
+          <Link
+            href="/about"
+            className={`text-sm font-medium transition-colors ${
+              pathname?.startsWith("/about") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            About
+          </Link>
         </nav>
 
         {/* Right Action Section */}
@@ -202,25 +296,78 @@ export default function Header() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-white/5 bg-[#08080A] px-6 py-4 space-y-2 text-sm"
+            className="md:hidden border-t border-white/5 bg-[#08080A] px-6 py-4 space-y-3 text-sm"
           >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={closeMenu}
-                className="block py-2 text-zinc-400 hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
             <Link
-              href="/dashboard"
+              href="/"
               onClick={closeMenu}
-              className="block py-2 text-cyan-400 font-semibold"
+              className="block py-1.5 text-zinc-400 hover:text-white"
             >
-              My Dashboard →
+              Home
             </Link>
+
+            {/* Mobile Solutions Accordion */}
+            <div>
+              <button
+                onClick={() => setMobileSolutionsOpen(!mobileSolutionsOpen)}
+                className="flex items-center justify-between w-full py-1.5 text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <span>Solutions</span>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${
+                    mobileSolutionsOpen ? "rotate-180 text-white" : "text-zinc-500"
+                  }`}
+                />
+              </button>
+
+              {mobileSolutionsOpen && (
+                <div className="pl-3 mt-2 space-y-2.5 border-l border-white/10 py-1">
+                  {SOLUTIONS_LIST.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      onClick={closeMenu}
+                      className="block py-1"
+                    >
+                      <p className="text-xs font-semibold text-white">{item.title}</p>
+                      <p className="text-[11px] text-zinc-500 truncate">{item.description}</p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Link
+              href="/plans"
+              onClick={closeMenu}
+              className="block py-1.5 text-zinc-400 hover:text-white"
+            >
+              Pricing
+            </Link>
+            <Link
+              href="/blog"
+              onClick={closeMenu}
+              className="block py-1.5 text-zinc-400 hover:text-white"
+            >
+              Blog
+            </Link>
+            <Link
+              href="/about"
+              onClick={closeMenu}
+              className="block py-1.5 text-zinc-400 hover:text-white"
+            >
+              About
+            </Link>
+
+            <div className="pt-2 border-t border-white/5">
+              <Link
+                href="/dashboard"
+                onClick={closeMenu}
+                className="block py-2 text-white font-semibold"
+              >
+                Open Studio Dashboard →
+              </Link>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

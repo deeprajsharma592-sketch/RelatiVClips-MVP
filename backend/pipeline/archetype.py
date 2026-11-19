@@ -285,6 +285,13 @@ ARCHETYPE_ALIASES: Dict[str, str] = {
     "captions": "general",
     "reframe": "general",
     "broll": "reaction",
+    "advertisers": "listicle",
+    "realestate": "story",
+    "entertainment": "reaction",
+    "agencies": "tutorial",
+    "church": "story",
+    "marketers": "tutorial",
+    "ecommerce": "listicle",
 }
 
 

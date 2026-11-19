@@ -21,7 +21,20 @@ import {
 export type HookStyle = "editorial" | "statement" | "sunset" | "classic";
 
 export interface RecipeConfig {
-  template: "podcast" | "streamer" | "gaming" | "educational" | "general";
+  template:
+    | "podcast"
+    | "streamer"
+    | "gaming"
+    | "educational"
+    | "advertisers"
+    | "realestate"
+    | "entertainment"
+    | "agencies"
+    | "church"
+    | "marketers"
+    | "ecommerce"
+    | "general"
+    | string;
   hookStyle: HookStyle;
   enableAutoHook: boolean;
   enableAiEmojis: boolean;
@@ -164,8 +177,15 @@ export default function PreGenConfigModal({
                     onChange={(e) => setTemplate(e.target.value as RecipeConfig["template"])}
                     className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
                   >
-                    <option value="podcast" className="bg-zinc-900">🎙️ Podcast & Interview</option>
-                    <option value="streamer" className="bg-zinc-900">⚡ Streamer & Reactions</option>
+                    <option value="podcast" className="bg-zinc-900">🎙️ Podcasters (Turn-taking interview)</option>
+                    <option value="streamer" className="bg-zinc-900">⚡ Creators & Livestreamers</option>
+                    <option value="advertisers" className="bg-zinc-900">🎯 Advertisers (High-performing ad creatives)</option>
+                    <option value="realestate" className="bg-zinc-900">🏡 Real Estate (Listing tours & walkthroughs)</option>
+                    <option value="entertainment" className="bg-zinc-900">🎬 Media & Entertainment (10x reach)</option>
+                    <option value="agencies" className="bg-zinc-900">💼 Agencies (Client scaling workflow)</option>
+                    <option value="church" className="bg-zinc-900">🕊️ Church (Digital sermons & outreach)</option>
+                    <option value="marketers" className="bg-zinc-900">📈 Marketers (Pro video edits)</option>
+                    <option value="ecommerce" className="bg-zinc-900">🛍️ E-commerce (Product showcases)</option>
                     <option value="gaming" className="bg-zinc-900">🎮 Gaming Clutches</option>
                     <option value="educational" className="bg-zinc-900">💡 Talking Head / Educational</option>
                   </select>

@@ -49,9 +49,14 @@ function DashboardContent() {
 
   const taskIdParam = searchParams.get("taskId");
   const urlParam = searchParams.get("url");
+  const tabParam = searchParams.get("tab") as StudioTab | null;
 
   // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<StudioTab>("home");
+  const [activeTab, setActiveTab] = useState<StudioTab>(
+    tabParam && ["home", "projects", "brand-kit", "assets", "calendar", "analyse", "socials"].includes(tabParam)
+      ? tabParam
+      : "home"
+  );
 
   // Modals
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
