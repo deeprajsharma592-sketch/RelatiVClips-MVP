@@ -7,14 +7,27 @@ _root_env = Path(__file__).resolve().parent.parent.parent / ".env"
 load_dotenv(_root_env)
 load_dotenv()
 
+import urllib.parse
 from fastapi import HTTPException
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-DATABASE_URL = os.getenv(
+def sanitize_db_url(url: str) -> str:
+    """Safely URL-encode special characters in the password (e.g. '@', '#')."""
+    if "://" in url and "@" in url:
+        prefix, _, rest = url.partition("://")
+        userinfo, _, hostinfo = rest.rpartition("@")
+        if ":" in userinfo:
+            user, _, password = userinfo.partition(":")
+            encoded_password = urllib.parse.quote(urllib.parse.unquote(password))
+            return f"{prefix}://{user}:{encoded_password}@{hostinfo}"
+    return url
+
+DATABASE_URL = sanitize_db_url(os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://relativ_admin:relativ_secure_pass@localhost:5432/relativ_db"
-)
+))
+
 
 
 _database_url = make_url(DATABASE_URL)
