@@ -9,7 +9,7 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
-const DEFAULT_TUNNEL_BACKEND = "https://imports-holland-currency-fantastic.trycloudflare.com";
+const DEFAULT_TUNNEL_BACKEND = "https://participate-pending-retail-johns.trycloudflare.com";
 const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing")
   ? configuredBackendBase.replace(/\/$/, "")
   : DEFAULT_TUNNEL_BACKEND;
