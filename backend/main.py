@@ -1042,6 +1042,47 @@ async def upload_video(
     }
 
 
+@app.get("/api/v1/debug-db")
+async def debug_db():
+    """Diagnostic endpoint to safely inspect database connectivity."""
+    import urllib.parse
+    import asyncpg
+    from .database.session import DATABASE_URL, _DB_AVAILABLE
+
+    parsed = urllib.parse.urlsplit(DATABASE_URL)
+    raw_pwd = parsed.password or ""
+    masked = f"{raw_pwd[:2]}***{raw_pwd[-2:]} (len={len(raw_pwd)})" if len(raw_pwd) > 4 else f"*** (len={len(raw_pwd)})"
+
+    results = {
+        "db_available": _DB_AVAILABLE,
+        "username": parsed.username,
+        "hostname": parsed.hostname,
+        "port": parsed.port,
+        "database": parsed.path,
+        "password_info": masked,
+        "tests": [],
+    }
+
+    for p in (5432, 6543):
+        try:
+            conn = await asyncpg.connect(
+                user=parsed.username,
+                password=raw_pwd,
+                database=parsed.path.lstrip("/") or "postgres",
+                host=parsed.hostname,
+                port=p,
+                ssl="require",
+                timeout=5,
+            )
+            results["tests"].append({"port": p, "status": "SUCCESS"})
+            await conn.close()
+        except Exception as e:
+            results["tests"].append({"port": p, "status": "FAILED", "error": str(e)})
+
+    return results
+
+
 if __name__ == "__main__":
+
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=9000)
