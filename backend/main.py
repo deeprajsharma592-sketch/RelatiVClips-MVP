@@ -1063,6 +1063,7 @@ async def debug_db():
         "tests": [],
     }
 
+    # Test 1: Pooler with username postgres.avyfsbbzdahfbcdhzoxv
     for p in (5432, 6543):
         try:
             conn = await asyncpg.connect(
@@ -1072,14 +1073,31 @@ async def debug_db():
                 host=parsed.hostname,
                 port=p,
                 ssl="require",
-                timeout=5,
+                timeout=4,
             )
-            results["tests"].append({"port": p, "status": "SUCCESS"})
+            results["tests"].append({"target": f"{parsed.hostname}:{p}", "user": parsed.username, "status": "SUCCESS"})
             await conn.close()
         except Exception as e:
-            results["tests"].append({"port": p, "status": "FAILED", "error": str(e)})
+            results["tests"].append({"target": f"{parsed.hostname}:{p}", "user": parsed.username, "status": "FAILED", "error": str(e)})
+
+    # Test 2: Direct host db.avyfsbbzdahfbcdhzoxv.supabase.co with user 'postgres'
+    try:
+        conn = await asyncpg.connect(
+            user="postgres",
+            password=raw_pwd,
+            database="postgres",
+            host="db.avyfsbbzdahfbcdhzoxv.supabase.co",
+            port=5432,
+            ssl="require",
+            timeout=4,
+        )
+        results["tests"].append({"target": "db.avyfsbbzdahfbcdhzoxv.supabase.co:5432", "user": "postgres", "status": "SUCCESS"})
+        await conn.close()
+    except Exception as e:
+        results["tests"].append({"target": "db.avyfsbbzdahfbcdhzoxv.supabase.co:5432", "user": "postgres", "status": "FAILED", "error": str(e)})
 
     return results
+
 
 
 if __name__ == "__main__":
