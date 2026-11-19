@@ -28,8 +28,7 @@ const FOOTER_COLS = [
     links: [
       { href: "/about", label: "About" },
       { href: "/contact", label: "Contact" },
-      { href: "/", label: "Changelog" },
-      { href: "/", label: "Blog" },
+      { href: "/blog", label: "Blog" },
     ],
   },
   {
@@ -52,13 +51,15 @@ const SOCIAL = [
 
 export default function Footer() {
   const pathname = usePathname();
-  const isAuthRoute =
+  const isAppOrAuthRoute =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/onboarding") ||
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password";
 
-  if (isAuthRoute) return null;
+  if (isAppOrAuthRoute) return null;
 
   return (
     <footer

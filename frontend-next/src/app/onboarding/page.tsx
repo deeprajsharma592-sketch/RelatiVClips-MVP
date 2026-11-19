@@ -203,10 +203,10 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-xs bg-white text-black hover:bg-zinc-100 transition shadow-lg cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-xs bg-white text-black hover:bg-zinc-200 transition shadow-sm cursor-pointer"
                 >
                   <span>Continue to Styling</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
@@ -279,10 +279,10 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-xs bg-white text-black hover:bg-zinc-100 transition shadow-lg cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-xs bg-white text-black hover:bg-zinc-200 transition shadow-sm cursor-pointer"
                 >
                   <span>Continue to Launch</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
@@ -298,20 +298,20 @@ export default function OnboardingPage() {
               className="space-y-8"
             >
               <div className="space-y-2 text-center">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
                   Step 3 of 3
                 </span>
                 <h1 className="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight">
                   Ready to generate your first viral clip?
                 </h1>
-                <p className="text-sm text-zinc-400 max-w-md mx-auto">
+                <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto">
                   Paste a YouTube video link now to start auto-clipping, or head straight into your Creative Studio.
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-[#0B0C10] p-6 sm:p-8 space-y-6 shadow-2xl">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-6 space-y-5 shadow-xl">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                     Paste YouTube Link (Optional)
                   </label>
                   <input
@@ -319,34 +319,34 @@ export default function OnboardingPage() {
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50"
+                    className="w-full rounded-lg bg-white/[0.03] border border-white/10 px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
                   />
                 </div>
 
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                    Connect Distribution Channels
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Connect Channels
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 rounded-xl border border-white/10 bg-white/[0.02] flex items-center gap-2 text-xs text-white">
-                      <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center text-white shrink-0">
-                        <YoutubeIcon className="w-3.5 h-3.5" />
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="p-2.5 rounded-lg border border-white/[0.08] bg-white/[0.02] flex items-center gap-2 text-xs text-white">
+                      <div className="w-5 h-5 rounded bg-red-600 flex items-center justify-center text-white shrink-0">
+                        <YoutubeIcon className="w-3 h-3" />
                       </div>
-                      <span className="font-semibold truncate">YouTube</span>
+                      <span className="font-medium text-xs truncate">YouTube</span>
                     </div>
 
-                    <div className="p-3 rounded-xl border border-white/10 bg-white/[0.02] flex items-center gap-2 text-xs text-white">
-                      <div className="w-6 h-6 rounded-md bg-black text-cyan-300 border border-white/20 flex items-center justify-center shrink-0">
-                        <TiktokIcon className="w-3.5 h-3.5" />
+                    <div className="p-2.5 rounded-lg border border-white/[0.08] bg-white/[0.02] flex items-center gap-2 text-xs text-white">
+                      <div className="w-5 h-5 rounded bg-zinc-900 border border-white/20 flex items-center justify-center text-white shrink-0">
+                        <TiktokIcon className="w-3 h-3" />
                       </div>
-                      <span className="font-semibold truncate">TikTok</span>
+                      <span className="font-medium text-xs truncate">TikTok</span>
                     </div>
 
-                    <div className="p-3 rounded-xl border border-white/10 bg-white/[0.02] flex items-center gap-2 text-xs text-white">
-                      <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-amber-500 to-purple-600 flex items-center justify-center text-white shrink-0">
-                        <InstagramIcon className="w-3.5 h-3.5" />
+                    <div className="p-2.5 rounded-lg border border-white/[0.08] bg-white/[0.02] flex items-center gap-2 text-xs text-white">
+                      <div className="w-5 h-5 rounded bg-zinc-800 border border-white/20 flex items-center justify-center text-white shrink-0">
+                        <InstagramIcon className="w-3 h-3" />
                       </div>
-                      <span className="font-semibold truncate">Instagram</span>
+                      <span className="font-medium text-xs truncate">Instagram</span>
                     </div>
                   </div>
                 </div>
@@ -354,13 +354,13 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={handleFinish}
-                  className="w-full py-4 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 text-black hover:opacity-95 transition shadow-xl cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 rounded-lg font-bold text-xs bg-white text-black hover:bg-zinc-200 transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Sparkles className="w-4 h-4 text-black" />
+                  <Sparkles className="w-3.5 h-3.5 text-black" />
                   <span>
                     {youtubeUrl.trim()
                       ? "Start AI Processing & Open Studio"
-                      : "Launch RelatiV Studio Dashboard"}
+                      : "Launch Studio Dashboard"}
                   </span>
                 </button>
               </div>

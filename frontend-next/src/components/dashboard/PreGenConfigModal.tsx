@@ -403,10 +403,10 @@ export default function PreGenConfigModal({
                 <button
                   type="button"
                   onClick={handleStart}
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black text-sm font-bold shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-lg bg-white hover:bg-zinc-200 text-black text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
-                  <Play size={16} className="fill-black" />
-                  Create 3 Viral Clips
+                  <Play size={14} className="fill-black" />
+                  Create Clips in 1 Click
                 </button>
 
                 <p className="text-[11px] text-zinc-400 text-center leading-relaxed">

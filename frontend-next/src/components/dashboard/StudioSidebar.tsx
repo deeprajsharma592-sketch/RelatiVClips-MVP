@@ -1,22 +1,19 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Home,
-  Film,
-  Sparkles,
   FolderOpen,
   Calendar,
   BarChart2,
   Share2,
   Zap,
   Crown,
-  ChevronRight,
   HelpCircle,
-  BookOpen,
-  LogOut,
-  Settings,
+  FlaskConical,
+  Key,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -33,165 +30,168 @@ export default function StudioSidebar({
   onSelectTab,
   onOpenUpgrade,
 }: StudioSidebarProps) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const userName = user?.name || "Creator";
-  const userInitial = userName.charAt(0).toUpperCase() || "D";
+  const userInitial = userName.charAt(0).toUpperCase() || "C";
 
   return (
-    <aside className="w-64 bg-[#0B0C10] border-r border-white/10 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-30">
+    <aside className="w-60 bg-[#0E0E10] border-r border-white/[0.08] flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-30 font-sans">
       {/* Top Section */}
-      <div className="p-4 space-y-6">
-        {/* Brand / Logo */}
-        <div className="flex items-center justify-between px-2 pt-1">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center text-black font-black text-base shadow-sm group-hover:scale-105 transition">
+      <div className="p-3.5 space-y-4">
+        {/* Brand Header */}
+        <div className="flex items-center justify-between px-2 pt-1 pb-1">
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="w-7 h-7 rounded-md bg-white flex items-center justify-center text-black font-black text-xs tracking-tighter">
               R
             </span>
-            <div className="leading-tight">
-              <span className="text-sm font-bold text-white tracking-tight flex items-center gap-1">
-                RelatiV <span className="text-[10px] px-1 py-0.2 rounded bg-cyan-500/15 text-cyan-300 font-mono">STUDIO</span>
-              </span>
-              <span className="text-[10px] text-zinc-400">Viral Short-Form Engine</span>
-            </div>
+            <span className="text-sm font-bold text-white tracking-tight">
+              RelatiV
+            </span>
           </Link>
         </div>
 
         {/* User Card */}
-        <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/30 to-cyan-500/30 border border-white/15 flex items-center justify-center text-xs font-bold text-white shrink-0">
+        <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-7 h-7 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0">
               {userInitial}
             </div>
             <div className="truncate leading-tight">
-              <p className="text-xs font-semibold text-white truncate">{userName}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs font-medium text-white truncate">{userName}</p>
+              <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span className="text-[10px] text-zinc-400">Free Tier</span>
+                <span className="text-[10px] text-zinc-400">Free</span>
               </div>
             </div>
           </div>
 
           <button
             onClick={onOpenUpgrade}
-            className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium hover:bg-amber-500/20 transition shrink-0"
+            className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium hover:bg-amber-500/20 transition shrink-0 cursor-pointer"
           >
             👑 Upgrade
           </button>
         </div>
 
+        {/* Invite members button */}
+        <button
+          onClick={onOpenUpgrade}
+          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] text-xs text-zinc-300 transition cursor-pointer"
+        >
+          <span className="flex items-center gap-1.5 text-[11px] font-medium">
+            <span>+</span> Invite members
+          </span>
+          <span className="text-[10px] text-amber-300">👑</span>
+        </button>
+
         {/* Navigation Sections */}
-        <div className="space-y-4">
-          {/* CREATE GROUP */}
+        <div className="space-y-4 pt-1">
+          {/* SECTION: CREATE */}
           <div>
-            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">
               Create
             </p>
             <nav className="space-y-0.5">
               <button
                 type="button"
                 onClick={() => onSelectTab("home")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === "home"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                <Home size={15} className={activeTab === "home" ? "text-cyan-400" : "text-zinc-400"} />
-                <span>Home Studio</span>
+                <Home size={14} className={activeTab === "home" ? "text-white" : "text-zinc-400"} />
+                <span>Home</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onSelectTab("projects")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === "projects"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                <Film size={15} className={activeTab === "projects" ? "text-cyan-400" : "text-zinc-400"} />
-                <span>My Projects</span>
+                <FolderOpen size={14} className={activeTab === "projects" ? "text-white" : "text-zinc-400"} />
+                <span>My projects</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onSelectTab("brand-kit")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === "brand-kit"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <Sparkles size={15} className="text-purple-400" />
-                  <span>Brand Kit</span>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className={activeTab === "brand-kit" ? "text-white" : "text-zinc-400"} />
+                  <span>Brand kit</span>
                 </div>
-                <Crown size={12} className="text-amber-400" />
+                <span className="text-[10px] text-amber-400">👑</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onSelectTab("assets")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === "assets"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                <FolderOpen size={15} className={activeTab === "assets" ? "text-cyan-400" : "text-zinc-400"} />
-                <span>Asset Library</span>
+                <Layers size={14} className={activeTab === "assets" ? "text-white" : "text-zinc-400"} />
+                <span>Asset library</span>
               </button>
             </nav>
           </div>
 
-          {/* POST & GROWTH GROUP */}
+          {/* SECTION: POST */}
           <div>
-            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-              Post & Growth
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">
+              Post
             </p>
             <nav className="space-y-0.5">
               <button
                 type="button"
-                onClick={() => onSelectTab("analyse")}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
-                  activeTab === "analyse"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                onClick={() => onSelectTab("calendar")}
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  activeTab === "calendar"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <BarChart2 size={15} className={activeTab === "analyse" ? "text-cyan-400" : "text-zinc-400"} />
-                  <span>Analyse</span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-semibold">
-                  NEW
-                </span>
+                <Calendar size={14} className={activeTab === "calendar" ? "text-white" : "text-zinc-400"} />
+                <span>Calendar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab("analyse")}
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  activeTab === "analyse"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                <BarChart2 size={14} className={activeTab === "analyse" ? "text-white" : "text-zinc-400"} />
+                <span>Analyse</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onSelectTab("socials")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === "socials"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                <Share2 size={15} className={activeTab === "socials" ? "text-purple-400" : "text-zinc-400"} />
-                <span>Social Accounts</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onSelectTab("calendar")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                  activeTab === "calendar"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Calendar size={15} className={activeTab === "calendar" ? "text-cyan-400" : "text-zinc-400"} />
-                <span>Publish Calendar</span>
+                <Share2 size={14} className={activeTab === "socials" ? "text-white" : "text-zinc-400"} />
+                <span>Social accounts</span>
               </button>
             </nav>
           </div>
@@ -199,43 +199,50 @@ export default function StudioSidebar({
       </div>
 
       {/* Bottom Section */}
-      <div className="p-4 border-t border-white/5 space-y-3">
-        {/* Credits Pill & Upgrade */}
-        <div className="p-3 rounded-xl bg-gradient-to-br from-white/[0.04] to-transparent border border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <Zap size={14} className="text-amber-400 fill-amber-400" />
-              <span className="text-xs font-bold text-white">2 Credits left</span>
-            </div>
-            <span className="text-[10px] text-zinc-400">Resets monthly</span>
+      <div className="p-3.5 space-y-3 border-t border-white/[0.06]">
+        {/* Credits Pill */}
+        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 text-zinc-300">
+            <Zap size={13} className="text-amber-400 fill-amber-400" />
+            <span className="font-semibold text-white">2</span>
+            <span className="text-[11px] text-zinc-400">credits left</span>
           </div>
-
-          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mb-3">
-            <div className="bg-gradient-to-r from-amber-400 to-cyan-400 h-full w-[40%]" />
-          </div>
-
           <button
             onClick={onOpenUpgrade}
-            className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black text-xs font-bold transition flex items-center justify-center gap-1 shadow"
+            className="text-[10px] text-zinc-400 hover:text-white font-medium cursor-pointer"
           >
-            <Crown size={12} className="fill-black" />
-            Upgrade Plan
+            Upgrade
           </button>
         </div>
 
-        {/* External links */}
-        <div className="flex items-center justify-between text-xs text-zinc-400 px-2 pt-1">
-          <Link href="/admin" className="hover:text-zinc-200 transition text-[11px] flex items-center gap-1">
-            <Settings size={12} />
-            Control Room
-          </Link>
+        {/* Links */}
+        <div className="space-y-1 text-xs">
           <button
-            onClick={() => logout("/dashboard")}
-            className="hover:text-red-400 transition text-[11px] flex items-center gap-1"
+            onClick={() => alert("RelatiV Labs experimental beta features.")}
+            className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-zinc-500 hover:text-zinc-300 transition text-[11px] cursor-pointer"
           >
-            <LogOut size={12} />
-            Sign Out
+            <FlaskConical size={13} />
+            <span>RelatiV Labs</span>
           </button>
+
+          <button
+            onClick={onOpenUpgrade}
+            className="w-full flex items-center justify-between px-2 py-1 rounded-md text-zinc-500 hover:text-zinc-300 transition text-[11px] cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Key size={13} />
+              <span>API Access</span>
+            </div>
+            <span className="text-[10px] text-amber-400">👑</span>
+          </button>
+
+          <a
+            href="https://relativclips.com/contact"
+            className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-zinc-500 hover:text-zinc-300 transition text-[11px]"
+          >
+            <HelpCircle size={13} />
+            <span>Help center</span>
+          </a>
         </div>
       </div>
     </aside>

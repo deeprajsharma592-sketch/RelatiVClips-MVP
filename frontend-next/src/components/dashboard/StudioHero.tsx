@@ -1,25 +1,17 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
 import {
   Upload,
-  Play,
   Sparkles,
   Link2,
   FolderOpen,
   ArrowRight,
-  Video,
-  FileVideo,
-  Layers,
-  Check,
-  ChevronRight,
-  ExternalLink,
-  Flame,
-  Gamepad2,
-  Mic,
-  Smile,
+  Film,
   Scissors,
+  Wand2,
+  Tv,
+  Check,
 } from "lucide-react";
 import PreGenConfigModal, { RecipeConfig } from "./PreGenConfigModal";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
@@ -32,25 +24,26 @@ interface StudioHeroProps {
   onOpenUpgrade?: () => void;
 }
 
-// ── Recipe / Template Skill Pills ──
 interface RecipePill {
-  id: "podcast" | "streamer" | "gaming" | "educational" | "captions" | "reframe" | "broll";
+  id: string;
   label: string;
-  icon: string;
   isHot?: boolean;
 }
 
 const RECIPE_PILLS: RecipePill[] = [
-  { id: "podcast", label: "Clip Podcast Interviews", icon: "🎙️" },
-  { id: "gaming", label: "Clip Gaming Streams", icon: "🎮", isHot: true },
-  { id: "streamer", label: "Streamer & Reactions", icon: "⚡" },
-  { id: "educational", label: "Auto-edit Talking Videos", icon: "💡" },
-  { id: "captions", label: "Karaoke Captions", icon: "✨" },
-  { id: "reframe", label: "Dynamic 9:16 Reframe", icon: "🎯" },
-  { id: "broll", label: "AI B-roll & Overlays", icon: "🔥", isHot: true },
+  { id: "podcast", label: "Clip podcast interviews" },
+  { id: "gaming", label: "Clip gaming streams", isHot: true },
+  { id: "gameplay", label: "Edit gameplay clips", isHot: true },
+  { id: "educational", label: "Auto-edit talking videos" },
+  { id: "captions", label: "Captions" },
+  { id: "reframe", label: "Reframe" },
+  { id: "upscale", label: "Upscale" },
+  { id: "social", label: "Social edits", isHot: true },
+  { id: "broll", label: "AI B-roll" },
+  { id: "cleanup", label: "Clean up recording", isHot: true },
+  { id: "translate", label: "Translate & dub" },
 ];
 
-// ── Demo Projects ──
 interface DemoProject {
   id: string;
   title: string;
@@ -83,7 +76,7 @@ const DEMO_PROJECTS: DemoProject[] = [
   {
     id: "demo-3",
     title: "Tal Wilkenfeld #408 Lex Fridman Podcast",
-    speaker: "Lex Fridman & Tal Wilkenfeld",
+    speaker: "Tal Wilkenfeld & Lex",
     clipsCount: 25,
     thumbnailUrl: "/thumb_r3.webp",
     videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -105,7 +98,6 @@ export default function StudioHero({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Trigger configuration modal when URL is ready
   const handleUrlSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmed = inputText.trim();
@@ -120,19 +112,16 @@ export default function StudioHero({
     setIsConfigModalOpen(true);
   };
 
-  // Recipe Pill click: pre-select archetype and open config
   const handlePillClick = (pillId: string) => {
     setSelectedTemplate(pillId);
     if (inputText.trim() && URL_REGEX.test(inputText.trim())) {
       setIsConfigModalOpen(true);
     } else {
-      // If input is empty, prefill with sample
       setInputText("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
       setIsConfigModalOpen(true);
     }
   };
 
-  // File Upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -159,201 +148,182 @@ export default function StudioHero({
     }
   };
 
-  // Confirmed in Config Modal -> Start Processing
-  const handleConfirmGeneration = (config: RecipeConfig) => {
-    setIsConfigModalOpen(false);
-    if (onSubmitUrl) {
-      onSubmitUrl(inputText.trim(), config.template);
-    }
-  };
-
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
-      {/* ── Main Intake Station (Matching Reference) ── */}
-      <div className="w-full bg-[#12131A] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-        {/* Subtle Ambient Radial Lighting */}
-        <div className="absolute top-0 right-1/4 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-1/4 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Dual Tab Switcher */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => setActiveTab("clip")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
-              activeTab === "clip"
-                ? "bg-white/10 text-white border border-white/10 shadow"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${activeTab === "clip" ? "bg-emerald-400" : "bg-transparent"}`} />
-            Clip long video
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("auto-edit")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
-              activeTab === "auto-edit"
-                ? "bg-white/10 text-white border border-white/10 shadow"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Sparkles size={13} className="text-purple-400" />
-            Auto-edit footage
-          </button>
-        </div>
-
-        {/* Input Form */}
-        <form onSubmit={handleUrlSubmit} className="relative mb-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-xl bg-black/60 border border-white/15 focus-within:border-cyan-400/80 transition shadow-inner">
-            <div className="flex items-center gap-2.5 px-3 flex-1">
-              <Link2 size={16} className="text-zinc-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Drop a YouTube link (podcasts, streams, gaming, tutorials)..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                className="w-full bg-transparent text-sm text-white placeholder-zinc-500 focus:outline-none"
-              />
-            </div>
+    <div className="w-full max-w-4xl mx-auto space-y-10 font-sans">
+      {/* ── CENTRAL INTAKE CARD (Exact match to OpusClip picture) ── */}
+      <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-5 sm:p-6 space-y-5 shadow-2xl">
+        {/* Tabs Bar */}
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab("clip")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                activeTab === "clip"
+                  ? "bg-white/10 text-white"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>Clip long video</span>
+            </button>
 
             <button
-              type="submit"
-              className="py-3 px-6 rounded-lg bg-white text-black font-bold text-xs hover:bg-zinc-200 transition flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
+              onClick={() => setActiveTab("auto-edit")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                activeTab === "auto-edit"
+                  ? "bg-white/10 text-white"
+                  : "text-zinc-400 hover:text-white"
+              }`}
             >
-              Get clips in 1 click
-              <ArrowRight size={14} />
+              <Wand2 size={13} className="text-zinc-400" />
+              <span>Auto-edit footage</span>
             </button>
           </div>
 
-          {error && (
-            <p className="text-xs text-red-400 mt-2 px-1 flex items-center gap-1">
-              <span>⚠️</span> {error}
-            </p>
-          )}
+          <button
+            onClick={() => alert("Open editor mode")}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer"
+          >
+            <Scissors size={13} />
+            <span>Open editor</span>
+          </button>
+        </div>
 
-          {uploadStatus && (
-            <p className="text-xs text-cyan-400 mt-2 px-1 flex items-center gap-1">
-              <span className="animate-spin">⏳</span> {uploadStatus}
-            </p>
-          )}
+        {/* Input Bar */}
+        <form onSubmit={handleUrlSubmit} className="space-y-3">
+          <div className="relative flex items-center rounded-lg border border-white/10 bg-[#0A0A0C] px-3.5 py-1.5 focus-within:border-white/30 transition">
+            <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="Drop a YouTube link"
+              className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none py-2"
+            />
+            <button
+              type="submit"
+              disabled={!inputText.trim()}
+              className="ml-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm"
+            >
+              Get clips in 1 click
+            </button>
+          </div>
+
+          {error && <p className="text-xs text-rose-400">{error}</p>}
         </form>
 
-        {/* Secondary Intake Triggers */}
+        {/* Secondary Upload Actions Row */}
         <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-400 pt-1">
-          {/* Upload File */}
           <button
-            type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 hover:text-white transition"
+            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
           >
-            <Upload size={14} className="text-zinc-400" />
-            <span>Upload video</span>
+            <Upload size={14} className="text-zinc-500" />
+            <span>Upload</span>
           </button>
           <input
             ref={fileInputRef}
             type="file"
             accept="video/*"
-            className="hidden"
             onChange={handleFileChange}
+            className="hidden"
           />
 
-          <span className="text-zinc-700">•</span>
-
-          {/* Sample Project */}
           <button
-            type="button"
+            onClick={() => alert("Google Drive integration available on Pro.")}
+            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
+          >
+            <FolderOpen size={14} className="text-zinc-500" />
+            <span>Google Drive</span>
+          </button>
+
+          <button
             onClick={() => {
               setInputText("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
               setIsConfigModalOpen(true);
             }}
-            className="flex items-center gap-1.5 hover:text-cyan-300 text-zinc-400 transition"
+            className="text-zinc-400 hover:text-white transition underline underline-offset-2 cursor-pointer ml-auto"
           >
-            <Sparkles size={14} className="text-cyan-400" />
-            <span>Try a sample project</span>
+            Try a sample project
+          </button>
+        </div>
+
+        {uploadStatus && (
+          <p className="text-xs text-zinc-300 font-mono animate-pulse">{uploadStatus}</p>
+        )}
+      </div>
+
+      {/* ── RECIPE CHIPS ROW (Exact match to OpusClip picture) ── */}
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {RECIPE_PILLS.map((pill) => (
+            <button
+              key={pill.id}
+              onClick={() => handlePillClick(pill.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-[#121215] hover:bg-white/[0.06] text-xs text-zinc-300 transition cursor-pointer"
+            >
+              <span>{pill.label}</span>
+              {pill.isHot && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+            </button>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={() => setIsConfigModalOpen(true)}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition"
+          >
+            See all Recipes &gt;
           </button>
         </div>
       </div>
 
-      {/* ── Recipe / Template Skill Pills Row (Matching Reference) ── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-bold uppercase tracking-wider text-zinc-400 text-[11px]">
-            Content Archetype Skills
-          </span>
-          <span className="text-zinc-500">Pick a style for specialized viral scoring</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {RECIPE_PILLS.map((pill) => (
-            <button
-              key={pill.id}
-              type="button"
-              onClick={() => handlePillClick(pill.id)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-cyan-400/50 text-xs font-medium text-zinc-200 transition group relative"
-            >
-              <span>{pill.icon}</span>
-              <span>{pill.label}</span>
-              {pill.isHot && (
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Start from a Demo Project Carousel (Matching Reference) ── */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white tracking-tight">
-              Start from a demo project
-            </h3>
-            <p className="text-xs text-zinc-400">
-              Instant preview of AI viral cuts, karaoke captions, and face framing
-            </p>
-          </div>
-        </div>
+      {/* ── START FROM A DEMO PROJECT CAROUSEL (Exact match to OpusClip picture) ── */}
+      <div className="space-y-3.5 pt-2">
+        <h2 className="text-sm font-semibold text-white">Start from a demo project</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {DEMO_PROJECTS.map((demo) => (
             <div
               key={demo.id}
-              className="group relative bg-[#12131A] border border-white/10 hover:border-white/20 rounded-xl overflow-hidden transition flex flex-col justify-between"
+              className="rounded-xl border border-white/[0.08] bg-[#121215] overflow-hidden flex flex-col justify-between group shadow-lg"
             >
-              {/* Thumbnail Area */}
-              <div className="relative aspect-video w-full bg-zinc-900 overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-                
-                {/* Fallback pattern / thumbnail */}
-                <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center text-zinc-600 group-hover:scale-105 transition duration-300">
-                  <Play size={28} className="text-white/60 group-hover:text-white transition" />
-                </div>
-
-                {/* Badge */}
-                <div className="absolute top-2.5 left-2.5 z-20 px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-semibold text-white">
-                  {demo.clipsCount} clips
+              {/* Cover thumbnail */}
+              <div className="relative aspect-video w-full bg-black overflow-hidden flex items-center justify-center">
+                <img
+                  src={demo.thumbnailUrl}
+                  alt={demo.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    // Fallback to stylized abstract cover if local asset missing
+                    (e.target as HTMLElement).style.display = "none";
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <div className="absolute top-2.5 left-2.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-black/60 text-zinc-300 backdrop-blur-md">
+                    {demo.clipsCount} clips
+                  </span>
                 </div>
               </div>
 
               {/* Title & Try It button */}
-              <div className="p-4 flex items-center justify-between gap-3">
+              <div className="p-3.5 flex items-center justify-between gap-2">
                 <div className="truncate">
-                  <h4 className="text-xs font-semibold text-white truncate group-hover:text-cyan-300 transition">
-                    {demo.title}
-                  </h4>
-                  <p className="text-[11px] text-zinc-400 truncate">{demo.speaker}</p>
+                  <p className="text-xs font-medium text-white truncate">{demo.title}</p>
+                  <p className="text-[10px] text-zinc-500 truncate">{demo.speaker}</p>
                 </div>
 
                 <button
-                  type="button"
                   onClick={() => {
                     setInputText(demo.videoUrl);
                     setSelectedTemplate(demo.template);
                     setIsConfigModalOpen(true);
                   }}
-                  className="px-3 py-1 rounded-full bg-white/10 hover:bg-white text-zinc-200 hover:text-black text-xs font-bold transition shrink-0"
+                  className="px-3 py-1 rounded-md bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition shrink-0 cursor-pointer"
                 >
                   Try it
                 </button>
@@ -363,12 +333,17 @@ export default function StudioHero({
         </div>
       </div>
 
-      {/* ── Pre-Generation Configuration Drawer/Modal ── */}
+      {/* Pre-generation Recipe Configuration Modal */}
       <PreGenConfigModal
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
         videoUrl={inputText}
-        onConfirm={handleConfirmGeneration}
+        onConfirm={(config: RecipeConfig) => {
+          setIsConfigModalOpen(false);
+          if (onSubmitUrl) {
+            onSubmitUrl(inputText, config.template);
+          }
+        }}
         onOpenUpgrade={onOpenUpgrade}
       />
     </div>

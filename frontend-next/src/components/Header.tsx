@@ -12,17 +12,10 @@ import { getAppDashboardUrl } from "@/lib/domain";
 interface NavLink {
   href: string;
   label: string;
-  highlight?: boolean;
 }
 
-const ROLE_GRADIENT: Record<UserRole, string> = {
-  creator: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)",
-  brand: "linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)",
-  clipper: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
-};
-
 const DASHBOARD_HREF: Record<UserRole, string> = {
-  creator: "/creators/dashboard",
+  creator: "/dashboard",
   brand: "/brands/dashboard",
   clipper: "/clippers/dashboard",
 };
@@ -34,11 +27,16 @@ export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, loading, logout } = useAuth();
 
+  // Hide the global website header completely on Studio Dashboard and Onboarding
+  if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/onboarding")) {
+    return null;
+  }
+
+  // Clean nav links matching OpusClip reference (no changelog!)
   const navLinks: NavLink[] = [
     { href: "/", label: "Home" },
-    { href: getAppDashboardUrl(), label: "Dashboard", highlight: true },
     { href: "/plans", label: "Pricing" },
-    { href: "/changelog", label: "Changelog" },
+    { href: "/blog", label: "Blog" },
     { href: "/about", label: "About" },
   ];
 
@@ -56,67 +54,22 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50">
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          background: "var(--glass-light-strong)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid var(--color-border)",
-          boxShadow: "var(--shadow-md)",
-        }}
-      />
-      <div className="max-w-7xl mx-auto px-6 h-[68px] flex items-center justify-between">
-        {/* Logo and Status */}
-        <div className="flex items-center gap-2.5">
+    <header className="sticky top-0 z-50 bg-[#08080A]/95 backdrop-blur-md border-b border-white/[0.08]">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        {/* Brand Logo (Clean, crisp white) */}
+        <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMenu}>
-            <motion.div
-              className="relative overflow-hidden rounded-xl"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400 }}
-            >
-              <img
-                src="/relativ-logo.webp"
-                alt="RelatiV Clips"
-                width={80}
-                height={36}
-                className="object-contain h-9 w-auto"
-                decoding="async"
-              />
-            </motion.div>
-            <span className="font-display text-lg font-semibold tracking-tight" style={{ color: "var(--color-text-primary)" }}>
-              Relati<span className="text-gradient-sunset">V</span>
+            <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-black text-sm tracking-tighter">
+              R
+            </span>
+            <span className="text-base font-bold text-white tracking-tight">
+              RelatiV
             </span>
           </Link>
-
-          {/* BETA pill — site-wide product status marker, links to /beta */}
-          <Link
-            href="/beta"
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold uppercase tracking-wider transition-all hover:scale-105"
-            style={{
-              background: "linear-gradient(135deg, rgba(252, 211, 77, 0.18) 0%, rgba(255, 119, 233, 0.18) 100%)",
-              border: "1px solid rgba(252, 211, 77, 0.35)",
-              color: "var(--color-text-primary)",
-              letterSpacing: "0.08em",
-            }}
-            title="RelatiV is in public beta — learn more"
-          >
-            <span
-              className="inline-block w-1 h-1 rounded-full"
-              style={{ background: "#FCD34D" }}
-            />
-            Beta
-          </Link>
-          {pathname === "/" && (
-            <span className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
-              [Φ]
-            </span>
-          )}
         </div>
 
-        {/* Desktop navigation */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Center Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
@@ -124,305 +77,151 @@ export default function Header() {
                 key={link.href}
                 href={link.href}
                 aria-current={active ? "page" : undefined}
-                className="relative px-3.5 py-2 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-1.5"
-                style={{
-                  color: active
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-secondary)",
-                  background: active
-                    ? "rgba(252, 211, 77, 0.10)"
-                    : "transparent",
-                  boxShadow: active
-                    ? "0 1px 3px rgba(252, 211, 77, 0.15), 0 1px 0 rgba(255,245,220,0.08) inset, 0 0 12px rgba(252, 211, 77, 0.10)"
-                    : "none",
-                }}
+                className={`text-sm font-medium transition-colors ${
+                  active ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
+                }`}
               >
                 {link.label}
-                {link.highlight && !active && (
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: "var(--gradient-sunset)" }}
-                  />
-                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Right section */}
-        <div className="flex items-center gap-2">
-          {/* Online indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "var(--glass-light)", border: "1px solid var(--color-border)" }}>
-            <motion.div
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: "#10B981" }}
-              animate={{ opacity: [1, 0.4, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-            <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>
-              Online
-            </span>
-          </div>
-
-          {/* Auth state */}
+        {/* Right Action Section */}
+        <div className="flex items-center gap-3">
+          {/* Auth State */}
           {!loading && !user && (
             <>
               <Link
                 href="/login"
-                className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-full transition-colors"
-                style={{ color: "var(--color-text-secondary)" }}
+                className="hidden sm:inline-block text-xs font-medium text-zinc-400 hover:text-white px-3 py-2 transition-colors"
               >
                 Sign in
               </Link>
-              <ThemeToggle />
+              <Link
+                href="/dashboard"
+                className="hidden sm:inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
+              >
+                My dashboard
+              </Link>
               <Link
                 href="/signup"
-                className="hidden md:inline-flex items-center gap-2 text-sm font-semibold rounded-full transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] hover:shadow-[0_6px_22px_rgba(252,211,77,0.45)] cursor-pointer"
-                style={{
-                  background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
-                  color: "#1A1814",
-                  padding: "9px 18px",
-                  boxShadow: "0 4px 16px rgba(252, 211, 77, 0.35), 0 1px 0 rgba(255,245,220,0.20) inset, 0 0 0 1px rgba(252, 211, 77, 0.20)",
-                }}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold text-black bg-white hover:bg-zinc-200 transition shadow-sm"
               >
                 Get started
-                <span className="text-xs">→</span>
               </Link>
             </>
           )}
+
           {!loading && user && (
             <>
-            <ThemeToggle />
-            <div className="relative hidden sm:block">
-              <button
-                onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 px-2 py-1 rounded-full transition-all"
-                style={{ background: "var(--glass-light)", border: "1px solid var(--color-border)" }}
-                aria-label="User menu"
-                aria-expanded={userMenuOpen}
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
               >
-                <div
-                  className="h-8 w-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-text-primary"
-                  style={{ background: ROLE_GRADIENT[user.role] }}
+                Open Studio
+              </Link>
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 p-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition"
+                  aria-label="User menu"
+                  aria-expanded={userMenuOpen}
                 >
-                  {user.name.slice(0, 1).toUpperCase()}
-                </div>
-                <div className="hidden lg:block text-left pr-2">
-                  <div className="text-xs font-semibold leading-tight" style={{ color: "var(--color-text-primary)" }}>
-                    {user.name}
+                  <div className="h-7 w-7 rounded-md bg-zinc-800 border border-white/15 flex items-center justify-center font-bold text-xs text-white">
+                    {user.name.slice(0, 1).toUpperCase()}
                   </div>
-                  <div className="text-[10px] font-mono" style={{ color: "var(--color-text-muted)" }}>
-                    {ROLE_LABEL[user.role]}
-                  </div>
-                </div>
-              </button>
-              <AnimatePresence>
-                {userMenuOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-30"
-                      onClick={closeUserMenu}
-                      aria-hidden="true"
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-60 overflow-hidden z-40"
-                      style={{
-                        background: "var(--glass-light-strong)",
-                        backdropFilter: "blur(32px) saturate(180%)",
-                        WebkitBackdropFilter: "blur(32px) saturate(180%)",
-                        border: "1px solid var(--color-border-strong)",
-                        borderRadius: "var(--radius-lg)",
-                        boxShadow: "var(--shadow-xl)",
-                      }}
-                    >
-                      <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
-                        <div className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
-                          {user.name}
-                        </div>
-                        <div className="text-[10px] font-mono truncate" style={{ color: "var(--color-text-muted)" }}>
-                          {user.email}
-                        </div>
-                      </div>
-                      <Link
-                        href="/account"
+                </button>
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
                         onClick={closeUserMenu}
-                        className="block px-4 py-2.5 text-sm transition-colors"
-                        style={{ color: "var(--color-text-secondary)" }}
+                        aria-hidden="true"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        className="absolute right-0 mt-2 w-48 rounded-xl border border-white/10 bg-[#0E0E12] p-2 shadow-2xl z-40 space-y-1 text-xs"
                       >
-                        Account
-                      </Link>
-                      <Link
-                        href={DASHBOARD_HREF[user.role]}
-                        onClick={closeUserMenu}
-                        className="block px-4 py-2.5 text-sm transition-colors"
-                        style={{ color: "var(--color-text-secondary)" }}
-                      >
-                        {ROLE_LABEL[user.role]} dashboard
-                      </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2.5 text-sm transition-colors border-t"
-                        style={{ color: "var(--color-error)", borderColor: "var(--color-border)" }}
-                      >
-                        Sign out
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
+                        <div className="px-3 py-2 border-b border-white/5">
+                          <p className="font-semibold text-white truncate">{user.name}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
+                        </div>
+                        <Link
+                          href="/dashboard"
+                          onClick={closeUserMenu}
+                          className="block px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/5 transition"
+                        >
+                          Studio Dashboard
+                        </Link>
+                        <Link
+                          href="/account"
+                          onClick={closeUserMenu}
+                          className="block px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/5 transition"
+                        >
+                          Account Settings
+                        </Link>
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-3 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
+                        >
+                          Sign out
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </>
           )}
 
-          {/* Hamburger */}
+          {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors"
-            style={{ background: "var(--glass-light)", border: "var(--color-border)" }}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
+            className="md:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+            aria-label="Toggle menu"
           >
-            <motion.span
-              className="block w-4 h-px"
-              style={{ backgroundColor: "var(--color-text-primary)" }}
-              animate={menuOpen ? { rotate: 45, y: 3 } : { rotate: 0, y: 0 }}
-            />
-            <motion.span
-              className="block w-4 h-px my-0.5"
-              style={{ backgroundColor: "var(--color-text-primary)" }}
-              animate={menuOpen ? { opacity: 0 } : { opacity: 1 }}
-            />
-            <motion.span
-              className="block w-4 h-px"
-              style={{ backgroundColor: "var(--color-text-primary)" }}
-              animate={menuOpen ? { rotate: -45, y: -3 } : { rotate: 0, y: 0 }}
-            />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {menuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile Menu Dropdown */}
       <AnimatePresence>
         {menuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 md:hidden"
-              style={{ background: "rgba(0, 0, 0, 0.60)", backdropFilter: "blur(8px)" }}
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden border-t border-white/5 bg-[#08080A] px-6 py-4 space-y-2 text-sm"
+          >
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={closeMenu}
+                className="block py-2 text-zinc-400 hover:text-white"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              href="/dashboard"
               onClick={closeMenu}
-            />
-            <motion.nav
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-[68px] right-0 bottom-0 w-72 overflow-y-auto p-6 flex flex-col gap-1 md:hidden"
-              style={{
-                background: "var(--glass-light-strong)",
-                backdropFilter: "blur(32px) saturate(180%)",
-                WebkitBackdropFilter: "blur(32px) saturate(180%)",
-                borderLeft: "var(--color-border)",
-                boxShadow: "var(--shadow-xl)",
-              }}
+              className="block py-2 text-cyan-400 font-semibold"
             >
-              {navLinks.map((link, i) => (
-                <motion.div
-                  key={link.href}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Link
-                    href={link.href}
-                    onClick={closeMenu}
-                    aria-current={isActive(link.href) ? "page" : undefined}
-                    className="flex items-center justify-between px-4 py-3 text-sm font-medium rounded-2xl transition-colors"
-                    style={{
-                      color: isActive(link.href)
-                        ? "var(--color-text-primary)"
-                        : "var(--color-text-secondary)",
-                      background: isActive(link.href)
-                        ? "rgba(252, 211, 77, 0.10)"
-                        : "transparent",
-                    }}
-                  >
-                    {link.label}
-                    {link.highlight && !isActive(link.href) && (
-                      <span
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ background: "var(--gradient-sunset)" }}
-                      />
-                    )}
-                  </Link>
-                </motion.div>
-              ))}
-
-              <div className="mt-auto pt-6 space-y-2" style={{ borderTop: "1px solid var(--color-border)" }}>
-                <div className="flex justify-center pb-2">
-                  <ThemeToggle />
-                </div>
-                {!loading && !user && (
-                  <>
-                    <Link
-                      href="/login"
-                      onClick={closeMenu}
-                      className="block text-center py-3 text-sm font-medium rounded-full"
-                      style={{ color: "var(--color-text-secondary)" }}
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href="/signup"
-                      onClick={closeMenu}
-                      className="block text-center py-3 text-sm font-semibold rounded-full"
-                      style={{
-                        background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
-                        color: "#1A1814",
-                        boxShadow: "0 4px 16px rgba(252, 211, 77, 0.30)",
-                      }}
-                    >
-                      Get started →
-                    </Link>
-                  </>
-                )}
-                {!loading && user && (
-                  <>
-                    <div className="text-xs px-2" style={{ color: "var(--color-text-muted)" }}>
-                      Signed in as <span style={{ color: "var(--color-text-primary)" }}>{user.name}</span>
-                    </div>
-                    <Link
-                      href="/account"
-                      onClick={closeMenu}
-                      className="block px-4 py-2.5 text-sm rounded-xl"
-                      style={{ color: "var(--color-text-secondary)" }}
-                    >
-                      Account
-                    </Link>
-                    <button
-                      onClick={() => {
-                        closeMenu();
-                        handleLogout();
-                      }}
-                      className="block w-full text-left px-4 py-2.5 text-sm rounded-xl"
-                      style={{ color: "var(--color-error)" }}
-                    >
-                      Sign out
-                    </button>
-                  </>
-                )}
-                <p className="text-[10px] font-mono text-center pt-4" style={{ color: "var(--color-text-faint)" }}>
-                  Quantum Precision • Privacy-First AI
-                </p>
-              </div>
-            </motion.nav>
-          </>
+              My Dashboard →
+            </Link>
+          </motion.div>
         )}
       </AnimatePresence>
     </header>

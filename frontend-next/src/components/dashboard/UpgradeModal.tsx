@@ -158,20 +158,20 @@ export default function UpgradeModal({
             {/* 2. Pro Tier (Highlighted) */}
             <div className="relative bg-gradient-to-b from-white/[0.08] to-white/[0.02] border-2 border-cyan-400/60 rounded-xl p-5 flex flex-col justify-between shadow-lg shadow-cyan-500/10 transition group">
               {/* Badge */}
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-400 to-purple-500 text-black text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md shadow">
                 Most Popular
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-base font-semibold text-white">Pro Studio</h3>
-                  <span className="text-[11px] font-medium text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                  <span className="text-[11px] font-medium text-zinc-300 bg-white/10 px-2 py-0.5 rounded border border-white/10">
                     90 clips/mo
                   </span>
                 </div>
                 <div className="mb-4">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-cyan-300">
+                    <span className="text-3xl font-extrabold text-white">
                       ${billingCycle === "yearly" ? "9.59" : "11.99"}
                     </span>
                     <span className="text-xs text-zinc-400">/ month</span>
@@ -183,7 +183,7 @@ export default function UpgradeModal({
 
                 <button
                   onClick={() => onSelectPlan?.("pro")}
-                  className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black text-xs font-bold transition flex items-center justify-center gap-1.5 shadow mb-5"
+                  className="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-zinc-200 text-black text-xs font-bold transition flex items-center justify-center gap-1.5 shadow mb-5 cursor-pointer"
                 >
                   Get Pro Studio
                   <Zap size={14} className="fill-black" />

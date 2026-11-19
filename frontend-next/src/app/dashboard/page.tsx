@@ -2,17 +2,8 @@
 
 /**
  * /dashboard — RelatiV Creative Studio Master Dashboard
- * Dark obsidian aesthetic, high-contrast typography, premium SaaS taste.
- * Features:
- * - Studio Sidebar: Home, Projects, Brand Kit, Asset Library, Analyse, Socials, Calendar
- * - Studio Header: Upgrade announcement banner, credits pill, quick upgrade CTA
- * - Studio Hero: 1-click intake, content archetype recipe pills, demo projects
- * - Active Generation: Waveform equalizer, stage tracker, real backend polling
- * - Genuine Clips Vault: 9:16 vertical cards with score badges, download & copy
- * - Analyse View: Retention curves, platform view splits, top clips leaderboard
- * - Socials View: Connected YouTube / TikTok / Instagram cards & cross-platform uploader
- * - Projects View: Filterable library of all generated projects
- * - Upgrade Modal: 3-tier pricing (Starter $5.99 / Pro $11.99 / Custom Business)
+ * Design standard: Crisp edges (rounded-lg / rounded-xl), monochrome palette with subtle gold accents,
+ * zero cheesy grids, zero double navbar. Matches OpusClip studio reference.
  */
 
 import { Suspense, useState, useEffect } from "react";
@@ -25,7 +16,6 @@ import {
   AlertCircle,
   Video,
   Play,
-  ArrowRight,
   Share2,
   Sparkles,
   Crown,
@@ -46,7 +36,6 @@ import { apiPath } from "@/lib/apiBase";
 import { checkProcessingStatus, submitYouTubeUrl } from "@/lib/api";
 import {
   getStoredProjects,
-  saveProject,
   createNewProject,
   updateProjectStatus,
   type StoredProject,
@@ -229,8 +218,8 @@ function DashboardContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#07080B] text-white selection:bg-cyan-400 selection:text-black">
-      {/* ── Studio Sidebar (Sticky Desktop, Dark Glass) ── */}
+    <div className="flex min-h-screen bg-[#09090C] text-white selection:bg-white selection:text-black font-sans">
+      {/* ── Studio Sidebar (Flush to top, sharp edges) ── */}
       <StudioSidebar
         activeTab={activeTab}
         onSelectTab={(t) => setActiveTab(t)}
@@ -243,10 +232,10 @@ function DashboardContent() {
         <StudioHeader onOpenUpgrade={() => setIsUpgradeModalOpen(true)} />
 
         {/* Content Pane */}
-        <main className="flex-1 p-6 sm:p-10 max-w-[1280px] w-full mx-auto space-y-10">
+        <main className="flex-1 p-6 sm:p-8 max-w-5xl w-full mx-auto space-y-8">
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
-            <div className="space-y-10">
+            <div className="space-y-8">
               {/* Studio Central Hero Intake Station */}
               <StudioHero
                 onStartProcess={(tid) => {
@@ -260,68 +249,42 @@ function DashboardContent() {
 
               {/* ── ACTIVE GENERATION / WAITING STATE ── */}
               {isGenerating && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-3xl border border-cyan-500/30 bg-[#090b11]/90 p-8 sm:p-10 text-center space-y-5 relative overflow-hidden shadow-2xl backdrop-blur-xl"
-                >
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/25">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                    <span>Auto-Generating 9:16 Vertical Viral Clips</span>
+                <div className="rounded-xl border border-white/10 bg-[#121215] p-6 text-center space-y-4 shadow-xl">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span>Processing 9:16 Vertical Video</span>
                   </div>
 
-                  <div className="max-w-md mx-auto space-y-2">
-                    <h2 className="text-xl sm:text-2xl font-display font-bold text-white tracking-tight">
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <h2 className="text-lg font-bold text-white tracking-tight">
                       {currentStepName || "RelatiV Engine is analyzing your video..."}
                     </h2>
-                    <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                      Detecting dialogue peaks, centering speakers for vertical video, and generating animated subtitles.
+                    <p className="text-xs text-zinc-400">
+                      Detecting peak retention moments, reframing face positions, and rendering subtitles.
                     </p>
                   </div>
 
-                  {/* Audio Equalizer Waveform */}
-                  <div className="flex items-center justify-center gap-1.5 h-7 max-w-xs mx-auto">
-                    {Array.from({ length: 18 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{
-                          height: [
-                            "20%",
-                            `${Math.max(25, Math.sin((i + generationProgress * 0.2) * 0.9) * 90 + 10)}%`,
-                            "30%",
-                          ],
-                        }}
-                        transition={{
-                          duration: 0.5 + (i % 4) * 0.1,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="w-1 rounded-full bg-cyan-400"
-                      />
-                    ))}
-                  </div>
-
                   {/* Progress Bar */}
-                  <div className="max-w-md mx-auto space-y-2">
-                    <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 rounded-full"
+                        className="h-full bg-white rounded-full"
                         animate={{ width: `${generationProgress}%` }}
                         transition={{ ease: "easeInOut", duration: 0.5 }}
                       />
                     </div>
-                    <div className="flex items-center justify-between text-xs text-zinc-400 font-mono">
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
                       <span>{generationProgress}% complete</span>
                       <span>{elapsedSec}s elapsed</span>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* ── Error Banner ── */}
               {generationError && !isGenerating && (
-                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between gap-3 text-xs text-rose-300">
-                  <div className="flex items-center gap-2.5">
+                <div className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-between gap-3 text-xs text-rose-300">
+                  <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                     <span>{generationError}</span>
                   </div>
@@ -336,24 +299,24 @@ function DashboardContent() {
 
               {/* ── GENUINE CLIPS VAULT ── */}
               {activeProject && activeProject.status === "ready" && activeProject.clips.length > 0 && (
-                <div className="space-y-6 pt-4">
+                <div className="space-y-5 pt-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
                     <div>
-                      <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
                         <span>{activeProject.title}</span>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 font-semibold">
-                          {activeProject.clips.length} Clips Ready
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-white/10 text-zinc-200 border border-white/10 font-medium">
+                          {activeProject.clips.length} Clips
                         </span>
                       </h2>
-                      <span className="text-xs text-zinc-400 mt-1 block">
+                      <span className="text-xs text-zinc-500 mt-0.5 block">
                         Generated {new Date(activeProject.createdAt).toLocaleDateString()} · 1080×1920 60FPS
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <button
                         onClick={() => setActiveTab("socials")}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 bg-white/5 hover:bg-white/10 text-white transition cursor-pointer"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>Publish to Socials</span>
@@ -363,7 +326,7 @@ function DashboardContent() {
                         onClick={() => {
                           if (activeProject.clips[0]) handleRequestDownload(activeProject.clips[0]);
                         }}
-                        className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold bg-white text-black hover:bg-zinc-100 shadow-md transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download All</span>
@@ -372,7 +335,7 @@ function DashboardContent() {
                   </div>
 
                   {/* 9:16 Vertical Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {activeProject.clips.map((clip, index) => (
                       <ClipCard
                         key={clip.clip_id || index}
@@ -388,16 +351,16 @@ function DashboardContent() {
 
               {/* ── Empty Vault ── */}
               {!isGenerating && (!activeProject || activeProject.clips.length === 0) && (
-                <div className="rounded-3xl border border-white/10 bg-[#0B0C10] p-12 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-zinc-400">
-                    <Video className="w-7 h-7" />
+                <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-zinc-400">
+                    <Video className="w-5 h-5" />
                   </div>
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <h3 className="font-display font-semibold text-lg text-white tracking-tight">
+                  <div className="space-y-1 max-w-sm mx-auto">
+                    <h3 className="font-medium text-sm text-white">
                       Your generated clips will appear here
                     </h3>
-                    <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-                      Paste a YouTube URL above or upload your footage. The RelatiV viral AI engine will detect hook moments, reframe to 9:16, and generate animated captions.
+                    <p className="text-xs text-zinc-500 leading-relaxed">
+                      Drop a YouTube link above or upload video footage to extract clips.
                     </p>
                   </div>
                 </div>
@@ -426,24 +389,24 @@ function DashboardContent() {
 
           {/* TAB 5: BRAND KIT (PRO GATED) */}
           {activeTab === "brand-kit" && (
-            <div className="rounded-3xl border border-white/10 bg-[#0B0C10] p-12 text-center space-y-6">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
-                <Palette className="w-7 h-7" />
+            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
+              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
+                <Palette className="w-5 h-5" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+              <div className="max-w-sm mx-auto space-y-1.5">
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
                   👑 Pro Feature
                 </span>
-                <h2 className="text-xl font-bold text-white">Custom Brand Kits & Watermark Removal</h2>
+                <h2 className="text-base font-bold text-white">Brand Kits & Custom Watermarks</h2>
                 <p className="text-xs text-zinc-400">
-                  Save your brand fonts, signature colors, custom intro stingers, and remove default watermark exports across all clips.
+                  Set custom brand fonts, logo stamps, and remove default watermark exports across all generated clips.
                 </p>
               </div>
               <button
                 onClick={() => setIsUpgradeModalOpen(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-xs shadow-lg hover:opacity-95 transition"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer"
               >
-                <Crown className="w-4 h-4" />
+                <Crown className="w-3.5 h-3.5" />
                 <span>Upgrade to Pro ($11.99/mo)</span>
               </button>
             </div>
@@ -451,19 +414,19 @@ function DashboardContent() {
 
           {/* TAB 6: ASSET LIBRARY */}
           {activeTab === "assets" && (
-            <div className="rounded-3xl border border-white/10 bg-[#0B0C10] p-12 text-center space-y-6">
-              <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto">
-                <FolderOpen className="w-7 h-7" />
+            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
+              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
+                <FolderOpen className="w-5 h-5" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
-                <h2 className="text-xl font-bold text-white">Asset & B-roll Library</h2>
+              <div className="max-w-sm mx-auto space-y-1.5">
+                <h2 className="text-base font-bold text-white">Asset & B-roll Library</h2>
                 <p className="text-xs text-zinc-400">
-                  Upload custom sound effects, overlay memes, lower-third graphics, and royalty-free trending background music for your clips.
+                  Store custom audio stingers, overlay memes, and video assets for your clips.
                 </p>
               </div>
               <button
                 onClick={() => setActiveTab("home")}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black font-bold text-xs hover:bg-zinc-100 transition"
+                className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white font-medium text-xs transition cursor-pointer"
               >
                 <span>Back to Home Studio</span>
               </button>
@@ -472,21 +435,21 @@ function DashboardContent() {
 
           {/* TAB 7: CALENDAR */}
           {activeTab === "calendar" && (
-            <div className="rounded-3xl border border-white/10 bg-[#0B0C10] p-12 text-center space-y-6">
-              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
-                <CalendarIcon className="w-7 h-7" />
+            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
+              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
+                <CalendarIcon className="w-5 h-5" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
-                <h2 className="text-xl font-bold text-white">Content Publishing Calendar</h2>
+              <div className="max-w-sm mx-auto space-y-1.5">
+                <h2 className="text-base font-bold text-white">Publishing Calendar</h2>
                 <p className="text-xs text-zinc-400">
-                  Visual timeline for scheduled YouTube Shorts, TikTok, and Instagram Reels drops. Queue 30 days of daily viral content in one sitting.
+                  Plan and queue your upcoming drops across YouTube Shorts, TikTok, and Instagram Reels.
                 </p>
               </div>
               <button
                 onClick={() => setActiveTab("socials")}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold text-xs shadow-lg hover:opacity-95 transition"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer"
               >
-                <Share2 className="w-4 h-4" />
+                <Share2 className="w-3.5 h-3.5" />
                 <span>Go to Socials Scheduler</span>
               </button>
             </div>
@@ -510,7 +473,7 @@ function DashboardContent() {
 }
 
 /**
- * 9:16 Vertical Clip Card for Genuine Backend Output
+ * 9:16 Vertical Clip Card (Sharp edges, clean monochrome)
  */
 function ClipCard({
   clip,
@@ -551,12 +514,7 @@ function ClipCard({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="rounded-2xl border border-white/10 bg-[#090b11] overflow-hidden flex flex-col justify-between shadow-xl group hover:border-cyan-500/30 transition-all"
-    >
+    <div className="rounded-xl border border-white/[0.08] bg-[#121215] overflow-hidden flex flex-col justify-between shadow-lg group hover:border-white/20 transition-all font-sans">
       {/* 9:16 Aspect Frame */}
       <div className="relative aspect-[9/16] w-full bg-black overflow-hidden flex items-center justify-center">
         {!videoError ? (
@@ -579,69 +537,63 @@ function ClipCard({
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full bg-[#0d1017] flex items-center justify-center">
-                <Video className="w-10 h-10 text-zinc-600" />
+              <div className="w-full h-full bg-[#121215] flex items-center justify-center">
+                <Video className="w-8 h-8 text-zinc-600" />
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
             <button
               onClick={onRequestDownload}
-              className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center transition-all shadow-2xl hover:scale-105 active:scale-95 group/btn cursor-pointer"
+              className="absolute inset-0 m-auto w-12 h-12 rounded-lg bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all cursor-pointer"
             >
-              <Play className="w-6 h-6 text-white ml-0.5 fill-white group-hover/btn:scale-110 transition-transform" />
+              <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
             </button>
           </div>
         )}
 
         {/* Hook Score Badge */}
         {typeof clip.hook_score === "number" && (
-          <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-400 text-black shadow-md">
-              ⚡ {clip.hook_score}/100 Hook
+          <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white text-black shadow-md">
+              ⚡ {clip.hook_score}/100
             </span>
           </div>
         )}
 
         {/* Duration */}
-        <div className="absolute bottom-3 right-3 z-10 pointer-events-none">
-          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-black/80 text-zinc-300 backdrop-blur-sm">
-            {clip.duration_s ? `${clip.duration_s.toFixed(0)}s` : "9:16"} · 1080p
+        <div className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/80 text-zinc-300 backdrop-blur-sm">
+            {clip.duration_s ? `${clip.duration_s.toFixed(0)}s` : "9:16"}
           </span>
         </div>
       </div>
 
       {/* Card Info */}
-      <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
-        <div className="space-y-1.5">
-          <h3 className="font-bold text-sm text-white line-clamp-1">
+      <div className="p-3.5 space-y-2.5 flex-1 flex flex-col justify-between">
+        <div className="space-y-1">
+          <h3 className="font-semibold text-xs text-white line-clamp-1">
             {clip.viral_title || `Clip #${index + 1}`}
           </h3>
           {clip.caption && (
-            <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+            <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
               {clip.caption}
-            </p>
-          )}
-          {clip.hashtags && (
-            <p className="text-xs text-cyan-400/90 truncate font-mono">
-              {clip.hashtags}
             </p>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="pt-2 flex flex-col gap-2">
-          <div className="flex items-center gap-2">
+        {/* Action Buttons (Clean rounded-lg) */}
+        <div className="pt-1 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={onRequestDownload}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs font-bold text-black bg-white hover:bg-zinc-100 shadow-md transition active:scale-[0.98] cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2.5 text-xs font-semibold text-black bg-white hover:bg-zinc-200 transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download MP4</span>
+              <span>Download</span>
             </button>
 
             <button
               onClick={handleCopyCaption}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-medium text-zinc-300 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 transition cursor-pointer"
+              className="inline-flex items-center justify-center gap-1 rounded-md py-1.5 px-2.5 text-xs font-medium text-zinc-300 bg-white/[0.05] hover:bg-white/10 border border-white/10 transition cursor-pointer"
               title="Copy caption"
             >
               {copied ? (
@@ -655,20 +607,20 @@ function ClipCard({
 
           <button
             onClick={onCrossPublish}
-            className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-medium text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 transition cursor-pointer"
+            className="w-full inline-flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2 text-[11px] font-medium text-zinc-300 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] transition cursor-pointer"
           >
-            <Share2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Publish to YouTube / TikTok / Reels</span>
+            <Share2 className="w-3 h-3 text-zinc-400" />
+            <span>Publish to Socials</span>
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#07080B]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
       <DashboardContent />
     </Suspense>
   );
