@@ -32,6 +32,18 @@ The Windows startup scripts automatically reinstall requirements if the
 The Linux/Docker runtime also needs `ffmpeg`, `ffprobe`, Node.js, Git, and
 `libmagic1`. The backend Dockerfile installs these system dependencies.
 
+On the current bare Linux backend, install and bootstrap with:
+
+```bash
+cd "/home/deeprajsharma/relativ server"
+backend/venv/bin/python -m pip install ytagent-cli==0.3.0
+sudo apt-get update && sudo apt-get install -y nodejs npm git libmagic1
+YTAGENT_BGUTIL_HOME="$PWD/cache/bgutil-ytdlp-pot-provider" backend/venv/bin/ytagent setup
+```
+
+After the one-time setup, RelatiV restarts the compiled BGutil service on
+demand when the backend process restarts.
+
 ## Configure
 
 ```dotenv
@@ -39,6 +51,8 @@ YTAGENT_ENABLED=1
 YTAGENT_MIN_HEIGHT=720
 YTAGENT_MAX_HEIGHT=1080
 YTAGENT_TIMEOUT_SECONDS=240
+# Optional; defaults to <repo>/cache/bgutil-ytdlp-pot-provider
+YTAGENT_BGUTIL_HOME=
 ```
 
 `YTAGENT_FORMAT` is optional. If unset, RelatiV requests H.264/AAC first,

@@ -7,8 +7,8 @@ cookie-backed downloaders remain the fallback in ``pipeline.surgical``.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import subprocess
 import threading
 from pathlib import Path
@@ -17,6 +17,10 @@ from typing import Callable, Optional
 from .config import CACHE_DIR, FFMPEG_PATH, FFPROBE_PATH, YT_PROXY
 
 
+YTAGENT_BGUTIL_HOME = Path(
+    os.getenv("YTAGENT_BGUTIL_HOME", str(CACHE_DIR / "bgutil-ytdlp-pot-provider"))
+).expanduser()
+os.environ.setdefault("YTAGENT_BGUTIL_HOME", str(YTAGENT_BGUTIL_HOME))
 YTAGENT_ENABLED = os.getenv("YTAGENT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 YTAGENT_TIMEOUT_SECONDS = int(os.getenv("YTAGENT_TIMEOUT_SECONDS", "240"))
 YTAGENT_MAX_HEIGHT = int(os.getenv("YTAGENT_MAX_HEIGHT", "1080"))
@@ -117,6 +121,7 @@ def download_high_quality_source(url: str, log: Optional[Callable[[str], None]] 
     try:
         from ytagent.agents.truth import TruthAgent
         from ytagent.agents.verifier import Verifier
+        from ytagent.bootstrap import ensure_bgutil_ready
         from ytagent.methods import METHOD_REGISTRY
         from ytagent.methods.base import default_opts
         from ytagent.orchestrator import Orchestrator
@@ -142,6 +147,9 @@ def download_high_quality_source(url: str, log: Optional[Callable[[str], None]] 
         if not safe_methods:
             raise YtAgentError("ytagent has no approved direct download methods")
 
+        bgutil_ready = ensure_bgutil_ready(auto_install=False, auto_start=True)
+        if log and not bgutil_ready:
+            log("ytagent: BGutil is not ready; direct methods may fall back to RelatiV's residential downloader")
         if log:
             log(f"ytagent: downloading verified source up to {YTAGENT_MAX_HEIGHT}p")
         orchestrator = Orchestrator(
@@ -221,11 +229,15 @@ def download_segment(
 def status() -> dict:
     try:
         import ytagent
+        from ytagent.bootstrap import bgutil_status
+
         version = getattr(ytagent, "__version__", "unknown")
         installed = True
+        bgutil = bgutil_status()
     except ImportError:
         version = None
         installed = False
+        bgutil = {"ready": False}
     return {
         "enabled": YTAGENT_ENABLED,
         "installed": installed,
@@ -234,4 +246,6 @@ def status() -> dict:
         "min_height": YTAGENT_MIN_HEIGHT,
         "safe_methods": list(SAFE_METHOD_NAMES),
         "source_dir": str(_SOURCE_DIR),
+        "bgutil_home": str(YTAGENT_BGUTIL_HOME),
+        "bgutil": bgutil,
     }
