@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Sparkles, Zap, Shield, Crown, ArrowRight } from "lucide-react";
 
@@ -236,13 +237,14 @@ export default function UpgradeModal({
                   </p>
                 </div>
 
-                <a
-                  href="mailto:contact@relativclips.com?subject=Agency%20Plan%20Inquiry"
-                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5"
+                <Link
+                  href="/contact"
+                  onClick={onClose}
+                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5 cursor-pointer"
                 >
-                  Contact Founder
+                  Contact us
                   <ArrowRight size={13} />
-                </a>
+                </Link>
 
                 <div className="space-y-2.5 text-xs text-zinc-300">
                   <div className="flex items-center gap-2">
