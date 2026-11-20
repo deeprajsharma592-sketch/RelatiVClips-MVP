@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
-import CylinderPhrase from "./CylinderPhrase";
+import GravityPhrase from "./GravityPhrase";
 
 const ROTATING_PHRASES = [
   "Tasteful Clips",
@@ -64,9 +64,9 @@ export default function HeroStudio() {
             Turn any footage into
           </h1>
 
-          {/* Rotating 3D phrase cylinder, adapted from the design reference. */}
+          {/* Gravity Letters transition replaces the continuously rotating phrase. */}
           <div className="relative z-20 flex w-full items-center justify-center text-[clamp(1.55rem,4.8vw,4.75rem)] font-display font-extrabold tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
-            <CylinderPhrase phrases={ROTATING_PHRASES} />
+            <GravityPhrase phrases={ROTATING_PHRASES} />
           </div>
 
           {/* 20x faster on the layer below */}
