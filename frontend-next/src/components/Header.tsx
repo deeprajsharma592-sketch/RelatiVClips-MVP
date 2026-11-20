@@ -74,7 +74,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#08080A]/95 backdrop-blur-md border-b border-white/[0.08]">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="w-full px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between">
         {/* Brand Logo (Clean, crisp white) */}
         <div className="flex items-center gap-3">
           <Link href="/" className="group" onClick={closeMenu} aria-label="RelatiV home">
