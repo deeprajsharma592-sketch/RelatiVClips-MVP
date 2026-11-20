@@ -531,6 +531,14 @@ async def debug_check_setup():
     }
 
 
+@app.get("/debug/ytagent-status")
+async def debug_ytagent_status():
+    """Report the safe ytagent adapter configuration without exposing secrets."""
+    from .utils.ytagent_downloader import status
+
+    return status()
+
+
 @app.get("/debug/test-framing")
 async def debug_test_framing():
     results = {}

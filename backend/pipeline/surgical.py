@@ -402,11 +402,33 @@ def _download_one_video_segment(
     _log(f"  Downloading video segment {seg_idx + 1}/{total} [{start:.1f}s - {end:.1f}s]...")
 
     final_ok = False
+    # Primary: ytagent downloads and verifies one high-quality source per
+    # video, then every winning moment is sliced locally from that cache.
+    try:
+        from ..utils.ytagent_downloader import download_segment as ytagent_segment
+
+        ytagent_result = ytagent_segment(
+            str(url),
+            video_path,
+            start=s,
+            end=e,
+            log=_log,
+        )
+        final_ok = True
+        _log(
+            f"  [video seg {seg_idx + 1}/{total}] ytagent "
+            f"{ytagent_result['width']}x{ytagent_result['height']} "
+            f"via {ytagent_result['method']}"
+        )
+    except Exception as ytagent_err:
+        _log(f"  ytagent unavailable ({str(ytagent_err)[:180]}), trying residential downloader...")
+
     # Try residential downloader first (laptop's residential IP)
     try:
-        from ..utils.residential_downloader import download_video as resi_download
-        resi_download(str(url), str(video_path), start=s, end=e)
-        final_ok = True
+        if not final_ok:
+            from ..utils.residential_downloader import download_video as resi_download
+            resi_download(str(url), str(video_path), start=s, end=e)
+            final_ok = True
     except Exception as resi_err:
         _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
         for seg_attempt in range(1, 4):

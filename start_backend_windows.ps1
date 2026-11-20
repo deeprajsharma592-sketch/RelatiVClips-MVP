@@ -26,7 +26,7 @@ Write-Host "[*] Activating virtual environment..." -ForegroundColor Green
 # 3. Check dependencies
 Write-Host "[*] Verifying dependencies..." -ForegroundColor Green
 try {
-    python -c "import fastapi" 2>$null
+    python -c "import fastapi, ytagent" 2>$null
     if ($LASTEXITCODE -ne 0) { throw "Missing deps" }
 } catch {
     Write-Host "[*] Installing backend requirements..." -ForegroundColor Yellow

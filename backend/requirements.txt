@@ -22,6 +22,7 @@ python-multipart>=0.0.9
 # yt-dlp's plugin loader, but yt-dlp itself must be a direct dep so
 # the `yt-dlp` CLI binary is on PATH inside the container.
 yt-dlp>=2024.10.7
+ytagent-cli==0.3.0
 # YouTube PO-token provider. The pip package auto-installs the yt-dlp
 # plugin into yt_dlp_plugins/; the HTTP server is a sidecar in
 # docker-compose.yml (see brainicism/bgutil-ytdlp-pot-provider).

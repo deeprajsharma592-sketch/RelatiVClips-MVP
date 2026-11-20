@@ -28,7 +28,7 @@ if not exist ".venv\Scripts\python.exe" (
 set "VENV_PYTHON=%~dp0.venv\Scripts\python.exe"
 
 :: 3. Ensure required packages are installed
-"%VENV_PYTHON%" -c "import fastapi, mediapipe" >nul 2>&1
+"%VENV_PYTHON%" -c "import fastapi, mediapipe, ytagent" >nul 2>&1
 if errorlevel 1 (
     echo [*] Installing requirements from backend/requirements.txt...
     "%VENV_PYTHON%" -m pip install --upgrade pip
