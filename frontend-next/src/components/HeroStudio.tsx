@@ -59,7 +59,7 @@ export default function HeroStudio() {
   return (
     <section className="relative w-full min-h-[calc(100svh-72px)] flex items-center justify-center bg-black text-white px-4 sm:px-6 py-16 sm:py-20 overflow-hidden font-sans">
       {/* Main text, subtitle, and input bar sit on a clean background. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-2 sm:px-6 text-center flex flex-col items-center space-y-8 pointer-events-none">
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto px-2 sm:px-6 text-center flex flex-col items-center space-y-8 pointer-events-none">
         {/* Master Headline (OpusClip exact match) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}

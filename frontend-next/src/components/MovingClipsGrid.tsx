@@ -94,7 +94,7 @@ const SHOWCASE_CLIPS: ShowcaseClip[] = [
 export default function MovingClipsGrid() {
   return (
     <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#07080C] text-white overflow-hidden border-t border-b border-white/5">
-      <div className="max-w-5xl mx-auto overflow-hidden">
+      <div className="w-full max-w-[1600px] mx-auto overflow-hidden">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -117,9 +117,9 @@ export default function MovingClipsGrid() {
         <div className="relative w-full py-4 overflow-hidden">
           <RotatingCards
             cards={SHOWCASE_CLIPS}
-            radius={360}
-            cardWidth={180}
-            cardHeight={320}
+            radius={460}
+            cardWidth={230}
+            cardHeight={410}
             speed={5.6}
             autoPlay={true}
             pauseOnHover={false}

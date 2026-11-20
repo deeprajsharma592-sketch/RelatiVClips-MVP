@@ -43,7 +43,7 @@ const CREATORS = [
 export default function CreatorProof() {
   return (
     <section className="relative py-16 sm:py-18 px-4 sm:px-6 bg-[#F7F8FA] dark:bg-[#050507] text-[#111318] dark:text-white border-t border-b border-black/[0.08] dark:border-white/5 transition-colors">
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full max-w-[1600px] mx-auto">
         {/* KPI Trust Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pb-12 border-b border-black/[0.08] dark:border-white/10">
           {STATS.map((stat, idx) => (

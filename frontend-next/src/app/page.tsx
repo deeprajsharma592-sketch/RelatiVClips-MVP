@@ -60,7 +60,7 @@ export default function HomePage() {
 
       {/* ── SECTION 03: HOW IT WORKS (3 Simple Steps) ── */}
       <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#F0F2F6] dark:bg-[#07080C] border-t border-black/[0.06] dark:border-white/5">
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full max-w-[1600px] mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
