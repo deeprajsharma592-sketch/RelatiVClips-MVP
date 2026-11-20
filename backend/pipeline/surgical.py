@@ -72,7 +72,7 @@ def _ytdlp_section_url(
 
     cmd = [
         YTDLP_PATH,
-        "-f", "140/251/ba/b/best",
+        "-f", "ba/140/251/b/best/18",
         "--download-sections", f"*{s_str}-{e_str}",
         "--js-runtimes", "node",
         "--extractor-args", f"youtube:player_client={extractor_client}",
@@ -196,9 +196,13 @@ def _download_one_segment(
     result = None
     final_ok = False
     try:
-        for seg_attempt in range(1, 5):
-            client = "web_embedded" if seg_attempt <= 2 else "android_vr"
-            cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=True, extractor_client=client)
+        for seg_attempt in range(1, 4):
+            if seg_attempt == 1:
+                cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=False, extractor_client="android;formats=missing_pot")
+            elif seg_attempt == 2:
+                cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=True, extractor_client="web_embedded")
+            else:
+                cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=False, extractor_client="ios")
             try:
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=120
@@ -442,15 +446,15 @@ def _download_one_video_segment(
     if not final_ok:
         _log(f"  Downloading section [{s:.1f}s - {e:.1f}s] via surgical yt-dlp + PO token...")
         for seg_attempt in range(1, 4):
-            # Attempt 1: web_embedded with cookies and Node JS challenge solver (verified 1080p download)
-            # Attempt 2: android_vr with cookies
-            # Attempt 3: android with missing_pot
+            # Attempt 1: android client without cookies (fastest & most reliable on datacenter IPs)
+            # Attempt 2: web_embedded with Node JS solver
+            # Attempt 3: ios client fallback
             if seg_attempt == 1:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="web_embedded")
-            elif seg_attempt == 2:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="android_vr")
-            else:
                 cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android;formats=missing_pot")
+            elif seg_attempt == 2:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="web_embedded")
+            else:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="ios")
             try:
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=60
