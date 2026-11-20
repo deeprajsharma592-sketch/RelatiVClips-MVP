@@ -76,9 +76,9 @@ export default function HeroStudio() {
       <div className="absolute inset-0 z-0 w-full h-full pointer-events-auto">
         <ImageGallery
           images={images}
-          ringSize={52}
+          ringSize={76}
           tileScale={0.9}
-          radius={9}
+          radius={12}
           autoSpin={8}
           pauseOnHover={false}
           className="w-full h-full"
