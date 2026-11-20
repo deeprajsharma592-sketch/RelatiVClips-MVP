@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Zap, Download, Link2 } from "lucide-react";
 
 import HeroStudio from "@/components/HeroStudio";
+import OwnYourTaste from "@/components/OwnYourTaste";
 import TasteTimeline from "@/components/TasteTimeline";
 import CreatorProof from "@/components/CreatorProof";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
@@ -42,6 +43,9 @@ export default function HomePage() {
 
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
+
+      {/* ── MANIFESTO TRANSITION: Apple Glass Fluid Scroll ── */}
+      <OwnYourTaste />
 
       <TasteTimeline />
 
