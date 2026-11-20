@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
 import GravityPhrase from "./GravityPhrase";
 
-const HERO_PHRASES = [
-  "personalized short clips",
-  "more views in less time",
-  "every platform, one click",
-  "your next viral moment",
-];
+const HERO_PHRASES = ["personalized short clips", "more views in less time", "ready for every platform", "make every moment count"];
 
 export default function HeroStudio() {
   const router = useRouter();
