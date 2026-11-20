@@ -1,312 +1,193 @@
 "use client";
 
 /**
- * MovingClipsGrid — The lower section of the landing page (v2).
- *
- * 6 9:16 vertical "moving clip" cards in a responsive grid.
- *
- * v2 improvements:
- *  - Uses real video files (Google CDN sample MP4s) inside <video> tags
- *    with muted+autoplay+loop+playsInline. Falls back to a CSS
- *    animated gradient if the video fails to load.
- *  - Removes fake "X views" labels — replaces with real "9:16" aspect
- *    marker + a tasteful "auto-clipped" tag.
- *  - Adds accent stripe at top + duration pill + subtle reflection.
- *  - Hover state: slight scale-up + glow.
- *
- * Each card is a "sample output" — in production these would be actual
- * clips from the engine (in /app/outputs/*.mp4).
+ * MovingClipsGrid (Section 02 · Output Showcase)
+ * 3D Draggable Carousel with True 9:16 Cinematic Video Preview Cards
+ * Replaces the bulky smartphone mockup with edge-to-edge video-focused preview cards.
  */
 
-import { motion } from "framer-motion";
 import { Play } from "lucide-react";
+import { motion } from "framer-motion";
+import RotatingCards, { type RotatingCardItem } from "./RotatingCards";
 
-interface ClipItem {
-  /** Background color shown while video is loading or if it fails. */
-  fallback: string;
-  /** Accent color for the top stripe. */
-  accent: string;
-  /** Title shown at the bottom. */
+interface ShowcaseClip extends RotatingCardItem {
+  id: string;
   title: string;
-  /** Duration label. */
+  captionPrefix: string;
+  highlightWord: string;
+  captionSuffix: string;
+  speaker: string;
   duration: string;
-  /** Optional video src — Google CDN sample MP4s, royalty-free. */
-  videoSrc?: string;
-  /** Motion profile for the fallback gradient animation. */
-  motion: "pan-zoom-in" | "pan-zoom-out" | "pan-left" | "pan-right" | "rotate-slow";
+  thumbnail: string;
+  platform: "TikTok" | "Shorts" | "Reels";
 }
 
-const CLIPS: ClipItem[] = [
+const SHOWCASE_CLIPS: ShowcaseClip[] = [
   {
-    fallback: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D946EF 100%)",
-    accent: "#FCD34D",
-    title: "Hook · first 3s",
-    duration: "0:14",
-    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    motion: "pan-zoom-in",
+    id: "clip-1",
+    title: "Why 99% of Startups Die in Year One",
+    captionPrefix: "The secret isn't funding, it's",
+    highlightWord: "CUSTOMER OBSESSION",
+    captionSuffix: "",
+    speaker: "Founder Insights",
+    duration: "0:34",
+    thumbnail: "/thumb_r1.webp",
+    platform: "Shorts",
   },
   {
-    fallback: "linear-gradient(135deg, #FF77E9 0%, #D946EF 50%, #A78BFA 100%)",
-    accent: "#D946EF",
-    title: "Viral opener",
-    duration: "0:11",
-    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    motion: "pan-right",
+    id: "clip-3",
+    title: "The Impossible Action Shot",
+    captionPrefix: "We had only",
+    highlightWord: "ONE SHOT",
+    captionSuffix: "before sunset",
+    speaker: "Action Creator",
+    duration: "0:28",
+    thumbnail: "/thumb_r3.webp",
+    platform: "Reels",
   },
   {
-    fallback: "linear-gradient(135deg, #F59E0B 0%, #EC4899 50%, #8B5CF6 100%)",
-    accent: "#F59E0B",
-    title: "Energy spike",
-    duration: "0:13",
-    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    motion: "pan-zoom-out",
+    id: "clip-4",
+    title: "Why Apple Sells Emotion",
+    captionPrefix: "They don't sell specs, they sell",
+    highlightWord: "EMOTIONAL STATUS",
+    captionSuffix: "",
+    speaker: "Tech Breakdown",
+    duration: "0:38",
+    thumbnail: "/thumb_r4.webp",
+    platform: "TikTok",
   },
   {
-    fallback: "linear-gradient(135deg, #06B6D4 0%, #0EA5E9 50%, #6366F1 100%)",
-    accent: "#06B6D4",
-    title: "Pause + payoff",
-    duration: "0:15",
-    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-    motion: "pan-left",
+    id: "clip-5",
+    title: "High-Stakes Negotiation Strategy",
+    captionPrefix: "Whoever speaks first in silence",
+    highlightWord: "ALWAYS LOSES",
+    captionSuffix: "",
+    speaker: "Negotiation Master",
+    duration: "0:45",
+    thumbnail: "/thumb_r5.webp",
+    platform: "Shorts",
   },
   {
-    fallback: "linear-gradient(135deg, #FCD34D 0%, #EC4899 50%, #A78BFA 100%)",
-    accent: "#FF77E9",
-    title: "Tag-worthy moment",
-    duration: "0:12",
-    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-    motion: "pan-zoom-in",
+    id: "clip-6",
+    title: "The Truth About Standup Comedy",
+    captionPrefix: "Bombing in front of crowds is",
+    highlightWord: "LIBERATING",
+    captionSuffix: "",
+    speaker: "Comedy Studio",
+    duration: "0:31",
+    thumbnail: "/thumb_r1.webp",
+    platform: "Reels",
   },
   {
-    fallback: "linear-gradient(135deg, #A78BFA 0%, #EC4899 50%, #F59E0B 100%)",
-    accent: "#A78BFA",
-    title: "Caption-ready",
-    duration: "0:10",
-    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    motion: "pan-right",
+    id: "clip-8",
+    title: "Mastering Confident Eye Contact",
+    captionPrefix: "Focus on the bridge of the nose.",
+    highlightWord: "WORKS EVERY TIME",
+    captionSuffix: "",
+    speaker: "Executive Presence",
+    duration: "0:29",
+    thumbnail: "/thumb_r3.webp",
+    platform: "TikTok",
   },
 ];
 
-// CSS keyframes for the fallback animation (if video fails to load)
-const motionKeyframes = `
-@keyframes pan-zoom-in {
-  0%   { transform: scale(1.05) translate(0, 0); }
-  50%  { transform: scale(1.18) translate(-1.5%, -1%); }
-  100% { transform: scale(1.05) translate(0, 0); }
-}
-@keyframes pan-zoom-out {
-  0%   { transform: scale(1.25) translate(0, 0); }
-  50%  { transform: scale(1.08) translate(1.5%, 1%); }
-  100% { transform: scale(1.25) translate(0, 0); }
-}
-@keyframes pan-left {
-  0%   { transform: scale(1.20) translateX(2%); }
-  50%  { transform: scale(1.20) translateX(-2%); }
-  100% { transform: scale(1.20) translateX(2%); }
-}
-@keyframes pan-right {
-  0%   { transform: scale(1.20) translateX(-2%); }
-  50%  { transform: scale(1.20) translateX(2%); }
-  100% { transform: scale(1.20) translateX(-2%); }
-}
-@keyframes rotate-slow {
-  0%   { transform: scale(1.15) rotate(0deg); }
-  50%  { transform: scale(1.20) rotate(2deg); }
-  100% { transform: scale(1.15) rotate(0deg); }
-}
-`;
-
-if (typeof document !== "undefined" && !document.getElementById("moving-clips-keyframes-v2")) {
-  const el = document.createElement("style");
-  el.id = "moving-clips-keyframes-v2";
-  el.textContent = motionKeyframes;
-  document.head.appendChild(el);
-}
-
 export default function MovingClipsGrid() {
   return (
-    <div className="relative">
-      {/* Section header */}
-      <div className="flex flex-col items-center text-center mb-10 md:mb-14">
-        <div className="flex items-center gap-3 mb-4">
-          <span
-            className="text-[11px] font-mono tracking-wider"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            02
-          </span>
-          <span
-            className="h-px w-12"
-            style={{ background: "var(--color-border-strong)" }}
-          />
-          <span
-            className="text-[11px] font-mono uppercase tracking-wider"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            The output
-          </span>
-        </div>
-        <h2
-          className="font-display font-semibold max-w-3xl"
-          style={{
-            fontSize: "clamp(2rem, 4vw, 3rem)",
-            lineHeight: 1.05,
-            letterSpacing: "-0.04em",
-            color: "var(--color-text-primary)",
-          }}
+    <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#07080C] text-white overflow-hidden border-t border-b border-white/5">
+      <div className="max-w-5xl mx-auto overflow-hidden">
+        {/* Section Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center text-center mb-8 sm:mb-10"
         >
-          One video becomes{" "}
-          <span
-            className="font-fraunces-italic"
-            style={{ color: "var(--color-accent)", fontWeight: 400 }}
-          >
-            ten clips
-          </span>
-          . <br className="hidden md:block" />
-          Each one tuned for{" "}
-          <span className="text-gradient-gold" style={{ fontWeight: 600 }}>
-            the scroll
-          </span>
-          .
-        </h2>
-        <p
-          className="mt-5 text-base md:text-lg max-w-2xl"
-          style={{ color: "var(--color-text-secondary)" }}
-        >
-          Auto-cropped 9:16. Word-by-word captions. Titles picked by
-          taste, not length. Ready to post on TikTok, Reels, Shorts.
-        </p>
-      </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white font-sans">
+            One video becomes{" "}
+            <span className="text-amber-400">ten viral clips.</span>
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-zinc-400 max-w-xl font-sans">
+            Every clip comes with AI-curated hooks, dynamic animated karaoke subtitles,
+            and speaker-centered 9:16 cropping. Drag the ring to explore.
+          </p>
+        </motion.div>
 
-      {/* The grid of "moving" clips */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 max-w-7xl mx-auto">
-        {CLIPS.map((c, i) => (
-          <motion.div
-            key={`${c.title}-${i}`}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.06, duration: 0.5, ease: "easeOut" }}
-            className="relative group"
-          >
-            <div
-              className="relative aspect-[9/16] rounded-2xl overflow-hidden transition-transform duration-300 group-hover:scale-[1.03]"
-              style={{
-                background: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                boxShadow:
-                  "0 8px 24px rgba(40, 30, 20, 0.10), 0 2px 6px rgba(40, 30, 20, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
-              }}
-            >
-              {/* Background — animated gradient (always animates as fallback) */}
+        {/* ── 3D Draggable Rotating Cards Component ── */}
+        <div className="relative w-full py-4 overflow-hidden">
+          <RotatingCards
+            cards={SHOWCASE_CLIPS}
+            radius={360}
+            cardWidth={180}
+            cardHeight={320}
+            speed={5.6}
+            autoPlay={true}
+            pauseOnHover={false}
+            draggable={true}
+            renderCard={(card: ShowcaseClip, index, isCenter) => (
               <div
-                aria-hidden
-                className="absolute inset-0"
-                style={{
-                  background: c.fallback,
-                  animation: `${c.motion} ${11 + i * 1.3}s ease-in-out infinite`,
-                  willChange: "transform",
-                }}
-              />
-
-              {/* Real video on top of the gradient — muted, autoplay, loop */}
-              {c.videoSrc && (
-                <video
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ mixBlendMode: "overlay", opacity: 0.6 }}
-                  src={c.videoSrc}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="metadata"
-                  aria-hidden
+                className={`group relative w-full h-full rounded-2xl overflow-hidden border bg-[#0B0D12] shadow-2xl transition-[border-color,box-shadow] duration-300 select-none flex flex-col justify-between ${
+                  isCenter
+                    ? "border-amber-400/80 shadow-[0_0_35px_rgba(245,158,11,0.25)] scale-[1.02]"
+                    : "border-white/[0.08] hover:border-white/20"
+                }`}
+              >
+                {/* Edge-to-Edge Thumbnail Poster */}
+                <img
+                  src={card.thumbnail}
+                  alt={card.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
                 />
-              )}
 
-              {/* Color grade overlay (subtle, to unify the cards) */}
-              <div
-                aria-hidden
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(15, 13, 10, 0.0) 0%, rgba(15, 13, 10, 0.30) 60%, rgba(15, 13, 10, 0.85) 100%)",
-                }}
-              />
+                {/* Cinematic Vignette & Gradient Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-black/50 pointer-events-none" />
 
-              {/* Top accent stripe */}
-              <div
-                className="absolute top-0 left-0 right-0 h-1 z-10"
-                style={{ background: c.accent }}
-              />
-
-              {/* Play icon overlay (top-right) */}
-              <div
-                className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center z-10"
-                style={{
-                  background: "rgba(15, 13, 10, 0.55)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                }}
-              >
-                <Play className="h-3 w-3 ml-0.5" fill="#FFFFFF" style={{ color: "#FFFFFF" }} />
-              </div>
-
-              {/* Duration pill (top-left) */}
-              <div
-                className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold z-10"
-                style={{
-                  background: "rgba(15, 13, 10, 0.55)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  color: "#FFFFFF",
-                }}
-              >
-                {c.duration}
-              </div>
-
-              {/* Bottom info: title + "auto-clipped" tag */}
-              <div className="absolute bottom-0 left-0 right-0 p-3 z-10">
-                <p
-                  className="text-[12px] font-semibold leading-snug line-clamp-2 mb-1.5"
-                  style={{ color: "#FFFFFF" }}
-                >
-                  {c.title}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block w-1 h-1 rounded-full"
-                    style={{ background: c.accent }}
-                  />
-                  <span
-                    className="text-[9px] font-mono uppercase tracking-wider"
-                    style={{ color: "rgba(255, 255, 255, 0.75)" }}
-                  >
-                    9:16 · auto-clipped
+                {/* Subtle Top Metadata Bar */}
+                <div className="relative z-10 p-2.5 flex items-center justify-between text-[9px] font-mono">
+                  <span className="px-2 py-0.5 rounded-full font-medium bg-black/60 backdrop-blur-md text-white/90 border border-white/15">
+                    {card.platform}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-zinc-300 bg-black/60 backdrop-blur-md border border-white/10">
+                    {card.duration}
                   </span>
                 </div>
+
+                {/* Center Restrained Frosted Play Button */}
+                <div className="relative z-10 my-auto flex items-center justify-center pointer-events-none">
+                  <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shadow-lg transition-transform duration-300 group-hover:scale-110">
+                    <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                  </div>
+                </div>
+
+                {/* Single Restrained Subtitle Box (Lower-Middle Third) */}
+                <div className="relative z-10 px-2.5 pb-2 text-center pointer-events-none">
+                  <div className="inline-block px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 shadow-lg max-w-[96%]">
+                    <p className="text-[10px] sm:text-[11px] font-bold leading-snug text-white tracking-tight">
+                      {card.captionPrefix}{" "}
+                      <span className="text-amber-300 font-extrabold underline decoration-amber-400/60 underline-offset-2">
+                        {card.highlightWord}
+                      </span>{" "}
+                      {card.captionSuffix}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bottom Metadata: Title & Format */}
+                <div className="relative z-10 p-2.5 pt-1.5 text-left border-t border-white/[0.08] bg-black/60 backdrop-blur-sm">
+                  <p className="text-[10px] font-semibold text-white truncate tracking-tight">
+                    {card.title}
+                  </p>
+                  <div className="flex items-center justify-between text-[8.5px] font-mono text-zinc-400 mt-0.5">
+                    <span>{card.speaker}</span>
+                    <span className="text-cyan-400 font-medium">9:16 HD</span>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* Reflection underneath */}
-            <div
-              aria-hidden
-              className="absolute -bottom-2 left-2 right-2 h-2 rounded-full opacity-60"
-              style={{
-                background: "radial-gradient(ellipse, rgba(40, 30, 20, 0.12) 0%, transparent 70%)",
-                filter: "blur(3px)",
-              }}
-            />
-          </motion.div>
-        ))}
+            )}
+          />
+        </div>
       </div>
-
-      {/* Section footer note */}
-      <p
-        className="mt-10 text-center text-[12px] font-mono"
-        style={{ color: "var(--color-text-muted)" }}
-      >
-        Paste a URL — get clips free during the beta
-      </p>
-    </div>
+    </section>
   );
 }

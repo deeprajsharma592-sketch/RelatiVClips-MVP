@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.BACKEND_BASE_URL || "http://91.98.144.72";
+const configuredBackend = process.env.BACKEND_BASE_URL?.trim();
+const BACKEND = configuredBackend && !configuredBackend.includes("summer-clearing")
+  ? configuredBackend.replace(/\/$/, "")
+  : "";
 const TIMEOUT_MS = 120_000; // 2 min for full pipeline
 
 export async function POST(req: NextRequest) {
+  if (!BACKEND) {
+    return NextResponse.json(
+      { error: "backend_not_configured", detail: "The RelatiV processing service is not connected yet." },
+      { status: 503 },
+    );
+  }
   const body = await req.json();
   const targetUrl = `${BACKEND}/process/youtube`;
   
@@ -21,10 +30,10 @@ export async function POST(req: NextRequest) {
     clearTimeout(tid);
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (err: any) {
-    const isTimeout = err.name === "AbortError";
+  } catch (err: unknown) {
+    const isTimeout = err instanceof Error && err.name === "AbortError";
     return NextResponse.json(
-      { error: isTimeout ? "timeout" : "fetch_failed", detail: err.message },
+      { error: isTimeout ? "timeout" : "fetch_failed", detail: err instanceof Error ? err.message : "Unknown backend connection error" },
       { status: isTimeout ? 504 : 502 }
     );
   }

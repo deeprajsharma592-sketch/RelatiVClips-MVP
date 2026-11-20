@@ -8,9 +8,18 @@ node_modules/
 
 # Local env + secrets
 .env
+.env*.local
+*.DS_Store
 cookies.txt
 graphify-out/
 junk/
 outputs/
 temp/
 yolov10n.pt
+.venv_framing/
+*.mp4
+*.wav
+demo_test/
+e2e_youtube_run/
+cloudflared.exe
+cache/

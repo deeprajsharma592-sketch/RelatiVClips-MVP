@@ -1,0 +1,12 @@
+{
+  "fixture_id": "F08",
+  "clip": "F08.mp4",
+  "duration_s": 4.0,
+  "speaker_intervals": [
+    {
+      "start_s": 0.5,
+      "end_s": 3.5,
+      "speaker": "offscreen"
+    }
+  ]
+}

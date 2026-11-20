@@ -11,8 +11,13 @@ export interface Clip {
   viral_title: string;
   hashtags: string;
   file_path: string;
+  download_url?: string;
   file_size_mb: number;
   created_at: string;
+  thumbnail_url?: string;
+  hook_score?: number;
+  story_score?: number;
+  engagement_score?: number;
 }
 
 export interface ProcessStep {

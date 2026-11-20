@@ -5,37 +5,90 @@
 // BACKEND_BASE comes from the BACKEND_BASE_URL env var (set in Vercel dashboard).
 // Fallback uses HTTP on the Hetzner IP (Caddy handles HTTPS termination).
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
-const BACKEND_BASE = process.env.BACKEND_BASE_URL
-  || "http://91.98.144.72";
+const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
+const DEFAULT_TUNNEL_BACKEND = "https://participate-pending-retail-johns.trycloudflare.com";
+const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing")
+  ? configuredBackendBase.replace(/\/$/, "")
+  : DEFAULT_TUNNEL_BACKEND;
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  if (!BACKEND_BASE) {
+    return NextResponse.json(
+      {
+        error: "BACKEND_NOT_CONFIGURED",
+        detail: "RelatiV’s processing service is not connected yet. Please try again later.",
+      },
+      { status: 503 },
+    );
+  }
+
   const { path } = await ctx.params;
   const pathStr = path.join("/");
   const search = req.nextUrl.search;
 
-  // The frontend calls /api/proxy/api/v1/<path> but the backend FastAPI
-  // routers are mounted WITHOUT the /api/v1/ prefix (e.g. /process/youtube,
-  // not /api/v1/process/youtube). Strip the prefix before forwarding so
-  // /api/proxy/api/v1/process/youtube → ${BACKEND_BASE}/process/youtube.
+  // FastAPI auth, dashboard, billing, campaigns, taste, verification, and clips
+  // are all mounted at /api/v1/... on the backend.
+  // ONLY strip api/v1/ for un-prefixed backend routers: process, upload, download, status, health.
   let cleanedPath = pathStr;
-  const apiV1Prefix = "api/v1/";
-  if (cleanedPath === "api/v1" || cleanedPath.startsWith(apiV1Prefix)) {
-    cleanedPath = cleanedPath.slice(apiV1Prefix.length);
-    if (cleanedPath === "") cleanedPath = ""; // root → just /, not //
+  const unPrefixed = ["api/v1/process", "api/v1/upload", "api/v1/download", "api/v1/status", "api/v1/health"];
+  if (unPrefixed.some((prefix) => cleanedPath === prefix || cleanedPath.startsWith(prefix + "/"))) {
+    cleanedPath = cleanedPath.slice("api/v1/".length);
   }
 
   const targetUrl = `${BACKEND_BASE}/${cleanedPath}${search}`;
 
-  // Stream-friendly headers
-  const headers = new Headers(req.headers);
-  headers.delete("host");
-  headers.delete("connection");
-  headers.delete("content-length");
+  // Forward only clean headers — strip Cloudflare / Vercel CDN loop headers
+  const headers = new Headers();
+  for (const [key, val] of req.headers.entries()) {
+    const k = key.toLowerCase();
+    if (
+      k.startsWith("cf-") ||
+      k === "cdn-loop" ||
+      k.startsWith("x-vercel-") ||
+      k === "host" ||
+      k === "connection" ||
+      k === "content-length" ||
+      k === "cookie" ||
+      k === "authorization"
+    ) {
+      continue;
+    }
+    headers.set(key, val);
+  }
+  try {
+    headers.set("host", new URL(BACKEND_BASE).host);
+  } catch {
+    // ignore
+  }
   headers.set("x-forwarded-host", req.headers.get("host") || "relativclips.com");
   headers.set("x-forwarded-proto", "https");
   headers.set("x-relativ-proxy", "vercel-edge-v2");
+
+  let supabaseCookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
+  const supabaseConfig = getSupabasePublicConfig();
+  if (supabaseConfig) {
+    const supabase = createServerClient(supabaseConfig.url, supabaseConfig.key, {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookies) => { supabaseCookiesToSet = cookies; },
+      },
+    });
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      headers.set("authorization", `Bearer ${data.session.access_token}`);
+    }
+  }
+
+  const withSupabaseCookies = (response: NextResponse) => {
+    for (const cookie of supabaseCookiesToSet) {
+      response.cookies.set(cookie.name, cookie.value, cookie.options as never);
+    }
+    return response;
+  };
 
   const ac = new AbortController();
   const timeoutId = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
@@ -69,8 +122,12 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     responseHeaders.set("access-control-allow-methods", "GET,POST,PUT,DELETE,OPTIONS");
     responseHeaders.set("access-control-allow-headers", "content-type,authorization");
 
-    // Forward important upstream response headers (cookies for auth!)
+    // Forward important upstream response headers (media streaming & auth!)
     const headersToForward = [
+      "content-length",
+      "content-range",
+      "accept-ranges",
+      "content-disposition",
       "set-cookie",
       "x-request-id",
       "x-rate-limit-limit",
@@ -82,17 +139,17 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       if (v) responseHeaders.set(h, v);
     }
 
-    return new NextResponse(upstream.body, {
+    return withSupabaseCookies(new NextResponse(upstream.body, {
       status: upstream.status,
       headers: responseHeaders,
-    });
+    }));
   } catch (err) {
     clearTimeout(timeoutId);
     const latency = Date.now() - startTime;
     const isTimeout = err instanceof Error && err.name === "AbortError";
 
     // Detailed error for diagnosis
-    let detail = (err as Error).message;
+    let detail = err instanceof Error ? err.message : "Unknown proxy error";
     let code = "unknown";
 
     if (isTimeout) {
@@ -100,29 +157,34 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       code = "ETIMEDOUT";
     } else if (err instanceof Error) {
       // Vercel/Node.js fetch errors include a .cause with the underlying error
-      const cause = (err as any).cause;
+      const rawCause = err.cause;
+      const cause = rawCause && typeof rawCause === "object" ? rawCause as Record<string, unknown> : null;
       if (cause) {
-        code = cause.code || cause.name || "fetch_error";
-        detail = `${cause.code || cause.name}: ${cause.message || ""} (syscall=${cause.syscall || "n/a"})`;
+        const causeCode = typeof cause.code === "string" ? cause.code : typeof cause.name === "string" ? cause.name : "fetch_error";
+        const causeMessage = typeof cause.message === "string" ? cause.message : "";
+        const syscall = typeof cause.syscall === "string" ? cause.syscall : "n/a";
+        code = causeCode;
+        detail = `${causeCode}: ${causeMessage} (syscall=${syscall})`;
       }
     }
 
     // Log to Vercel's function logs (visible in dashboard)
-    console.error(`[proxy] FAILED ${req.method} ${targetUrl}`, {
+    console.error(`[proxy] FAILED ${req.method} ${pathStr}`, {
       code,
       detail,
       latency_ms: latency,
       method: req.method,
-      target: targetUrl,
+      backend_host: (() => { try { return new URL(BACKEND_BASE).host; } catch { return "invalid_backend_url"; } })(),
       host: req.headers.get("host"),
       user_agent: req.headers.get("user-agent")?.slice(0, 80),
     });
 
-    return NextResponse.json(
+    return withSupabaseCookies(NextResponse.json(
       {
         error: code,
-        detail,
-        target: targetUrl,
+        detail: isTimeout
+          ? "The RelatiV processing service did not respond in time. Please try again shortly."
+          : "The RelatiV processing service could not be reached. The service connection needs attention.",
         latency_ms: latency,
       },
       {
@@ -132,7 +194,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
           "x-proxy-latency-ms": String(latency),
         },
       }
-    );
+    ));
   }
 }
 

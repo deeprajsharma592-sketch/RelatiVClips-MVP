@@ -42,7 +42,14 @@ from ..utils.config import (
 log = logging.getLogger(__name__)
 
 
-def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
+def _ytdlp_section_url(
+    url: str,
+    start: float,
+    end: float,
+    dest_path: Optional[str] = None,
+    use_cookies: bool = True,
+    extractor_client: str = "web_embedded,android_vr",
+) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video.
 
     yt-dlp's `--download-sections` accepts a time-range string like
@@ -52,44 +59,51 @@ def _ytdlp_section_url(url: str, start: float, end: float) -> List[str]:
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
     e = end + pad
-    fmt = "%H:%M:%S"
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     s_str = str(timedelta(seconds=int(s)))
     e_str = str(timedelta(seconds=int(e)))
+    
+    # yt-dlp requires .%(ext)s template when merging streams
+    out_template = "-"
+    if dest_path and dest_path != "-":
+        p = Path(dest_path)
+        out_template = str(p.parent / f"{p.stem}.%(ext)s")
+
     cmd = [
         YTDLP_PATH,
-        "-f", "bestaudio/best",
-        "--extract-audio",
-        "--audio-format", "m4a",
-        "--audio-quality", "0",
+        "-f", "140/251/ba/b/best",
         "--download-sections", f"*{s_str}-{e_str}",
-        "-o", "-",  # stdout
+        "--js-runtimes", "node",
+        "--extractor-args", f"youtube:player_client={extractor_client}",
+        "-o", out_template,
         "--no-warnings",
-        "--no-check-certificates",
-        url,
     ]
-    # Working copy of cookies (so yt-dlp's save_cookies can't corrupt source)
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            cmd.extend(["--cookies", _working])
-        except Exception:
-            cmd.extend(["--cookies", str(COOKIES_PATH)])
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
+    if use_cookies:
+        from ..utils.config import get_cookie_args
+        cookie_args = get_cookie_args()
+        if cookie_args:
+            cmd.extend(cookie_args)
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
+    cmd.extend(["--", url])
     return cmd
 
 
-def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
+def _ytdlp_video_section_url(
+    url: str,
+    start: float,
+    end: float,
+    dest_path: Optional[str] = None,
+    use_cookies: bool = True,
+    extractor_client: str = "web_embedded,android_vr",
+) -> List[str]:
     """Build a yt-dlp command that downloads only [start, end] of the video
     AS A VIDEO FILE (with both video and audio streams) for the renderer.
 
-    Used AFTER the LLM picks the winning moments — we re-fetch the picked
-    segments with both video and audio so the renderer can crop real video
-    frames (instead of falling back to a still image).
+    Uses web_embedded with Node JS runtime and cookies to download true 1080p/720p.
     """
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
@@ -97,39 +111,45 @@ def _ytdlp_video_section_url(url: str, start: float, end: float) -> List[str]:
     from datetime import timedelta
     s_str = str(timedelta(seconds=int(s)))
     e_str = str(timedelta(seconds=int(e)))
+
+    # yt-dlp requires .%(ext)s template when merging video+audio streams
+    out_template = "-"
+    if dest_path and dest_path != "-":
+        p = Path(dest_path)
+        out_template = str(p.parent / f"{p.stem}.%(ext)s")
+
     cmd = [
         YTDLP_PATH,
-        # Format 18 = H.264 360p + AAC combined (mp4). Always H.264
-        # with excellent keyframe placement — reliable seeking for surgical
-        # sections. Higher-res combined H.264 formats (93, 94, 95) as fallback.
+        # Native 1080p and 720p HD streams
         "-f", (
-            "18/"          # H.264 360p + AAC combined
-            "93/"           # H.264 360p + AAC combined (alt)
-            "94/"           # H.264 480p + AAC combined
-            "95/"           # H.264 720p + AAC combined
-            "best[height<=720]"  # last resort — may be VP9/MPEG-2
+            "137+140/"
+            "bv*[height=1080]+ba/"
+            "bv*[height>=1080]+ba/"
+            "136+140/"
+            "bv*[height=720]+ba/"
+            "bv*[height>=720]+ba/"
+            "bv*+ba"
         ),
+        "--force-keyframes-at-cuts",
+        "--merge-output-format", "mp4",
+        "--format-sort", "res:1080,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
-        # NOTE: --force-keyframes-at-cuts is intentionally omitted. Adding it
-        # causes FFmpeg to re-encode the stream (H.264→MPEG-2→H.264) which
-        # is slow and destroys quality. The H.264 keyframe structure of format
-        # 18 segments is dense enough for accurate FFmpeg seeking.
-        "-o", "-",  # stdout
+        "--js-runtimes", "node",
+        "--extractor-args", f"youtube:player_client={extractor_client}",
+        "-o", out_template,
         "--no-warnings",
-        "--no-check-certificates",
-        url,
     ]
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            cmd.extend(["--cookies", _working])
-        except Exception:
-            cmd.extend(["--cookies", str(COOKIES_PATH)])
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
+    if use_cookies:
+        from ..utils.config import get_cookie_args
+        cookie_args = get_cookie_args()
+        if cookie_args:
+            cmd.extend(cookie_args)
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
+    cmd.extend(["--", url])
     return cmd
 
 
@@ -149,13 +169,15 @@ def _download_one_segment(
     `on_segment_done(idx, total, ok)` is invoked after each attempt outcome
     so callers can update a progress bar without parsing log messages.
     """
+    pad = SURGICAL_BUFFER_SECONDS
+    source_start = max(0.0, start - pad)
+    source_end = end + pad
+
     if audio_path.exists():
         try:
             audio_path.unlink()
         except Exception:
             pass
-
-    cmd = _ytdlp_section_url(url, start, end)
 
     def _log(msg: str) -> None:
         with log_lock:
@@ -167,12 +189,24 @@ def _download_one_segment(
     final_ok = False
     try:
         for seg_attempt in range(1, 5):
+            client = "web_embedded" if seg_attempt <= 2 else "android_vr"
+            cmd = _ytdlp_section_url(url, start, end, dest_path=str(audio_path), use_cookies=True, extractor_client=client)
             try:
-                with open(audio_path, "wb") as f:
-                    result = subprocess.run(
-                        cmd, stdout=f, stderr=subprocess.PIPE, timeout=120
-                    )
-                if result.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 0:
+                result = subprocess.run(
+                    cmd, capture_output=True, timeout=120
+                )
+                if not audio_path.exists():
+                    for ext in (".m4a", ".opus", ".webm", ".aac", ".mp3", ".ogg"):
+                        cand = audio_path.with_suffix(ext)
+                        if cand.exists() and cand.stat().st_size > 0:
+                            if ext != ".m4a":
+                                trans_cmd = [FFMPEG_PATH, "-y", "-i", str(cand), "-vn", "-c:a", "aac", "-b:a", "128k", str(audio_path)]
+                                subprocess.run(trans_cmd, capture_output=True, timeout=30)
+                                cand.unlink(missing_ok=True)
+                            else:
+                                cand.rename(audio_path)
+                            break
+                if audio_path.exists() and audio_path.stat().st_size > 0:
                     final_ok = True
                     break
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
@@ -192,7 +226,14 @@ def _download_one_segment(
             _log(f"  Segment {seg_idx + 1} download failed (rc={getattr(result, 'returncode', 'n/a')})")
             return {"audio_path": None, "source_start": start, "source_end": end}
         _log(f"  Segment {seg_idx + 1} ready ({audio_path.stat().st_size / 1024:.0f} KB)")
-        return {"audio_path": str(audio_path), "source_start": start, "source_end": end}
+        # yt-dlp downloads the padded interval (see _ytdlp_section_url).
+        # Keep the file's real source timeline so local Whisper timestamps can
+        # be mapped back to the original video accurately.
+        return {
+            "audio_path": str(audio_path),
+            "source_start": source_start,
+            "source_end": source_end,
+        }
     except Exception as e:
         _log(f"  Segment {seg_idx + 1} error: {str(e)[:80]}")
         return {"audio_path": None, "source_start": start, "source_end": end}
@@ -305,7 +346,13 @@ def surgical_extract_local(
                 results.append({**cand, "audio_path": None, "source_start": start, "source_end": end})
                 continue
             log_fn(f"  Segment {i+1} ready ({audio_path.stat().st_size / 1024:.0f} KB)")
-            results.append({**cand, "audio_path": str(audio_path), "source_start": start, "source_end": end})
+            results.append({
+                **cand,
+                "audio_path": str(audio_path),
+                "video_path": source_video,
+                "source_start": start,
+                "source_end": end
+            })
         except subprocess.TimeoutExpired:
             log_fn(f"  Segment {i+1} timed out")
             results.append({**cand, "audio_path": None, "source_start": start, "source_end": end})
@@ -359,28 +406,45 @@ def _download_one_video_segment(
         final_ok = True
     except Exception as resi_err:
         _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
-        cmd = _ytdlp_video_section_url(url, start, end)
         for seg_attempt in range(1, 4):
+            # Attempt 1: web_embedded with cookies and Node JS challenge solver (verified 1080p download)
+            # Attempt 2: android_vr with cookies
+            # Attempt 3: android with missing_pot
+            if seg_attempt == 1:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="web_embedded")
+            elif seg_attempt == 2:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="android_vr")
+            else:
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android;formats=missing_pot")
             try:
-                with open(video_path, "wb") as f:
-                    result = subprocess.run(
-                        cmd, stdout=f, stderr=subprocess.PIPE, timeout=180
-                    )
-                if (result.returncode == 0 and video_path.exists()
-                        and video_path.stat().st_size > 1024):
+                result = subprocess.run(
+                    cmd, capture_output=True, timeout=180
+                )
+                if not video_path.exists():
+                    for ext in (".mp4", ".mkv", ".webm"):
+                        cand = video_path.with_suffix(ext)
+                        if cand.exists() and cand.stat().st_size > 1024:
+                            if ext != ".mp4":
+                                remux_cmd = [FFMPEG_PATH, "-y", "-i", str(cand), "-c", "copy", str(video_path)]
+                                subprocess.run(remux_cmd, capture_output=True, timeout=30)
+                                cand.unlink(missing_ok=True)
+                            else:
+                                cand.rename(video_path)
+                            break
+                if video_path.exists() and video_path.stat().st_size > 1024:
                     try:
-                        probe = subprocess.run(
-                            ["ffprobe", "-v", "error", "-select_streams", "v",
-                             "-show_entries", "stream=codec_type", "-of",
-                             "csv=p=0", str(video_path)],
-                            capture_output=True, text=True, timeout=10,
-                        )
-                        if "video" in (probe.stdout or ""):
+                        import cv2
+                        cap = cv2.VideoCapture(str(video_path))
+                        frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                        cap.release()
+                        if frames > 0 and h > 0:
                             final_ok = True
+                            _log(f"  [video seg {seg_idx + 1}/{total}] Downloaded stream resolution: {w}x{h} ({video_path.stat().st_size / (1024*1024):.1f} MB)")
                             break
                     except Exception:
-                        final_ok = True
-                        break
+                        pass
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
                 _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 failed (rc={result.returncode}): {err_snippet[:100]}")
             except subprocess.TimeoutExpired:
@@ -429,7 +493,7 @@ def surgical_download_video_youtube(
         for i, cand in enumerate(candidates):
             start = float(cand["start"])
             end = float(cand["end"])
-            video_path = TEMP_DIR / f"{task_id}_vidseg{i}.mp4"
+            video_path = TEMP_DIR / f"{task_id}_vidseg_{int(start)}_{int(end)}_{i}.mp4"
             fut = pool.submit(
                 _download_one_video_segment,
                 url, start, end, video_path, log_fn, i, len(candidates), log_lock,
@@ -463,11 +527,12 @@ def surgical_download_video_youtube(
 
 def cleanup_segments(task_id: str):
     """Remove all temp files for a task. Idempotent."""
-    for path in TEMP_DIR.glob(f"{task_id}_seg*.m4a"):
-        try:
-            path.unlink()
-        except Exception:
-            pass
+    for pattern in (f"{task_id}_seg*.m4a", f"{task_id}_vidseg*.mp4"):
+        for path in TEMP_DIR.glob(pattern):
+            try:
+                path.unlink()
+            except Exception:
+                pass
 
 def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, timeout: int = 120):
     """Run a yt-dlp command with retries on transient failures (rc=1, bot blocks).

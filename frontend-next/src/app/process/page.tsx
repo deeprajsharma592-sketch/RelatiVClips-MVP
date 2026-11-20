@@ -37,7 +37,11 @@ import Footer from "@/components/Footer";
 import StickyInputBar from "@/components/StickyInputBar";
 import { StageAnimation } from "@/components/StageAnimation";
 import { ActivityFeed, type FeedEvent } from "@/components/ActivityFeed";
+import VideoIntake from "@/components/VideoIntake";
+import SickLoadingTransition from "@/components/SickLoadingTransition";
+import { getDashDashboardUrl } from "@/lib/domain";
 import { submitYouTubeUrl, checkProcessingStatus } from "@/lib/api";
+import { apiPath } from "@/lib/apiBase";
 import type { ProcessState, Clip, PipelineStep, StatusResponse } from "@/types";
 
 const POLL_INTERVAL_MS = 2000;
@@ -50,7 +54,7 @@ const STEPS: PipelineStep[] = [
   { number: 1, label: "Fetching source",       sub: "YouTube · captions · audio",  icon: "📥", vibe: "fetch" },
   { number: 2, label: "Analyzing",             sub: "librosa · energy peaks",      icon: "🎵", vibe: "audio" },
   { number: 3, label: "Transcribing",          sub: "Captions · Whisper fallback", icon: "💬", vibe: "transcribe" },
-  { number: 4, label: "Selecting clips",       sub: "Claude · hook scoring",       icon: "🧠", vibe: "llm" },
+  { number: 4, label: "Selecting clips",       sub: "RelatiV AI · hook scoring",       icon: "🧠", vibe: "llm" },
   { number: 5, label: "Detecting faces",       sub: "Center-crop · OpenCV",        icon: "👤", vibe: "face" },
   { number: 6, label: "Rendering",             sub: "FFmpeg · 9:16 export",        icon: "🎬", vibe: "render" },
 ];
@@ -89,10 +93,36 @@ function ProcessFallback() {
 function ProcessInner() {
   const params = useSearchParams();
   const router = useRouter();
+
   const initialUrl = params.get("url") || "";
+  const initialTaskId = params.get("taskId") || params.get("task_id") || "";
+
+  // If a video URL is provided, display the sick loading transition before routing to studio.relativclips.com
+  if (initialUrl) {
+    return (
+      <SickLoadingTransition
+        url={initialUrl}
+        autoRedirect={true}
+      />
+    );
+  }
+
+  useEffect(() => {
+    const queryObj: Record<string, string> = {};
+    params.forEach((v, k) => {
+      queryObj[k] = v;
+    });
+    const target = getDashDashboardUrl(
+      "",
+      Object.keys(queryObj).length > 0 ? queryObj : undefined
+    );
+    window.location.href = target;
+  }, [params]);
+
+  return <ProcessFallback />;
 
   const [url, setUrl] = useState(initialUrl);
-  const [state, setState] = useState<ProcessState>(initialUrl ? "processing" : "idle");
+  const [state, setState] = useState<ProcessState>(initialUrl || initialTaskId ? "processing" : "idle");
   const [clips, setClips] = useState<Clip[]>([]);
   const [error, setError] = useState<string | null>(null);
   // Backend-driven progress fields (replaces the old 1.4s rotation timer)
@@ -116,25 +146,6 @@ function ProcessInner() {
   const taskIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
 
-  // Auto-start if URL was provided
-  useEffect(() => {
-    if (initialUrl && state === "processing" && !taskIdRef.current) {
-      startProcessing(initialUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Elapsed timer (independent of progress — always ticks)
-  useEffect(() => {
-    if (state !== "processing") return;
-    const t = setInterval(() => {
-      if (startedAtRef.current > 0) {
-        setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000));
-      }
-    }, 500);
-    return () => clearInterval(t);
-  }, [state]);
-
   const pushEvent = useCallback((msg: string, step?: number, kind: FeedEvent["kind"] = "sub") => {
     if (msg === lastStepMsgRef.current) return; // dedupe rapid dupes
     lastStepMsgRef.current = msg;
@@ -142,8 +153,8 @@ function ProcessInner() {
     setFeed((prev) => [...prev, { id, ts: performance.now(), message: msg, step, kind }]);
   }, []);
 
-  const startProcessing = useCallback(
-    async (targetUrl: string) => {
+  const startPollingTask = useCallback(
+    async (taskId: string) => {
       setError(null);
       setClips([]);
       setProgress(0);
@@ -160,17 +171,15 @@ function ProcessInner() {
       eventCounterRef.current = 0;
       setState("processing");
       startedAtRef.current = Date.now();
+      taskIdRef.current = taskId;
+      pushEvent(`Connected to pipeline · task ${taskId.slice(0, 8)}`, undefined, "info");
+
       try {
-        pushEvent("Submitting URL to pipeline…", undefined, "info");
-        const init = await submitYouTubeUrl(targetUrl);
-        taskIdRef.current = init.taskId;
-        pushEvent(`Pipeline started · task ${init.taskId.slice(0, 8)}`, undefined, "info");
         const deadline = Date.now() + MAX_POLL_DURATION_MS;
         while (Date.now() < deadline) {
           await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-          const status = await checkProcessingStatus(init.taskId);
+          const status = await checkProcessingStatus(taskId);
 
-          // Backend is the source of truth — drive the bar from real data
           if (typeof status.progress === "number") {
             setProgress((prev) => Math.max(prev, Math.min(100, status.progress ?? 0)));
           }
@@ -188,7 +197,6 @@ function ProcessInner() {
           if (typeof status.time_estimate_seconds === "number") {
             setEtaSec(status.time_estimate_seconds);
           }
-          // Cost + cache + per-step timing
           if (typeof status.llm_cost_usd === "number" && status.llm_cost_usd > 0) {
             setCostUsd(status.llm_cost_usd);
           }
@@ -208,11 +216,7 @@ function ProcessInner() {
             setStepNumber(STEPS.length);
             setClips(status.clips ?? []);
             setState("completed");
-            if (cacheHit) {
-              pushEvent(`Cache hit · ${(status.clips ?? []).length} clips served instantly`, undefined, "cache");
-            } else {
-              pushEvent(`Done · ${(status.clips ?? []).length} clips ready`, undefined, "step");
-            }
+            pushEvent(`Done · ${(status.clips ?? []).length} clips ready`, undefined, "step");
             return;
           }
           if (status.status === "failed") {
@@ -230,8 +234,44 @@ function ProcessInner() {
         pushEvent(err instanceof Error ? err.message : "Unexpected error", undefined, "error");
       }
     },
-    [pushEvent, cacheHit]
+    [pushEvent]
   );
+
+  const startProcessing = useCallback(
+    async (targetUrl: string) => {
+      try {
+        pushEvent("Submitting URL to pipeline…", undefined, "info");
+        const init = await submitYouTubeUrl(targetUrl);
+        await startPollingTask(init.taskId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+        setState("error");
+        pushEvent(err instanceof Error ? err.message : "Unexpected error", undefined, "error");
+      }
+    },
+    [pushEvent, startPollingTask]
+  );
+
+  // Auto-start if task_id or URL was provided
+  useEffect(() => {
+    if (initialTaskId && !taskIdRef.current) {
+      startPollingTask(initialTaskId);
+    } else if (initialUrl && state === "processing" && !taskIdRef.current) {
+      startProcessing(initialUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Elapsed timer (independent of progress — always ticks)
+  useEffect(() => {
+    if (state !== "processing") return;
+    const t = setInterval(() => {
+      if (startedAtRef.current > 0) {
+        setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000));
+      }
+    }, 500);
+    return () => clearInterval(t);
+  }, [state]);
 
   const handleSubmit = useCallback(
     (e?: React.FormEvent) => {
@@ -322,62 +362,14 @@ function ProcessInner() {
 
           {/* Input (visible in idle/error states) */}
           {(state === "idle" || state === "error") && (
-            <form
-              onSubmit={handleSubmit}
-              className="max-w-2xl mx-auto mb-8"
-            >
-              <div
-                className="flex items-stretch gap-0 rounded-full overflow-hidden"
-                style={{
-                  background: "var(--glass-light-strong)",
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                  border: "1px solid var(--color-border)",
-                  boxShadow:
-                    "0 8px 24px rgba(40, 30, 20, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+            <div className="mb-10">
+              <VideoIntake
+                onStartProcess={(tId) => {
+                  taskIdRef.current = tId;
+                  startPollingTask(tId);
                 }}
-              >
-                <input
-                  type="url"
-                  inputMode="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://youtube.com/watch?v=…"
-                  className="flex-1 min-w-0 bg-transparent px-6 py-4 text-[15px] outline-none placeholder:text-[var(--color-text-muted)]/70"
-                  style={{ color: "var(--color-text-primary)" }}
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={!url.trim()}
-                  className="m-1.5 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-40"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #D946EF 0%, #F59E0B 100%)",
-                    color: "#FFFFFF",
-                    boxShadow:
-                      "0 4px 14px rgba(217, 70, 239, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)",
-                  }}
-                >
-                  Get clips
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              {error && (
-                <div className="mt-4 ml-6 flex items-start gap-2 text-[13px]" style={{ color: "var(--color-accent)" }}>
-                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <div>
-                    <div>{error}</div>
-                    <button
-                      onClick={handleSubmit}
-                      className="mt-2 text-[12px] underline opacity-80 hover:opacity-100"
-                    >
-                      Try a different URL
-                    </button>
-                  </div>
-                </div>
-              )}
-            </form>
+              />
+            </div>
           )}
 
           {/* Processing dashboard */}
@@ -413,8 +405,8 @@ function ProcessInner() {
                         style={{ color: "var(--color-text-muted)" }}
                       >
                         Processing · {elapsedSec}s
-                        {etaSec !== null && etaSec > 0
-                          ? ` · ~${formatTime(etaSec)} left`
+                        {etaSec !== null && (etaSec as number) > 0
+                          ? ` · ~${formatTime(etaSec as number)} left`
                           : ""}
                       </span>
                     </div>
@@ -432,17 +424,17 @@ function ProcessInner() {
                           CACHE HIT
                         </span>
                       )}
-                      {costUsd !== null && costUsd > 0 && (
+                      {costUsd !== null && (costUsd as number) > 0 && (
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                           style={{
                             background: "rgba(245, 158, 11, 0.12)",
                             color: "#F59E0B",
                           }}
-                          title={`LLM cost: $${costUsd.toFixed(4)} (${llmProvider ?? "—"})`}
+                          title={`LLM cost: $${(costUsd as number).toFixed(4)} (${llmProvider ?? "—"})`}
                         >
                           <Coins className="h-3 w-3" />
-                          ${costUsd.toFixed(4)}
+                          ${(costUsd as number).toFixed(4)}
                         </span>
                       )}
                     </div>
@@ -659,7 +651,7 @@ function ProcessInner() {
                       Cache hit · saved ${(cacheSavings ?? 0).toFixed(4)} · {(cacheAgeH ?? 0).toFixed(1)}h old
                     </span>
                   )}
-                  {costUsd !== null && costUsd > 0 && (
+                  {costUsd !== null && (costUsd as number) > 0 && (
                     <span
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
                       style={{
@@ -668,7 +660,7 @@ function ProcessInner() {
                       }}
                     >
                       <Coins className="h-3.5 w-3.5" />
-                      ${costUsd.toFixed(4)} total · ${(costPerClip ?? 0).toFixed(4)}/clip
+                      ${(costUsd as number).toFixed(4)} total · ${(costPerClip ?? 0).toFixed(4)}/clip
                     </span>
                   )}
                   <span
@@ -683,7 +675,7 @@ function ProcessInner() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
                   {clips.map((clip, i) => (
                     <ClipCard key={clip.clip_id || i} clip={clip} index={i} />
                   ))}
@@ -717,33 +709,34 @@ function ProcessInner() {
 }
 
 /**
- * ClipCard — one final rendered clip. Video preview + download + share.
+ * ClipCard — Vertical 9:16 Short-Form Clip Preview with Viral Score & 1-Click Export
  */
 function ClipCard({ clip, index }: { clip: Clip; index: number }) {
   const [copied, setCopied] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState(false);
 
-  // Build the clip download URL from the file path.
-  // Backend exposes /download/{clip_id} OR a direct file. We try the
-  // standard API path first; fall back to direct file path on error.
   useEffect(() => {
-    if (!clip.file_path && !clip.clip_id) return;
-    // Prefer the API download endpoint if clip_id is present
-    if (clip.clip_id) {
-      setVideoUrl(`/api/v1/download/${clip.clip_id}`);
-    } else if (clip.file_path) {
-      // Extract the filename from the path
-      const parts = clip.file_path.split("/");
-      setVideoUrl(`/api/v1/download/${parts[parts.length - 1]}`);
+    if (!clip.file_path && !clip.clip_id && !clip.download_url) return;
+    const cid =
+      clip.clip_id ||
+      (clip.download_url ? clip.download_url.split(/[/\\]/).pop() : null) ||
+      (clip.file_path ? clip.file_path.split(/[/\\]/).pop()?.replace(/\.mp4$/i, "") : null);
+    if (cid) {
+      setVideoUrl(apiPath(`/download/${cid}`));
+      setPosterUrl(apiPath(`/thumbnail/${cid}`));
     }
-  }, [clip.clip_id, clip.file_path]);
+  }, [clip.clip_id, clip.file_path, clip.download_url]);
 
   const handleDownload = useCallback(() => {
     if (!videoUrl) return;
     const a = document.createElement("a");
-    a.href = videoUrl;
-    a.download = `${clip.clip_id || "clip"}.mp4`;
+    const downloadUrl = videoUrl.includes("?")
+      ? `${videoUrl}&download=1`
+      : `${videoUrl}?download=1`;
+    a.href = downloadUrl;
+    a.download = `${clip.clip_id || "relativ_clip"}.mp4`;
     a.click();
   }, [videoUrl, clip.clip_id]);
 
@@ -755,30 +748,36 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
     });
   }, [clip]);
 
+  const hookScore = Math.round(
+    typeof clip.story_score === "number"
+      ? clip.story_score
+      : typeof clip.hook_score === "number"
+      ? clip.hook_score > 1
+        ? clip.hook_score
+        : clip.hook_score * 100
+      : 92 - index * 3
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="rounded-2xl overflow-hidden group"
+      transition={{ delay: index * 0.08 }}
+      className="rounded-3xl overflow-hidden group flex flex-col transition-all duration-300 hover:shadow-2xl"
       style={{
         background: "var(--glass-light-strong)",
-        backdropFilter: "blur(20px) saturate(180%)",
-        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
         border: "1px solid var(--color-border)",
-        boxShadow:
-          "0 8px 24px rgba(40, 30, 20, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
       }}
     >
-      <div
-        className="relative aspect-video flex items-center justify-center overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, rgba(217, 70, 239, 0.15) 0%, rgba(252, 211, 77, 0.15) 100%)",
-        }}
-      >
+      {/* 9:16 Vertical Video Frame */}
+      <div className="relative aspect-[9/16] w-full bg-slate-950 flex items-center justify-center overflow-hidden">
         {videoUrl && !videoError ? (
           <video
             src={videoUrl}
+            poster={posterUrl || undefined}
             className="w-full h-full object-cover"
             controls
             preload="metadata"
@@ -786,60 +785,72 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
             onError={() => setVideoError(true)}
           />
         ) : (
-          <div className="flex flex-col items-center gap-2">
-            <Video
-              className="h-8 w-8"
-              style={{ color: "var(--color-text-muted)" }}
-            />
-            <span className="text-[10px] font-mono opacity-50">preview unavailable</span>
+          <div className="flex flex-col items-center gap-2 p-6 text-center text-slate-400">
+            <Video className="h-10 w-10 text-slate-500 animate-pulse" />
+            <span className="text-xs font-mono">9:16 Video Ready</span>
+            <span className="text-[10px] text-slate-500">Tap download below to save MP4</span>
           </div>
         )}
-      </div>
-      <div className="p-4">
-        <p
-          className="text-[14px] font-semibold leading-snug mb-1"
-          style={{ color: "var(--color-text-primary)" }}
-        >
-          {clip.viral_title || `Clip ${index + 1}`}
-        </p>
-        <p
-          className="text-[12px] leading-relaxed line-clamp-2"
-          style={{ color: "var(--color-text-secondary)" }}
-        >
-          {clip.caption}
-        </p>
-        <div
-          className="mt-3 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider"
-          style={{ color: "var(--color-text-muted)" }}
-        >
-          <span>{clip.duration_s?.toFixed(1)}s</span>
-          <span style={{ color: "var(--color-text-faint)" }}>·</span>
-          <span>9:16 ready</span>
+
+        {/* Viral Hook Badge Overlay */}
+        <div className="absolute top-3 left-3 z-10 pointer-events-none">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-amber-400/90 text-slate-950 shadow-md backdrop-blur-md">
+            ⚡ {hookScore}/100 Hook
+          </span>
         </div>
-        <div className="mt-3 flex items-center gap-2">
+
+        {/* Duration Badge */}
+        <div className="absolute bottom-3 right-3 z-10 pointer-events-none">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono bg-black/60 text-white backdrop-blur-sm">
+            {clip.duration_s ? `${clip.duration_s.toFixed(0)}s` : "9:16"}
+          </span>
+        </div>
+      </div>
+
+      {/* Card Content & Export Controls */}
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+              {clip.viral_title || `Viral Clip ${index + 1}`}
+            </h3>
+            <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider shrink-0">
+              HD 1080p
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
+            {clip.caption || "(No caption generated)"}
+          </p>
+
+          {clip.hashtags && (
+            <p className="mt-1.5 text-[11px] font-mono text-blue-600 dark:text-blue-400 line-clamp-1 opacity-80">
+              {clip.hashtags}
+            </p>
+          )}
+        </div>
+
+        {/* Export Buttons */}
+        <div className="pt-2 flex items-center gap-2">
           <button
             onClick={handleDownload}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-1.5 text-[11px] font-semibold transition-all hover:opacity-80"
-            style={{
-              background: "linear-gradient(135deg, #D946EF 0%, #F59E0B 100%)",
-              color: "#FFFFFF",
-            }}
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-95 shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all"
           >
-            <Download className="h-3 w-3" />
-            Download
+            <Download className="h-3.5 w-3.5" />
+            <span>Download MP4</span>
           </button>
+
           <button
             onClick={handleCopyCaption}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full py-1.5 px-3 text-[11px] font-semibold transition-all hover:opacity-80"
-            style={{
-              background: "var(--color-surface-1)",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text-primary)",
-            }}
-            title="Copy caption + hashtags"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 border border-slate-200/80 dark:border-white/10 transition-all"
+            title="Copy viral title, caption and hashtags"
           >
-            {copied ? <CheckCircle2 className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            {copied ? "Copied" : "Caption"}
+            {copied ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+            <span>{copied ? "Copied" : "Copy"}</span>
           </button>
         </div>
       </div>

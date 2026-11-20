@@ -23,6 +23,7 @@
  * role gate. Belt + suspenders.
  */
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 // Workspace routes that REQUIRE auth. Note: /brands, /creators, /clippers
 // at the TOP level are public marketing pages — only the workspace subpaths
@@ -48,15 +49,63 @@ const COOKIE_NAMES = [
 ];
 
 function hasSessionCookie(req: NextRequest): boolean {
-  for (const name of COOKIE_NAMES) {
-    if (req.cookies.get(name)?.value) return true;
+  const config = getSupabasePublicConfig();
+  if (!config) return COOKIE_NAMES.some((name) => req.cookies.get(name)?.value);
+  try {
+    const projectRef = new URL(config.url).hostname.split(".")[0];
+    const authCookie = `sb-${projectRef}-auth-token`;
+    return req.cookies.getAll().some(({ name, value }) => value && (name === authCookie || name.startsWith(`${authCookie}.`)));
+  } catch {
+    return false;
   }
-  return false;
 }
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isAuthed = hasSessionCookie(req);
+
+  // 0. Hostname-Aware Subdomain Routing
+  const rawHost = req.headers.get("host")?.toLowerCase() || req.nextUrl.hostname.toLowerCase();
+  const host = rawHost.split(":")[0];
+  const isStudioHost =
+    host === "studio.relativclips.com" ||
+    host.startsWith("studio.") ||
+    host === "dash.relativclips.com" ||
+    host.startsWith("dash.") ||
+    host === "app.relativclips.com" ||
+    host.startsWith("app.");
+  const isMarketingHost = host === "relativclips.com" || host === "www.relativclips.com";
+
+  // Case A: studio.relativclips.com (or studio.localhost / dash. / app.) -> Creator Studio Workspace
+  if (isStudioHost) {
+    // If root path on studio subdomain, rewrite to /dashboard
+    if (pathname === "/") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.rewrite(url);
+    }
+    // If user accesses /dashboard on studio subdomain, redirect to root for clean URL while preserving search params
+    if (pathname === "/dashboard") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Case B: Production marketing domain (relativclips.com) accessing /dashboard
+  // Only redirect if NEXT_PUBLIC_ENABLE_STUDIO_SUBDOMAIN is explicitly enabled,
+  // otherwise serve /dashboard on the current domain so missing DNS never drops users!
+  if (
+    process.env.NEXT_PUBLIC_ENABLE_STUDIO_SUBDOMAIN === "true" &&
+    isMarketingHost &&
+    (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))
+  ) {
+    const target = new URL(
+      `https://studio.relativclips.com${pathname === "/dashboard" ? "/" : pathname.replace(/^\/dashboard/, "")}`
+    );
+    req.nextUrl.searchParams.forEach((val, key) => target.searchParams.set(key, val));
+    return NextResponse.redirect(target, 307);
+  }
 
   // 1. Authed users hitting /login or /signup → send to /account
   if (isAuthed && AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {

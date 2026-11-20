@@ -61,10 +61,11 @@ OPEN_LOOP_TRIGGERS = {
 
 # Banned title phrases (too generic)
 BANNED_TITLE_PHRASES = [
-    "top moment", "watch this", "watch now", "must see", "must watch",
-    "best moment", "best clip", "viral clip", "you won't believe",
+    "this moment hits", "this moment", "moment hits", "top moment",
+    "watch this", "watch now", "must see", "must watch",
+    "best moment", "best clip", "viral clip", "viral story", "you won't believe",
     "wait for it", "wait until", "stay tuned", "don't miss",
-    "epic moment", "amazing moment", "incredible moment",
+    "epic moment", "amazing moment", "incredible moment", "key moment", "key highlight",
 ]
 
 # Bridge words that connect hook to payoff
@@ -280,10 +281,10 @@ def post_check_picks(
 
         # 4. DURATION (just warn, don't rewrite)
         duration = p.get("end", 0) - p.get("start", 0)
-        if duration < 8 or duration > 30:
+        if duration < 40 or duration > 95:
             result.issues.append(QualityIssue(
                 field="time", severity="warning",
-                message=f"Duration {duration:.1f}s outside ideal 10-22s window",
+                message=f"Duration {duration:.1f}s outside ideal 45-90s narrative window",
             ))
 
         # Always keep the pick (don't drop on warning)

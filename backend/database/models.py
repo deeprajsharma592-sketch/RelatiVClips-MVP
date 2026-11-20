@@ -5,9 +5,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional, List
 import enum
 
-
-class Base(DeclarativeBase):
-    pass
+from .base import Base
 
 
 class TaskStatus(str, enum.Enum):
@@ -89,8 +87,11 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    auth_user_id: Mapped[Optional[str]] = mapped_column(String(36), unique=True, nullable=True, index=True)
     email: Mapped[str] = mapped_column(String(200), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Passwords are managed by Supabase Auth. Nullable while legacy accounts
+    # are linked; new identities never store a password hash in the app DB.
+    hashed_password: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # UserRole enum
     name: Mapped[str] = mapped_column(String(200), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -371,3 +372,22 @@ class CampaignClipModel(Base):
     campaign = relationship("CampaignModel", back_populates="clips")
     claim = relationship("CampaignClaimModel", back_populates="clips")
     clipper = relationship("UserModel", back_populates="clips_as_clipper", foreign_keys=[clipper_user_id])
+
+
+class SocialAccountModel(Base):
+    """Linked social account for multi-platform clip publishing."""
+
+    __tablename__ = "social_accounts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    platform: Mapped[str] = mapped_column(String(30), index=True)  # youtube, tiktok, instagram
+    account_handle: Mapped[str] = mapped_column(String(100))
+    account_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    access_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    auto_publish: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+

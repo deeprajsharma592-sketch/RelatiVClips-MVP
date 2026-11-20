@@ -655,14 +655,19 @@ def run_new_pipeline(
             # Download full video (not just audio) for top-K candidates
             # in parallel with stage 5/6. This is what the renderer needs
             # (audio_path = audio-only .m4a; specvid_path = full H.264 video).
-            spec_results = speculative.speculative_video_download(
-                source, hook_candidates, task_id,
-                log_fn=lambda m: _emit(progress, "specvid", m),
-            )
-            # Attach specvid paths to segments by candidate index
-            for i, seg in enumerate(segments):
-                spec = spec_results.get(i, {})
-                seg["specvid_path"] = spec.get("video_path")
+            if video_meta.get("source_type") == "youtube":
+                spec_results = speculative.speculative_video_download(
+                    source, hook_candidates, task_id,
+                    log_fn=lambda m: _emit(progress, "specvid", m),
+                )
+                # Attach video paths and the exact source interval represented
+                # by each padded local file.
+                for i, seg in enumerate(segments):
+                    spec = spec_results.get(i, {})
+                    seg["specvid_path"] = spec.get("video_path")
+                    if spec.get("video_path"):
+                        seg["video_source_start"] = spec.get("source_start")
+                        seg["video_source_end"] = spec.get("source_end")
 
     # Stage 5: Per-segment transcription (or use precomputed YouTube captions)
     if 5 in run_set and segments:
@@ -671,7 +676,14 @@ def run_new_pipeline(
             precomputed_transcript=precomputed_transcript,
         )
         result["stages_run"].append(5)
-        result["transcript"] = _stitch_transcripts(segments)
+        # YouTube subtitles already use source-video timestamps. Stitching
+        # them as if they were local segment transcripts duplicates and shifts
+        # every cue by each downloaded segment's offset.
+        result["transcript"] = (
+            precomputed_transcript
+            if precomputed_transcript and precomputed_transcript.get("segments")
+            else _stitch_transcripts(segments)
+        )
 
     # Stage 6: Taste/Niche select (LLM or fallback)
     final_clips: List[Dict] = []
@@ -684,25 +696,56 @@ def run_new_pipeline(
         # Enrich each taste pick with the audio_path from the matching
         # surgical segment. The taste selector doesn't know about the
         # local audio files; stage 8's renderer needs them.
+        # Enrich each taste pick with audio_path, video_path, transcript from segments
+        is_local_source = (video_meta.get("source_type") == "local") or Path(source).exists()
         for clip in final_clips:
-            if "audio_path" in clip:
-                continue
             clip_start = float(clip.get("start", -1))
-            matching = next(
-                (s for s in segments
-                 if abs(float(s.get("source_start", -1)) - clip_start) < 0.5),
-                None,
+            clip_end = float(clip.get("end", clip_start))
+            # Selection may move clip boundaries slightly from the original
+            # hook. Match the downloaded segment by interval overlap instead
+            # of requiring an almost exact start-time match.
+            matching = max(
+                (
+                    s for s in segments
+                    if min(clip_end, float(s.get("source_end", -1)))
+                    > max(clip_start, float(s.get("source_start", -1)))
+                ),
+                key=lambda s: min(clip_end, float(s.get("source_end", clip_end)))
+                - max(clip_start, float(s.get("source_start", clip_start))),
+                default=None,
             )
-            if matching and matching.get("audio_path"):
-                clip["audio_path"] = matching["audio_path"]
-                clip["source_start"] = matching.get("source_start")
-                clip["source_end"] = matching.get("source_end")
+            if matching:
+                if not clip.get("audio_path") and matching.get("audio_path"):
+                    clip["audio_path"] = matching["audio_path"]
+                # The stitched transcript is on the source video's timeline;
+                # per-segment transcripts are local and must not be compared
+                # directly with the clip's source timestamps.
+                clip["source_start"] = matching.get("source_start", clip_start)
+                clip["source_end"] = matching.get("source_end", float(clip.get("end", clip_start + 15)))
                 clip["specvid_path"] = matching.get("specvid_path")
+                clip["video_source_start"] = matching.get("video_source_start")
+                clip["video_source_end"] = matching.get("video_source_end")
+                if matching.get("video_path"):
+                    clip["video_path"] = matching["video_path"]
+            
+            # If local file, source is the original high-res video!
+            if is_local_source:
+                clip["video_path"] = source
+                clip["video_source_start"] = 0.0
+                clip["video_source_end"] = float(video_meta.get("duration_s", 0) or 999999)
+
+            if result.get("transcript"):
+                clip["transcript"] = result["transcript"]
         result["stages_run"].append(6)
 
     # Stage 7: Face detection
-    if 7 in run_set and segments:
-        segments = _run_stage_7_face_data(source, segments, progress)
+    if 7 in run_set and final_clips:
+        # Run face detection on candidate clips
+        detect_target = source if is_local_source else None
+        if not detect_target and final_clips:
+            detect_target = final_clips[0].get("specvid_path") or final_clips[0].get("audio_path")
+        if detect_target:
+            final_clips = _run_stage_7_face_data(detect_target, final_clips, progress)
         result["stages_run"].append(7)
 
     # Stage 8: Render — uses the LOCAL segment files downloaded in stage 4
@@ -745,13 +788,27 @@ def _stitch_transcripts(segments: List[Dict]) -> Dict:
         tr = seg.get("transcript", {})
         offset = seg.get("source_start", 0)
         for s in tr.get("segments", []):
+            words = []
+            for word in s.get("words", []):
+                words.append({
+                    **word,
+                    "start": round(float(word.get("start", 0)) + offset, 3),
+                    "end": round(float(word.get("end", word.get("start", 0))) + offset, 3),
+                })
             all_segments.append({
-                "start": round(s["start"] + offset, 3),
-                "end": round(s["end"] + offset, 3),
+                "start": round(float(s["start"]) + offset, 3),
+                "end": round(float(s["end"]) + offset, 3),
                 "text": s.get("text", ""),
+                "words": words,
             })
+    all_segments.sort(key=lambda item: item["start"])
+    language = next(
+        (seg.get("transcript", {}).get("language") for seg in segments
+         if seg.get("transcript", {}).get("language")),
+        "en",
+    )
     return {
         "segments": all_segments,
-        "language": "en",
+        "language": language,
         "source": "surgical",
     }

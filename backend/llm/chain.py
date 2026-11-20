@@ -19,7 +19,7 @@ energy-based heuristic via `taste.selector._fallback_selection`.
 import logging
 import os
 import time
-from threading import Lock
+from threading import RLock
 from typing import Callable, List, Optional, Tuple
 
 # Import config FIRST so load_dotenv() has run before reading env.
@@ -38,7 +38,37 @@ log = logging.getLogger(__name__)
 # --- Circuit breaker state (per-process, in-memory) ---
 # Maps provider name -> {"failures": int, "opened_at": float | None}
 _BREAKER_STATE: dict = {}
-_BREAKER_LOCK = Lock()
+_BREAKER_LOCK = RLock()
+_AVAILABLE_CLAUDE_MODELS: Optional[List[str]] = None
+
+
+def _get_available_claude_models() -> List[str]:
+    """Auto-detect valid models directly from Anthropic API to prevent 404 errors."""
+    global _AVAILABLE_CLAUDE_MODELS
+    if _AVAILABLE_CLAUDE_MODELS is not None:
+        return _AVAILABLE_CLAUDE_MODELS
+    import httpx
+    try:
+        with httpx.Client(timeout=5.0, trust_env=False) as client:
+            r = client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                },
+            )
+            if r.status_code == 200:
+                data = r.json()
+                models = [m.get("id") for m in data.get("data", []) if m.get("id")]
+                if models:
+                    _AVAILABLE_CLAUDE_MODELS = models
+                    log.info(f"Discovered available Anthropic models: {models}")
+                    return _AVAILABLE_CLAUDE_MODELS
+            else:
+                log.warning(f"Anthropic /v1/models returned HTTP {r.status_code}: {r.text[:200]}")
+    except Exception as e:
+        log.warning(f"Could not auto-fetch Anthropic models list: {e}")
+    return []
 
 
 def _breaker_key(provider_name: str) -> str:
@@ -141,67 +171,85 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             split_point = last_nl
         cacheable = prompt[:split_point]
         variable = prompt[split_point:]
-        use_cache = (
-            model_name.startswith("claude-")
-            and "haiku" in model_name
+        # Priority: tested active Haiku 4.5, then other active models from Anthropic API
+        candidate_models = ["claude-haiku-4-5-20251001", "claude-haiku-5-5"]
+        for am in _get_available_claude_models():
+            if am not in candidate_models:
+                candidate_models.append(am)
+        if model_name and model_name not in candidate_models:
+            candidate_models.append(model_name)
+
+        # Prioritize Haiku (fastest & cheapest for hook extraction) then Sonnet
+        candidate_models = sorted(
+            candidate_models,
+            key=lambda m: 0 if m == "claude-haiku-4-5-20251001" else (1 if "haiku" in m.lower() else (2 if "sonnet" in m.lower() else 3))
         )
-        with httpx.Client(timeout=120.0) as client:
-            payload = {
-                "model": model_name,
-                "max_tokens": max_out,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-            if use_cache:
-                # Build system array: system_prompt (stable, cached) +
-                # cacheable portion of user prompt (mostly-stable, cached)
-                payload["system"] = [
-                    {
-                        "type": "text",
-                        "text": system_prompt,
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                    {
-                        "type": "text",
-                        "text": cacheable,
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                ]
-                # Move the variable part of user prompt to messages
-                payload["messages"] = [{"role": "user", "content": variable}]
-            else:
-                # No cache (e.g. Sonnet) — system prompt still sent but
-                # billed at standard input rate
-                payload["system"] = system_prompt
-            r = client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json=payload,
+
+        last_error = None
+        for current_model in candidate_models:
+            use_cache = (
+                current_model.startswith("claude-")
+                and "haiku" in current_model
+                and len(cacheable) >= 4000
             )
-        if r.status_code != 200:
-            raise RuntimeError(
-                f"Claude API error {r.status_code}: {r.text[:300]}"
-            )
-        body = r.json()
-        # Record real token usage from the response
-        usage = body.get("usage", {})
-        in_tok = int(usage.get("input_tokens", 0))
-        out_tok = int(usage.get("output_tokens", 0))
-        cache_read = int(usage.get("cache_read_input_tokens", 0))
-        if in_tok or out_tok:
-            cost_control.record_call(model_name, in_tok, out_tok, cache_read=cache_read)
-            # Estimate cost and feed the router
-            est_cost = cost_control.estimate_cost_usd(
-                model_name, in_tok, out_tok, cache_read=cache_read
-            )
-            model_router.record_pick(model_name, est_cost)
-        for block in body.get("content", []):
-            if block.get("type") == "text":
-                return block.get("text", "")
-        raise RuntimeError("Claude returned no text block")
+            try:
+                print(f"[Claude] Calling Anthropic API with model: {current_model}...")
+                with httpx.Client(timeout=15.0, trust_env=False) as client:
+                    payload = {
+                        "model": current_model,
+                        "max_tokens": max_out,
+                        "messages": [{"role": "user", "content": prompt}],
+                    }
+                    if use_cache:
+                        payload["system"] = [
+                            {
+                                "type": "text",
+                                "text": system_prompt,
+                                "cache_control": {"type": "ephemeral"},
+                            },
+                            {
+                                "type": "text",
+                                "text": cacheable,
+                                "cache_control": {"type": "ephemeral"},
+                            },
+                        ]
+                        payload["messages"] = [{"role": "user", "content": variable}]
+                    else:
+                        payload["system"] = system_prompt
+                    r = client.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={
+                            "x-api-key": ANTHROPIC_API_KEY,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json",
+                        },
+                        json=payload,
+                    )
+                if r.status_code == 200:
+                    body = r.json()
+                    usage = body.get("usage", {})
+                    in_tok = int(usage.get("input_tokens", 0))
+                    out_tok = int(usage.get("output_tokens", 0))
+                    cache_read = int(usage.get("cache_read_input_tokens", 0))
+                    if in_tok or out_tok:
+                        cost_control.record_call(current_model, in_tok, out_tok, cache_read=cache_read)
+                        est_cost = cost_control.estimate_cost_usd(
+                            current_model, in_tok, out_tok, cache_read=cache_read
+                        )
+                        model_router.record_pick(current_model, est_cost)
+                    for block in body.get("content", []):
+                        if block.get("type") == "text":
+                            print(f"[Claude] SUCCESS with {current_model} (tokens: in={in_tok}, out={out_tok})")
+                            return block.get("text", "")
+                    raise RuntimeError("Claude returned no text block")
+                last_error = f"Claude API error {r.status_code}: {r.text[:300]}"
+                print(f"[Claude] Model {current_model} returned HTTP {r.status_code}: {r.text[:150]}")
+                continue
+            except Exception as exc:
+                last_error = f"Claude model {current_model} call exception: {exc}"
+                print(f"[Claude] Model {current_model} exception: {exc}")
+                continue
+        raise RuntimeError(last_error or "Claude API call failed")
 
     return _call
 

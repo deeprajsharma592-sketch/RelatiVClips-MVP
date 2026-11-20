@@ -37,6 +37,7 @@ from ..database.models import (
 )
 from ..database.session import get_session
 from ..routers.auth_router import get_current_user
+from ..utils.admin_access import is_admin_email
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
@@ -351,7 +352,7 @@ async def creator_dashboard(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Real-time data for /creators/dashboard."""
-    if user.role != "creator":
+    if user.role != "creator" and not is_admin_email(user.email):
         raise HTTPException(status_code=403, detail="This dashboard is for creator accounts only")
 
     # Profile aggregates

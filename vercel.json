@@ -1,10 +1,9 @@
 {
-  "experimentalServices": {
+  "services": {
     "relativ-backend": {
-      "type": "web",
       "root": "backend",
       "entrypoint": "main:app",
-      "routePrefix": ""
+      "framework": "fastapi"
     }
   }
 }

@@ -1,20 +1,6 @@
-/**
- * Auth client helpers.
- *
- * Why this is plain fetch (not Auth.js / NextAuth): the backend already
- * has full auth (bcrypt + JWT + sessions). Auth.js would be a second
- * layer of state to keep in sync. The simpler path: hit our backend
- * directly, let it set the HttpOnly cookie, and use /me to read state.
- *
- * Tokens are HttpOnly so JS can't read them — XSS-resistant by design.
- * The browser sends the cookie automatically on every fetch.
- *
- * All paths go through apiPath() which routes to /api/proxy/* in
- * production (same-origin, cookie sent, no CORS) and to localhost:9000
- * in dev.
- */
-
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { apiPath } from "./apiBase";
+import { getSupabaseBrowserClient } from "./supabase/client";
 
 export type UserRole = "creator" | "brand" | "clipper";
 
@@ -23,6 +9,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  can_access_creator_workspace?: boolean;
   is_verified: boolean;
   created_at: string;
   last_login_at: string | null;
@@ -31,33 +18,61 @@ export interface User {
 
 export interface AuthResponse {
   user: User;
+  needsEmailVerification?: boolean;
 }
 
-async function authFetch<T>(
-  path: string,
-  init?: RequestInit
-): Promise<T> {
-  const r = await fetch(apiPath(path), {
-    ...init,
-    credentials: "include", // send the HttpOnly cookie
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
+function toAppUser(user: SupabaseUser): User {
+  const metadata = user.user_metadata || {};
+  return {
+    id: user.id,
+    email: user.email || "",
+    name: String(metadata.name || metadata.full_name || user.email?.split("@")[0] || "Creator"),
+    // Roles and workspace access come from the backend profile, never from
+    // editable Supabase user_metadata. The backend profile replaces this after
+    // login; until then we use the least-privileged new-account default.
+    role: "creator",
+    can_access_creator_workspace: true,
+    is_verified: Boolean(user.email_confirmed_at),
+    created_at: user.created_at,
+    last_login_at: user.last_sign_in_at || null,
+    profile: {},
+  };
+}
+
+async function fetchApplicationProfile(): Promise<User | null> {
+  const response = await fetch(apiPath("/api/v1/auth/me"), {
+    credentials: "include",
+    cache: "no-store",
   });
-  if (!r.ok) {
-    let detail = `HTTP ${r.status}`;
+  if (response.status === 401) return null;
+  if (!response.ok) {
+    let detail = `Application profile unavailable (HTTP ${response.status}).`;
     try {
-      const body = await r.json();
+      const body = await response.json();
       detail = body.detail || detail;
-    } catch {
-      // body wasn't JSON
-    }
+    } catch {}
     throw new Error(detail);
   }
-  // 204 No Content (logout) returns empty
-  const text = await r.text();
-  return (text ? JSON.parse(text) : (undefined as unknown)) as T;
+  const body = await response.json() as { user: User };
+  return body.user;
+}
+
+export async function login(payload: { email: string; password: string }): Promise<AuthResponse> {
+  const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({
+    email: payload.email.trim().toLowerCase(),
+    password: payload.password,
+  });
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error("Supabase did not return a signed-in user.");
+
+  let user = toAppUser(data.user);
+  try {
+    user = (await fetchApplicationProfile()) || user;
+  } catch {
+    // Supabase Auth remains the identity source if the app database is briefly
+    // unavailable. Feature APIs report their own database connection errors.
+  }
+  return { user };
 }
 
 export async function signup(payload: {
@@ -73,36 +88,79 @@ export async function signup(payload: {
   industry?: string;
   website?: string;
   accept_tos: boolean;
+  redirectTo?: string;
 }): Promise<AuthResponse> {
-  return authFetch<AuthResponse>("/api/v1/auth/signup", {
-    method: "POST",
-    body: JSON.stringify(payload),
+  if (!payload.accept_tos) throw new Error("Please accept the Terms of Service to continue.");
+  const origin = typeof window === "undefined" ? "https://relativclips.com" : window.location.origin;
+  const next = payload.redirectTo?.startsWith("/") ? payload.redirectTo : "/creators/dashboard";
+  const { data, error } = await getSupabaseBrowserClient().auth.signUp({
+    email: payload.email.trim().toLowerCase(),
+    password: payload.password,
+    options: {
+      data: { name: payload.name.trim(), role: "creator" },
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
   });
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error("Could not create your account. Please try again.");
+  return { user: toAppUser(data.user), needsEmailVerification: !data.session };
 }
 
-export async function login(payload: {
-  email: string;
-  password: string;
-}): Promise<AuthResponse> {
-  return authFetch<AuthResponse>("/api/v1/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
+export async function signInWithGoogle(redirectTo = "/creators/dashboard") {
+  const origin = typeof window === "undefined" ? "https://relativclips.com" : window.location.origin;
+  const next = redirectTo.startsWith("/") ? redirectTo : "/creators/dashboard";
+  const { data, error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },
   });
+  if (error) throw new Error(error.message);
+  if (data.url && typeof window !== "undefined") window.location.assign(data.url);
+}
+
+export async function requestPasswordReset(email: string) {
+  const origin = typeof window === "undefined" ? "https://relativclips.com" : window.location.origin;
+  const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: `${origin}/auth/callback?next=/reset-password`,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function setNewPassword(password: string) {
+  const { error } = await getSupabaseBrowserClient().auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+}
+
+export async function resendSignupVerification(email: string) {
+  const origin = typeof window === "undefined" ? "https://relativclips.com" : window.location.origin;
+  const { error } = await getSupabaseBrowserClient().auth.resend({
+    type: "signup",
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: `${origin}/auth/callback?next=/creators/dashboard` },
+  });
+  if (error) throw new Error(error.message);
 }
 
 export async function logout(): Promise<void> {
-  await authFetch<void>("/api/v1/auth/logout", { method: "POST" });
+  const { error } = await getSupabaseBrowserClient().auth.signOut();
+  if (error) throw new Error(error.message);
 }
 
 export async function me(): Promise<AuthResponse | null> {
-  try {
-    return await authFetch<AuthResponse>("/api/v1/auth/me");
-  } catch (e: any) {
-    if (e?.message?.includes("Not authenticated") || e?.message?.includes("401")) {
-      return null;
-    }
-    throw e;
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    if (error.name === "AuthSessionMissingError") return null;
+    throw new Error(error.message);
   }
+  if (!data.user) return null;
+
+  let user = toAppUser(data.user);
+  try {
+    user = (await fetchApplicationProfile()) || user;
+  } catch {
+    // Preserve the verified Auth identity while an app-profile request retries.
+  }
+  return { user };
 }
 
 export const ROLE_LABEL: Record<UserRole, string> = {
@@ -112,7 +170,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 export const ROLE_DESCRIPTION: Record<UserRole, string> = {
-  creator: "You make long-form content. We pay clippers to turn it into viral shorts.",
-  brand: "You post campaigns and pay clippers per view. Set CPM, brief, budget.",
-  clipper: "Pro/Elite subscriber. Create clips for brand campaigns, get paid weekly.",
+  creator: "You make long-form content. We help you publish clips more consistently.",
+  brand: "Post campaigns, set a budget, and review creator submissions.",
+  clipper: "Create clips for brand campaigns and track your earnings.",
 };

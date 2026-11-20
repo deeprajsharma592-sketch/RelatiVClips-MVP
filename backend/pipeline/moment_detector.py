@@ -792,13 +792,24 @@ def detect_moments(
 
     info["source"] = "audio"
     info["audio_path"] = audio_path
-    # Use librosa to get the actual duration
+    # Use safe audio loader to get the actual duration
     try:
-        import librosa
-        y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
+        from .audio_analysis import load_audio_safely
+        y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
         info["duration_s"] = float(len(y)) / sr
     except Exception:
         info["duration_s"] = 0.0
+
+    # Try transcribing audio with Whisper so we have words for captions and moments
+    try:
+        from .transcript_fetcher import _try_whisper_transcript
+        whisper_tr = _try_whisper_transcript(audio_path, task_id, log)
+        if whisper_tr and whisper_tr.get("segments"):
+            info["transcript"] = whisper_tr
+            info["source"] = "whisper"
+            log(f"  Whisper transcription succeeded ({len(whisper_tr['segments'])} segments)")
+    except Exception as e:
+        log(f"  Whisper transcription skipped: {e}")
 
     moments = _audio_moments_from_file(audio_path, info["duration_s"])
     log(f"  Built {len(moments)} candidate moments from audio (peaks + valleys + steep)")

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Optional, Callable
 
-from ..utils.config import TEMP_DIR, YTDLP_PATH, COOKIES_PATH, get_proxy
+from ..utils.config import TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, COOKIES_PATH, get_proxy, get_cookie_args
 
 
 def _extract_video_id(url: str) -> str:
@@ -99,31 +99,32 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     import requests as _requests
     from ..utils.config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT
 
-    # --- Step 1: Try laptop (residential IP) ---
-    try:
-        laptop_url = f"{RESIDENTIAL_DOWNLOAD_URL.rstrip('/')}/subtitles"
-        log(f"  Fetching subtitles via laptop proxy: {laptop_url}")
-        resp = _requests.get(
-            laptop_url,
-            params={"url": url, "lang": "en"},
-            timeout=RESIDENTIAL_DOWNLOAD_TIMEOUT,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            vtt = data.get("vtt", "")
-            if vtt and len(vtt) > 50:
-                segments = _parse_vtt_content(vtt)
-                if segments:
-                    log(f"  Laptop proxy subtitles: {len(segments)} segments")
-                    return {"segments": segments, "language": "en", "source": "ytdlp_vtt"}
-        elif resp.status_code == 404:
-            log("  Laptop proxy: no subtitles for this video")
-        else:
-            log(f"  Laptop proxy error {resp.status_code}: {resp.text[:100]}")
-    except _requests.exceptions.ConnectionError:
-        log("  Laptop proxy unreachable — trying direct download")
-    except Exception as e:
-        log(f"  Laptop proxy error: {e}")
+    # --- Step 1: Try laptop proxy only if configured and valid ---
+    if RESIDENTIAL_DOWNLOAD_URL and "overbid-unleaded-pencil" not in RESIDENTIAL_DOWNLOAD_URL:
+        try:
+            laptop_url = f"{RESIDENTIAL_DOWNLOAD_URL.rstrip('/')}/subtitles"
+            log(f"  Fetching subtitles via laptop proxy: {laptop_url}")
+            resp = _requests.get(
+                laptop_url,
+                params={"url": url, "lang": "en"},
+                timeout=min(15, RESIDENTIAL_DOWNLOAD_TIMEOUT),
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                vtt = data.get("vtt", "")
+                if vtt and len(vtt) > 50:
+                    segments = _parse_vtt_content(vtt)
+                    if segments:
+                        log(f"  Laptop proxy subtitles: {len(segments)} segments")
+                        return {"segments": segments, "language": "en", "source": "ytdlp_vtt"}
+            elif resp.status_code == 404:
+                log("  Laptop proxy: no subtitles for this video")
+            else:
+                log(f"  Laptop proxy error {resp.status_code}: {resp.text[:100]}")
+        except _requests.exceptions.ConnectionError:
+            log("  Laptop proxy unreachable — trying direct download")
+        except Exception as e:
+            log(f"  Laptop proxy error: {e}")
 
     # --- Step 2: Fall back to direct server download ---
     subs_base = TEMP_DIR / f"{task_id}_subs"
@@ -139,33 +140,29 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
 
     cmd = [
         YTDLP_PATH,
+        "--write-subs",
         "--write-auto-subs",
-        "--sub-lang", "en",
+        "--sub-langs", "en.*,en,en-orig,en-US,en-GB",
         "--sub-format", "vtt/srt/best",
         "--skip-download",
-        "-o", str(subs_base),
+        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
+        "-o", str(subs_base) + ".%(ext)s",
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "--js-runtimes", "node",
-        "--remote-components", "ejs:github",
     ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
+    import shutil
+    if shutil.which("node"):
+        cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
 
-    _cookies_arg = None
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            _cookies_arg = _working
-        except Exception:
-            _cookies_arg = str(COOKIES_PATH)
-        cmd.extend(["--cookies", _cookies_arg])
+    cmd.extend(get_cookie_args())
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
 
-    cmd.append(url)
+    cmd.extend(["--", url])
 
     last_stderr = ""
     success = False
@@ -197,19 +194,47 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
 
     segments = []
     source = None
+    sub_file = None
 
-    if subs_vtt.exists() and subs_vtt.stat().st_size > 0:
-        log(f"  VTT subtitles found ({subs_vtt.stat().st_size} bytes)")
-        segments = _parse_vtt(str(subs_vtt))
+    vtt_candidates = list(TEMP_DIR.glob(f"{task_id}_subs*.vtt"))
+    srt_candidates = list(TEMP_DIR.glob(f"{task_id}_subs*.srt"))
+
+    # Strictly prioritize English subtitles (.en.vtt or .en.srt)
+    en_vtts = sorted([p for p in vtt_candidates if ".en" in p.name and p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+    en_srts = sorted([p for p in srt_candidates if ".en" in p.name and p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+
+    other_vtts = sorted([p for p in vtt_candidates if p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+    other_srts = sorted([p for p in srt_candidates if p.stat().st_size > 50], key=lambda p: p.stat().st_size, reverse=True)
+
+    if en_vtts:
+        sub_file = en_vtts[0]
+        log(f"  English VTT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_vtt(str(sub_file))
         source = "ytdlp_vtt"
-    elif subs_srt.exists() and subs_srt.stat().st_size > 0:
-        log(f"  SRT subtitles found ({subs_srt.stat().st_size} bytes)")
-        segments = _parse_srt(str(subs_srt))
+    elif en_srts:
+        sub_file = en_srts[0]
+        log(f"  English SRT subtitles found: {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_srt(str(sub_file))
+        source = "ytdlp_srt"
+    elif other_vtts:
+        sub_file = other_vtts[0]
+        log(f"  VTT subtitles found (non-English): {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_vtt(str(sub_file))
+        source = "ytdlp_vtt"
+    elif other_srts:
+        sub_file = other_srts[0]
+        log(f"  SRT subtitles found (non-English): {sub_file.name} ({sub_file.stat().st_size} bytes)")
+        segments = _parse_srt(str(sub_file))
         source = "ytdlp_srt"
 
     if segments:
-        log(f"  Parsed {len(segments)} subtitle segments")
-        return {"segments": segments, "language": "en", "source": source}
+        lang = "en"
+        if sub_file:
+            parts = sub_file.name.split(".")
+            if len(parts) >= 3:
+                lang = parts[-2]
+        log(f"  Parsed {len(segments)} subtitle segments ({lang})")
+        return {"segments": segments, "language": lang, "source": source}
 
     log("  Subtitles file empty or unparseable")
     return None
@@ -219,30 +244,65 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
     """Fall back to faster-whisper local transcription."""
     log("  Running faster-whisper on audio...")
     try:
+        try:
+            import av
+            if not hasattr(av, "_patched_metadata_errors"):
+                _orig_av_open = av.open
+                def _safe_av_open(*args, **kwargs):
+                    kwargs.pop("metadata_errors", None)
+                    return _orig_av_open(*args, **kwargs)
+                av.open = _safe_av_open
+                av._patched_metadata_errors = True
+        except Exception:
+            pass
+
         from faster_whisper import WhisperModel
         from ..utils.config import WHISPER_MODEL, WHISPER_COMPUTE_TYPE
         from ..utils.vram_manager import get_vram_usage, clear_gpu
 
         vram = get_vram_usage()
-        if not vram.get("cuda_available"):
-            log("  No CUDA GPU available, cannot run Whisper")
-            return None
-
-        model = WhisperModel(WHISPER_MODEL, device="cuda", compute_type=WHISPER_COMPUTE_TYPE)
-        segments, info = model.transcribe(
-            audio_path,
-            beam_size=5,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
-        )
+        device = "cuda" if vram.get("cuda_available") else "cpu"
+        compute_type = WHISPER_COMPUTE_TYPE if device == "cuda" else "int8"
+        try:
+            model = WhisperModel(WHISPER_MODEL, device=device, compute_type=compute_type)
+        except Exception as init_err:
+            log(f"  Whisper {device} init failed ({init_err}), running on CPU...")
+            model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+        try:
+            segments, info = model.transcribe(
+                audio_path,
+                beam_size=5,
+                word_timestamps=True,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500),
+            )
+        except Exception as vad_err:
+            log(f"  Whisper VAD failed ({vad_err}), retrying without VAD filter...")
+            segments, info = model.transcribe(
+                audio_path,
+                beam_size=5,
+                word_timestamps=True,
+                vad_filter=False,
+            )
 
         segment_list = []
         for seg in segments:
-            segment_list.append({
+            seg_dict = {
                 "start": round(seg.start, 3),
                 "end": round(seg.end, 3),
                 "text": seg.text.strip(),
-            })
+            }
+            if getattr(seg, "words", None):
+                seg_dict["words"] = [
+                    {
+                        "word": w.word.strip(),
+                        "start": round(w.start, 3),
+                        "end": round(w.end, 3),
+                    }
+                    for w in seg.words
+                    if w.word.strip()
+                ]
+            segment_list.append(seg_dict)
 
         clear_gpu()
         log(f"  Whisper transcribed: {len(segment_list)} segments in {info.language}")
@@ -257,7 +317,7 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
 
 def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
     """Download audio from a URL using yt-dlp."""
-    audio_path = TEMP_DIR / f"{task_id}_audio.m4a"
+    audio_path = TEMP_DIR / f"{task_id}_audio.wav"
 
     if audio_path.exists():
         try:
@@ -267,30 +327,25 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
 
     cmd = [
         YTDLP_PATH,
-        "-f", "bestaudio/best",
+        "-f", "ba/b/bestaudio/best",
         "--extract-audio",
-        "--audio-format", "m4a",
+        "--audio-format", "wav",
         "--audio-quality", "0",
+        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
         "-o", str(audio_path),
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        url,
     ]
+    if FFMPEG_PATH:
+        cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
 
-    _cookies_arg = None
-    if COOKIES_PATH and COOKIES_PATH.exists():
-        import shutil
-        _working = "/tmp/youtube_cookies_working.txt"
-        try:
-            shutil.copy2(str(COOKIES_PATH), _working)
-            _cookies_arg = _working
-        except Exception:
-            _cookies_arg = str(COOKIES_PATH)
-        cmd.extend(["--cookies", _cookies_arg])
+    cmd.extend(get_cookie_args())
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
+
+    cmd.extend(["--", url])
 
     try:
         log("  Downloading audio...")

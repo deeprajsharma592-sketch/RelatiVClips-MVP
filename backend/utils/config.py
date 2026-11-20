@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import List, Optional, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,14 +12,10 @@ TEMP_DIR = BASE_DIR / "temp"
 # Sibling to outputs/temp, persisted across restarts, 7d TTL.
 CACHE_DIR = BASE_DIR / "cache"
 
-# === Residential Downloader (Deepraj's Windows laptop) ===
-# ngrok tunnel: run "ngrok http 8765" on laptop, paste the Forwarding URL here.
-# Update this whenever ngrok restarts (free tier = new URL each time).
-RESIDENTIAL_DOWNLOAD_URL = os.getenv(
-    "RESIDENTIAL_DOWNLOAD_URL",
-    "https://overbid-unleaded-pencil.ngrok-free.dev"
-)
-RESIDENTIAL_DOWNLOAD_TIMEOUT = int(os.getenv("RESIDENTIAL_DOWNLOAD_TIMEOUT", "300"))
+# === Residential Downloader ===
+# Empty by default so local runs execute yt-dlp directly on the host machine.
+RESIDENTIAL_DOWNLOAD_URL = os.getenv("RESIDENTIAL_DOWNLOAD_URL", "")
+RESIDENTIAL_DOWNLOAD_TIMEOUT = int(os.getenv("RESIDENTIAL_DOWNLOAD_TIMEOUT", "30"))
 
 OUTPUTS_DIR.mkdir(exist_ok=True)
 TEMP_DIR.mkdir(exist_ok=True)
@@ -31,9 +28,9 @@ VRAM_MODEL_LIMIT_GB = MAX_VRAM_GB - VRAM_BUFFER_GB
 MAX_CONCURRENT_TASKS = 1
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-# Default to Haiku 4.5 — fastest, cheapest, good enough for structured hook selection.
-# Override with CLAUDE_MODEL=claude-3-5-sonnet-20241022 etc. in .env if you want quality.
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+# Default to Claude 3.5 Haiku — fast, economical, excellent for viral hook selection.
+# Override with CLAUDE_MODEL=claude-3-5-sonnet-20241022 in .env if you want elite depth.
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
 
 # --- DeepSeek API (cheaper alternative to Claude, ~30x cheaper) ---
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
@@ -79,8 +76,8 @@ RUNPOD_WHISPER_MODEL = os.getenv("RUNPOD_WHISPER_MODEL", "turbo")
 #   auto = use RunPod if key+id are set, else local faster-whisper
 TRANSCRIPTION_PROVIDER = os.getenv("TRANSCRIPTION_PROVIDER", "auto").lower().strip()
 
-WHISPER_MODEL = "base"
-WHISPER_COMPUTE_TYPE = "int8"  # CPU-friendly int8 quantization
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "turbo")
+WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
 
 TARGET_SAMPLE_RATE = 16000
 CLIP_DURATION_MIN = 10
@@ -119,9 +116,9 @@ STEEP_MIN_RELATIVE_RISE = float(os.getenv("STEEP_MIN_RELATIVE_RISE", "0.3"))
 CROP_WIDTH = 608
 CROP_HEIGHT = 1080
 
-FFMPEG_PRESET = "p5"
-FFMPEG_CQ = 28
-FFMPEG_AUDIO_BITRATE = "128k"
+FFMPEG_PRESET = "fast"
+FFMPEG_CQ = 16
+FFMPEG_AUDIO_BITRATE = "256k"
 
 # BUGFIX 2026-06-15: 24h was too short — users come back to "download my
 # clips" pages and find them gone. 7d is the sweet spot for a free tier
@@ -143,15 +140,23 @@ BGUTIL_POT_BASE_URL = os.getenv("BGUTIL_POT_BASE_URL", "http://127.0.0.1:4416")
 # (no proxy). Set to e.g. "socks5://user:pass@home-ip:1080" at deploy time.
 YT_PROXY = os.getenv("YT_PROXY", "")
 
-FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
-FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
+import shutil as _shutil
+
+FFMPEG_PATH = os.getenv("FFMPEG_PATH") or _shutil.which("ffmpeg") or "ffmpeg"
+FFPROBE_PATH = os.getenv("FFPROBE_PATH") or _shutil.which("ffprobe") or "ffprobe"
 # Pin to venv-installed yt-dlp (2026+ has --js-runtimes, --remote-components
 # needed for YouTube's 2025+ challenge solver). System /usr/bin/yt-dlp is
 # typically the old 2024 version from apt and breaks.
-import shutil as _shutil
-_DEFAULT_YTDLP = _shutil.which("yt-dlp") or "yt-dlp"
+import sys
+_py_dir = Path(sys.executable).parent
+_cand_venv = _py_dir / ("yt-dlp.exe" if sys.platform == "win32" else "yt-dlp")
+if _cand_venv.exists():
+    _DEFAULT_YTDLP = str(_cand_venv)
+else:
+    _DEFAULT_YTDLP = _shutil.which("yt-dlp") or "yt-dlp"
+
 _VENV_YTDLP = "/app/RelatiV/backend/.venv/bin/yt-dlp"
-if __import__("os").path.exists(_VENV_YTDLP):
+if os.path.exists(_VENV_YTDLP):
     _DEFAULT_YTDLP = _VENV_YTDLP
 YTDLP_PATH = os.getenv("YTDLP_PATH", _DEFAULT_YTDLP)
 
@@ -168,7 +173,66 @@ PARALLEL_SURGICAL_WORKERS = int(os.getenv("PARALLEL_SURGICAL_WORKERS", "3"))
 AUDIO_FALLBACK_LIMIT_MB = 50
 SURGICAL_BUFFER_SECONDS = 10
 
-COOKIES_PATH = BASE_DIR / "cookies.txt"
+_possible_cookies = [
+    Path(os.getenv("COOKIES_PATH", "")) if os.getenv("COOKIES_PATH") else None,
+    BASE_DIR / "cookies.txt",
+    BASE_DIR / "backend" / "cookies.txt",
+    BASE_DIR.parent / "cookies.txt",
+    Path.home() / "Documents" / "youtube_cookies.txt",
+    Path.home() / "youtube_cookies.txt",
+    Path(r"C:\Users\Deepraj sharma\Documents\youtube_cookies.txt"),
+    Path(r"C:\Users\DEEPRAJ\Documents\youtube_cookies.txt"),
+]
+COOKIES_PATH = next((p for p in _possible_cookies if p and p.exists()), BASE_DIR / "cookies.txt")
+
+_CACHED_COOKIE_ARGS: Optional[List[str]] = None
+
+def get_cookie_args() -> List[str]:
+    """Returns the yt-dlp arguments for cookies.
+    1. Checks if a known cookies.txt exists on disk.
+    2. If not found, attempts to extract from Chrome / Edge to BASE_DIR / 'cookies.txt'.
+    3. Caches the result so subsequent calls never incur disk / subprocess overhead.
+    """
+    global _CACHED_COOKIE_ARGS
+    if _CACHED_COOKIE_ARGS is not None:
+        return list(_CACHED_COOKIE_ARGS)
+
+    import subprocess
+    import shutil
+
+    for p in _possible_cookies:
+        if p and p.exists() and p.stat().st_size > 100:
+            _working = TEMP_DIR / "youtube_cookies_working.txt"
+            try:
+                shutil.copy2(str(p), str(_working))
+                _CACHED_COOKIE_ARGS = ["--cookies", str(_working)]
+                return list(_CACHED_COOKIE_ARGS)
+            except Exception:
+                _CACHED_COOKIE_ARGS = ["--cookies", str(p)]
+                return list(_CACHED_COOKIE_ARGS)
+
+    # Attempt automatic extraction into BASE_DIR / "cookies.txt"
+    target = BASE_DIR / "cookies.txt"
+    for b in ("chrome", "edge", "brave", "firefox"):
+        try:
+            cmd = [
+                YTDLP_PATH,
+                "--cookies-from-browser", b,
+                "--cookies", str(target),
+                "--skip-download",
+                "https://www.youtube.com",
+            ]
+            res = subprocess.run(cmd, capture_output=True, timeout=10)
+            if target.exists() and target.stat().st_size > 100:
+                print(f"[Cookies] Extracted YouTube cookies from {b} to {target}")
+                _CACHED_COOKIE_ARGS = ["--cookies", str(target)]
+                return list(_CACHED_COOKIE_ARGS)
+        except Exception:
+            pass
+
+    # If extraction is unavailable or DPAPI blocked, return empty list
+    _CACHED_COOKIE_ARGS = []
+    return []
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 VISION_ENABLED = os.getenv("VISION_ENABLED", "false").lower() == "true"

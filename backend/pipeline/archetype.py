@@ -275,24 +275,49 @@ def _count_phrases(text_lower: str, phrases: List[str]) -> int:
     return total
 
 
-def detect_archetype(transcript: Dict) -> ArchetypeResult:
+ARCHETYPE_ALIASES: Dict[str, str] = {
+    "podcast": "story",
+    "interview": "debate",
+    "streamer": "reaction",
+    "gaming": "reaction",
+    "educational": "tutorial",
+    "talking_head": "lecture",
+    "captions": "general",
+    "reframe": "general",
+    "broll": "reaction",
+    "advertisers": "listicle",
+    "realestate": "story",
+    "entertainment": "reaction",
+    "agencies": "tutorial",
+    "church": "story",
+    "marketers": "tutorial",
+    "ecommerce": "listicle",
+}
+
+
+def detect_archetype(transcript: Dict, explicit_override: str | None = None) -> ArchetypeResult:
     """
     Detect the narrative archetype from a transcript dict.
 
     The transcript is expected to have a 'segments' list (from YouTube
     captions or Whisper). Each segment has 'text'. We can also accept
     a flat 'text' field.
-
-    Algorithm:
-      1. Concatenate all text into one string.
-      2. For each archetype, count weighted marker matches across
-         marker categories.
-      3. Normalise by word count to make transcripts comparable.
-      4. Pick the archetype with the highest normalised score.
-      5. Confidence = (top - second) / (top + 1e-6), clamped to [0, 1].
     """
     if not transcript:
         return ArchetypeResult(primary="general", confidence=0.0)
+
+    # Check for explicit override passed directly or inside transcript dict
+    override = explicit_override or transcript.get("template") or transcript.get("archetype")
+    if override and isinstance(override, str):
+        cleaned = override.strip().lower()
+        resolved = ARCHETYPE_ALIASES.get(cleaned, cleaned)
+        if resolved in _ARCHETYPE_MARKERS or resolved in ["story", "tutorial", "listicle", "reaction", "debate", "lecture", "general"]:
+            return ArchetypeResult(
+                primary=resolved,
+                confidence=1.0,
+                distribution={resolved: 1.0},
+                raw_counts={resolved: 100},
+            )
 
     # Extract text
     segments = transcript.get("segments") or []

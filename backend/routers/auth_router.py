@@ -28,7 +28,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth_utils import (
@@ -51,6 +51,8 @@ from ..database.models import (
 )
 from ..database.session import get_session
 from ..services.anonymized_logger import hash_ip as _hash_ip_from_logger  # noqa: F401  (kept for consistency)
+from ..services.supabase_auth import get_verified_supabase_user, is_supabase_auth_configured
+from ..utils.admin_access import is_admin_email
 
 import logging as _logging
 log = _logging.getLogger("relativ.auth")
@@ -90,6 +92,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     role: str
+    can_access_creator_workspace: bool = False
     is_verified: bool
     created_at: str
     last_login_at: Optional[str] = None
@@ -120,6 +123,9 @@ def _user_to_response(user: UserModel, profile_row) -> UserResponse:
         email=user.email,
         name=user.name,
         role=user.role,
+        can_access_creator_workspace=(
+            user.role == UserRole.CREATOR.value or is_admin_email(user.email)
+        ),
         is_verified=user.is_verified,
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
@@ -149,6 +155,67 @@ async def get_current_user(
 ) -> UserModel:
     """FastAPI dependency: extract the user from the session cookie. Returns
     the UserModel or raises 401. Used by protected endpoints."""
+    authorization = request.headers.get("authorization", "")
+    scheme, _, bearer_token = authorization.partition(" ")
+    if scheme.lower() == "bearer" and bearer_token.strip():
+        identity = await get_verified_supabase_user(bearer_token.strip())
+        auth_user_id = str(identity["id"])
+        email = str(identity["email"]).strip().lower()
+        confirmed_at = identity.get("email_confirmed_at") or identity.get("confirmed_at")
+
+        user = (await session.execute(
+            select(UserModel).where(UserModel.auth_user_id == auth_user_id)
+        )).scalar_one_or_none()
+        if user is None:
+            # Link existing legacy rows by verified email, preserving all their
+            # marketplace foreign keys and profile data.
+            user = (await session.execute(
+                select(UserModel).where(func.lower(UserModel.email) == email)
+            )).scalar_one_or_none()
+
+        if user is None:
+            user = UserModel(
+                id=auth_user_id,
+                auth_user_id=auth_user_id,
+                email=email,
+                hashed_password=None,
+                role=UserRole.CREATOR.value,
+                name=str((identity.get("user_metadata") or {}).get("name") or email.split("@")[0]),
+                is_active=True,
+                is_verified=bool(confirmed_at),
+                created_at=datetime.utcnow(),
+                email_verified_at=datetime.utcnow() if confirmed_at else None,
+            )
+            session.add(user)
+            await session.flush()
+            session.add(CreatorProfileModel(user_id=user.id))
+        else:
+            if user.auth_user_id and user.auth_user_id != auth_user_id:
+                raise HTTPException(status_code=409, detail="This account is linked to a different sign-in identity")
+            user.auth_user_id = auth_user_id
+            user.email = email
+            user.hashed_password = None
+            if confirmed_at:
+                user.is_verified = True
+                if not user.email_verified_at:
+                    user.email_verified_at = datetime.utcnow()
+            if not user.name:
+                user.name = str((identity.get("user_metadata") or {}).get("name") or email.split("@")[0])
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="This account is disabled")
+        if not confirmed_at:
+            await session.commit()
+            raise HTTPException(status_code=403, detail="Verify your email before using RelatiV")
+        user.last_login_at = datetime.utcnow()
+        await session.commit()
+        return user
+
+    if is_supabase_auth_configured():
+        # A stale legacy cookie must not keep authorizing protected actions
+        # after this deployment has switched its identity provider.
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     token = get_session_cookie(request)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -198,10 +265,14 @@ async def signup(
     session: AsyncSession = Depends(get_session),
 ):
     """Create a new user with role-specific profile, issue a session cookie."""
+    if is_supabase_auth_configured():
+        raise HTTPException(status_code=410, detail="Sign up is managed by Supabase Auth")
     if body.role not in (r.value for r in UserRole):
         raise HTTPException(status_code=400, detail=f"role must be one of: creator, brand, clipper")
     if not body.accept_tos:
         raise HTTPException(status_code=400, detail="You must accept the Terms of Service")
+    if is_admin_email(body.email) and len(body.password) < 12:
+        raise HTTPException(status_code=400, detail="Founder accounts require a password of at least 12 characters")
 
     # Reject duplicate email
     existing = (await session.execute(
@@ -210,12 +281,16 @@ async def signup(
     if existing:
         raise HTTPException(status_code=409, detail="An account with this email already exists")
 
+    # Founder identities always get the creator workspace as well as the
+    # separate server-authorized admin workspace.
+    effective_role = UserRole.CREATOR.value if is_admin_email(body.email) else body.role
+
     # Create user
     user = UserModel(
         id=str(uuid.uuid4()),
         email=body.email.lower(),
         hashed_password=hash_password(body.password),
-        role=body.role,
+        role=effective_role,
         name=body.name,
         is_verified=False,
         created_at=datetime.utcnow(),
@@ -224,21 +299,21 @@ async def signup(
     await session.flush()  # populate user.id
 
     # Create role-specific profile
-    if body.role == UserRole.CREATOR.value:
+    if effective_role == UserRole.CREATOR.value:
         session.add(CreatorProfileModel(
             user_id=user.id,
             handle=body.handle or None,
             primary_platform=body.primary_platform or None,
             channel_url=body.channel_url or None,
         ))
-    elif body.role == UserRole.BRAND.value:
+    elif effective_role == UserRole.BRAND.value:
         session.add(BrandProfileModel(
             user_id=user.id,
             company_name=body.company_name or None,
             website=body.website or None,
             industry=body.industry or None,
         ))
-    elif body.role == UserRole.CLIPPER.value:
+    elif effective_role == UserRole.CLIPPER.value:
         session.add(ClipperProfileModel(
             user_id=user.id,
             handle=body.handle or None,
@@ -248,8 +323,9 @@ async def signup(
     # Issue token + persist session
     user_agent = request.headers.get("user-agent", "")[:500]
     ip_h = hash_ip(request.client.host if request.client else "unknown")
+    session_ttl_days = 1 if is_admin_email(user.email) else None
     token, jti, expires = create_access_token(
-        user_id=user.id, role=user.role, email=user.email
+        user_id=user.id, role=user.role, email=user.email, ttl_days=session_ttl_days
     )
     session.add(SessionModel(
         id=secrets.token_urlsafe(32),
@@ -272,8 +348,8 @@ async def signup(
 
     await session.commit()
 
-    set_session_cookie(response, token)
-    log.info("user.signup", extra={"role": body.role, "user_id": user.id})
+    set_session_cookie(response, token, ttl_days=session_ttl_days)
+    log.info("user.signup", extra={"role": effective_role, "user_id": user.id})
 
     # Send the welcome + verification email in the background. Failure to
     # send doesn't fail signup (the user can resend from /account).
@@ -283,7 +359,7 @@ async def signup(
     except Exception as e:
         log.warning(f"welcome_email.failed user_id={user.id} err={e}")
 
-    profile = await _get_profile_for_role(session, user.id, body.role)
+    profile = await _get_profile_for_role(session, user.id, effective_role)
     return AuthResponse(user=_user_to_response(user, profile))
 
 
@@ -295,6 +371,8 @@ async def login(
     session: AsyncSession = Depends(get_session),
 ):
     """Verify password, issue a new session cookie."""
+    if is_supabase_auth_configured():
+        raise HTTPException(status_code=410, detail="Sign in is managed by Supabase Auth")
     user = (await session.execute(
         select(UserModel).where(UserModel.email == body.email.lower())
     )).scalar_one_or_none()
@@ -304,8 +382,9 @@ async def login(
 
     user_agent = request.headers.get("user-agent", "")[:500]
     ip_h = hash_ip(request.client.host if request.client else "unknown")
+    session_ttl_days = 1 if is_admin_email(user.email) else None
     token, jti, expires = create_access_token(
-        user_id=user.id, role=user.role, email=user.email
+        user_id=user.id, role=user.role, email=user.email, ttl_days=session_ttl_days
     )
     session.add(SessionModel(
         id=secrets.token_urlsafe(32),
@@ -319,7 +398,7 @@ async def login(
     user.last_login_at = datetime.utcnow()
     await session.commit()
 
-    set_session_cookie(response, token)
+    set_session_cookie(response, token, ttl_days=session_ttl_days)
     log.info("user.login", extra={"user_id": user.id, "role": user.role})
 
     profile = await _get_profile_for_role(session, user.id, user.role)
@@ -334,6 +413,9 @@ async def logout(
 ):
     """Revoke the current session and clear the cookie."""
     token = get_session_cookie(request)
+    if not token:
+        clear_session_cookie(response)
+        return Response(status_code=204)
     if token:
         try:
             claims = decode_access_token(token)
@@ -355,10 +437,13 @@ async def logout(
 @router.get("/me", response_model=AuthResponse)
 async def me(
     request: Request,
-    user: UserModel = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Return the current user. 401 if no/invalid session."""
+    authorization = request.headers.get("authorization", "")
+    if not get_session_cookie(request) and not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user = await get_current_user(request, session)
     profile = await _get_profile_for_role(session, user.id, user.role)
     return AuthResponse(user=_user_to_response(user, profile))
 

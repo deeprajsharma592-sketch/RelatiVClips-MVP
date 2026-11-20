@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
 const FOOTER_COLS = [
@@ -27,8 +28,7 @@ const FOOTER_COLS = [
     links: [
       { href: "/about", label: "About" },
       { href: "/contact", label: "Contact" },
-      { href: "/", label: "Changelog" },
-      { href: "/", label: "Blog" },
+      { href: "/blog", label: "Blog" },
     ],
   },
   {
@@ -50,6 +50,17 @@ const SOCIAL = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
+  const isAppOrAuthRoute =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/onboarding") ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password";
+
+  if (isAppOrAuthRoute) return null;
+
   return (
     <footer
       className="relative overflow-hidden"
@@ -152,7 +163,7 @@ export default function Footer() {
             {FOOTER_COLS.map((col) => (
               <div key={col.title}>
                 <p
-                  className="text-[11px] font-mono uppercase tracking-wider mb-4"
+                  className="text-[11px] font-sans font-semibold uppercase tracking-wider mb-4"
                   style={{ color: "var(--color-text-muted)" }}
                 >
                   {col.title}
@@ -190,7 +201,7 @@ export default function Footer() {
               className="text-[11px]"
               style={{ color: "var(--color-text-muted)", opacity: 0.7 }}
             >
-              Built in Assam, India · deployed globally
+              Built in Bengaluru
             </p>
           </div>
 

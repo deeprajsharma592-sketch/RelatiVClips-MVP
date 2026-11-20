@@ -1,133 +1,38 @@
 "use client";
 
 /**
- * /plans — unified pricing for all 3 sides of the marketplace.
+ * /plans — RelatiV Clips Creator Pricing
  *
- * Re-skinned in v5.1 to match the cream-glass aesthetic.
- *
- * - Clippers (3 tiers: Starter, Pro, Elite) — what to pay RelatiV
- * - Brands (3 tiers: Pilot, Run a Campaign, Scale) — what to pay RelatiV
- * - Creators (free, no tier) — earn from brands posting campaigns on their content
- *
- * Stripe wiring (v7 — tier 1.3):
- *   When a clipper/creator user is signed in AND Stripe is configured on
- *   the backend, the "Pro" and "Elite" tier CTAs trigger real Stripe
- *   Checkout instead of linking to the apply page. The Stripe status
- *   banner at the top of the clipper section explains when this is live.
+ * Streamlined creator-only pricing architecture:
+ * - 3 Creator Plans: Go (₹499/mo), Pro (₹899/mo — Featured), Premium (₹1,999/mo)
+ * - Zero audience selector / tabs: Clean, immediate display of creator plans
+ * - Enterprise scale callout for 150+ clips / team accounts
+ * - Creator-focused FAQ accordion
+ * - Final 20-minute consultation CTA
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Check, ChevronDown, ArrowRight, Sparkles, Loader2, CreditCard } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ArrowRight,
+  Loader2,
+  CreditCard,
+  MessageSquare,
+  HelpCircle,
+} from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { createCheckout, getBillingConfig, type BillingConfig } from "@/lib/api";
-
-type Side = "clippers" | "brands" | "creators" | "agencies";
-
-interface AgencyVolume {
-  clipsPerMonth: number;
-  perClip: number;            // ₹ per clip
-  marginPct: number;          // our net margin at this volume
-  bestFor: string;
-  features: string[];
-  highlight?: boolean;        // most popular sweet-spot
-  cta: string;
-}
-
-const AGENCY_VOLUMES: AgencyVolume[] = [
-  {
-    clipsPerMonth: 100,
-    perClip: 20,
-    marginPct: 85,
-    bestFor: "Solo agency, 1-2 clients",
-    features: [
-      "All Premium features unlocked",
-      "Bulk upload (10 videos at once)",
-      "Email support, 24h response",
-    ],
-    cta: "Start at 100/mo",
-  },
-  {
-    clipsPerMonth: 250,
-    perClip: 16,
-    marginPct: 81,
-    bestFor: "Boutique agency, 3-5 clients",
-    features: [
-      "Everything in 100/mo, plus:",
-      "Multi-seat dashboard (3 seats)",
-      "White-label clip delivery",
-      "Priority render queue",
-    ],
-    cta: "Start at 250/mo",
-  },
-  {
-    clipsPerMonth: 500,
-    perClip: 13,
-    marginPct: 77,
-    bestFor: "Mid-size agency, 5-15 clients",
-    features: [
-      "Everything in 250/mo, plus:",
-      "Multi-seat dashboard (10 seats)",
-      "Dedicated Slack channel",
-      "Quarterly AI taste-tuning session",
-    ],
-    cta: "Start at 500/mo",
-    highlight: true,
-  },
-  {
-    clipsPerMonth: 1000,
-    perClip: 10,
-    marginPct: 70,
-    bestFor: "Large agency, 15-30 clients",
-    features: [
-      "Everything in 500/mo, plus:",
-      "Multi-seat dashboard (25 seats)",
-      "Custom AI hooks (your brand voice)",
-      "Quarterly business review",
-    ],
-    cta: "Start at 1,000/mo",
-  },
-  {
-    clipsPerMonth: 2500,
-    perClip: 7.5,
-    marginPct: 60,
-    bestFor: "Enterprise agency, multi-team",
-    features: [
-      "Everything in 1,000/mo, plus:",
-      "Unlimited seats",
-      "Reserved GPU lane (no queue)",
-      "Net-30 invoicing",
-    ],
-    cta: "Start at 2,500/mo",
-  },
-  {
-    clipsPerMonth: 5000,
-    perClip: 6,
-    marginPct: 50,
-    bestFor: "Holding-co / white-label reseller",
-    features: [
-      "Everything in 2,500/mo, plus:",
-      "Annual commit (10% extra discount)",
-      "Co-branded onboarding",
-      "Named CSM + 4h SLA",
-    ],
-    cta: "Start at 5,000/mo",
-  },
-  {
-    clipsPerMonth: 10000,
-    perClip: 0, // custom
-    marginPct: 55,
-    bestFor: "10K+ clips/mo — let's talk",
-    features: [
-      "Custom per-clip rate (volume-based)",
-      "Custom SLA + data residency",
-      "On-prem option available",
-      "Direct line to founders",
-    ],
-    cta: "Talk to us",
-  },
-];
+import { getAppDashboardUrl } from "@/lib/domain";
+import {
+  createRazorpayOrder,
+  openRazorpayCheckout,
+  verifyRazorpayPayment,
+  type RazorpayPayment,
+} from "@/lib/razorpay";
 
 interface Tier {
   name: string;
@@ -139,1034 +44,474 @@ interface Tier {
   bestFor: string;
   features: string[];
   cpmHint?: string;
-  // When set, the CTA button triggers Stripe Checkout for this plan
-  // instead of navigating to the href. Only applies to signed-in
-  // clipper/creator accounts.
-  stripePlan?: "clipper_pro" | "clipper_elite" | "creator_go" | "creator_pro" | "creator_premium" | "creator_enterprise";
-  // Per-clip quota or pay-as-you-go marker (creator tiers)
+  planKey?:
+    | "creator_go"
+    | "creator_pro"
+    | "creator_premium"
+    | "creator_enterprise";
   clipsIncluded?: number;
-  perClipPrice?: string;
-  // Margin / cost transparency shown under the price
-  unitCost?: string;
 }
 
 const CREATOR_TIERS: Tier[] = [
   {
-    name: "Go",
-    price: "₹499",
+    name: "Starter",
+    price: "$5.99",
     unit: "/month",
-    cta: "Start Go",
-    href: "/signup?plan=creator_go",
-    bestFor: "Solo creators, dipping your toes in",
-    clipsIncluded: 20,
+    cta: "Get Starter",
+    href: "/signup?plan=creator_starter",
+    bestFor: "Solo creators dipping toes in",
+    clipsIncluded: 40,
     features: [
-      "20 AI-generated clips per month",
-      "Vertical 9:16 rendering, hardcoded captions",
-      "Hook detection from energy + transcript",
-      "3 YouTube channels connected",
-      "Standard rendering queue (no priority)",
-      "UPI / card billing",
+      "40 viral clips / month",
+      "AI virality scoring & hook detection",
+      "9:16 vertical dynamic face framing",
+      "Karaoke word-by-word subtitles",
+      "No RelatiV watermark",
+      "Up to 30 min source video length",
+      "Global card billing (Visa, Mastercard, Amex)",
     ],
-    stripePlan: "creator_go",
+    planKey: "creator_go",
   },
   {
-    name: "Pro",
-    price: "₹899",
+    name: "Pro Studio",
+    price: "$11.99",
     unit: "/month",
-    cta: "Go Pro",
+    cta: "Get Pro Studio",
     href: "/signup?plan=creator_pro",
     highlight: true,
-    bestFor: "Active creators, 2-3 videos / week",
-    clipsIncluded: 50,
-    cpmHint: "Best value · 67% margin",
+    bestFor: "Active creators shipping 2-3 videos/week",
+    clipsIncluded: 90,
+    cpmHint: "Best value · 90 clips/mo",
     features: [
-      "50 AI-generated clips per month",
-      "AI taste-select (DeepSeek V3) on every video",
-      "Auto-caption + viral-title generation",
-      "10 YouTube channels + upload-from-device",
-      "Priority render queue (3× faster)",
-      "A/B hook variants (3 per clip)",
-      "Email + Discord support",
+      "90 viral clips / month",
+      "All 4 Content Archetypes (Streamer, Gaming, Podcast, Edu)",
+      "1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)",
+      "Auto B-roll insertion & AI Emojis",
+      "Fast priority GPU processing queue",
+      "Up to 90 min source video length",
+      "Priority Discord & Email support",
     ],
-    stripePlan: "creator_pro",
+    planKey: "creator_pro",
   },
   {
-    name: "Premium",
-    price: "₹1,999",
-    unit: "/month",
-    cta: "Go Premium",
-    href: "/signup?plan=creator_premium",
-    bestFor: "Agencies, podcast networks, power creators",
-    clipsIncluded: 150,
-    cpmHint: "Lowest per-clip · 70% margin",
-    features: [
-      "150 AI-generated clips per month",
-      "Everything in Pro, plus:",
-      "Custom branding (logo, color, font on captions)",
-      "Reserved GPU lane (10× faster transcription)",
-      "Team seats (up to 5)",
-      "Priority support — 4h response SLA",
-      "Quarterly strategy call with founders",
-    ],
-    stripePlan: "creator_premium",
-  },
-  {
-    name: "Enterprise",
-    price: "₹25",
-    unit: "/clip",
-    cta: "Start pay-as-you-go",
+    name: "Agency & Brand",
+    price: "Custom",
+    unit: "",
+    cta: "Contact us",
     href: "/contact?intent=enterprise",
-    bestFor: "Brands, one-offs, no commitment",
-    perClipPrice: "₹25 per clip · billed monthly",
-    cpmHint: "88% margin · 8× cost recovery",
+    bestFor: "Media houses, podcast networks, power creators",
+    clipsIncluded: 999,
+    cpmHint: "Unlimited capacity",
     features: [
-      "Pay only for what you generate",
-      "Volume discount past 100 clips / month",
-      "Every feature, pay-as-you-go",
-      "Dedicated account manager (10K+ clips / mo)",
-      "SOC2 / contract review on request",
-      "Custom SLA + data residency",
+      "Unlimited clips & source hours",
+      "Team seats & shared brand templates",
+      "Dedicated GPU compute instance",
+      "Custom subtitle typography & branding",
+      "API & Webhook integrations",
+      "Dedicated account manager & SLA",
     ],
-    stripePlan: "creator_enterprise",
+    planKey: "creator_premium",
   },
 ];
 
-const CLIPPER_TIERS: Tier[] = [
+const CREATOR_FAQS = [
   {
-    name: "Starter", price: "$0", unit: "/month", cta: "Apply free",
-    href: "/clippers/apply", bestFor: "New clippers, < 5 clips/week",
-    features: [
-      "Apply to any campaign", "Standard $4 CPM rate",
-      "Weekly UPI/USD payouts", "Discord access", "Basic analytics",
-    ],
+    q: "Can I switch between plans?",
+    a: "Yes. You can upgrade or downgrade your creator plan at any time from your dashboard. Upgrades take effect immediately with prorated billing, and downgrades apply at the next billing cycle.",
   },
   {
-    name: "Pro", price: "$29", unit: "/month", cta: "Subscribe",
-    href: "/clippers/apply", highlight: true, bestFor: "Active clippers, 5–15 clips/week",
-    cpmHint: "70% revenue share",
-    stripePlan: "clipper_pro",
-    features: [
-      "Priority campaign matching", "Up to $7 CPM (brand-set)",
-      "AI clip suggestions from RelatiV", "70% revenue share",
-      "Advanced analytics + view curves", "Direct line to campaign managers",
-    ],
+    q: "Is there a free trial before subscribing?",
+    a: "You can try RelatiV directly in the studio for free with no credit card required to test hook detection and caption quality before subscribing to a paid creator plan.",
   },
   {
-    name: "Elite", price: "$99", unit: "/month", cta: "Subscribe",
-    href: "/clippers/apply", bestFor: "Top 1%, 20+ clips/week",
-    cpmHint: "80% revenue share",
-    stripePlan: "clipper_elite",
-    features: [
-      "Reserved brand partnerships", "Up to $12 CPM (premium brands)",
-      "Brand-direct intros", "75% revenue share",
-      "Custom hooks playbook", "Monthly strategy call with founders",
-    ],
+    q: "Can I cancel my subscription anytime?",
+    a: "Yes. There are no annual lock-in contracts. You can cancel your subscription anytime directly from your account settings with a single click.",
+  },
+  {
+    q: "How does the pricing per clip work?",
+    a: "We sized the tiers so the cost per clip drops as you scale: ~$0.15/clip on Starter and ~$0.13/clip on Pro Studio. Each tier includes full AI hook detection, automated karaoke captions, and 9:16 vertical framing.",
+  },
+  {
+    q: "Can I connect multiple YouTube channels?",
+    a: "Yes. Starter connects up to 3 channels, Pro Studio connects up to 10 channels plus direct local file uploads, and Agency supports unlimited team accounts.",
+  },
+  {
+    q: "What payment methods are supported worldwide?",
+    a: "We accept all major international payment methods including Visa, Mastercard, American Express, Apple Pay, and Google Pay with secure 1-click checkout.",
   },
 ];
-
-const BRAND_TIERS: Tier[] = [
-  {
-    name: "Pilot", price: "$1,000", unit: "/campaign", cta: "Launch pilot",
-    href: "/brands#run", bestFor: "First-time brands, single campaign test",
-    cpmHint: "$7 base CPM · 50K views",
-    features: [
-      "1 active campaign", "Single vertical", "Manual brief + approval",
-      "Weekly reporting", "Standard turnaround (48h)",
-    ],
-  },
-  {
-    name: "Run a Campaign", price: "$5,000", unit: "/month", cta: "Start running",
-    href: "/brands#run", highlight: true, bestFor: "Brands scaling across audiences",
-    cpmHint: "Negotiated CPM · 250K+ views",
-    features: [
-      "Up to 5 simultaneous campaigns", "Multi-vertical reach (tech, health, D2C)",
-      "Self-serve brief + brand guidelines", "Real-time clips queue (approve/reject)",
-      "Cross-platform analytics dashboard", "Dedicated campaign manager", "Net-15 invoicing",
-    ],
-  },
-  {
-    name: "Scale", price: "Custom", unit: "", cta: "Talk to us",
-    href: "/contact", bestFor: "Always-on, multi-show brands",
-    cpmHint: "Volume pricing · 1M+ views",
-    features: [
-      "Unlimited campaigns", "Reserved clipper slots (top 1%)",
-      "Custom AI model trained on your brand", "API + raw data export",
-      "SOC2 / contract review support", "SLA + named CSM",
-    ],
-  },
-];
-
-const FAQ = [
-  { q: "How does the 70/30 split work?", a: "When a brand pays us $7 CPM, we keep $2.10 (30%) to cover platform, AI inference, and the clipper network. The other $4.90 goes to the clipper whose work drove those views. We never deduct fees invisibly — every payout receipt shows the math." },
-  { q: "Can I switch between tiers?", a: "Yes. Clippers can upgrade/downgrade their subscription monthly. Brands can move between tiers at any time — Pilot → Run a Campaign upgrades the moment you have 2+ campaigns running." },
-  { q: "What counts as a 'verified view'?", a: "Platform-reported view counts pulled directly from each platform's analytics API. We don't estimate, and we don't count autoplays, looped plays, or repeats shorter than 3 seconds. Disputes are reviewed by a human within 48 hours." },
-  { q: "Is there a free trial?", a: "Clippers always start free. Brands get a $500 Pilot credit on their first campaign — if it doesn't deliver 50K+ verified views, we don't invoice you for the difference." },
-  { q: "How are FTC disclosures handled?", a: "We require `#ad` or `#sponsored` on every paid clip submitted through the network. Clippers who don't disclose are removed. We also generate a disclosure kit for each campaign with platform-specific templates." },
-  { q: "Can I cancel anytime?", a: "Yes. No annual contracts on any tier. Cancel from the dashboard; we prorate to the day. Active payouts settle on the next Monday." },
-  { q: "Why are creator plans priced at ₹499/₹899/₹1999?", a: "We sized the tiers so the price-per-clip is cheaper as you go up: ~₹25/clip on Go, ~₹18/clip on Pro, ~₹13/clip on Premium. Premium still leaves us comfortable margin because of fixed-cost amortization. The Enterprise tier is pay-as-you-go at ₹25/clip — higher margin because there's no fixed-cost recovery built in." },
-  { q: "What happens when you switch to DeepSeek V3?", a: "Two things: (1) Existing subscribers get a 6-month price lock at the rate they signed up for — if you join at ₹899 Pro, you stay at ₹899 Pro through that window even if public pricing drops. (2) New Pro subscribers will get ₹799 once we cross 100 paying users, since the underlying LLM cost drops 10×." },
-  { q: "Can I use my own LLM key?", a: "API access is reserved for agency and enterprise contracts — not advertised as a tier feature on the standard plans. If you need programmatic access for compliance or integration reasons, talk to us about a custom arrangement." },
-  { q: "How does agency billing work?", a: "We don't do flat subscriptions for agencies — instead, you pick a monthly clip volume (100 to 10,000+) and we quote a per-clip rate. The bigger the commit, the lower the per-clip. All tiers include every Premium feature unlocked (white-label, multi-seat, dedicated support). The 500/mo tier is the sweet spot at ₹13/clip and 77% margin on our side." },
-  { q: "Can I change my agency volume month-to-month?", a: "Yes — upgrade or downgrade at the start of any month. If you exceed your committed volume, we bill the overage at the same per-clip rate (no penalty). If you underuse, the unused clips don't roll over (we keep the math simple). Annual commits unlock an extra 10% discount — talk to us for that." },
-  { q: "What about white-labeling for my agency clients?", a: "Standard on all agency tiers: your logo + brand color on clip delivery pages, custom domain (clips.youragency.com) on the 1,000+ tier. Full white-label (no RelatiV branding anywhere) starts at 2,500 clips/mo. We're happy to sign reseller agreements if you're selling clips as a service." },
-];
-
-function SectionMarker({ num, label, centered = false }: { num: string; label: string; centered?: boolean }) {
-  return (
-    <div className={`flex items-center gap-3 mb-6 ${centered ? "justify-center" : ""}`}>
-      <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>{num}</span>
-      <span className="h-px w-12" style={{ background: "var(--color-border-strong)" }} />
-      <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>{label}</span>
-    </div>
-  );
-}
 
 export default function PlansPage() {
   const { user } = useAuth();
-  const [side, setSide] = useState<Side>("creators");
+  const router = useRouter();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Stripe config (fetched once on mount; public endpoint, no auth needed)
-  const [billing, setBilling] = useState<BillingConfig | null>(null);
-  useEffect(() => {
-    getBillingConfig().then(setBilling).catch(() => setBilling(null));
-  }, []);
-
-  // Per-plan loading state
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const handleSubscribe = async (tier: Tier) => {
-    if (!tier.stripePlan) return;
+    if (!tier.planKey) return;
     setCheckoutError(null);
 
-    // Not signed in → send to /signup first
     if (!user) {
-      window.location.href = `/signup?next=${encodeURIComponent("/plans")}`;
-      return;
-    }
-    // Only clippers + creators can subscribe
-    if (user.role !== "clipper" && user.role !== "creator") {
-      setCheckoutError("Subscriptions are for clipper and creator accounts. Brand invoicing is coming soon.");
+      router.push(`/signup?next=${encodeURIComponent("/plans")}`);
       return;
     }
 
-    setLoadingPlan(tier.stripePlan);
+    setLoadingPlan(tier.planKey);
     try {
-      const { checkout_url } = await createCheckout(tier.stripePlan);
-      window.location.href = checkout_url;
-    } catch (e: any) {
-      setCheckoutError(e?.message || "Checkout failed. Try again in a moment.");
-    } finally {
+      const order = await createRazorpayOrder({ plan: tier.planKey });
+      openRazorpayCheckout(order, {
+        onSuccess: async (payment: RazorpayPayment) => {
+          try {
+            const result = await verifyRazorpayPayment(payment);
+            if (!result.success) {
+              setCheckoutError(result.message || "Payment is awaiting confirmation. Do not pay again.");
+              return;
+            }
+            router.push(`/account?billing=success&plan=${encodeURIComponent(tier.planKey!)}`);
+          } catch (error) {
+            setCheckoutError(`${error instanceof Error ? error.message : "Payment verification failed."} Do not pay again; contact support with your payment ID.`);
+          } finally {
+            setLoadingPlan(null);
+          }
+        },
+        onDismiss: () => setLoadingPlan(null),
+        onFailure: (message) => {
+          setCheckoutError(message);
+          setLoadingPlan(null);
+        },
+      });
+    } catch (error: unknown) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout failed. Try again in a moment.");
       setLoadingPlan(null);
     }
   };
 
-  // Should the CTA for this tier trigger Stripe checkout?
-  // Conditions: tier has stripePlan + user is clipper/creator + Stripe is
-  // configured + the plan is marked available in /config.
-  const canSubscribeViaStripe = (tier: Tier) => {
-    if (!tier.stripePlan) return false;
-    if (!user) return false;
-    if (user.role !== "clipper" && user.role !== "creator") return false;
-    if (!billing?.stripe_enabled) return false;
-    const plan = billing.plans.find((p) => p.key === tier.stripePlan);
-    return plan?.available === true;
-  };
-
-  const isAgency = side === "agencies";
-  const tiers = side === "clippers" ? CLIPPER_TIERS : side === "brands" ? BRAND_TIERS : [];
-  const heroAccent =
-    side === "clippers" ? "rgba(252, 211, 77, 0.18)" :
-    side === "brands" ? "rgba(217, 70, 239, 0.18)" :
-    side === "creators" ? "rgba(16, 185, 129, 0.18)" :
-    "rgba(249, 115, 22, 0.18)"; // orange for agencies
-  const heroAccent2 =
-    side === "clippers" ? "rgba(6, 182, 212, 0.14)" :
-    side === "brands" ? "rgba(139, 92, 246, 0.14)" :
-    side === "creators" ? "rgba(20, 184, 166, 0.14)" :
-    "rgba(234, 88, 12, 0.14)"; // deep-orange for agencies
-
   return (
-    <div className="relative">
-      {/* ════════════ 01 · HERO ════════════ */}
-      <section className="relative min-h-[70vh] flex items-center overflow-hidden pt-32 pb-20">
-        <div className="pointer-events-none absolute inset-0 -z-10">
-          <div
-            className="absolute top-0 right-1/4 h-[500px] w-[500px] rounded-full blur-3xl"
-            style={{ background: `radial-gradient(circle, ${heroAccent} 0%, transparent 70%)` }}
-          />
-          <div
-            className="absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full blur-3xl"
-            style={{ background: `radial-gradient(circle, ${heroAccent2} 0%, transparent 70%)` }}
-          />
-        </div>
+    <div className="relative w-full bg-[#F7F8FA] dark:bg-[#05060A] text-[#111318] dark:text-[#F4F6FA] selection:bg-amber-400 selection:text-black overflow-hidden transition-colors">
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onReady={() => setRazorpayReady(true)}
+        onError={() => setCheckoutError("Razorpay Checkout could not load. Check your connection and reload the page.")}
+      />
+      {/* ── Subtle Background Grid & Atmospheric Illumination ── */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#D1D5DB_1px,transparent_1px)] dark:bg-[radial-gradient(#1A1F2C_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
+      <div className="pointer-events-none absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-b from-indigo-500/10 via-purple-500/05 to-transparent blur-[140px]" />
 
-        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 text-center">
-          <SectionMarker num="01" label="Pricing" centered />
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="font-display font-semibold tracking-tight"
-            style={{ fontSize: "clamp(2.75rem, 6vw, 5.5rem)", lineHeight: 0.98 }}
-          >
-            <span style={{ color: "var(--color-text-primary)" }}>Pay for outcomes. </span>
-            <span className="hero-text text-gradient-sunset" style={{ fontSize: "1.1em" }}>Not retainers.</span>
-          </motion.h1>
-          <p className="mt-8 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Whether you&apos;re a brand running campaigns, a clipper earning from them, or a creator hosting them — there&apos;s a tier for you.
-          </p>
-        </div>
-      </section>
-
-      {/* ════════════ 02 · SIDE TOGGLE + TIERS ════════════ */}
-      <section className="relative py-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* Side toggle */}
-          <div className="flex justify-center mb-12">
-            <div
-              className="inline-flex items-center gap-1 p-1 rounded-full glass-card"
-              role="tablist"
-              aria-label="Pricing audience"
-            >
-              {(["creators", "clippers", "brands", "agencies"] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSide(s)}
-                  role="tab"
-                  aria-selected={side === s}
-                  className="relative px-5 py-2 text-sm font-semibold rounded-full transition-colors"
-                  style={{
-                    color: side === s ? "var(--color-text-primary)" : "var(--color-text-muted)",
-                    background: side === s ? "var(--color-surface)" : "transparent",
-                    boxShadow: side === s ? "0 1px 3px rgba(0, 0, 0, 0.10)" : "none",
-                  }}
-                >
-                  {side === s && (
-                    <motion.span
-                      layoutId="side-pill"
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background:
-                          s === "clippers" ? "rgba(252, 211, 77, 0.10)" :
-                          s === "brands" ? "rgba(139, 92, 246, 0.10)" :
-                          s === "creators" ? "rgba(16, 185, 129, 0.10)" :
-                          "rgba(249, 115, 22, 0.10)",
-                        border:
-                          s === "clippers" ? "1px solid rgba(252, 211, 77, 0.40)" :
-                          s === "brands" ? "1px solid rgba(139, 92, 246, 0.30)" :
-                          s === "creators" ? "1px solid rgba(16, 185, 129, 0.40)" :
-                          "1px solid rgba(249, 115, 22, 0.40)",
-                      }}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative">
-                    {s === "clippers" ? "For clippers" : s === "brands" ? "For brands" : s === "creators" ? "For creators" : "For agencies"}
-                  </span>
-                </button>
-              ))}
-            </div>
+      {/* ── Main Content Grid (1160px Max Width) ── */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6 py-14 sm:py-20">
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 01: PRICING INTRODUCTION (Center-aligned Hero)
+            ══════════════════════════════════════════════════════════ */}
+        <section className="text-center max-w-3xl mx-auto space-y-4 mb-12 sm:mb-14">
+          {/* Understated Monospace Telemetry Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/[0.08] text-xs font-mono text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
+            <span>[Φ-PRICING] · CREATOR PLANS</span>
           </div>
 
-          {/* Tier cards */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={side}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 1, y: -8 }}
-              transition={{ duration: 0.3 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-5"
-            >
-              {/* Stripe status banner (clippers only — creators have their own premium flow) */}
-              {side === "clippers" && (
-                <div className="md:col-span-3">
-                  {billing === null ? (
-                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
-                      style={{
-                        background: "rgba(100, 116, 139, 0.06)",
-                        border: "1px solid rgba(100, 116, 139, 0.15)",
-                        color: "var(--color-text-muted)",
-                      }}
-                    >
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Checking subscription status…
-                    </div>
-                  ) : !billing.stripe_enabled ? (
-                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
-                      style={{
-                        background: "rgba(251, 113, 133, 0.06)",
-                        border: "1px solid rgba(251, 113, 133, 0.20)",
-                        color: "#FB7185",
-                      }}
-                    >
-                      <CreditCard className="h-3.5 w-3.5" />
-                      Subscriptions are coming soon.{" "}
-                      <span style={{ color: "var(--color-text-muted)" }}>
-                        Apply to the waitlist below to be notified when Stripe Checkout goes live.
-                      </span>
-                    </div>
-                  ) : user && (user.role === "clipper" || user.role === "creator") ? (
-                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
-                      style={{
-                        background: "rgba(16, 185, 129, 0.06)",
-                        border: "1px solid rgba(16, 185, 129, 0.20)",
-                        color: "var(--color-success)",
-                      }}
-                    >
-                      <CreditCard className="h-3.5 w-3.5" />
-                      Subscriptions are live.{" "}
-                      <span style={{ color: "var(--color-text-muted)" }}>
-                        Click Subscribe to be redirected to Stripe Checkout. Cancel anytime.
-                      </span>
-                    </div>
-                  ) : user ? (
-                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
-                      style={{
-                        background: "rgba(100, 116, 139, 0.06)",
-                        border: "1px solid rgba(100, 116, 139, 0.15)",
-                        color: "var(--color-text-muted)",
-                      }}
-                    >
-                      <CreditCard className="h-3.5 w-3.5" />
-                      Subscriptions are for clipper and creator accounts.
-                    </div>
-                  ) : (
-                    <div className="px-4 py-2.5 rounded-2xl text-[12px] flex items-center gap-2"
-                      style={{
-                        background: "rgba(100, 116, 139, 0.06)",
-                        border: "1px solid rgba(100, 116, 139, 0.15)",
-                        color: "var(--color-text-muted)",
-                      }}
-                    >
-                      <CreditCard className="h-3.5 w-3.5" />
-                      <Link href="/signup?next=/plans" className="font-semibold underline">
-                        Sign up
-                      </Link>{" "}
-                      as a clipper or creator to subscribe.
-                    </div>
-                  )}
-                  {checkoutError && (
-                    <div className="mt-2 px-4 py-2.5 rounded-2xl text-[12px]"
-                      style={{
-                        background: "rgba(239, 68, 68, 0.08)",
-                        border: "1px solid rgba(239, 68, 68, 0.25)",
-                        color: "var(--color-error)",
-                      }}
-                    >
-                      {checkoutError}
-                    </div>
-                  )}
-                </div>
-              )}
-              {tiers.map((tier, i) => {
-                const isHighlight = tier.highlight;
-                const gradient =
-                  side === "brands" ? "var(--gradient-sunset)" :
-                  side === "clippers" ? "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)" :
-                  "linear-gradient(135deg, #10B981 0%, #14B8A6 100%)"; // emerald-teal for creators
-                return (
-                  <motion.div
-                    key={tier.name}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08, duration: 0.4 }}
-                    className={`relative rounded-[var(--radius-xl)] p-7 flex flex-col overflow-hidden hover-lift ${
-                      isHighlight ? "glass-panel" : "glass-card hover-glow"
-                    }`}
-                    style={isHighlight ? { border: "2px solid rgba(16, 185, 129, 0.30)" } : undefined}
-                  >
-                    {isHighlight && (
-                      <div
-                        className="absolute -top-px left-0 right-0 h-1"
-                        style={{ background: gradient }}
-                      />
-                    )}
-                    {isHighlight && (
-                      <div className="absolute top-4 right-4">
-                        <span
-                          className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                          style={{
-                            background: gradient,
-                            color: "white",
-                            boxShadow: side === "brands" ? "0 2px 8px rgba(217, 70, 239, 0.30)" : "0 2px 8px rgba(16, 185, 129, 0.30)",
-                          }}
-                        >
-                          {side === "brands" ? "Best for scaling" : side === "clippers" ? "Most popular" : "Best value"}
-                        </span>
-                      </div>
-                    )}
+          {/* Editorial Headline */}
+          <h1 className="text-4xl sm:text-6xl lg:text-[64px] font-bold font-display tracking-tight text-zinc-900 dark:text-white leading-[1.08]">
+            Pay for outcomes. <br />
+            <span className="text-zinc-900 dark:text-white drop-shadow-sm dark:drop-shadow-[0_0_35px_rgba(255,255,255,0.35)]">
+              Not retainers.
+            </span>
+          </h1>
 
-                    <div className="mb-6">
-                      <p className="text-[11px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>
+          {/* Supporting Copy — Creator-Focused */}
+          <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto font-sans leading-relaxed pt-1">
+            Simple, transparent plans for creators. Choose the tools and monthly capacity that fit your workflow.
+          </p>
+
+          {checkoutError && (
+            <div className="mt-3 px-4 py-2 rounded-xl text-xs bg-rose-500/10 border border-rose-500/20 text-rose-300 text-center font-sans max-w-md mx-auto">
+              {checkoutError}
+            </div>
+          )}
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 02: 3 CREATOR PRICING CARDS (Go, Pro, Premium)
+            ══════════════════════════════════════════════════════════ */}
+        <section>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+            {CREATOR_TIERS.map((tier) => {
+              const isHighlight = tier.highlight;
+              return (
+                <div
+                  key={tier.name}
+                  className={`relative rounded-3xl p-7 sm:p-8 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 backdrop-blur-xl group ${
+                    isHighlight
+                      ? "bg-[#FAFCFF] dark:bg-[#0E1118] border border-amber-500/70 dark:border-amber-400/80 shadow-md hover:shadow-2xl dark:shadow-[0_0_40px_rgba(251,191,36,0.18)] z-10"
+                      : "bg-white dark:bg-[#0B0D12] border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 shadow-sm hover:shadow-xl dark:shadow-xl"
+                  }`}
+                >
+                  {/* Top Ambient Highlight on Featured Pro Card */}
+                  {isHighlight && (
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent pointer-events-none rounded-t-3xl" />
+                  )}
+
+                  {/* Top Content Block */}
+                  <div>
+                    {/* 1. Plan Name & Badge */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-display text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                         {tier.name}
-                      </p>
-                      <div className="flex items-baseline gap-1.5">
-                        <span
-                          className="font-display font-semibold tracking-tight"
-                          style={{ fontSize: "2.75rem", lineHeight: 1, color: "var(--color-text-primary)" }}
-                        >
-                          {tier.price}
+                      </span>
+                      {isHighlight && (
+                        <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-400 text-black shadow-md shadow-amber-400/20">
+                          Most popular
                         </span>
-                        {tier.unit && (
-                          <span className="text-[13px]" style={{ color: "var(--color-text-muted)" }}>
-                            {tier.unit}
-                          </span>
-                        )}
-                      </div>
-                      {tier.clipsIncluded && (
-                        <p className="mt-2.5 text-[12px] font-mono" style={{ color: "var(--color-text-secondary)" }}>
-                          <span style={{ color: "var(--color-text-muted)" }}>Includes </span>
-                          <span className="font-semibold" style={{ color: "#10B981" }}>{tier.clipsIncluded} clips</span>
-                          <span style={{ color: "var(--color-text-muted)" }}> / month</span>
-                        </p>
                       )}
-                      {tier.perClipPrice && (
-                        <p className="mt-2.5 text-[12px] font-mono" style={{ color: "var(--color-text-secondary)" }}>
-                          {tier.perClipPrice}
-                        </p>
-                      )}
-                      {tier.unitCost && (
-                        <p className="mt-1.5 text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>
-                          {tier.unitCost}
-                        </p>
-                      )}
-                      {tier.cpmHint && (
-                        <code
-                          className="mt-2.5 inline-block text-[10px] font-mono px-2 py-0.5 rounded-full"
-                          style={{
-                            background: "rgba(6, 182, 212, 0.08)",
-                            color: "#0891B2",
-                            border: "1px solid rgba(6, 182, 212, 0.15)",
-                          }}
-                        >
-                          {tier.cpmHint}
-                        </code>
-                      )}
-                      <p className="mt-3 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
-                        <span style={{ color: "var(--color-text-muted)" }}>Best for </span>
-                        <span className="font-medium" style={{ color: "var(--color-text-primary)" }}>{tier.bestFor}</span>
-                      </p>
                     </div>
 
-                    <ul className="space-y-2.5 mb-6 flex-1">
+                    {/* 2. Short Description */}
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans mb-4 min-h-[32px]">
+                      Best for {tier.bestFor}
+                    </p>
+
+                    {/* 3 & 4. Price & Billing Period */}
+                    <div className="flex items-baseline gap-1.5 mb-2">
+                      <span className="font-display font-bold text-4xl sm:text-5xl text-zinc-900 dark:text-white tracking-tight">
+                        {tier.price}
+                      </span>
+                      {tier.unit && (
+                        <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-sans">
+                          {tier.unit}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 5. Supporting Plan Information */}
+                    <div className="min-h-[24px] mb-6">
+                      {tier.clipsIncluded ? (
+                        <p className="text-xs font-sans text-cyan-600 dark:text-cyan-400 font-medium">
+                          Includes {tier.clipsIncluded} AI clips / month
+                        </p>
+                      ) : tier.cpmHint ? (
+                        <p className="text-xs font-sans text-zinc-600 dark:text-zinc-400">
+                          {tier.cpmHint}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {/* 6. Primary Plan CTA */}
+                    <div className="mb-6">
+                      {user && tier.planKey ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSubscribe(tier)}
+                          disabled={!razorpayReady || loadingPlan === tier.planKey}
+                          className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer ${
+                            isHighlight
+                              ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"
+                              : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10"
+                          }`}
+                        >
+                          {loadingPlan === tier.planKey ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Opening Checkout…</span>
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="h-4 w-4" />
+                              <span>{tier.cta}</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <Link
+                          href={tier.href}
+                          className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 ${
+                            isHighlight
+                              ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"
+                              : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10"
+                          }`}
+                        >
+                          <span>{tier.cta}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      )}
+                    </div>
+
+                    {/* 7. Feature Divider */}
+                    <div className="border-t border-black/[0.08] dark:border-white/[0.08] pt-6 mb-3">
+                      <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 block">
+                        What&apos;s included
+                      </span>
+                    </div>
+
+                    {/* 8. Feature List */}
+                    <ul className="space-y-3">
                       {tier.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2.5 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
+                        <li
+                          key={f}
+                          className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 font-sans leading-relaxed"
+                        >
                           <Check
-                            className="h-4 w-4 mt-0.5 shrink-0"
-                            style={{ color: isHighlight ? (side === "brands" ? "var(--color-accent)" : side === "clippers" ? "#8B5CF6" : "#10B981") : "var(--color-success)" }}
+                            className={`w-4 h-4 mt-0.5 shrink-0 ${
+                              isHighlight
+                                ? "text-amber-500 dark:text-amber-400"
+                                : "text-cyan-600 dark:text-cyan-400"
+                            }`}
                           />
                           <span>{f}</span>
                         </li>
                       ))}
                     </ul>
-
-                    {canSubscribeViaStripe(tier) ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSubscribe(tier)}
-                        disabled={loadingPlan === tier.stripePlan}
-                        className={isHighlight ? "btn-primary btn-shine w-full justify-center inline-flex" : "btn-glass w-full justify-center inline-flex"}
-                      >
-                        {loadingPlan === tier.stripePlan ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Opening Stripe…
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="h-3.5 w-3.5" />
-                            {tier.cta}
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <Link
-                        href={tier.href}
-                        className={isHighlight ? "btn-primary btn-shine w-full justify-center inline-flex" : "btn-glass w-full justify-center inline-flex"}
-                      >
-                        {tier.cta}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          </AnimatePresence>
-
-          {/* ════════════ CREATOR PREMIUM DESIGN (creators only) ════════════ */}
-          {side === "creators" && (
-            <motion.div
-              key="creators-premium"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              {/* Subheading */}
-              <div className="text-center mb-12">
-                <h2
-                  className="font-display font-semibold tracking-tight"
-                  style={{ fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)", lineHeight: 1.0 }}
-                >
-                  <span style={{ color: "var(--color-text-primary)" }}>Pay per clip, not </span>
-                  <em
-                    style={{
-                      color: "#FF77E9",
-                      fontStyle: "italic",
-                      fontFamily: "Georgia, 'Times New Roman', ui-serif, serif",
-                    }}
-                  >
-                    per seat
-                  </em>
-                  <span style={{ color: "var(--color-text-primary)" }}>.</span>
-                </h2>
-                <p className="mt-5 text-[15px] max-w-xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
-                  Start free. Upgrade when you ship. Cancel anytime — your clips stay yours.
-                </p>
-              </div>
-
-              {/* 3 subscription cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {([
-                  {
-                    name: "Go",
-                    price: "₹499",
-                    unit: "/month",
-                    tagline: "20 clips · 3 channels",
-                    accent: "slate",
-                    features: [
-                      "20 AI-generated clips per month",
-                      "Vertical 9:16 rendering, hardcoded captions",
-                      "Hook detection from energy + transcript",
-                      "3 YouTube channels connected",
-                      "Standard rendering queue (no priority)",
-                      "UPI / card billing",
-                    ],
-                    cta: "Start Go",
-                    href: "/signup?plan=creator_go",
-                  },
-                  {
-                    name: "Pro",
-                    price: "₹899",
-                    unit: "/month",
-                    tagline: "50 clips · 10 channels · AI taste-select",
-                    accent: "gold",
-                    highlight: true,
-                    features: [
-                      "50 AI-generated clips per month",
-                      "AI taste-select (DeepSeek V3) on every video",
-                      "Auto-caption + viral-title generation",
-                      "10 YouTube channels + upload-from-device",
-                      "Priority render queue (3× faster)",
-                      "A/B hook variants (3 per clip)",
-                      "Email + Discord support",
-                    ],
-                    cta: "Try Pro free for 7 days",
-                    href: "/signup?plan=creator_pro",
-                  },
-                  {
-                    name: "Premium",
-                    price: "₹1,999",
-                    unit: "/month",
-                    tagline: "150 clips · 5 seats · reserved GPU",
-                    accent: "violet",
-                    features: [
-                      "150 AI-generated clips per month",
-                      "Everything in Pro, plus:",
-                      "Custom branding (logo, color, font on captions)",
-                      "Reserved GPU lane (10× faster transcription)",
-                      "Team seats (up to 5)",
-                      "Priority support — 4h response SLA",
-                      "Quarterly strategy call with founders",
-                    ],
-                    cta: "Go Premium",
-                    href: "/signup?plan=creator_premium",
-                  },
-                ] as const).map((tier, i) => {
-                  const accentMap = {
-                    slate: { dot: "#94A3B8", border: "rgba(148, 163, 184, 0.35)", check: "#94A3B8" },
-                    gold: { dot: "#FCD34D", border: "rgba(252, 211, 77, 0.55)", check: "#FCD34D" },
-                    violet: { dot: "#A78BFA", border: "rgba(167, 139, 250, 0.35)", check: "#A78BFA" },
-                  } as const;
-                  const a = accentMap[tier.accent];
-                  const isHi = "highlight" in tier && tier.highlight;
-                  return (
-                    <motion.div
-                      key={tier.name}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.08, duration: 0.5 }}
-                      className="relative rounded-2xl p-7 flex flex-col"
-                      style={{
-                        background: isHi
-                          ? "linear-gradient(180deg, rgba(252, 211, 77, 0.12) 0%, rgba(252, 211, 77, 0.04) 100%)"
-                          : "var(--color-surface)",
-                        border: `1px solid ${isHi ? a.border : "var(--color-border)"}`,
-                        boxShadow: isHi ? "0 1px 0 rgba(252, 211, 77, 0.08) inset" : undefined,
-                      }}
-                    >
-                      {isHi && (
-                        <div className="absolute top-4 right-4">
-                          <span
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider"
-                            style={{ background: "#FCD34D", color: "#0A0A0B" }}
-                          >
-                            Most popular
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2 mb-4">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: a.dot }}
-                        />
-                        <p
-                          className="text-[11px] font-mono uppercase tracking-wider font-semibold"
-                          style={{ color: a.dot }}
-                        >
-                          {tier.name}
-                        </p>
-                      </div>
-
-                      <div className="flex items-baseline gap-1.5 mb-1.5">
-                        <span
-                          className="font-display font-semibold tracking-tight"
-                          style={{ fontSize: "3.5rem", lineHeight: 1, color: "var(--color-text-primary)" }}
-                        >
-                          {tier.price}
-                        </span>
-                        {tier.unit && (
-                          <span className="text-[13px]" style={{ color: "var(--color-text-muted)" }}>
-                            {tier.unit}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[12px] font-mono mb-6" style={{ color: "var(--color-text-muted)" }}>
-                        {tier.tagline}
-                      </p>
-
-                      <Link
-                        href={tier.href}
-                        className={
-                          isHi
-                            ? "btn-primary btn-shine w-full justify-center inline-flex mb-6"
-                            : "btn-glass w-full justify-center inline-flex mb-6"
-                        }
-                      >
-                        {tier.cta}
-                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                      </Link>
-
-                      <ul className="space-y-2.5">
-                        {tier.features.map((f) => (
-                          <li
-                            key={f}
-                            className="flex items-start gap-2.5 text-[13px]"
-                            style={{ color: "var(--color-text-secondary)" }}
-                          >
-                            <Check
-                              className="h-4 w-4 mt-0.5 shrink-0"
-                              style={{ color: a.check }}
-                            />
-                            <span>{f}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              {/* Enterprise link */}
-              <div className="mt-8 text-center">
-                <p className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
-                  Need 150+ clips/mo, an enterprise deal, or white-label?{" "}
-                  <Link
-                    href="/contact?intent=enterprise"
-                    className="font-semibold underline"
-                    style={{ color: "#FF77E9" }}
-                  >
-                    See full plans →
-                  </Link>
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ════════════ AGENCY VOLUME TABLE ════════════ */}
-          {isAgency && (
-            <motion.div
-              key="agencies-volume"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-2"
-            >
-              <div className="text-center mb-8">
-                <p className="text-[11px] font-mono uppercase tracking-wider mb-2" style={{ color: "#F97316" }}>
-                  Pick your volume. See the per-clip rate.
-                </p>
-                <p className="text-[13px] max-w-2xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
-                  All tiers include every Premium feature. The discount comes from how predictable your volume is — agencies commit monthly, we drop the per-clip rate. Margin stays at 50%+.
-                </p>
-              </div>
-
-              {/* Desktop table */}
-              <div className="hidden md:block glass-panel overflow-hidden">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(249, 115, 22, 0.20)" }}>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Volume</th>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Per-clip</th>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Monthly</th>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Best for</th>
-                      <th className="px-5 py-3 text-[10px] font-mono uppercase tracking-wider text-right" style={{ color: "var(--color-text-muted)" }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {AGENCY_VOLUMES.map((vol, i) => {
-                      const monthly = vol.perClip > 0 ? vol.clipsPerMonth * vol.perClip : null;
-                      const isHi = vol.highlight;
-                      return (
-                        <tr
-                          key={vol.clipsPerMonth}
-                          style={{
-                            borderBottom: i < AGENCY_VOLUMES.length - 1 ? "1px solid rgba(100, 116, 139, 0.10)" : "none",
-                            background: isHi ? "rgba(249, 115, 22, 0.04)" : "transparent",
-                          }}
-                          className="transition-colors hover:bg-[rgba(249,115,22,0.06)]"
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-display font-semibold text-[15px]" style={{ color: "var(--color-text-primary)" }}>
-                                {vol.clipsPerMonth >= 10000 ? "10,000+" : vol.clipsPerMonth.toLocaleString("en-IN")}
-                              </span>
-                              <span className="text-[11px] font-mono" style={{ color: "var(--color-text-muted)" }}>clips / mo</span>
-                              {isHi && (
-                                <span
-                                  className="px-1.5 py-0.5 rounded-full text-[9px] font-mono uppercase tracking-wider"
-                                  style={{ background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)", color: "white" }}
-                                >
-                                  Sweet spot
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="font-mono text-[15px] font-semibold" style={{ color: vol.perClip > 0 ? "#F97316" : "var(--color-text-muted)" }}>
-                              {vol.perClip > 0 ? `₹${vol.perClip}` : "Custom"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="font-mono text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
-                              {monthly ? `₹${monthly.toLocaleString("en-IN")}` : "Let's talk"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 max-w-[200px]">
-                            <span className="text-[12px]" style={{ color: "var(--color-text-secondary)" }}>
-                              {vol.bestFor}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <Link
-                              href={vol.perClip > 0 ? `/contact?intent=agency&volume=${vol.clipsPerMonth}` : "/contact?intent=agency&volume=10000+"}
-                              className={isHi ? "btn-primary btn-shine text-[12px] py-1.5 px-3 inline-flex items-center gap-1" : "btn-glass text-[12px] py-1.5 px-3 inline-flex items-center gap-1"}
-                            >
-                              {vol.cta}
-                              <ArrowRight className="h-3 w-3" />
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="md:hidden space-y-3">
-                {AGENCY_VOLUMES.map((vol) => {
-                  const monthly = vol.perClip > 0 ? vol.clipsPerMonth * vol.perClip : null;
-                  return (
-                    <div
-                      key={vol.clipsPerMonth}
-                      className={`p-5 rounded-2xl ${vol.highlight ? "glass-panel" : "glass-card"}`}
-                      style={vol.highlight ? { border: "1px solid rgba(249, 115, 22, 0.30)" } : undefined}
-                    >
-                      <div className="flex items-baseline justify-between mb-2">
-                        <span className="font-display font-semibold text-[20px]" style={{ color: "var(--color-text-primary)" }}>
-                          {vol.clipsPerMonth >= 10000 ? "10,000+" : vol.clipsPerMonth.toLocaleString("en-IN")} clips/mo
-                        </span>
-                        <span className="font-mono text-[18px] font-semibold" style={{ color: "#F97316" }}>
-                          {vol.perClip > 0 ? `₹${vol.perClip}` : "Custom"}
-                        </span>
-                      </div>
-                      <p className="text-[12px] mb-6" style={{ color: "var(--color-text-secondary)" }}>
-                        {vol.bestFor}
-                      </p>
-                      <Link
-                        href={vol.perClip > 0 ? `/contact?intent=agency&volume=${vol.clipsPerMonth}` : "/contact?intent=agency&volume=10000+"}
-                        className="btn-glass w-full justify-center text-[12px] py-2"
-                      >
-                        {vol.cta}
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Custom-volume CTA */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                className="mt-6 glass-card p-5 relative overflow-hidden text-center"
-                style={{ border: "1px solid rgba(249, 115, 22, 0.20)" }}
-              >
-                <p className="text-[12px] font-mono uppercase tracking-wider mb-1" style={{ color: "#F97316" }}>
-                  Custom volume?
-                </p>
-                <h4 className="font-display font-semibold text-[16px] mb-1" style={{ color: "var(--color-text-primary)" }}>
-                  Need 7,500 clips/mo? Or 25,000? Or weird seasonal patterns?
-                </h4>
-                <p className="text-[12px] mb-3" style={{ color: "var(--color-text-secondary)" }}>
-                  We do custom contracts — annual commits, seasonal ramps, multi-tenant white-label.
-                </p>
-                <Link href="/contact?intent=agency&volume=custom" className="btn-primary btn-shine inline-flex items-center gap-2 text-[12px] py-2">
-                  Talk to a founder
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* First-campaign guarantee (brands only) */}
-          {side === "brands" && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-12 glass-panel p-6 text-center relative overflow-hidden"
-            >
-              <div
-                className="absolute -top-20 -right-20 w-[300px] h-[300px] rounded-full blur-3xl pointer-events-none"
-                style={{ background: "radial-gradient(circle, rgba(217, 70, 239, 0.15) 0%, transparent 70%)" }}
-              />
-              <div className="relative">
-                <p
-                  className="text-[11px] font-mono uppercase tracking-wider mb-2 inline-flex items-center gap-2"
-                  style={{ color: "var(--color-accent)" }}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  First-campaign guarantee
-                </p>
-                <h3
-                  className="font-display font-semibold text-2xl mt-1 mb-2"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  $500 Pilot credit. Pay only for what works.
-                </h3>
-                <p className="text-[14px] max-w-xl mx-auto" style={{ color: "var(--color-text-secondary)" }}>
-                  Run your first campaign. If we don&apos;t deliver 50K verified views, we don&apos;t invoice you for the difference. No risk.
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-        </div>
-      </section>
-
-      {/* ════════════ 03 · FAQ ════════════ */}
-      <section className="relative py-32 overflow-hidden" style={{ borderTop: "1px solid rgba(60, 50, 30, 0.08)" }}>
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <SectionMarker num="04" label="FAQ" centered />
-            <h2
-              className="font-display font-semibold tracking-tight"
-              style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.75rem)", lineHeight: 1.05 }}
-            >
-              <span style={{ color: "var(--color-text-primary)" }}>Things people </span>
-              <span className="hero-text text-gradient-sunset">ask first.</span>
-            </h2>
-          </div>
-
-          <div className="space-y-2">
-            {FAQ.map((item, i) => {
-              const open = openFaq === i;
-              return (
-                <motion.div
-                  key={item.q}
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.04 }}
-                  className="glass-card overflow-hidden"
-                  style={{ borderRadius: "var(--radius-lg)" }}
-                >
-                  <button
-                    onClick={() => setOpenFaq(open ? null : i)}
-                    className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left transition-colors"
-                    aria-expanded={open}
-                  >
-                    <span className="text-[15px] font-medium" style={{ color: "var(--color-text-primary)" }}>
-                      {item.q}
-                    </span>
-                    <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25 }} className="shrink-0">
-                      <ChevronDown className="h-4 w-4" style={{ color: "var(--color-text-muted)" }} />
-                    </motion.span>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {open && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-6 pb-5 text-[14px] leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                          {item.a}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                  </div>
+                </div>
               );
             })}
           </div>
-        </div>
-      </section>
 
-      {/* ════════════ 04 · FINAL CTA ════════════ */}
-      <section className="relative py-32 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <SectionMarker num="05" label="Not sure?" centered />
-          <h2
-            className="font-display font-semibold tracking-tight"
-            style={{ fontSize: "clamp(2.25rem, 4vw, 3.25rem)", lineHeight: 1.05 }}
-          >
-            <span style={{ color: "var(--color-text-primary)" }}>Talk to us. </span>
-            <span className="hero-text text-gradient-ocean">20 minutes.</span>
-          </h2>
-          <p className="mt-5 text-lg" style={{ color: "var(--color-text-secondary)" }}>
-            Not sure which tier fits? We&apos;ll figure it out together on a 20-min call. No sales pitch.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="/contact" className="btn-primary btn-shine inline-flex items-center gap-2">
-              Book a 20-min call
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href="/signup" className="btn-ghost inline-flex items-center gap-2">
-              Try free first
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 03: ENTERPRISE CALLOUT FOR HIGH-VOLUME CREATORS
+              ══════════════════════════════════════════════════════════ */}
+          <div className="mt-8 sm:mt-10 rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0B0D12] p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm dark:shadow-lg">
+            <div className="space-y-1">
+              <h3 className="font-display font-semibold text-lg text-zinc-900 dark:text-white">
+                Need custom volume, team accounts, or dedicated GPU lanes?
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-sans max-w-2xl">
+                Our Agency & Enterprise tier starts with volume discounts, no watermark, dedicated compute, and custom API integrations.
+              </p>
+            </div>
+            <Link
+              href="/contact?intent=enterprise"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10 transition-all shrink-0"
+            >
+              <span>Contact Enterprise</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 04: FREQUENTLY ASKED QUESTIONS (Creator-Focused)
+            ══════════════════════════════════════════════════════════ */}
+        <section className="mt-20 sm:mt-24 pt-12 border-t border-black/[0.08] dark:border-white/[0.08]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+            {/* Left Column (35%) — Sticky Header & Context */}
+            <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-28 self-start">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/[0.08] text-xs font-mono text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                <HelpCircle className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
+                <span>FREQUENTLY ASKED</span>
+              </div>
+              <h2 className="font-display font-bold text-3xl sm:text-4xl text-zinc-900 dark:text-white tracking-tight leading-tight">
+                Things creators ask first.
+              </h2>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 font-sans leading-relaxed">
+                Everything you need to know about creator plans, clip limits, billing, and cancellations.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors"
+                >
+                  <span>Have a specific question? Ask our team</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Column (65%) — Clean Accordion Rows */}
+            <div className="lg:col-span-8 space-y-3">
+              {CREATOR_FAQS.map((item, i) => {
+                const isOpen = openFaq === i;
+                return (
+                  <div
+                    key={item.q}
+                    className="rounded-2xl border border-black/10 dark:border-white/[0.08] bg-white dark:bg-[#0B0D12] overflow-hidden hover:border-black/20 dark:hover:border-white/20 shadow-sm dark:shadow-none transition-all"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : i)}
+                      className="w-full flex items-center justify-between gap-4 p-5 sm:p-5 text-left cursor-pointer"
+                      aria-expanded={isOpen}
+                    >
+                      <span className="font-sans font-medium text-sm sm:text-base text-zinc-900 dark:text-white">
+                        {item.q}
+                      </span>
+                      <motion.span
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="shrink-0 text-zinc-400"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </motion.span>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.22, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-5 pb-5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans border-t border-black/[0.04] dark:border-white/[0.04] pt-3">
+                            {item.a}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 05: FINAL CONSULTATION CTA (Unified Width Banner)
+            ══════════════════════════════════════════════════════════ */}
+        <section className="mt-20 sm:mt-24 rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-gradient-to-b dark:from-[#0B0D12] dark:to-black p-10 sm:p-14 text-center space-y-6 shadow-lg dark:shadow-2xl relative overflow-hidden">
+          {/* Subtle top illuminated gradient edge */}
+          <div
+            className="absolute inset-x-0 -top-px h-px pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.4) 30%, rgba(245, 158, 11, 0.4) 70%, transparent 100%)",
+            }}
+          />
+
+          <div className="max-w-xl mx-auto space-y-3">
+            <span className="text-xs font-mono font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
+              NOT SURE WHICH PLAN FITS?
+            </span>
+            <h2 className="font-display font-bold text-3xl sm:text-4xl lg:text-5xl text-zinc-900 dark:text-white tracking-tight">
+              Talk to us. 20 minutes.
+            </h2>
+            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 font-sans leading-relaxed">
+              We&apos;ll look at your channel or creator workflow together, review volume estimates, and find the right setup. No aggressive sales pitch.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/contact"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 font-semibold text-sm shadow-md transition-all active:scale-[0.98]"
+            >
+              <MessageSquare className="w-4 h-4 text-white dark:text-black" />
+              <span>Book a 20-min call</span>
+            </Link>
+
+            <Link
+              href={getAppDashboardUrl()}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-black/[0.04] hover:bg-black/[0.08] text-zinc-800 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:text-zinc-300 dark:hover:text-white font-medium text-sm border border-black/10 dark:border-white/10 transition-all"
+            >
+              <span>Try studio free first</span>
+              <ArrowRight className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+            </Link>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

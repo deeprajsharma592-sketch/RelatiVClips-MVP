@@ -91,7 +91,7 @@ export const changelog: ChangelogEntry[] = [
     color: "#FB7185",
     title: "Day 1 — pipeline end-to-end",
     bullets: [
-      "YouTube → captions → transcript_fetcher → hooks → ICL prompt → Claude",
+      "YouTube → captions → transcript_fetcher → hooks → ICL prompt → RelatiV AI",
       "Taste-based scoring (lexical signals, energy peaks)",
       "10 short-form clips per video in ~5 min",
       "Viral title + caption + 10s duration auto-generated",

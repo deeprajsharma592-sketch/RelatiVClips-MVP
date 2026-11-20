@@ -31,7 +31,7 @@ const SERVICES = [
     num: "03",
     symbol: "ε",
     title: "AI Virality Scoring",
-    desc: "Each clip is scored on semantic hooks, energy peaks, and visual engagement metrics. Claude Haiku 4.5 picks the top 10 from 47 candidates. 97.3% caption accuracy on the test set.",
+    desc: "Each clip is scored on semantic hooks, energy peaks, and visual engagement metrics. RelatiV AI v2.0 picks the top 10 from 47 candidates. 97.3% caption accuracy on the test set.",
     metrics: ["Real-time scoring", "Hook detection", "Trend analysis", "A/B/C/D title variants"],
     gradient: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
   },

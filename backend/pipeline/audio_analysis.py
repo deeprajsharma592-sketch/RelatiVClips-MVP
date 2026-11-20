@@ -22,6 +22,35 @@ The "valley" is the hook the energy-based peak detector misses:
   - "...and then I made 10 Cr in 6 months." (peak, energy spike)
 The valley→peak PAIR is the viral moment, not the peak alone.
 """
+import sys
+# Shim for Python 3.12 where setuptools/pkg_resources might be missing
+try:
+    import pkg_resources
+except ImportError:
+    import types
+    from pathlib import Path
+    def _res_filename(pkg, resource):
+        pkg_str = str(pkg)
+        mod = sys.modules.get(pkg_str)
+        if mod and hasattr(mod, "__file__") and mod.__file__:
+            return str(Path(mod.__file__).parent / resource)
+        try:
+            import importlib
+            m = importlib.import_module(pkg_str)
+            if hasattr(m, "__file__") and m.__file__:
+                return str(Path(m.__file__).parent / resource)
+        except Exception:
+            pass
+        return resource
+
+    pr = types.ModuleType("pkg_resources")
+    pr.get_distribution = lambda dist: type("Dist", (), {"version": "0.0.0"})()
+    pr.resource_filename = _res_filename
+    pr.iter_entry_points = lambda *a, **k: []
+    pr.Requirement = type("Requirement", (), {"parse": lambda s: s})
+    pr.DistributionNotFound = type("DistributionNotFound", (Exception,), {})
+    sys.modules["pkg_resources"] = pr
+
 import numpy as np
 import librosa
 from typing import List, Dict, Tuple
@@ -34,6 +63,26 @@ from ..utils.config import (
     STEEP_MIN_RELATIVE_DROP,
     STEEP_MIN_RELATIVE_RISE,
 )
+
+
+def load_audio_safely(audio_path: str, target_sr: int = TARGET_SAMPLE_RATE) -> Tuple[np.ndarray, int]:
+    """Load audio with direct soundfile support to bypass audioread/pkg_resources subprocess bugs."""
+    try:
+        import soundfile as sf
+        y, sr = sf.read(audio_path)
+        if y.ndim > 1:
+            y = np.mean(y, axis=1)
+        if sr != target_sr:
+            import scipy.signal
+            num_samples = int(len(y) * target_sr / sr)
+            y = scipy.signal.resample(y, num_samples)
+            sr = target_sr
+        return y.astype(np.float32), sr
+    except Exception as sf_err:
+        try:
+            return librosa.load(audio_path, sr=target_sr, mono=True)
+        except Exception as lb_err:
+            raise RuntimeError(f"Audio load failed: sf={sf_err}, librosa={lb_err}")
 
 
 def analyze_audio_peaks(audio_path: str, progress_callback=None) -> dict:
@@ -66,7 +115,7 @@ def analyze_audio_peaks(audio_path: str, progress_callback=None) -> dict:
     if progress_callback:
         progress_callback("Loading audio for energy analysis...")
 
-    y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
+    y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
 
     hop_length = 512
     frame_rate = sr / hop_length
@@ -372,7 +421,7 @@ def analyze_audio_peaks_and_valleys(
     if progress_callback:
         progress_callback("Loading audio for combined peak + valley + steep analysis...")
 
-    y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
+    y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
     hop_length = 512
     frame_dur = hop_length / sr
 

@@ -1,16 +1,5 @@
 "use client";
 
-/**
- * AuthProvider — exposes the current user (or null) to the React tree.
- *
- * The backend's HttpOnly cookie is the source of truth. We don't store
- * the user object in localStorage; we re-fetch from /me on mount and
- * after every auth mutation. The browser sends the cookie automatically.
- *
- * Usage:
- *   const { user, loading, refresh, logout } = useAuth();
- */
-
 import {
   createContext,
   useCallback,
@@ -19,14 +8,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { me as meFetch, logout as logoutFetch, type User } from "@/lib/auth";
+import { me as getCurrentUser, logout as signOut, type User } from "@/lib/auth";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (redirectTo?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,28 +30,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await meFetch();
-      setUser(r?.user || null);
-    } catch (e: any) {
-      setError(e?.message || "Failed to load user");
+      const response = await getCurrentUser();
+      setUser(response?.user || null);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Could not check your account session.");
       setUser(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (redirectTo = "/") => {
     try {
-      await logoutFetch();
+      await signOut();
     } finally {
       setUser(null);
-      // Force a hard refresh so server components re-render
-      window.location.href = "/";
+      window.location.assign(redirectTo);
     }
   }, []);
 
   useEffect(() => {
-    refresh();
+    // Initial hydration and auth changes both read the current session. Defer
+    // the callback work to avoid making Supabase requests inside its lock.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
+    let unsubscribe = () => {};
+    try {
+      const { data } = getSupabaseBrowserClient().auth.onAuthStateChange(() => {
+        window.setTimeout(() => void refresh(), 0);
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+    } catch {
+      // refresh() surfaces the missing-project configuration to the UI.
+    }
+    return () => unsubscribe();
   }, [refresh]);
 
   return (
@@ -72,9 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside <AuthProvider>");
-  }
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used inside <AuthProvider>");
+  return context;
 }

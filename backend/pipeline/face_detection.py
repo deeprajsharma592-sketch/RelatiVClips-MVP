@@ -1,4 +1,4 @@
-﻿import cv2
+import cv2
 import numpy as np
 from typing import List, Tuple, Optional
 from pathlib import Path
@@ -16,16 +16,21 @@ except ImportError:
 def _get_face_model():
     global _face_model
     if _face_model is None and YOLO_AVAILABLE:
-        model_path = Path(__file__).parent.parent / "models" / "yolov10n-face.pt"
         try:
-            _face_model = YOLO(str(model_path))
-        except Exception:
+            model_path = Path(__file__).parent.parent / "models" / "yolov10n-face.pt"
             try:
-                from ultralytics.utils import downloads
-                model_path = downloads.attempt_download_asset("yolov10n-face.pt")
                 _face_model = YOLO(str(model_path))
             except Exception:
-                _face_model = YOLO("yolov10n.pt")
+                try:
+                    from ultralytics.utils import downloads
+                    model_path = downloads.attempt_download_asset("yolov10n-face.pt")
+                    _face_model = YOLO(str(model_path))
+                except Exception:
+                    _face_model = YOLO("yolov10n.pt")
+        except Exception as e:
+            import logging
+            logging.getLogger("face_detection").warning(f"YOLO face detection unavailable, falling back to center-crop: {e}")
+            _face_model = None
     return _face_model
 
 
@@ -177,26 +182,29 @@ def track_face_smooth(video_path: str, start_time: float, end_time: float, num_s
 
 def get_face_detection_for_clip(video_path: str, start_time: float, end_time: float, progress_callback=None) -> dict:
     if progress_callback:
-        progress_callback("Detecting faces with YOLOv10...")
+        progress_callback("Detecting faces with YOLO...")
 
-    cap = cv2.VideoCapture(video_path)
-    video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    video_duration = frame_count / fps if fps > 0 else 0
-    cap.release()
+    try:
+        cap = cv2.VideoCapture(video_path)
+        video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        video_duration = frame_count / fps if fps > 0 else 0
+        cap.release()
 
-    if start_time > video_duration and video_duration > 0:
-        start_time = 0
-        end_time = min(video_duration, end_time - start_time)
+        if start_time > video_duration and video_duration > 0:
+            start_time = 0
+            end_time = min(video_duration, end_time - start_time)
 
-    clip_duration = end_time - start_time
-    if clip_duration <= 0:
-        start_time = 0
-        end_time = video_duration
+        clip_duration = end_time - start_time
+        if clip_duration <= 0:
+            start_time = 0
+            end_time = video_duration
 
-    return track_face_smooth(video_path, start_time, end_time, num_samples=15, alpha=0.25)
+        return track_face_smooth(video_path, start_time, end_time, num_samples=15, alpha=0.25)
+    except Exception as e:
+        return {"x_offset": 0, "face_detected": False, "smoothing_enabled": False, "frame_positions": []}
 
 
 def get_batch_face_data(video_path: str, clips: List[dict], progress_callback=None) -> List[dict]:
@@ -204,8 +212,12 @@ def get_batch_face_data(video_path: str, clips: List[dict], progress_callback=No
     for i, clip in enumerate(clips):
         if progress_callback:
             progress_callback(f"Detecting face for clip {i+1}/{len(clips)}...")
-        face_data = get_face_detection_for_clip(video_path, clip["start"], clip["end"], progress_callback)
-        clip["x_offset"] = face_data["x_offset"]
-        clip["face_detected"] = face_data["face_detected"]
+        try:
+            face_data = get_face_detection_for_clip(video_path, clip["start"], clip["end"], progress_callback)
+            clip["x_offset"] = face_data.get("x_offset", 0)
+            clip["face_detected"] = face_data.get("face_detected", False)
+        except Exception:
+            clip["x_offset"] = 0
+            clip["face_detected"] = False
         results.append(clip)
     return results

@@ -1,16 +1,12 @@
 /**
  * Shared API base URL helper.
  *
- * In production, all browser-originated requests must use the same-origin
- * Vercel proxy (/api/proxy/...) so:
- *   1. The HttpOnly session cookie is sent automatically
- *   2. The Vercel edge function adds CORS headers
- *   3. We don't expose the Hetzner / Cloudflare tunnel URL to the browser
+ * All browser-originated requests use the same-origin Next.js proxy so it can
+ * forward the Supabase access token to FastAPI without exposing backend URLs.
  *
  * NEXT_PUBLIC_API_URL is now ONLY used for SSR / server-side fetches.
  * For browser code, use this helper to get the same-origin path.
  *
- * In dev (localhost), allow the direct backend URL for fast iteration.
  */
 
 const TUNNEL_PREFIX = "/api/proxy";
@@ -19,15 +15,10 @@ function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
-function isDev(): boolean {
-  return isBrowser() && window.location.hostname === "localhost";
-}
-
 /**
  * Returns the base URL to use for fetch calls.
  *
- * - Browser in dev: http://localhost:9000 (no proxy needed)
- * - Browser in prod: "" (relative — same origin → /api/proxy/...)
+ * - Browser in dev and prod: relative same-origin proxy path
  * - SSR (no window): from NEXT_PUBLIC_API_URL env, or "" (proxy)
  */
 export function apiBase(): string {
@@ -35,10 +26,7 @@ export function apiBase(): string {
     // SSR — use env var or empty (relative)
     return process.env.NEXT_PUBLIC_API_URL || "";
   }
-  if (isDev()) {
-    return "http://localhost:9000";
-  }
-  return ""; // prod browser → same-origin → Vercel proxy
+  return TUNNEL_PREFIX;
 }
 
 /**
@@ -46,8 +34,7 @@ export function apiBase(): string {
  * browser-side auth/data calls.
  *
  *   apiPath("/api/v1/auth/login")
- *     browser prod → "/api/proxy/api/v1/auth/login" (proxy strips /api/v1/ before forwarding to backend)
- *     browser dev  → "http://localhost:9000/api/v1/auth/login"
+ *     browser      → "/api/proxy/api/v1/auth/login" (proxy forwards the bearer token)
  *     SSR          → "/api/v1/auth/login" or NEXT_PUBLIC_API_URL+"/api/v1/auth/login"
  *
  * Note: the backend FastAPI routers are mounted WITHOUT the /api/v1/
@@ -60,9 +47,6 @@ export function apiPath(path: string): string {
   if (!isBrowser()) {
     const base = process.env.NEXT_PUBLIC_API_URL || "";
     return `${base}${path}`;
-  }
-  if (isDev()) {
-    return `http://localhost:9000${path}`;
   }
   return `${TUNNEL_PREFIX}${path}`;
 }

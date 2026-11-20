@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, LogOut, Mail, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { ROLE_LABEL, type UserRole } from "@/lib/auth";
+import { type UserRole } from "@/lib/auth";
 import { resendVerification } from "@/lib/api";
 
 const ROLE_ACCENT: Record<UserRole, { color: string; bg: string; border: string; label: string; gradient: string }> = {
@@ -54,7 +54,7 @@ const DASHBOARD_LINKS: Record<UserRole, { href: string; label: string }> = {
 };
 
 export default function AccountPage() {
-  const { user, loading, logout, refresh } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
@@ -67,8 +67,8 @@ export default function AccountPage() {
       setResendState("sent");
       // Auto-revert after 5s
       setTimeout(() => setResendState("idle"), 5000);
-    } catch (e: any) {
-      setResendError(e?.message || "Failed to send. Try again in a moment.");
+    } catch (e: unknown) {
+      setResendError(e instanceof Error ? e.message : "Failed to send. Try again in a moment.");
       setResendState("error");
     }
   };
@@ -186,7 +186,7 @@ export default function AccountPage() {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={() => void logout()}
               className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-full transition-colors"
               style={{
                 background: "var(--color-surface-2)",

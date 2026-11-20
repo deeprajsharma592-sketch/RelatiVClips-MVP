@@ -31,11 +31,11 @@ from typing import List
 
 @dataclass
 class ClipFormat:
-    """Single universal output format. Replaces the old 3-platform spec."""
+    """Single universal output format. 20-35s high-retention viral stories."""
     name: str = "universal"
-    min_duration_s: float = 22.0
-    max_duration_s: float = 30.0
-    target_duration_s: float = 26.0
+    min_duration_s: float = 18.0
+    max_duration_s: float = 38.0
+    target_duration_s: float = 28.0
     n_hashtags_min: int = 5
     n_hashtags_max: int = 8
     caption_style: str = "all_caps"
@@ -61,18 +61,24 @@ def get_format() -> ClipFormat:
     return FORMAT
 
 
-def adjust_clip_to_format(start: float, end: float) -> tuple:
+def adjust_clip_to_format(start: float, end: float, video_duration: float = 0.0) -> tuple:
     """
-    Adjust a candidate clip's [start, end] to fit the universal 22-30s window.
-    Returns (new_start, new_end, adjustment_reason).
+    Adjust a candidate clip's [start, end] to fit the universal 20-35s window.
+    Expands forward into the payoff/takeaway rather than blindly clamping to 0.0s.
     """
     duration = end - start
     if duration < FORMAT.min_duration_s:
         new_duration = min(FORMAT.target_duration_s, FORMAT.max_duration_s)
         extension = new_duration - duration
-        half = extension / 2
-        new_start = max(0, start - half)
-        new_end = new_start + new_duration
+        # Expand primarily forward (75%) into the takeaway/punchline,
+        # with at most 25% backward for setup context.
+        back_allowance = min(start, extension * 0.25)
+        fwd_allowance = extension - back_allowance
+        new_start = max(0.0, start - back_allowance)
+        new_end = end + fwd_allowance
+        if video_duration > 0 and new_end > video_duration:
+            new_end = video_duration
+            new_start = max(0.0, new_end - new_duration)
         return new_start, new_end, f"extended_to_{new_duration:.0f}s"
     elif duration > FORMAT.max_duration_s:
         new_duration = FORMAT.max_duration_s

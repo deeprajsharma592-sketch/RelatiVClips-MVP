@@ -316,34 +316,290 @@ def build_archetype_aware_prompt(
     return "\n".join(parts)
 
 
+def build_hybrid_narrative_prompt(
+    transcript_segments: List[Dict],
+    moments: List["Moment"],
+    video_meta: Dict,
+    max_picks: int = 4,
+) -> str:
+    """
+    Build a hybrid prompt combining the FULL TRANSCRIPT dialogue with
+    Librosa acoustic energy markers (peaks, valleys, chaotic bursts).
+    
+    This eliminates false positives: Claude reads the whole conversation flow,
+    using audio peaks as energy hints rather than isolated clips.
+    """
+    parts: List[str] = []
+
+    parts.append(
+        "You are an elite short-form video editor for TikTok, YouTube Shorts, and Instagram Reels.\n"
+        "You are given the FULL TIMESTAMPED TRANSCRIPT of this video, annotated with Librosa acoustic energy markers:\n"
+        "  - ⚡ [HIGH ENERGY BURST] = Loud sustained acoustic volume\n"
+        "  - 🔥 [CHAOTIC ENERGY MOMENT] = Sudden volume spike or rapid speech\n"
+        "  - 🤫 [DRAMATIC PAUSE / VALLEY] = Silence or quiet beat\n\n"
+        "CRITICAL INSTRUCTION ON FALSE POSITIVES:\n"
+        "Loud audio spikes alone are often FALSE POSITIVES (microphone bumps, laughter, coughing, screaming without narrative substance).\n"
+        "Do NOT pick a clip just because it is marked with ⚡.\n"
+        "Instead, find the 2-4 most viral, self-contained STORIES, REVELATIONS, or LESSONS (22s to 32s each).\n"
+        "A winning clip MUST have:\n"
+        "  1. HOOK (0-3s): A question, shocking statement, or curiosity gap that stops the scroll.\n"
+        "  2. STORY FLOW: Clear context — the listener understands what is happening without watching the rest of the video.\n"
+        "  3. PAYOFF: A punchline, surprising fact, or resolution at the end.\n"
+        "If an insightful story beat also aligns with an energy burst (⚡), that is ideal — but NARRATIVE COHERENCE comes first."
+    )
+
+    title = video_meta.get("title", "(no title)") or "(no title)"
+    dur = float(video_meta.get("duration_s") or 0)
+    parts.append(f"\nVIDEO: {title[:80]!r} (Duration: {dur:.0f}s)")
+
+    # Build annotated transcript lines
+    transcript_lines = []
+    truncated_segments = transcript_segments[:600]
+    for seg in truncated_segments:
+        s = float(seg.get("start", 0))
+        e = float(seg.get("end", 0))
+        txt = seg.get("text", "").strip()
+        if not txt:
+            continue
+        markers = []
+        for m in moments:
+            if not (e < m.start or s > m.end):
+                if m.signal_type in ("peak", "steep_peak"):
+                    markers.append("⚡ [HIGH ENERGY BURST]")
+                elif m.signal_type in ("valley", "steep_valley", "silence"):
+                    markers.append("🤫 [DRAMATIC PAUSE]")
+                break
+        marker_str = f" {markers[0]}" if markers else ""
+        m_s, s_s = int(s // 60), int(s % 60)
+        m_e, s_e = int(e // 60), int(e % 60)
+        time_tag = f"[{m_s:02d}:{s_s:02d}-{m_e:02d}:{s_e:02d}]"
+        transcript_lines.append(f"{time_tag} {txt}{marker_str}")
+
+    parts.append("\nFULL TRANSCRIPT:\n" + "\n".join(transcript_lines))
+
+    parts.append(
+        f"\nSelect the {max_picks} most viral, self-contained story clips (45-90 seconds long, complete narrative arc).\n"
+        "Return STRICT JSON only:\n"
+        "{\n"
+        '  "picks": [\n'
+        "    {\n"
+        '      "start": <float start timestamp in seconds>,\n'
+        '      "end": <float end timestamp in seconds>,\n'
+        '      "confidence": <float 0.5-1.0>,\n'
+        '      "title": "<3-6 words ALL CAPS viral title summarizing the specific story>",\n'
+        '      "hook": "<6-10 words opening hook line>",\n'
+        '      "retention_bridge": "<8-15 words what keeps them watching>",\n'
+        '      "caption": "<viral caption max 100 chars>",\n'
+        '      "hashtags": "<3-5 space-separated tags>",\n'
+        '      "reason": "<why this story beats random noise/screaming>"\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "Output ONLY valid JSON. No markdown fences, no explanation."
+    )
+
+    return "\n".join(parts)
+
+
+RELATIVSAUCE_RUBRIC_TEXT = """# RelatiVSauce: clip selection rubric
+
+Version: rubric_ver = "sauce-0.1". Return this string in every output so results can be compared across prompt versions.
+
+These weights and heuristics are starting hypotheses drawn from practitioner experience, not proven facts. They are meant to be tuned against real retention and view data.
+
+## Process
+1. Find candidate moments. A candidate is one complete, self-contained story arc between 45 and 90 seconds (target: 55-80 seconds). NEVER extract short 15-30s fragments that cut off mid-thought or before the punchline/conclusion. The clip must have a distinct Hook (0-5s), Build/Tension (5-45s), and Payoff/Resolution (45-80s). Prefer 8-20 candidates per hour of source.
+2. Find the hook. The best clips open on the hook, not on setup. If the strongest line is in the middle, propose starting there and check that it still makes sense without what came before.
+3. Classify the hook type (below). A candidate with no hook type is weak unless the payoff is exceptional.
+4. Check reach. Does the topic connect to something broad (health, money, relationships, status, fear of falling behind)? See "Wide-funnel check".
+5. Check self-containment. A cold viewer must understand the moment without the rest of the video.
+6. Check accuracy and risk.
+7. Score every candidate, not just the winners, and return them all.
+
+## Hook types
+Tag each candidate with the one that fits best (or none):
+- contrarian: attacks a common belief or accepted advice.
+- bizarre: a strange, vivid or surreal image that makes people stop.
+- paradoxical: two ideas that sound incompatible but are both true.
+- revealing: an early confession, failure, or raw truth.
+- high_stakes: drops into a critical decision or deadline with no warm-up.
+- visceral: sensory, physical detail that lands in the body, not the head.
+- curiosity_gap: states a striking outcome but withholds how it happened.
+- identity_challenge: speaks to how the viewer sees themselves, their job or their habits.
+
+## Wide-funnel check
+Clips reach new people when the topic has a large audience. Broad topics (health, money, relationships, fear of being left behind) travel further than narrow technical ones.
+Technical or niche content usually fails as a clip when presented as a technical explanation. It works when the speaker is telling a human story through it: money made or lost, burnout, a co-founder conflict, a failure, a fear, a bet that paid off or didn't.
+- Prefer the moment where the human stakes show up over the moment where the tool or architecture is explained.
+- If a technical moment is the best available, say so in reason and note what framing (title, caption, first line) would make it broader.
+- Do not penalize niche content that is clearly meant for a niche audience if the creator profile says so.
+
+## Scoring (0-100)
+| Component | Points | What high looks like |
+|---|---|---|
+| Hook strength | 0-30 | Strong hook in the first 2-3 seconds, clearly one of the types above |
+| Reach | 0-25 | Broad topic or human stakes; viewer needs no prior knowledge |
+| Completeness | 0-20 | Clear start, build, and landing; self-contained story (20-35s). Score 0 if cut off mid-sentence or before the lesson/payoff! |
+| Payoff / ending | 0-10 | Ends on a punch, answer, insight or lesson worth rewatching; no trailing filler |
+| Delivery | 0-10 | Energy, pacing, emotion, confidence; no long pauses or tangents |
+| Risk penalty | 0 to -20 | Subtract for factual uncertainty, blacklisted topics, or needing missing context |
+
+Calibration guidance:
+- 80+ should be rare. Reserve it for moments you would be surprised not to see perform.
+- Most candidates should land between 30 and 70.
+- Do not inflate scores to look helpful. A transcript with no strong moments should return low scores and say so.
+
+## Accuracy and risk rules
+- If a clip contains numbers, dates, prices, or claims, flag needs_fact_check: true when you cannot verify them from the transcript itself. Do not fix numbers from memory.
+- Never select moments that include: price predictions or financial advice presented as certain, attacks on named competitors, illegal activity, or anything on the creator's blacklist if one is provided.
+- Do not select a moment whose meaning flips when clipped (sarcasm, setup-and-reversal, a quote the speaker goes on to reject). Set context_risk: "high" instead.
+- INTRO BANTER BAN: In videos longer than 3 minutes, NEVER select intro greetings, sponsor reads, or generic 'welcome back' chat. The clip MUST deliver standalone value to a stranger.
+
+## 5% Experiment Policy
+In ~5% of runs, include one experimental candidate marked "is_experiment": true. An experimental candidate is an unconventional, high-variance moment that would normally fall just under the 65 cutoff (score 50-64) or has an unusual angle (bizarre imagery, sudden intense confession, eccentric contrarian claim) with potential breakout upside.
+
+## Output format
+Return ONLY valid JSON, no preamble, no markdown fences:
+{
+  "rubric_ver": "sauce-0.1",
+  "candidates": [
+    {
+      "start_s": 0.0,
+      "end_s": 0.0,
+      "hook_line": "first line of the clip as spoken",
+      "hook_type": "contrarian | bizarre | paradoxical | revealing | high_stakes | visceral | curiosity_gap | identity_challenge | none",
+      "broad_angle": "health | wealth | relationships | status | none",
+      "scores": {
+        "hook": 0, "reach": 0, "completeness": 0,
+        "payoff": 0, "delivery": 0, "risk": 0
+      },
+      "score": 0,
+      "context_risk": "low | medium | high",
+      "needs_fact_check": false,
+      "chosen": false,
+      "is_experiment": false,
+      "reason": "one sentence on why, max 25 words",
+      "suggested_title": "3-6 words ALL CAPS specific viral headline, NEVER generic placeholders like THIS MOMENT HITS"
+    }
+  ]
+}
+
+Rules for the output:
+- Candidates MUST be between 20 and 35 seconds (end_s - start_s between 20.0 and 35.0s, ideal ~28s).
+- Set chosen: true for at most the top 3 per hour of source, and only for candidates scoring 65 or higher.
+- Keep reason to one sentence (max 25 words).
+- Timestamps must come directly from the transcript. Never invent them.
+- Ensure chosen candidates do NOT overlap each other (minimum 45s separation between clips).
+- Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65). DO NOT return rejected or unchosen candidates to guarantee complete valid JSON without token exhaustion.
+"""
+
+
+def build_relativsauce_prompt(
+    transcript_segments: List[Dict],
+    moments: List["Moment"],
+    video_meta: Dict,
+    creator_profile: Optional[Dict] = None,
+    is_experiment: bool = False,
+    max_picks: int = 3,
+) -> str:
+    """
+    Build the RelatiVSauce rubric prompt (sauce-0.1).
+    Keeps the rubric preamble identical for Anthropic/Claude prompt caching.
+    """
+    parts: List[str] = [RELATIVSAUCE_RUBRIC_TEXT.strip()]
+
+    # Video metadata
+    title = video_meta.get("title", "(no title)") or "(no title)"
+    dur = float(video_meta.get("duration_s") or 0)
+    parts.append(f"\n## Video Context\nTitle: {title[:100]!r}\nDuration: {dur:.0f} seconds")
+
+    if creator_profile:
+        parts.append(f"\n## Creator Profile (Overrides default weights)\n{json.dumps(creator_profile, indent=2)}")
+
+    if is_experiment:
+        parts.append(
+            "\n## Active Policy: 5% EXPLORATION RUN\n"
+            "This run is selected for experimental exploration! You MUST include one high-variance wildcard candidate "
+            "with \"is_experiment\": true (score 50-64, bizarre, visceral, intense confession, or eccentric contrarian angle)."
+        )
+
+    # Formatted transcript lines
+    transcript_lines = []
+    segs = transcript_segments if transcript_segments else [
+        {"start": m.start, "end": m.end, "text": m.snippet} for m in moments[:40]
+    ]
+    for seg in segs[:650]:
+        s = float(seg.get("start", 0))
+        e = float(seg.get("end", 0))
+        txt = seg.get("text", "").strip()
+        if not txt:
+            continue
+        markers = []
+        for m in moments:
+            if not (e < m.start or s > m.end):
+                if m.signal_type in ("peak", "steep_peak"):
+                    markers.append("⚡ [LOUD ACOUSTIC BURST]")
+                elif m.signal_type in ("valley", "steep_valley", "silence"):
+                    markers.append("🤫 [DRAMATIC PAUSE]")
+                break
+        marker_str = f" {markers[0]}" if markers else ""
+        m_s, s_s = int(s // 60), int(s % 60)
+        m_e, s_e = int(e // 60), int(e % 60)
+        transcript_lines.append(f"[{m_s:02d}:{s_s:02d}-{m_e:02d}:{s_e:02d}] {txt}{marker_str}")
+
+    parts.append("\n## Transcript with Acoustic Energy Markers\n" + "\n".join(transcript_lines))
+    parts.append(
+        "\nApply the RelatiVSauce rubric strictly. Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65) in the JSON object with rubric_ver='sauce-0.1'. Do NOT output unchosen or rejected candidates to avoid output token limits. "
+        "MANDATORY REQUIREMENT: Candidates MUST be between 20 and 35 seconds (end_s - start_s between 20.0 and 35.0s, ideal ~28s) and deliver clear value to the viewer: Hook (0-3s) -> Escalation/Proof (3-20s) -> Payoff/Takeaway/Punchline (End). Do NOT pick intro banter or greetings. Each candidate must come from a distinct, non-overlapping moment. Every suggested_title MUST be an exciting, specific 3-6 word ALL CAPS headline (e.g. 'THE $500,000 MISTAKE'). NEVER output generic placeholders like 'THIS MOMENT HITS'. "
+        "Output ONLY valid JSON. No markdown code fences, no introductory remarks."
+    )
+
+    return "\n\n".join(parts)
+
+
 def parse_moment_response(llm_output: str) -> List[Dict]:
     """
     Parse the LLM's strict-JSON moment response into clip edits.
 
-    Handles BOTH formats:
-      - NEW:   {"picks": [{"moment_index": 1, "reason": "...", ...}]}
-      - LEGACY: [{"candidate_index": 1, "edit_reason": "...", ...}]
-
-    Returns list of:
-      {
-        moment_index, trim_start, trim_end, viral_title,
-        caption, hashtags, reason, edit_reason, source_start, source_end
-      }
-
-    The caller (orchestrator) is responsible for mapping moment_index →
-    actual start/end timestamps from the candidate list.
+    Handles formats:
+      - RELATIVSAUCE: {"rubric_ver": "sauce-0.1", "candidates": [...]}
+      - NEW:          {"picks": [{"moment_index": 1, "reason": "...", ...}]}
+      - LEGACY:       [{"candidate_index": 1, "edit_reason": "...", ...}]
     """
     import json
     import re
 
     text = (llm_output or "").strip()
-    # Strip code fences
-    text = re.sub(r"^```(?:json)?\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
+    # Strip markdown code fences if present
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if code_block:
+        text = code_block.group(1).strip()
+    else:
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text).strip()
+
+    # ── Try RELATIVSAUCE format: {"rubric_ver": "sauce-0.1", "candidates": [...]} ──
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict) and "candidates" in data:
+            valid = _parse_relativsauce_candidates(data["candidates"])
+            if valid is not None:
+                return valid
+    except (json.JSONDecodeError, ValueError, KeyError):
+        pass
+
+    try:
+        obj_match = re.search(r"\{[\s\S]*\}", text)
+        if obj_match:
+            data = json.loads(obj_match.group(0))
+            if isinstance(data, dict) and "candidates" in data:
+                valid = _parse_relativsauce_candidates(data["candidates"])
+                if valid is not None:
+                    return valid
+    except (json.JSONDecodeError, ValueError, KeyError):
+        pass
 
     # ── Try NEW format: {"picks": [...]} ───────────────────────────────
-    # This is what the new build_moment_prompt / build_archetype_aware_prompt
-    # ask the LLM to return.
     try:
         data = json.loads(text)
         if isinstance(data, dict) and "picks" in data:
@@ -353,8 +609,20 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     except (json.JSONDecodeError, ValueError, KeyError):
         pass
 
+    # Regex search for any embedded JSON object {...} containing picks
+    try:
+        obj_match = re.search(r"\{[\s\S]*\}", text)
+        if obj_match:
+            data = json.loads(obj_match.group(0))
+            if isinstance(data, dict) and "picks" in data:
+                valid = _parse_picks_array(data["picks"])
+                if valid is not None:
+                    return valid
+    except (json.JSONDecodeError, ValueError, KeyError):
+        pass
+
     # ── Fallback: try LEGACY format: [{"candidate_index": ...}] ─────────
-    # Used by build_prompt() and old test mocks.
+    # Used by build_prompt() and old test mocks. Also handles [{"moment_index": ...}]
     try:
         match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
         if match:
@@ -364,7 +632,7 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
                 for item in arr:
                     if not isinstance(item, dict):
                         continue
-                    idx_raw = item.get("candidate_index")
+                    idx_raw = item.get("candidate_index", item.get("moment_index"))
                     if idx_raw is None:
                         continue
                     try:
@@ -394,6 +662,73 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     raise ValueError("LLM response is not valid JSON in new or legacy format")
 
 
+def _parse_relativsauce_candidates(candidates: list) -> Optional[List[Dict]]:
+    """Parse RelatiVSauce rubric candidates (sauce-0.1)."""
+    if not isinstance(candidates, list):
+        return None
+
+    valid: List[Dict] = []
+    # Sort candidates by score descending
+    sorted_cands = sorted(
+        [c for c in candidates if isinstance(c, dict)],
+        key=lambda c: float(c.get("score", 0)),
+        reverse=True,
+    )
+
+    for i, c in enumerate(sorted_cands):
+        start_val = c.get("start_s", c.get("start"))
+        end_val = c.get("end_s", c.get("end"))
+        if start_val is None or end_val is None:
+            continue
+        try:
+            start_s = float(start_val)
+            end_s = float(end_val)
+        except (TypeError, ValueError):
+            continue
+        if end_s <= start_s:
+            continue
+
+        score = float(c.get("score", 50))
+        chosen = bool(c.get("chosen", False))
+        is_experiment = bool(c.get("is_experiment", False))
+        hook_type = str(c.get("hook_type", "none"))
+        broad_angle = str(c.get("broad_angle", "none"))
+        hook_line = str(c.get("hook_line", ""))
+        suggested_title = str(c.get("suggested_title", ""))
+        reason = str(c.get("reason", ""))
+        context_risk = str(c.get("context_risk", "low"))
+        needs_fact_check = bool(c.get("needs_fact_check", False))
+
+        conf = max(0.0, min(1.0, score / 100.0))
+        title = (suggested_title or hook_line[:40] or "VIRAL STORY").strip().upper()
+
+        valid.append({
+            "moment_index": i + 1,
+            "start": round(start_s, 2),
+            "end": round(end_s, 2),
+            "trim_start": 0.0,
+            "trim_end": 0.0,
+            "score": score,
+            "confidence": round(conf, 3),
+            "verified": chosen or (score >= 65),
+            "chosen": chosen,
+            "is_experiment": is_experiment,
+            "title": title,
+            "viral_title": title,
+            "hook": hook_line,
+            "retention_bridge": reason,
+            "caption": f"{suggested_title}\n\n{hook_line}".strip() if hook_line else suggested_title,
+            "reason": reason,
+            "hook_type": hook_type,
+            "broad_angle": broad_angle,
+            "context_risk": context_risk,
+            "needs_fact_check": needs_fact_check,
+            "rubric_ver": "sauce-0.1",
+        })
+
+    return valid if valid else None
+
+
 def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
     """Parse the 'picks' array (new format). Returns None if invalid."""
     import json
@@ -401,11 +736,15 @@ def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
     if not isinstance(picks, list):
         return None
     valid: List[Dict] = []
-    for p in picks:
+    for i, p in enumerate(picks):
         if not isinstance(p, dict):
             continue
-        if "moment_index" not in p:
+        idx_raw = p.get("moment_index")
+        start_val = p.get("start", p.get("start_s"))
+        end_val = p.get("end", p.get("end_s"))
+        if idx_raw is None and start_val is None:
             continue
+        idx = int(idx_raw) if idx_raw is not None else (i + 1)
         # Confidence: float 0.0-1.0. Backward compat with old "verified"
         # field — if confidence is missing but verified is present, map
         # True→0.9, False→0.2.
@@ -438,8 +777,8 @@ def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
             or hook[:60]
         )[:100].upper()
         reason_str = str(p.get("reason") or "")[:500]
-        valid.append({
-            "moment_index": int(p["moment_index"]),
+        item_dict = {
+            "moment_index": idx,
             "trim_start": float(p.get("trim_start", 0)),
             "trim_end": float(p.get("trim_end", 0)),
             "confidence": confidence,
@@ -453,7 +792,14 @@ def _parse_picks_array(picks: list) -> Optional[List[Dict]]:
             "edit_reason": reason_str,  # explicit edit_reason field for rank_candidates
             "hashtags": str(p.get("hashtags", ""))[:200],
             "reason": reason_str,
-        })
+        }
+        if start_val is not None:
+            try:
+                item_dict["start"] = float(start_val)
+                item_dict["end"] = float(end_val) if end_val is not None else float(start_val) + 26.0
+            except (ValueError, TypeError):
+                pass
+        valid.append(item_dict)
     return valid if valid else None
 
 
