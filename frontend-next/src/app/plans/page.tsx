@@ -11,7 +11,9 @@
  * - Final 20-minute consultation CTA
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -24,8 +26,13 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { createCheckout, getBillingConfig, type BillingConfig } from "@/lib/api";
 import { getAppDashboardUrl } from "@/lib/domain";
+import {
+  createRazorpayOrder,
+  openRazorpayCheckout,
+  verifyRazorpayPayment,
+  type RazorpayPayment,
+} from "@/lib/razorpay";
 
 interface Tier {
   name: string;
@@ -37,7 +44,7 @@ interface Tier {
   bestFor: string;
   features: string[];
   cpmHint?: string;
-  stripePlan?:
+  planKey?:
     | "creator_go"
     | "creator_pro"
     | "creator_premium"
@@ -47,63 +54,63 @@ interface Tier {
 
 const CREATOR_TIERS: Tier[] = [
   {
-    name: "Go",
-    price: "₹499",
+    name: "Starter",
+    price: "$5.99",
     unit: "/month",
-    cta: "Start Go",
-    href: "/signup?plan=creator_go",
+    cta: "Get Starter",
+    href: "/signup?plan=creator_starter",
     bestFor: "Solo creators dipping toes in",
-    clipsIncluded: 20,
+    clipsIncluded: 40,
     features: [
-      "20 AI-generated clips per month",
-      "Vertical 9:16 rendering, hardcoded captions",
-      "Hook detection from energy + transcript",
-      "3 YouTube channels connected",
-      "Standard rendering queue",
-      "UPI / card billing",
+      "40 viral clips / month",
+      "AI virality scoring & hook detection",
+      "9:16 vertical dynamic face framing",
+      "Karaoke word-by-word subtitles",
+      "No RelatiV watermark",
+      "Up to 30 min source video length",
+      "Global card billing (Visa, Mastercard, Amex)",
     ],
-    stripePlan: "creator_go",
+    planKey: "creator_go",
   },
   {
-    name: "Pro",
-    price: "₹899",
+    name: "Pro Studio",
+    price: "$11.99",
     unit: "/month",
-    cta: "Try Pro",
+    cta: "Get Pro Studio",
     href: "/signup?plan=creator_pro",
     highlight: true,
     bestFor: "Active creators shipping 2-3 videos/week",
-    clipsIncluded: 50,
-    cpmHint: "Best value · 50 clips/mo",
+    clipsIncluded: 90,
+    cpmHint: "Best value · 90 clips/mo",
     features: [
-      "50 AI-generated clips per month",
-      "AI taste-select (DeepSeek V3) on every video",
-      "Auto-caption + viral-title generation",
-      "10 YouTube channels + local device upload",
-      "Priority render queue (3× faster)",
-      "A/B hook variants (3 per clip)",
-      "Email + Discord community support",
+      "90 viral clips / month",
+      "All 4 Content Archetypes (Streamer, Gaming, Podcast, Edu)",
+      "1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)",
+      "Auto B-roll insertion & AI Emojis",
+      "Fast priority GPU processing queue",
+      "Up to 90 min source video length",
+      "Priority Discord & Email support",
     ],
-    stripePlan: "creator_pro",
+    planKey: "creator_pro",
   },
   {
-    name: "Premium",
-    price: "₹1,999",
-    unit: "/month",
-    cta: "Go Premium",
-    href: "/signup?plan=creator_premium",
-    bestFor: "Agencies, podcast networks, power creators",
-    clipsIncluded: 150,
-    cpmHint: "Lowest cost per clip",
+    name: "Agency & Brand",
+    price: "Custom",
+    unit: "",
+    cta: "Contact us",
+    href: "/contact?intent=enterprise",
+    bestFor: "Media houses, podcast networks, power creators",
+    clipsIncluded: 999,
+    cpmHint: "Unlimited capacity",
     features: [
-      "150 AI-generated clips per month",
-      "Everything in Pro, plus:",
-      "Custom branding (logo, color, font on captions)",
-      "Reserved GPU lane (10× faster transcription)",
-      "Team seats (up to 5)",
-      "Priority support — 4h response SLA",
-      "Quarterly strategy call with founders",
+      "Unlimited clips & source hours",
+      "Team seats & shared brand templates",
+      "Dedicated GPU compute instance",
+      "Custom subtitle typography & branding",
+      "API & Webhook integrations",
+      "Dedicated account manager & SLA",
     ],
-    stripePlan: "creator_premium",
+    planKey: "creator_premium",
   },
 ];
 
@@ -122,61 +129,74 @@ const CREATOR_FAQS = [
   },
   {
     q: "How does the pricing per clip work?",
-    a: "We sized the tiers so the cost per clip drops as you scale: ~₹25/clip on Go, ~₹18/clip on Pro, and ~₹13/clip on Premium. Each tier includes full AI hook detection, automated karaoke captions, and 9:16 vertical framing.",
+    a: "We sized the tiers so the cost per clip drops as you scale: ~$0.15/clip on Starter and ~$0.13/clip on Pro Studio. Each tier includes full AI hook detection, automated karaoke captions, and 9:16 vertical framing.",
   },
   {
     q: "Can I connect multiple YouTube channels?",
-    a: "Yes. Go connects up to 3 channels, Pro connects up to 10 channels plus direct local file uploads, and Premium supports up to 10 channels with 5 multi-seat team accounts.",
+    a: "Yes. Starter connects up to 3 channels, Pro Studio connects up to 10 channels plus direct local file uploads, and Agency supports unlimited team accounts.",
   },
   {
-    q: "What payment methods are supported in India and worldwide?",
-    a: "We accept all major Indian payment methods via UPI, RuPay, debit cards, credit cards, and net banking, as well as international Visa, Mastercard, and American Express cards.",
+    q: "What payment methods are supported worldwide?",
+    a: "We accept all major international payment methods including Visa, Mastercard, American Express, Apple Pay, and Google Pay with secure 1-click checkout.",
   },
 ];
 
 export default function PlansPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Stripe config check
-  const [billing, setBilling] = useState<BillingConfig | null>(null);
-  useEffect(() => {
-    getBillingConfig().then(setBilling).catch(() => setBilling(null));
-  }, []);
-
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const handleSubscribe = async (tier: Tier) => {
-    if (!tier.stripePlan) return;
+    if (!tier.planKey) return;
     setCheckoutError(null);
 
     if (!user) {
-      window.location.href = `/signup?next=${encodeURIComponent("/plans")}`;
+      router.push(`/signup?next=${encodeURIComponent("/plans")}`);
       return;
     }
 
-    setLoadingPlan(tier.stripePlan);
+    setLoadingPlan(tier.planKey);
     try {
-      const { checkout_url } = await createCheckout(tier.stripePlan);
-      window.location.href = checkout_url;
-    } catch (e: any) {
-      setCheckoutError(e?.message || "Checkout failed. Try again in a moment.");
-    } finally {
+      const order = await createRazorpayOrder({ plan: tier.planKey });
+      openRazorpayCheckout(order, {
+        onSuccess: async (payment: RazorpayPayment) => {
+          try {
+            const result = await verifyRazorpayPayment(payment);
+            if (!result.success) {
+              setCheckoutError(result.message || "Payment is awaiting confirmation. Do not pay again.");
+              return;
+            }
+            router.push(`/account?billing=success&plan=${encodeURIComponent(tier.planKey!)}`);
+          } catch (error) {
+            setCheckoutError(`${error instanceof Error ? error.message : "Payment verification failed."} Do not pay again; contact support with your payment ID.`);
+          } finally {
+            setLoadingPlan(null);
+          }
+        },
+        onDismiss: () => setLoadingPlan(null),
+        onFailure: (message) => {
+          setCheckoutError(message);
+          setLoadingPlan(null);
+        },
+      });
+    } catch (error: unknown) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout failed. Try again in a moment.");
       setLoadingPlan(null);
     }
   };
 
-  const canSubscribeViaStripe = (tier: Tier) => {
-    if (!tier.stripePlan) return false;
-    if (!user) return false;
-    if (!billing?.stripe_enabled) return false;
-    const plan = billing.plans.find((p) => p.key === tier.stripePlan);
-    return plan?.available === true;
-  };
-
   return (
     <div className="relative w-full bg-[#F7F8FA] dark:bg-[#05060A] text-[#111318] dark:text-[#F4F6FA] selection:bg-amber-400 selection:text-black overflow-hidden transition-colors">
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onReady={() => setRazorpayReady(true)}
+        onError={() => setCheckoutError("Razorpay Checkout could not load. Check your connection and reload the page.")}
+      />
       {/* ── Subtle Background Grid & Atmospheric Illumination ── */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#D1D5DB_1px,transparent_1px)] dark:bg-[radial-gradient(#1A1F2C_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
       <div className="pointer-events-none absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-b from-indigo-500/10 via-purple-500/05 to-transparent blur-[140px]" />
@@ -280,18 +300,18 @@ export default function PlansPage() {
 
                     {/* 6. Primary Plan CTA */}
                     <div className="mb-6">
-                      {canSubscribeViaStripe(tier) ? (
+                      {user && tier.planKey ? (
                         <button
                           type="button"
                           onClick={() => handleSubscribe(tier)}
-                          disabled={loadingPlan === tier.stripePlan}
+                          disabled={!razorpayReady || loadingPlan === tier.planKey}
                           className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer ${
                             isHighlight
                               ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"
                               : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10"
                           }`}
                         >
-                          {loadingPlan === tier.stripePlan ? (
+                          {loadingPlan === tier.planKey ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin" />
                               <span>Opening Checkout…</span>
@@ -355,10 +375,10 @@ export default function PlansPage() {
           <div className="mt-8 sm:mt-10 rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0B0D12] p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm dark:shadow-lg">
             <div className="space-y-1">
               <h3 className="font-display font-semibold text-lg text-zinc-900 dark:text-white">
-                Need 150+ clips, team accounts, or pay-as-you-go?
+                Need custom volume, team accounts, or dedicated GPU lanes?
               </h3>
               <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-sans max-w-2xl">
-                Our Enterprise tier starts at ₹25/clip with no upfront commitment, volume discounts, and dedicated GPU lanes.
+                Our Agency & Enterprise tier starts with volume discounts, no watermark, dedicated compute, and custom API integrations.
               </p>
             </div>
             <Link

@@ -390,12 +390,6 @@ export default function RotatingCards<T extends RotatingCardItem = any>({
           );
         })}
       </div>
-
-      {/* Interactive Helper Badge */}
-      <div className="relative mt-4 pointer-events-none px-3.5 py-1 rounded-full bg-zinc-900/90 border border-white/10 backdrop-blur-md text-[11px] font-mono text-zinc-400 flex items-center gap-2 shadow-lg z-30">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-        <span>Drag ring to rotate · 3D Interactive View</span>
-      </div>
     </div>
   );
 }

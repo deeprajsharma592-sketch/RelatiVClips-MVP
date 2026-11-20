@@ -35,7 +35,8 @@ export default function ProjectsView({
   const [filter, setFilter] = useState<"all" | "ready" | "processing">("all");
 
   const filteredProjects = projects.filter((p) => {
-    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const title = p?.title || "";
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter =
       filter === "all" ? true : filter === "ready" ? p.status === "ready" : p.status === "processing";
     return matchesSearch && matchesFilter;

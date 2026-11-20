@@ -6,7 +6,7 @@
  * zero cheesy grids, zero double navbar. Matches OpusClip studio reference.
  */
 
-import { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect, Component, type ErrorInfo, type ReactNode } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,6 +22,7 @@ import {
   Calendar as CalendarIcon,
   Palette,
   FolderOpen,
+  RefreshCw,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
 import StudioHeader from "@/components/dashboard/StudioHeader";
@@ -38,6 +39,7 @@ import {
   getStoredProjects,
   createNewProject,
   updateProjectStatus,
+  clearAllStoredProjects,
   type StoredProject,
 } from "@/lib/projectStorage";
 import type { Clip } from "@/types";
@@ -46,6 +48,7 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
   const taskIdParam = searchParams.get("taskId");
   const urlParam = searchParams.get("url");
@@ -73,6 +76,10 @@ function DashboardContent() {
   const [currentStepName, setCurrentStepName] = useState<string>("Analyzing video stream...");
   const [elapsedSec, setElapsedSec] = useState(0);
   const [generationError, setGenerationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load genuine projects from storage on mount
   useEffect(() => {
@@ -222,6 +229,14 @@ function DashboardContent() {
     document.body.removeChild(a);
   };
 
+  if (!mounted) {
+    return (
+      <div className="flex min-h-screen bg-[#09090C] text-white items-center justify-center font-sans">
+        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-[#09090C] text-white selection:bg-white selection:text-black font-sans">
       {/* ── Studio Sidebar (Flush to top, sharp edges) ── */}
@@ -303,18 +318,18 @@ function DashboardContent() {
               )}
 
               {/* ── GENUINE CLIPS VAULT ── */}
-              {activeProject && activeProject.status === "ready" && activeProject.clips.length > 0 && (
+              {activeProject && activeProject.status === "ready" && (activeProject.clips?.length || 0) > 0 && (
                 <div className="space-y-5 pt-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
                     <div>
                       <h2 className="text-lg font-bold text-white flex items-center gap-2">
                         <span>{activeProject.title}</span>
                         <span className="text-xs px-2 py-0.5 rounded-md bg-white/10 text-zinc-200 border border-white/10 font-medium">
-                          {activeProject.clips.length} Clips
+                          {activeProject.clips?.length || 0} Clips
                         </span>
                       </h2>
-                      <span className="text-xs text-zinc-500 mt-0.5 block">
-                        Generated {new Date(activeProject.createdAt).toLocaleDateString()} · 1080×1920 60FPS
+                      <span suppressHydrationWarning className="text-xs text-zinc-500 mt-0.5 block">
+                        Generated {activeProject.createdAt ? new Date(activeProject.createdAt).toLocaleDateString() : "Today"} · 1080×1920 60FPS
                       </span>
                     </div>
 
@@ -329,7 +344,7 @@ function DashboardContent() {
 
                       <button
                         onClick={() => {
-                          if (activeProject.clips[0]) handleRequestDownload(activeProject.clips[0]);
+                          if (activeProject.clips?.[0]) handleRequestDownload(activeProject.clips[0]);
                         }}
                         className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition cursor-pointer"
                       >
@@ -341,7 +356,7 @@ function DashboardContent() {
 
                   {/* 9:16 Vertical Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {activeProject.clips.map((clip, index) => (
+                    {(activeProject.clips || []).map((clip, index) => (
                       <ClipCard
                         key={clip.clip_id || index}
                         clip={clip}
@@ -355,7 +370,7 @@ function DashboardContent() {
               )}
 
               {/* ── Empty Vault ── */}
-              {!isGenerating && (!activeProject || activeProject.clips.length === 0) && (
+              {!isGenerating && (!activeProject || (activeProject.clips?.length || 0) === 0) && (
                 <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-3">
                   <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-zinc-400">
                     <Video className="w-5 h-5" />
@@ -623,10 +638,70 @@ function ClipCard({
   );
 }
 
+class DashboardErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn("Studio caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#09090C] flex flex-col items-center justify-center p-6 text-center text-white font-sans">
+          <div className="max-w-md space-y-4 rounded-2xl border border-white/10 bg-[#121216] p-8 shadow-2xl">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h1 className="text-lg font-bold text-white">Studio Session Recovered</h1>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              A temporary browser state occurred. Click below to refresh your workspace.
+            </p>
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  window.location.reload();
+                }}
+                className="w-full py-2.5 px-4 rounded-lg bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer"
+              >
+                Reload Studio
+              </button>
+              <button
+                onClick={() => {
+                  clearAllStoredProjects();
+                  this.setState({ hasError: false, error: null });
+                  window.location.href = "/dashboard";
+                }}
+                className="w-full py-2 px-4 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white font-medium text-xs transition cursor-pointer"
+              >
+                Reset Studio Cache
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
-      <DashboardContent />
-    </Suspense>
+    <DashboardErrorBoundary>
+      <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
+        <DashboardContent />
+      </Suspense>
+    </DashboardErrorBoundary>
   );
 }

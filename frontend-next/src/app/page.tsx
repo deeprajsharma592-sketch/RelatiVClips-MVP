@@ -68,10 +68,6 @@ export default function HomePage() {
             transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col items-center text-center mb-12 sm:mb-14"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/5 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400" />
-              <span>03 · THE WORKFLOW</span>
-            </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-900 dark:text-white">
               Three steps. <span className="text-amber-500 dark:text-amber-400">Ten viral clips.</span>
             </h2>

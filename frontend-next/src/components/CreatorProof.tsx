@@ -70,11 +70,6 @@ export default function CreatorProof() {
 
         {/* Creator Growth Section */}
         <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/5 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-            <span>CREATOR AUTHORITY</span>
-          </div>
-
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Built for creators who want to{" "}
             <span className="text-emerald-600 dark:text-emerald-400">grow faster.</span>
