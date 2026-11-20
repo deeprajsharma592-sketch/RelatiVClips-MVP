@@ -90,18 +90,18 @@ export default function HeroStudio() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="w-full max-w-4xl mx-auto pt-2 pointer-events-auto"
+          className="w-full max-w-5xl mx-auto pt-2 pointer-events-auto"
         >
           <form
             onSubmit={handleSubmit}
-            className="flex items-center rounded-xl border border-white/20 bg-black/60 p-1.5 backdrop-blur-xl shadow-2xl focus-within:border-white/40 transition"
+            className="flex items-center rounded-xl border border-white/20 bg-black/60 p-2 sm:p-2.5 backdrop-blur-xl shadow-2xl focus-within:border-white/40 transition"
           >
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="pl-3 pr-2 text-zinc-400 hover:text-white cursor-pointer transition shrink-0"
+              className="pl-3 pr-2 sm:pl-4 text-zinc-400 hover:text-white cursor-pointer transition shrink-0"
               title="Upload video file"
             >
-              <Link2 className="w-4 h-4" />
+              <Link2 className="w-5 h-5" />
             </div>
 
             <input
@@ -109,7 +109,7 @@ export default function HeroStudio() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="Drop a video link or upload a file"
-              className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 ring-0 border-0 py-1.5"
+              className="w-full bg-transparent text-sm sm:text-base text-white placeholder-zinc-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 ring-0 border-0 py-2.5 sm:py-3"
               style={{ outline: "none", boxShadow: "none" }}
             />
 
@@ -123,17 +123,17 @@ export default function HeroStudio() {
 
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm"
+              className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg bg-white text-black hover:bg-zinc-200 text-sm sm:text-base font-bold transition shrink-0 cursor-pointer shadow-sm"
             >
               Get free clips
             </button>
 
-            <span className="text-zinc-500 text-xs px-2 shrink-0">or</span>
+            <span className="text-zinc-500 text-sm sm:text-base px-2 sm:px-3 shrink-0">or</span>
 
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="text-xs text-zinc-300 hover:text-white font-medium pr-3 shrink-0 transition cursor-pointer"
+              className="text-sm sm:text-base text-zinc-300 hover:text-white font-medium pr-3 sm:pr-4 shrink-0 transition cursor-pointer"
             >
               Auto-edit
             </button>
