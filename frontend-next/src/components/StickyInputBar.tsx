@@ -23,12 +23,11 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
-    const story = document.getElementById("cylinder-scroll-story");
-    const stickyTop = document.querySelector("header")?.getBoundingClientRect().height ?? 64;
-    const storyEnd = story
-      ? story.getBoundingClientRect().bottom + window.scrollY - window.innerHeight + stickyTop
+    const hero = document.getElementById("homepage-hero");
+    const heroExit = hero
+      ? hero.getBoundingClientRect().bottom + window.scrollY - window.innerHeight
       : threshold;
-    const isPast = latest > Math.max(threshold, storyEnd);
+    const isPast = latest > Math.max(threshold, heroExit);
     setVisible((prev) => (isPast !== prev ? isPast : prev));
   });
 
