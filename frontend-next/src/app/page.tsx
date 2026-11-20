@@ -10,7 +10,6 @@ import CreatorProof from "@/components/CreatorProof";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import StickyInputBar from "@/components/StickyInputBar";
 import SolutionsSection from "@/components/SolutionsSection";
-import CylinderScrollReveal from "@/components/CylinderScrollReveal";
 
 const STEPS = [
   {
@@ -43,24 +42,24 @@ export default function HomePage() {
       <StickyInputBar />
 
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
-      <CylinderScrollReveal><HeroStudio /></CylinderScrollReveal>
+      <HeroStudio />
 
       {/* ── MANIFESTO TRANSITION: Apple Glass Fluid Scroll ── */}
-      <CylinderScrollReveal><OwnYourTaste /></CylinderScrollReveal>
+      <OwnYourTaste />
 
       <TasteTimeline />
 
       {/* ── SOCIAL PROOF & CREATOR METRICS (Opus Style Authority) ── */}
-      <CylinderScrollReveal><CreatorProof /></CylinderScrollReveal>
+      <CreatorProof />
 
       {/* ── SECTION 02: THE OUTPUT SHOWCASE (6 Vertical 9:16 Clips) ── */}
-      <CylinderScrollReveal><MovingClipsGrid /></CylinderScrollReveal>
+      <MovingClipsGrid />
 
       {/* ── SECTION: SOLUTIONS FOR EVERY CREATOR & TEAM ── */}
-      <CylinderScrollReveal><SolutionsSection /></CylinderScrollReveal>
+      <SolutionsSection />
 
       {/* ── SECTION 03: HOW IT WORKS (3 Simple Steps) ── */}
-      <CylinderScrollReveal><section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#F0F2F6] dark:bg-[#07080C] border-t border-black/[0.06] dark:border-white/5">
+      <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#F0F2F6] dark:bg-[#07080C] border-t border-black/[0.06] dark:border-white/5">
         <div className="w-full max-w-[1600px] mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -112,7 +111,7 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section></CylinderScrollReveal>
+      </section>
 
     </div>
   );

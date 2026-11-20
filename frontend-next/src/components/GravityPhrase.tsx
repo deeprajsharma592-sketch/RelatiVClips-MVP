@@ -24,7 +24,9 @@ type Grain = {
 };
 
 const GLYPHS = "RELATIV0123456789+*/";
-const GRAIN_GAP = 5.5;
+// Wider spacing and larger glyphs make the breakup read as chunky pieces
+// instead of a fine sand texture.
+const GRAIN_GAP = 8;
 const GRAVITY = 980;
 
 function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
@@ -109,7 +111,7 @@ export default function GravityPhrase({ phrases, interval = 5200 }: GravityPhras
             vy: rising ? -Math.random() * 120 : 0,
             rotation: rising ? (Math.random() - 0.5) * 1.2 : 0,
             spin: rising ? (Math.random() - 0.5) * 2 : 0,
-            size: 4.8 + Math.random() * 1.5,
+            size: 7 + Math.random() * 2,
             glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
             state: rising ? "returning" : "anchored",
             returnAt: performance.now() + (rising ? 220 + Math.random() * 680 : 0),

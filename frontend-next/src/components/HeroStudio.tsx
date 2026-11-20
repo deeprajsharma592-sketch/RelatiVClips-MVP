@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
+import GravityPhrase from "./GravityPhrase";
+
+const HERO_PHRASES = [
+  "personalized short clips",
+  "more views in less time",
+  "every platform, one click",
+  "your next viral moment",
+];
 
 export default function HeroStudio() {
   const router = useRouter();
@@ -39,11 +47,13 @@ export default function HeroStudio() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(45,38,62,0.22),transparent_58%)]" />
         <div className="relative z-[1] mx-auto flex w-full max-w-[1500px] flex-col items-center text-center">
           <p className="mb-7 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500 sm:text-xs">RelatiV <span className="mx-2 text-zinc-700">/</span> Made to move</p>
-          <h1 className="max-w-[1200px] text-[clamp(3rem,8vw,8rem)] font-display font-semibold leading-[0.98] tracking-[-0.055em] text-white">
+          <h1 className="max-w-[1200px] text-[clamp(3rem,8vw,8rem)] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white">
             Turn any footage into
-            <span className="mt-3 block text-[0.72em] font-medium tracking-[-0.045em] text-zinc-300 sm:mt-5">personalized short clips</span>
+            <span className="mt-3 block w-full text-[0.62em] font-sans font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
+              <GravityPhrase phrases={HERO_PHRASES} />
+            </span>
           </h1>
-          <p className="mt-7 text-[clamp(2rem,4.8vw,4.5rem)] font-display font-extrabold leading-none tracking-[-0.045em] text-white">20× faster</p>
+          <p className="mt-7 text-[clamp(2rem,4.8vw,4.5rem)] font-sans font-semibold leading-none tracking-[-0.04em] text-white">20× faster</p>
           <p className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base lg:text-lg">
             Paste a link or drop a raw take. RelatiV finds the moments, edits the clips, and sizes them for every platform.
           </p>
