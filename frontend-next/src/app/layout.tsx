@@ -43,6 +43,9 @@ export const metadata: Metadata = {
   description:
     "Paste a YouTube link. Get 10 ready-to-post clips in 5 minutes. Taste-based selection, designer captions, your brand colors. Built for podcasters, brands, and creators who ship. Now in public beta.",
   metadataBase: new URL("https://relativclips.com"),
+  icons: {
+    icon: "/relativ-mark.svg",
+  },
   alternates: {
     canonical: "/",
   },
