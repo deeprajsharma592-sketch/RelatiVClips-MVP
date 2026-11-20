@@ -252,7 +252,7 @@ function DashboardContent() {
         <StudioHeader onOpenUpgrade={() => setIsUpgradeModalOpen(true)} />
 
         {/* Content Pane */}
-        <main className="flex-1 p-6 sm:p-8 max-w-5xl w-full mx-auto space-y-8">
+        <main className="flex-1 w-full min-w-0 max-w-[1800px] mx-auto p-5 sm:p-8 xl:p-10 space-y-8">
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
             <div className="space-y-8">

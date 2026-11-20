@@ -175,7 +175,7 @@ export default function StudioHero({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-10 font-sans">
+    <div className="w-full min-w-0 space-y-10 font-sans">
       {/* ── CENTRAL INTAKE CARD (Exact match to OpusClip picture) ── */}
       <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-5 sm:p-6 space-y-5 shadow-2xl">
         {/* Tabs Bar */}
