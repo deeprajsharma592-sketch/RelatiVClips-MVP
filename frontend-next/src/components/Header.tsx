@@ -83,11 +83,11 @@ export default function Header() {
         </div>
 
         {/* Center Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-8 lg:gap-10">
           <Link
             href="/"
             aria-current={pathname === "/" ? "page" : undefined}
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname === "/" ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
@@ -102,7 +102,7 @@ export default function Header() {
           >
             <button
               onClick={() => setSolutionsOpen((v) => !v)}
-              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors cursor-pointer py-2 ${
+              className={`inline-flex items-center gap-1.5 text-base font-medium transition-colors cursor-pointer py-2 ${
                 solutionsOpen ? "text-white" : "text-zinc-400 hover:text-white"
               }`}
               aria-expanded={solutionsOpen}
@@ -152,7 +152,7 @@ export default function Header() {
 
           <Link
             href="/plans"
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname?.startsWith("/plans") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
@@ -160,7 +160,7 @@ export default function Header() {
           </Link>
           <Link
             href="/blog"
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname?.startsWith("/blog") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
@@ -168,7 +168,7 @@ export default function Header() {
           </Link>
           <Link
             href="/about"
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname?.startsWith("/about") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
