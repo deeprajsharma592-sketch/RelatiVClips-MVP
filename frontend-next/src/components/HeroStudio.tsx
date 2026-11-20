@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   UploadCloud,
   ArrowRight,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
+import CylinderPhrase from "./CylinderPhrase";
 
 const ROTATING_PHRASES = [
   "Tasteful Clips",
@@ -26,15 +27,7 @@ export default function HeroStudio() {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [phraseIndex, setPhraseIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setPhraseIndex((prev) => (prev + 1) % ROTATING_PHRASES.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,26 +64,9 @@ export default function HeroStudio() {
             Turn any footage into
           </h1>
 
-          {/* Rotating Phrase Pill on its own layer above 20x faster */}
-          <div className="relative z-20 flex w-full items-center justify-center text-[clamp(1.75rem,4.8vw,4.75rem)] font-display font-extrabold tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
-            <motion.span
-              layout
-              transition={{ layout: { type: "spring", stiffness: 115, damping: 24, mass: 0.9 } }}
-              className="relative inline-flex items-center justify-center overflow-hidden px-5 py-1.5 rounded-xl bg-black/70 border border-white/25 text-white backdrop-blur-xl h-[1.38em]"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={ROTATING_PHRASES[phraseIndex]}
-                  initial={{ y: "55%", opacity: 0, filter: "blur(7px)" }}
-                  animate={{ y: "0%", opacity: 1, filter: "blur(0px)" }}
-                  exit={{ y: "-55%", opacity: 0, filter: "blur(5px)" }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  className="inline-block whitespace-nowrap"
-                >
-                  {ROTATING_PHRASES[phraseIndex]}
-                </motion.span>
-              </AnimatePresence>
-            </motion.span>
+          {/* Rotating 3D phrase cylinder, adapted from the design reference. */}
+          <div className="relative z-20 flex w-full items-center justify-center text-[clamp(1.55rem,4.8vw,4.75rem)] font-display font-extrabold tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
+            <CylinderPhrase phrases={ROTATING_PHRASES} />
           </div>
 
           {/* 20x faster on the layer below */}
