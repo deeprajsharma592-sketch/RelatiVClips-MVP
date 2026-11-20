@@ -120,7 +120,7 @@ def _ytdlp_video_section_url(
 
     cmd = [
         YTDLP_PATH,
-        # Native 1080p and 720p HD streams
+        # Native 1080p and 720p HD streams with progressive format fallback (format 18 / best)
         "-f", (
             "137+140/"
             "bv*[height=1080]+ba/"
@@ -128,7 +128,10 @@ def _ytdlp_video_section_url(
             "136+140/"
             "bv*[height=720]+ba/"
             "bv*[height>=720]+ba/"
-            "bv*+ba"
+            "bv*+ba/"
+            "b[height<=1080]/"
+            "best/"
+            "18"
         ),
         "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
