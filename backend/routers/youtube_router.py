@@ -1467,7 +1467,7 @@ def _run_moment_pipeline(
         futures = {pool.submit(_process_clip, i, c): i for i, c in enumerate(final_clips)}
         completed_count = 0
         try:
-            for fut in as_completed(futures, timeout=180):
+            for fut in as_completed(futures, timeout=420):
                 i = futures[fut]
                 try:
                     out = fut.result()
