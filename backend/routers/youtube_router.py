@@ -559,17 +559,6 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
 
     `platform` is one of "tiktok" | "reels" | "shorts". Default = "tiktok".
     """
-    from ..pipeline.orchestrator import run_new_pipeline
-    from ..pipeline.moment_detector import detect_moments, Moment
-    from ..taste.icl import build_moment_prompt, build_archetype_aware_prompt, parse_moment_response
-    # SIMPLIFIED 2026-06-15: dropped PLATFORMS dict + per-platform functions.
-    # Universal format (single 9:16 22-30s spec) — see platforms.py.
-    from ..pipeline.platforms import (
-        prompt_guidance as platform_prompt_guidance,
-        adjust_clip_to_format as adjust_clip_for_platform,
-        style_caption, limit_hashtags,
-    )
-
     def _bridge(stage: str, msg: str) -> None:
         try:
             step = int(stage) if str(stage).isdigit() else None
@@ -583,11 +572,19 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
     # --- STAGE 1 + 2 (combined): caption-first signal extraction ---
     # Try captions first; if they fail, download audio for librosa.
     callback("Fetching captions and source metadata...", step=1, sub_progress=0.0)
-    moments, info = detect_moments(
-        source=url,
-        task_id=task_id,
-        log=lambda m: callback(m, step=1, sub_progress=0.5),
-    )
+
+    def _detect_source_moments():
+        # Import and run in a worker. yt-dlp, transcript parsing, and librosa
+        # are synchronous and must never block FastAPI's status/health loop.
+        from ..pipeline.moment_detector import detect_moments
+
+        return detect_moments(
+            source=url,
+            task_id=task_id,
+            log=lambda m: callback(m, step=1, sub_progress=0.5),
+        )
+
+    moments, info = await asyncio.to_thread(_detect_source_moments)
     callback("Source analyzed", step=1, sub_progress=1.0)
 
     if not moments:
