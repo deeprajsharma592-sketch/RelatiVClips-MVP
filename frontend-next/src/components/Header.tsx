@@ -31,6 +31,11 @@ export default function Header() {
   const [mobileSolutionsOpen, setMobileSolutionsOpen] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user, loading, logout } = useAuth();
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setSolutionsOpen(false);
+  }, []);
+  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
 
   // Hide the global website header completely on Studio Dashboard and Onboarding
   if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/onboarding")) {
@@ -55,12 +60,6 @@ export default function Header() {
     { href: "/blog", label: "Blog" },
     { href: "/about", label: "About" },
   ];
-
-  const closeMenu = useCallback(() => {
-    setMenuOpen(false);
-    setSolutionsOpen(false);
-  }, []);
-  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
 
   const isActive = (href: string) => {
     if (href.startsWith("http")) return false;
