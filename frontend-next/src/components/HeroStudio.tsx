@@ -32,7 +32,7 @@ const ROTATING_PHRASES = [
   "Tasteful Clips",
   "Get More Views",
   "According to your Niche",
-  "Hyperpersonalised Content",
+  "Hyperpersonalised Clips",
 ];
 
 export default function HeroStudio() {
@@ -92,16 +92,18 @@ export default function HeroStudio() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.05 }}
-          className="space-y-2 select-none"
+          className="flex flex-col items-center justify-center space-y-3 select-none"
         >
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             Turn any footage into
           </h1>
-          <div className="flex items-center justify-center flex-wrap gap-2 text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
+
+          {/* Rotating Phrase Pill on its own layer above 20x faster */}
+          <div className="relative z-20 flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             <motion.span
               layout
               transition={{ layout: { duration: 0.3, ease: "easeOut" } }}
-              className="relative inline-flex items-center justify-center overflow-hidden px-4 py-1 rounded-full bg-black/60 border border-white/20 text-white backdrop-blur-xl h-[1.35em]"
+              className="relative inline-flex items-center justify-center overflow-hidden px-5 py-1.5 rounded-full bg-black/70 border border-white/25 text-white backdrop-blur-xl h-[1.38em]"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -116,7 +118,11 @@ export default function HeroStudio() {
                 </motion.span>
               </AnimatePresence>
             </motion.span>
-            <span className="text-white">10x faster</span>
+          </div>
+
+          {/* 20x faster on the layer below */}
+          <div className="relative z-10 text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
+            20x faster
           </div>
         </motion.div>
 
