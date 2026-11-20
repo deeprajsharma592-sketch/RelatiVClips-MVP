@@ -44,6 +44,9 @@ export default function HomePage() {
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
 
+      {/* ── MANIFESTO TRANSITION: Apple Glass Fluid Scroll ── */}
+      <OwnYourTaste />
+
       <TasteTimeline />
 
       {/* ── SOCIAL PROOF & CREATOR METRICS (Opus Style Authority) ── */}
@@ -110,8 +113,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Closing brand statement, placed near the footer ── */}
-      <OwnYourTaste />
     </div>
   );
 }
