@@ -37,10 +37,10 @@ export default function HeroCardGallery() {
   const shown = mounted && phone ? photos.filter((_, index) => !skippedOnPhone.includes(index)) : photos;
 
   return (
-    <div className="relative w-full h-[400px] sm:h-[480px] md:h-[540px] overflow-hidden flex items-center justify-center select-none pt-2">
+    <div className="relative w-full h-full overflow-hidden flex items-center justify-center select-none">
       <ImageGallery
         images={shown}
-        ringSize={52}
+        ringSize={phone ? 58 : 52}
         tileScale={0.9}
         radius={9}
         autoSpin={8}

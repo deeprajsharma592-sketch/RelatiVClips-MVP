@@ -58,14 +58,19 @@ export default function HeroStudio() {
   };
 
   return (
-    <section className="relative w-full min-h-[480px] flex flex-col items-center justify-start bg-black text-white pt-24 sm:pt-28 pb-20 font-sans">
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center space-y-6">
+    <section className="relative w-full min-h-[640px] sm:min-h-[720px] md:min-h-[780px] flex flex-col items-center justify-center bg-black text-white px-4 py-16 sm:py-20 font-sans overflow-hidden">
+      {/* ── 3D Rotating Card Gallery (Beneath the main text in the hero section) ── */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-auto">
+        <HeroCardGallery />
+      </div>
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center space-y-6 pointer-events-none">
         {/* Eyebrow Badge (OpusClip exact match) */}
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-[11px] font-mono uppercase tracking-wider text-zinc-400 border border-white/[0.08] bg-white/[0.02]"
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-[11px] font-mono uppercase tracking-wider text-zinc-400 border border-white/[0.1] bg-black/60 backdrop-blur-md"
         >
           <span>#1 AI VIDEO EDITOR AND CLIPPING TOOL</span>
         </motion.div>
@@ -77,14 +82,14 @@ export default function HeroStudio() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="space-y-2 select-none"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold tracking-tight text-white leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             Turn any footage into
           </h1>
-          <div className="flex items-center justify-center flex-wrap gap-2 text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight">
+          <div className="flex items-center justify-center flex-wrap gap-2 text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             <motion.span
               layout
               transition={{ layout: { duration: 0.3, ease: "easeOut" } }}
-              className="relative inline-flex items-center justify-center overflow-hidden px-4 py-1 rounded-full bg-white/10 border border-white/15 text-white backdrop-blur-md h-[1.35em]"
+              className="relative inline-flex items-center justify-center overflow-hidden px-4 py-1 rounded-full bg-black/60 border border-white/20 text-white backdrop-blur-xl h-[1.35em]"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -108,7 +113,7 @@ export default function HeroStudio() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed"
+          className="text-xs sm:text-sm text-zinc-300 max-w-lg mx-auto leading-relaxed drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]"
         >
           Paste a link or drop a raw take, and RelatiV clips, edits, sizes and publishes them to all social platforms in one click.
         </motion.p>
@@ -118,11 +123,11 @@ export default function HeroStudio() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="w-full max-w-xl mx-auto pt-2"
+          className="w-full max-w-xl mx-auto pt-2 pointer-events-auto"
         >
           <form
             onSubmit={handleSubmit}
-            className="flex items-center rounded-full border border-white/20 bg-white/[0.04] p-1.5 backdrop-blur-md shadow-2xl focus-within:border-white/40 transition"
+            className="flex items-center rounded-full border border-white/20 bg-black/60 p-1.5 backdrop-blur-xl shadow-2xl focus-within:border-white/40 transition"
           >
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -169,9 +174,6 @@ export default function HeroStudio() {
 
           {error && <p className="text-xs text-rose-400 mt-2">{error}</p>}
         </motion.div>
-
-        {/* ── 3D Rotating Card Gallery Showcase (DiMaac ImageGallery) ── */}
-        <HeroCardGallery />
       </div>
 
       {/* Loading transition */}
