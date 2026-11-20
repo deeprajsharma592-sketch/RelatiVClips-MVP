@@ -13,20 +13,6 @@ import {
 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
-import { ImageGallery, type GalleryImage } from "@/components/dimaac/image-gallery";
-
-const images: GalleryImage[] = [
-  { src: "https://ui.dimaac.com/media/portraits/tinted-glasses-4x5.jpg", alt: "Woman in purple-tinted sunglasses against an orange glow" },
-  { src: "https://ui.dimaac.com/media/portraits/neon-profile-4x5.jpg", alt: "Profile of a woman in neon pink sunglasses on a blue background" },
-  { src: "https://ui.dimaac.com/media/fashion/gold-visor-4x5.jpg", alt: "Profile with a gold headpiece on a yellow background" },
-  { src: "https://ui.dimaac.com/media/portraits/red-coat-4x5.jpg", alt: "Person in a red coat against deep blue" },
-  { src: "https://ui.dimaac.com/media/portraits/lime-blazer-4x5.jpg", alt: "Person in a lime green blazer on a pink background" },
-  { src: "https://ui.dimaac.com/media/fashion/orange-visor-4x5.jpg", alt: "Woman in an orange visor on a teal background" },
-  { src: "https://ui.dimaac.com/media/fashion/chunky-knit-4x5.jpg", alt: "Model in a chunky knit sweater and coral boots" },
-  { src: "https://ui.dimaac.com/media/fashion/purple-hoodie-4x5.jpg", alt: "Person in a purple tie-dye hoodie in a concrete room" },
-  { src: "https://ui.dimaac.com/media/portraits/platinum-blonde-4x5.jpg", alt: "Young man with platinum blonde hair in a yellow jacket" },
-  { src: "https://ui.dimaac.com/media/fashion/orange-ring-4x5.jpg", alt: "Young man framed through an orange circle" },
-];
 
 const ROTATING_PHRASES = [
   "Tasteful Clips",
@@ -72,20 +58,7 @@ export default function HeroStudio() {
 
   return (
     <section className="relative w-full h-[760px] sm:h-[800px] md:h-[840px] flex items-center justify-center bg-black text-white px-4 overflow-hidden font-sans">
-      {/* ── LOWER LAYER: 3D Rotating Card Gallery (overlaps beneath img 2) ── */}
-      <div className="absolute inset-0 z-0 w-full h-full pointer-events-auto">
-        <ImageGallery
-          images={images}
-          ringSize={76}
-          tileScale={0.9}
-          radius={12}
-          autoSpin={8}
-          pauseOnHover={false}
-          className="w-full h-full"
-        />
-      </div>
-
-      {/* ── UPPER LAYER: img 2 (Main text, subtitle, input bar) ── */}
+      {/* Main text, subtitle, and input bar sit on a clean background. */}
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center space-y-6 pointer-events-none">
         {/* Master Headline (OpusClip exact match) */}
         <motion.div
