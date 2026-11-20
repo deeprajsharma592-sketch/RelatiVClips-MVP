@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
 
@@ -20,7 +21,8 @@ from .s3_faces import detect_and_track_faces
 from .s4_speech import attribute_speech_pipeline
 from .s5_turns import compute_turns
 from .s6_layout import generate_layout_artifact
-from .s7_camera import plan_camera_single_shot, plan_camera_stack_shot
+from .s7_camera import plan_camera_context_shot, plan_camera_single_shot, plan_camera_stack_shot
+from .layout_policy import analyze_visual_context, choose_layout
 from .s8_zoom import (
     validate_impact_words,
     detect_loudness_peaks,
@@ -32,6 +34,32 @@ from .s9_render import render_video
 from .s10_qa import generate_qa_report
 
 
+def _caption_safe_subtitle(
+    subtitle_path: str | Path | None,
+    workdir: Path,
+    layout_mode: str,
+    context_position: str,
+) -> str | Path | None:
+    """Move captions into the intentional outer letterbox of context layouts."""
+    if layout_mode != "context" or not subtitle_path or not Path(subtitle_path).exists():
+        return subtitle_path
+    source = Path(subtitle_path)
+    text = source.read_text(encoding="utf-8", errors="replace")
+    style_lines = []
+    for line in text.splitlines():
+        if line.startswith("Style: Default,"):
+            prefix, payload = line.split(": ", 1)
+            fields = payload.split(",")
+            if len(fields) >= 23:
+                fields[18] = "8" if context_position == "top" else "2"
+                fields[21] = "72"
+                line = f"{prefix}: {','.join(fields)}"
+        style_lines.append(line)
+    adjusted = workdir / "captions_context_safe.ass"
+    adjusted.write_text("\n".join(style_lines) + "\n", encoding="utf-8")
+    return adjusted
+
+
 def run_pipeline(
     clip_path: str | Path,
     output_path: str | Path,
@@ -41,6 +69,9 @@ def run_pipeline(
     impact_path: str | Path | None = None,
     debug_overlay: bool = False,
     subtitles_path: str | Path | None = None,
+    layout_mode: str = "auto",
+    context_position: str = "top",
+    content_hint: str | None = None,
 ) -> Dict[str, Any]:
     """Execute the framing pipeline end-to-end writing artifacts to workdir."""
     config = load_config(config_path)
@@ -118,8 +149,17 @@ def run_pipeline(
     if not p2_samples and len(tracks) > 1:
         p2_samples = tracks[1].get("samples", [])
 
+    context_signals = analyze_visual_context(norm_video, tracks)
+    layout_decision = choose_layout(
+        requested_mode=layout_mode,
+        context_position=context_position,
+        content_hint=content_hint,
+        signals=context_signals,
+    )
+
     single_p1_plan = plan_camera_single_shot(p1_samples, 0, total_frames, fps, src_w, src_h, config) if p1_samples else []
     single_p2_plan = plan_camera_single_shot(p2_samples, 0, total_frames, fps, src_w, src_h, config) if p2_samples else []
+    context_plan = plan_camera_context_shot(p1_samples, 0, total_frames, fps, src_w, src_h, config) if p1_samples else []
     
     # STACK is only possible if both P1 and P2 exist AND represent distinct subjects
     has_two_distinct_subjects = bool(p1_samples and p2_samples and any(seg.get("state") == "STACK" for seg in layout_segments))
@@ -168,7 +208,28 @@ def run_pipeline(
         state = seg["state"] if seg else "FIT_BLUR"
         active_speaker = speech_data["frames"][f_idx]["speaker"] if f_idx < len(speech_data.get("frames", [])) else "unknown"
 
-        if state == "SINGLE":
+        if layout_decision.mode == "fit":
+            state = "FIT_BLUR"
+        elif layout_decision.mode == "conversation" and stack_plan:
+            # Podcast/interview clips keep both participants visible. Speaker
+            # detection still drives emphasis, but does not hide the listener.
+            state = "STACK"
+
+        if state == "SINGLE" and layout_decision.mode == "context" and context_plan:
+            item = context_plan[f_idx] if f_idx < len(context_plan) else None
+            crop = item["crop"] if item else [0, 0, src_w, src_h]
+            plan_frames.append({
+                "frame_idx": f_idx,
+                "t": round(t, 4),
+                "state": "CONTEXT_STACK",
+                "crop": crop,
+                "context_position": layout_decision.context_position,
+                "speaker": active_speaker,
+                "is_unsafe": item["is_unsafe"] if item else False,
+                "faces": [item["face_box"]] if (item and item.get("face_box")) else [],
+                "zoom_scale": 1.0,
+            })
+        elif state == "SINGLE":
             track_label = seg.get("track", "P1")
             chosen_single = single_p2_plan if (track_label == "P2" and single_p2_plan) else single_p1_plan
             item = chosen_single[f_idx] if f_idx < len(chosen_single) else None
@@ -247,19 +308,26 @@ def run_pipeline(
     with open(plan_json_path, "w", encoding="utf-8") as f:
         json.dump({
             "frames": plan_frames,
+            "layout_decision": asdict(layout_decision),
             "zoom_events": zoom_events,
             "config_hash": config.get("_meta", {}).get("config_hash"),
             "versions": config.get("_meta", {}).get("versions"),
         }, f, indent=2)
 
     # ── Stage 9: Render Output
+    render_subtitles = _caption_safe_subtitle(
+        subtitles_path,
+        workdir,
+        layout_decision.mode,
+        layout_decision.context_position,
+    )
     render_result = render_video(
         norm_video_path=norm_video,
         plan_frames=plan_frames,
         output_path=output_path,
         config=config,
         debug_overlay=debug_overlay,
-        subtitle_path=subtitles_path,
+        subtitle_path=render_subtitles,
     )
 
     # ── Stage 10: Generate QA Report (Metrics M1-M10, Status pass/review/fail)
@@ -277,6 +345,10 @@ def run_pipeline(
         config=config,
     )
 
+    qa_artifact["layout_decision"] = asdict(layout_decision)
+    with open(workdir / "qa.json", "w", encoding="utf-8") as f:
+        json.dump(qa_artifact, f, indent=2)
+
     return qa_artifact
 
 
@@ -289,6 +361,9 @@ def main():
     parser.add_argument("--words", default=None, help="Path to words.json")
     parser.add_argument("--impact", default=None, help="Path to impact.json")
     parser.add_argument("--debug-overlay", action="store_true", help="Draw debug HUD, faces, and crop rects")
+    parser.add_argument("--layout-mode", choices=["auto", "portrait", "context", "conversation", "fit"], default="auto")
+    parser.add_argument("--context-position", choices=["top", "bottom"], default="top")
+    parser.add_argument("--content-hint", default=None)
 
     args = parser.parse_args()
     run_pipeline(
@@ -299,6 +374,9 @@ def main():
         words_path=args.words,
         impact_path=args.impact,
         debug_overlay=args.debug_overlay,
+        layout_mode=args.layout_mode,
+        context_position=args.context_position,
+        content_hint=args.content_hint,
     )
 
 

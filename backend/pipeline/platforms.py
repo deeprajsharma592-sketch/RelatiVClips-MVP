@@ -26,16 +26,19 @@ The single universal format is:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
+
+
+from ..utils.config import CLIP_DURATION_HARD_MIN, CLIP_DURATION_HARD_MAX
 
 
 @dataclass
 class ClipFormat:
-    """Single universal output format. 20-35s high-retention viral stories."""
+    """Universal output format with natural content-driven variable duration (10s - 150s)."""
     name: str = "universal"
-    min_duration_s: float = 18.0
-    max_duration_s: float = 38.0
-    target_duration_s: float = 28.0
+    min_duration_s: float = CLIP_DURATION_HARD_MIN
+    max_duration_s: float = CLIP_DURATION_HARD_MAX
+    target_duration_s: Optional[float] = None  # No fixed target; duration is content-driven
     n_hashtags_min: int = 5
     n_hashtags_max: int = 8
     caption_style: str = "all_caps"
@@ -63,28 +66,24 @@ def get_format() -> ClipFormat:
 
 def adjust_clip_to_format(start: float, end: float, video_duration: float = 0.0) -> tuple:
     """
-    Adjust a candidate clip's [start, end] to fit the universal 20-35s window.
-    Expands forward into the payoff/takeaway rather than blindly clamping to 0.0s.
+    Validates [start, end] against hard bounds (10s - 150s).
+    Does NOT normalize, round, pad, or trim clips toward a common length.
+    Preserves the natural micro-story arc.
     """
     duration = end - start
+    if video_duration > 0:
+        start = max(0.0, start)
+        end = min(video_duration, end)
+        duration = end - start
+
     if duration < FORMAT.min_duration_s:
-        new_duration = min(FORMAT.target_duration_s, FORMAT.max_duration_s)
-        extension = new_duration - duration
-        # Expand primarily forward (75%) into the takeaway/punchline,
-        # with at most 25% backward for setup context.
-        back_allowance = min(start, extension * 0.25)
-        fwd_allowance = extension - back_allowance
-        new_start = max(0.0, start - back_allowance)
-        new_end = end + fwd_allowance
-        if video_duration > 0 and new_end > video_duration:
-            new_end = video_duration
-            new_start = max(0.0, new_end - new_duration)
-        return new_start, new_end, f"extended_to_{new_duration:.0f}s"
+        # Extend end up to minimum if physically possible
+        new_end = min(video_duration if video_duration > 0 else float("inf"), start + FORMAT.min_duration_s)
+        return start, new_end, f"padded_to_hard_min_{FORMAT.min_duration_s:.0f}s"
     elif duration > FORMAT.max_duration_s:
-        new_duration = FORMAT.max_duration_s
-        # Trim from the end (keeps the hook intact)
-        new_end = start + new_duration
-        return start, new_end, f"trimmed_to_{new_duration:.0f}s"
+        new_end = start + FORMAT.max_duration_s
+        return start, new_end, f"capped_at_hard_max_{FORMAT.max_duration_s:.0f}s"
+
     return start, end, "in_range"
 
 

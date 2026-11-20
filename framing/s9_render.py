@@ -58,6 +58,36 @@ def render_center_crop_frame(frame: np.ndarray, target_w: int = 1080, target_h: 
     return warp_crop_affine(frame, crop_x1, 0.0, crop_w, crop_h, target_w, target_h)
 
 
+def render_scene_panel(
+    frame: np.ndarray,
+    target_w: int,
+    target_h: int,
+    anchor: str = "center",
+) -> np.ndarray:
+    """Fit the complete source canvas into a panel without stretching or cropping."""
+    src_h, src_w = frame.shape[:2]
+    scale = min(target_w / max(1, src_w), target_h / max(1, src_h))
+    width = max(1, int(round(src_w * scale)))
+    height = max(1, int(round(src_h * scale)))
+    fitted = cv2.resize(
+        frame,
+        (width, height),
+        interpolation=cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LANCZOS4,
+    )
+    # A restrained near-black field preserves graphics and HUD readability; a
+    # blurred duplicate behind text-heavy content makes small type less legible.
+    panel = np.full((target_h, target_w, 3), (14, 14, 16), dtype=np.uint8)
+    x = (target_w - width) // 2
+    if anchor == "bottom":
+        y = target_h - height
+    elif anchor == "top":
+        y = 0
+    else:
+        y = (target_h - height) // 2
+    panel[y:y + height, x:x + width] = fitted
+    return panel
+
+
 def warp_crop_affine(
     frame: np.ndarray,
     crop_x1: float,
@@ -136,7 +166,9 @@ def render_video(
     # Subtitle burn-in filter if provided (animated kinetic captions)
     if subtitle_path and Path(subtitle_path).exists() and Path(subtitle_path).stat().st_size > 50:
         escaped_sub = str(Path(subtitle_path).as_posix()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
-        ffmpeg_cmd.extend(["-vf", f"ass='{escaped_sub}'"])
+        font_dir = Path(__file__).resolve().parents[1] / "backend" / "assets" / "fonts"
+        escaped_fonts = str(font_dir.as_posix()).replace(":", "\\:").replace("'", "\\'")
+        ffmpeg_cmd.extend(["-vf", f"ass='{escaped_sub}':fontsdir='{escaped_fonts}'"])
         print(f"[Framing Render] Burning viral subtitles from {subtitle_path}")
 
     ffmpeg_cmd.extend([
@@ -189,6 +221,9 @@ def render_video(
                             crop_boxes_viz.append((c["x1"], c["y1"], c["x1"] + c["w"], c["y1"] + c["h"]))
                         elif isinstance(c, (list, tuple)) and len(c) >= 4:
                             crop_boxes_viz.append((c[0], c[1], c[2], c[3]))
+                elif plan and state == "CONTEXT_STACK" and "crop" in plan:
+                    c = plan["crop"]
+                    crop_boxes_viz.append((c[0], c[1], c[2], c[3]))
 
                 frame_for_render = draw_debug_overlay(
                     frame=frame,
@@ -239,6 +274,23 @@ def render_video(
                         top_panel = (top_panel.astype(np.float32) * 0.85).astype(np.uint8)
 
                 final_frame = np.vstack([top_panel, bot_panel])
+            elif state == "CONTEXT_STACK":
+                c = plan.get("crop", [0, 0, src_w, src_h])
+                if isinstance(c, dict):
+                    cx1, cy1, cw, ch = c["x1"], c["y1"], c["w"], c["h"]
+                else:
+                    cx1, cy1, cw, ch = c[0], c[1], c[2] - c[0], c[3] - c[1]
+                panel_h = target_h // 2
+                position = plan.get("context_position", "top")
+                scene_anchor = "bottom" if position == "top" else "top"
+                scene_panel = render_scene_panel(frame_for_render, target_w, panel_h, anchor=scene_anchor)
+                tracked_panel = warp_crop_affine(
+                    frame_for_render, cx1, cy1, cw, ch, target_w, target_h - panel_h
+                )
+                if position == "bottom":
+                    final_frame = np.vstack([tracked_panel, scene_panel])
+                else:
+                    final_frame = np.vstack([scene_panel, tracked_panel])
             else:
                 if fallback_style == "center_crop":
                     final_frame = render_center_crop_frame(frame_for_render, target_w, target_h)

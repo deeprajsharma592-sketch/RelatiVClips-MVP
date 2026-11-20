@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Optional, Callable
 
-from ..utils.config import TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, COOKIES_PATH, get_proxy, get_cookie_args
+from ..utils.config import TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, COOKIES_PATH, get_proxy, get_cookie_args, BGUTIL_POT_BASE_URL
 
 
 def _extract_video_id(url: str) -> str:
@@ -151,6 +151,8 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     ]
+    if BGUTIL_POT_BASE_URL:
+        cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}"])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     import shutil
@@ -337,6 +339,8 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     ]
+    if BGUTIL_POT_BASE_URL:
+        cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}"])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
 

@@ -26,10 +26,12 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 
-# Minimum / maximum clip duration in seconds (18s - 38s viral short-form window)
-MIN_CLIP_S = 18.0
-MAX_CLIP_S = 38.0
-TARGET_CLIP_S = 28.0
+# Narrative variable-length soft bounds (10s - 150s, NO artificial fixed target)
+from ..utils.config import CLIP_DURATION_HARD_MIN, CLIP_DURATION_HARD_MAX
+
+MIN_CLIP_S = CLIP_DURATION_HARD_MIN
+MAX_CLIP_S = CLIP_DURATION_HARD_MAX
+TARGET_CLIP_S = None  # Natural content-driven length
 # Window for "midpoint rehook" — dynamic retention check
 REHOOK_START_S = 10.0
 REHOOK_END_S = 16.0

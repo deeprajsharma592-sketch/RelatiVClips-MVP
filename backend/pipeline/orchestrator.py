@@ -452,9 +452,16 @@ def _run_stage_6_taste_select(
     else:
         _emit(progress, "taste", "No LLM configured — using energy-peak fallback")
 
-    return taste_selector.rank_candidates(
+    ranked = taste_selector.rank_candidates(
         candidates, llm_response, video_duration=video_meta.get("duration_s", 0),
     )
+    # Carry the zero-token content classification into the framing engine. This
+    # is a hint, not a hard override: the visual policy still verifies that a
+    # landscape context layout is appropriate for the actual clip.
+    for clip in ranked:
+        clip.setdefault("archetype", archetype)
+        clip.setdefault("archetype_confidence", arch_confidence)
+    return ranked
 
 
 def _run_stage_7_face_data(

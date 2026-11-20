@@ -29,9 +29,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-import chromadb
-from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
+try:
+    import chromadb
+    from chromadb.config import Settings
+except ImportError:
+    chromadb = None
+    Settings = None
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
 
 log = logging.getLogger("rag_store")
 
@@ -67,10 +75,12 @@ CHROMA_DIR = _resolve_chroma_dir()
 
 # ─── Singleton model (loaded once, reused) ───────────────────────────────────
 
-_EMBEDDING_MODEL: Optional[SentenceTransformer] = None
+_EMBEDDING_MODEL: Optional[Any] = None
 
-def _get_embedding_model() -> SentenceTransformer:
+def _get_embedding_model() -> Optional[Any]:
     global _EMBEDDING_MODEL
+    if SentenceTransformer is None:
+        return None
     if _EMBEDDING_MODEL is None:
         _EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
         log.info("Embedding model loaded: all-MiniLM-L6-v2 (384-dim)")
@@ -78,10 +88,12 @@ def _get_embedding_model() -> SentenceTransformer:
 
 # ─── ChromaDB client (persistent, survives restarts) ─────────────────────────
 
-_CLIENT: Optional[chromadb.PersistentClient] = None
+_CLIENT: Optional[Any] = None
 
-def _get_chroma_client() -> chromadb.PersistentClient:
+def _get_chroma_client() -> Optional[Any]:
     global _CLIENT
+    if chromadb is None:
+        return None
     if _CLIENT is None:
         _CLIENT = chromadb.PersistentClient(
             path=CHROMA_DIR,
@@ -170,6 +182,8 @@ def upsert_chunk(
 def delete_chunks_by_clip(creator_id: str, clip_id: str) -> int:
     """Remove all chunks linked to a specific clip (e.g. after a miss verdict)."""
     client = _get_chroma_client()
+    if client is None:
+        return []
     col = client.get_or_create_collection(name=_col_name(creator_id))
     try:
         res = col.get(where={"clip_id": clip_id})
@@ -195,6 +209,8 @@ def retrieve(
     When chunk_types has 1+ values, we run one query per type and merge.
     """
     client = _get_chroma_client()
+    if client is None:
+        return []
     col = client.get_or_create_collection(name=_col_name(creator_id))
 
     all_results: list[dict] = []
@@ -475,6 +491,8 @@ def seed_taste_profile(
 def get_collection_stats(creator_id: str) -> dict:
     """Return chunk counts by type for a creator."""
     client = _get_chroma_client()
+    if client is None:
+        return []
     col = client.get_or_create_collection(name=_col_name(creator_id))
     all_data = col.get(include=[])
     ids = all_data.get("ids", [])

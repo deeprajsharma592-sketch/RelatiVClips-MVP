@@ -52,6 +52,7 @@ camera:
   single_face_height_frac: 0.30
   eye_line_frac: 0.38
   stack_face_height_frac: 0.35
+  context_face_height_frac: 0.34
   min_source_height_frac: 0.90
   min_stack_source_height_frac: 0.55
   smoothing: gaussian

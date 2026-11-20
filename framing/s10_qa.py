@@ -20,7 +20,7 @@ def compute_crop_jitter_m6(plan_frames: List[Dict[str, Any]], fps: float) -> flo
     centers = []
 
     for f in plan_frames:
-        if f.get("state") == "SINGLE" and "crop" in f:
+        if f.get("state") in {"SINGLE", "CONTEXT_STACK"} and "crop" in f:
             c = f["crop"]
             if isinstance(c, dict):
                 cx = float(c["x1"]) + float(c["w"]) / 2.0
@@ -77,7 +77,7 @@ def compute_m1_face_margin(
         face = faces[0]
         fx1, fy1, fx2, fy2 = face[0], face[1], face[2], face[3]
 
-        if state == "SINGLE" and "crop" in f:
+        if state in {"SINGLE", "CONTEXT_STACK"} and "crop" in f:
             c = f["crop"]
             if isinstance(c, dict):
                 cx1, cy1, cw, ch = c["x1"], c["y1"], c["w"], c["h"]

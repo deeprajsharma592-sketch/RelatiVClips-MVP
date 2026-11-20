@@ -80,8 +80,12 @@ WHISPER_MODEL = os.getenv("WHISPER_MODEL", "turbo")
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
 
 TARGET_SAMPLE_RATE = 16000
-CLIP_DURATION_MIN = 10
-CLIP_DURATION_MAX = 20
+# Narrative-aware variable-length clipping bounds (NO fixed targets)
+CLIP_DURATION_HARD_MIN = float(os.getenv("CLIP_DURATION_HARD_MIN", "10.0"))
+CLIP_DURATION_HARD_MAX = float(os.getenv("CLIP_DURATION_HARD_MAX", "150.0"))
+# Legacy duration aliases kept for back-compat only
+CLIP_DURATION_MIN = int(CLIP_DURATION_HARD_MIN)
+CLIP_DURATION_MAX = int(CLIP_DURATION_HARD_MAX)
 NUM_CLIPS_LOCAL = 3
 NUM_CLIPS_YOUTUBE = 3
 
@@ -265,3 +269,40 @@ def get_proxy():
     if not _PROXY_POOL:
         return None
     return _random.choice(_PROXY_POOL)
+
+
+# ─── ENGAGEMENT HEATMAP & NARRATIVE CLIPPING CONFIG ───────────────────────
+# Feature flags
+ENABLE_YT_REPLAY = os.getenv("ENABLE_YT_REPLAY", "true").lower() in ("true", "1", "yes")
+ENABLE_TWITCH_SIGNALS = os.getenv("ENABLE_TWITCH_SIGNALS", "true").lower() in ("true", "1", "yes")
+
+# Signal fusion weights (tunable, default: external 0.40, audio 0.30, transcript 0.30)
+SIGNAL_WEIGHT_EXTERNAL = float(os.getenv("SIGNAL_WEIGHT_EXTERNAL", "0.40"))
+SIGNAL_WEIGHT_AUDIO = float(os.getenv("SIGNAL_WEIGHT_AUDIO", "0.30"))
+SIGNAL_WEIGHT_TRANSCRIPT = float(os.getenv("SIGNAL_WEIGHT_TRANSCRIPT", "0.30"))
+
+# Heatmap grid & detection parameters
+HEATMAP_GRID_STEP_S = float(os.getenv("HEATMAP_GRID_STEP_S", "5.0"))
+HEATMAP_WINDOW_S = float(os.getenv("HEATMAP_WINDOW_S", "300.0"))  # 5 min rolling median
+HEATMAP_MASK_PCT = float(os.getenv("HEATMAP_MASK_PCT", "0.03"))   # mask first/last 3%
+HEATMAP_PEAK_MIN_DISTANCE_S = float(os.getenv("HEATMAP_PEAK_MIN_DISTANCE_S", "60.0"))
+HEATMAP_MAX_COVERAGE_PCT = float(os.getenv("HEATMAP_MAX_COVERAGE_PCT", "0.35"))  # max 35% of video
+LONG_VIDEO_THRESHOLD_S = float(os.getenv("LONG_VIDEO_THRESHOLD_S", "1200.0"))     # 20 minutes
+
+# Narrative-aware unit & boundary rules
+NARRATIVE_PADDING_START_S = float(os.getenv("NARRATIVE_PADDING_START_S", "0.20"))  # 150-300ms audio breath
+NARRATIVE_PADDING_END_S = float(os.getenv("NARRATIVE_PADDING_END_S", "0.25"))    # 150-300ms audio breath
+DEAD_AIR_MAX_S = float(os.getenv("DEAD_AIR_MAX_S", "0.40"))
+PAUSE_BOUNDARY_THRESHOLD_S = float(os.getenv("PAUSE_BOUNDARY_THRESHOLD_S", "0.70"))
+
+# Final ranking weights (sum to 1.0)
+RANK_WEIGHT_STANDALONE = float(os.getenv("RANK_WEIGHT_STANDALONE", "0.30"))
+RANK_WEIGHT_COMPLETENESS = float(os.getenv("RANK_WEIGHT_COMPLETENESS", "0.25"))
+RANK_WEIGHT_HOOK = float(os.getenv("RANK_WEIGHT_HOOK", "0.25"))
+RANK_WEIGHT_HEAT = float(os.getenv("RANK_WEIGHT_HEAT", "0.20"))
+
+# Closing, reward & CTA configuration
+ENABLE_CLOSING_CTA = os.getenv("ENABLE_CLOSING_CTA", "false").lower() in ("true", "1", "yes")
+CLOSING_CTA_TEXT = os.getenv("CLOSING_CTA_TEXT", "Follow for more")
+CLOSING_PADDING_S = float(os.getenv("CLOSING_PADDING_S", "0.30"))
+

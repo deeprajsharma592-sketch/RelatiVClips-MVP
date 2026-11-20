@@ -17,8 +17,9 @@ from ..utils.config import (
     FFMPEG_PATH
 )
 from .clip_selector import generate_ass_subtitle, generate_simple_ass
-from .captions import generate_viral_ass_subtitles
+from .captions import CAPTION_FONT_DIR, generate_viral_ass_subtitles, normalize_caption_preset
 from ..utils.vram_manager import clear_gpu
+from framing.layout_policy import batch_context_position
 
 _THUMB_CACHE: Dict[str, str] = {}
 
@@ -193,7 +194,8 @@ def build_ffmpeg_command(
     if subtitle_to_use:
         # Escape path for FFmpeg filter parameter syntax (colons, backslashes, single quotes)
         escaped_sub = subtitle_to_use.replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
-        filters.append(f"ass='{escaped_sub}'")
+        escaped_fonts = str(CAPTION_FONT_DIR.as_posix()).replace(":", "\\:").replace("'", "\\'")
+        filters.append(f"ass='{escaped_sub}':fontsdir='{escaped_fonts}'")
 
     cmd.extend(["-vf", ",".join(filters)])
 
@@ -211,7 +213,8 @@ def build_ffmpeg_command(
     cmd.extend([
         "-c:a", "aac",
         "-b:a", FFMPEG_AUDIO_BITRATE,
-        "-ar", "44100"
+        "-ar", "44100",
+        "-af", f"afade=t=out:st={max(0.1, (clip_end - clip_start) - 0.20):.2f}:d=0.20",
     ])
 
     cmd.append(output_path)
@@ -332,6 +335,21 @@ def render_clip(
             print(f"[Renderer] Audio-only input but no still available — falling back to original path")
 
     dynamic_rendered = False
+    layout_mode = str(clip.get("layout_mode") or "auto").lower()
+    caption_font = normalize_caption_preset(clip.get("caption_font"))
+    clip["caption_font"] = caption_font
+    resolved_layout_mode = layout_mode
+    context_position = str(
+        clip.get("context_position") or batch_context_position(clip_index)
+    ).lower()
+    content_hint = next(
+        (
+            str(clip.get(key))
+            for key in ("content_type", "archetype", "niche", "category")
+            if clip.get(key)
+        ),
+        None,
+    )
     valid_video_file = (
         video_path
         and isinstance(video_path, (str, Path))
@@ -357,13 +375,19 @@ def render_clip(
 
                 from framing.run import run_pipeline
                 framing_workdir = TEMP_DIR / f"framing_{task_id}_{clip_index}"
-                run_pipeline(
+                framing_result = run_pipeline(
                     clip_path=input_for_framing,
                     output_path=str(output_path),
                     workdir=framing_workdir,
                     subtitles_path=str(subtitle_path) if (subtitle_path and Path(subtitle_path).exists()) else None,
                     debug_overlay=False,
+                    layout_mode=layout_mode,
+                    context_position=context_position,
+                    content_hint=content_hint,
                 )
+                decision = framing_result.get("layout_decision", {}) if framing_result else {}
+                resolved_layout_mode = str(decision.get("mode") or layout_mode)
+                context_position = str(decision.get("context_position") or context_position)
                 if output_path.exists() and output_path.stat().st_size > 1024:
                     print(f"[Renderer] Dynamic framing engine produced {output_path} ({output_path.stat().st_size // 1024} KB)")
                     dynamic_rendered = True
@@ -490,6 +514,9 @@ def render_clip(
             "file_path": str(output_path),
             "file_size_mb": file_size_mb,
             "thumbnail_url": f"/thumbnail/{clip_id}",
+            "layout_mode": resolved_layout_mode,
+            "context_position": context_position,
+            "caption_font": caption_font,
             "created_at": datetime.now().isoformat()
         }
 

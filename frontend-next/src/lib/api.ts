@@ -14,12 +14,13 @@ function delay(ms: number) {
 }
 
 export async function submitYouTubeUrl(
-  url: string
+  url: string,
+  captionFont: string = "studio"
 ): Promise<ProcessInitResponse> {
   const res = await fetch(apiPath("/api/v1/process/youtube"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, caption_font: captionFont }),
   });
 
   if (!res.ok) {

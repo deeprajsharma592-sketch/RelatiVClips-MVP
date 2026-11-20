@@ -19,7 +19,7 @@ Why moments instead of full transcript:
 
 Strict JSON only. No prose, no markdown, no explanation.
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple, Any, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -401,23 +401,20 @@ def build_hybrid_narrative_prompt(
     return "\n".join(parts)
 
 
-RELATIVSAUCE_RUBRIC_TEXT = """# RelatiVSauce: clip selection rubric
+RELATIVSAUCE_RUBRIC_TEXT = """# RelatiVSauce: Narrative-Aware Clip Selection Rubric
 
-Version: rubric_ver = "sauce-0.1". Return this string in every output so results can be compared across prompt versions.
+Version: rubric_ver = "sauce-0.2". Return this string in every output so results can be compared across prompt versions.
 
-These weights and heuristics are starting hypotheses drawn from practitioner experience, not proven facts. They are meant to be tuned against real retention and view data.
+## Core Philosophy
+A clip is a complete micro-story: **hook → context/setup → payoff** (or claim → evidence → conclusion, question → answer, setup → punchline, tension → resolution). It must make sense to a cold viewer who has seen nothing before it.
 
-## Process
-1. Find candidate moments. A candidate is one complete, self-contained story arc between 45 and 90 seconds (target: 55-80 seconds). NEVER extract short 15-30s fragments that cut off mid-thought or before the punchline/conclusion. The clip must have a distinct Hook (0-5s), Build/Tension (5-45s), and Payoff/Resolution (45-80s). Prefer 8-20 candidates per hour of source.
-2. Find the hook. The best clips open on the hook, not on setup. If the strongest line is in the middle, propose starting there and check that it still makes sense without what came before.
-3. Classify the hook type (below). A candidate with no hook type is weak unless the payoff is exceptional.
-4. Check reach. Does the topic connect to something broad (health, money, relationships, status, fear of falling behind)? See "Wide-funnel check".
-5. Check self-containment. A cold viewer must understand the moment without the rest of the video.
-6. Check accuracy and risk.
-7. Score every candidate, not just the winners, and return them all.
+1. **Natural Variable Length**: Length is determined ONLY by how long the arc takes. Do NOT aim for any duration. Valid clips range from 12s to 120s. A 20s joke, a 56s explanation, and a 90s story are all correct if each is complete. Return the natural length. Never cut mid-sentence or mid-word.
+2. **Precise Landing**: Choose `start` where the viewer would first need to understand what is going on, not earlier and not later. Choose `end` immediately after the payoff lands (punchline, answer, conclusion, or reaction beat). Do not cut before the payoff. Do not trail on after it. Never end abruptly without reward.
+3. **Self-Containment**: If the moment cannot stand alone without more than 20s of context, REJECT it. If a payoff depends on an earlier setup elsewhere in the video, return `callbacks: [{"setup_start": 0.0, "setup_end": 0.0, "why": "..."}]` so we can prepend a short setup snippet.
+4. **No Intro Banter**: In videos longer than 3 minutes, NEVER select intro greetings, audio mic tests, sponsor reads, or generic welcome chat.
 
-## Hook types
-Tag each candidate with the one that fits best (or none):
+## Hook Types
+Tag each candidate with the one that fits best:
 - contrarian: attacks a common belief or accepted advice.
 - bizarre: a strange, vivid or surreal image that makes people stop.
 - paradoxical: two ideas that sound incompatible but are both true.
@@ -427,70 +424,35 @@ Tag each candidate with the one that fits best (or none):
 - curiosity_gap: states a striking outcome but withholds how it happened.
 - identity_challenge: speaks to how the viewer sees themselves, their job or their habits.
 
-## Wide-funnel check
-Clips reach new people when the topic has a large audience. Broad topics (health, money, relationships, fear of being left behind) travel further than narrow technical ones.
-Technical or niche content usually fails as a clip when presented as a technical explanation. It works when the speaker is telling a human story through it: money made or lost, burnout, a co-founder conflict, a failure, a fear, a bet that paid off or didn't.
-- Prefer the moment where the human stakes show up over the moment where the tool or architecture is explained.
-- If a technical moment is the best available, say so in reason and note what framing (title, caption, first line) would make it broader.
-- Do not penalize niche content that is clearly meant for a niche audience if the creator profile says so.
+## Arc Types
+- story: narrative sequence of events with resolution.
+- joke: setup -> timing beat -> punchline/reaction.
+- explanation: non-obvious insight or breakdown that delivers tangible reward.
+- argument: controversial claim backed by compelling proof.
+- reaction: emotional or spontaneous breakthrough beat.
+- hot_take: sharp opinion challenging consensus.
+- tutorial_step: actionable method or breakthrough tip.
 
-## Scoring (0-100)
-| Component | Points | What high looks like |
-|---|---|---|
-| Hook strength | 0-30 | Strong hook in the first 2-3 seconds, clearly one of the types above |
-| Reach | 0-25 | Broad topic or human stakes; viewer needs no prior knowledge |
-| Completeness | 0-20 | Clear start, build, and landing; self-contained story (20-35s). Score 0 if cut off mid-sentence or before the lesson/payoff! |
-| Payoff / ending | 0-10 | Ends on a punch, answer, insight or lesson worth rewatching; no trailing filler |
-| Delivery | 0-10 | Energy, pacing, emotion, confidence; no long pauses or tangents |
-| Risk penalty | 0 to -20 | Subtract for factual uncertainty, blacklisted topics, or needing missing context |
-
-Calibration guidance:
-- 80+ should be rare. Reserve it for moments you would be surprised not to see perform.
-- Most candidates should land between 30 and 70.
-- Do not inflate scores to look helpful. A transcript with no strong moments should return low scores and say so.
-
-## Accuracy and risk rules
-- If a clip contains numbers, dates, prices, or claims, flag needs_fact_check: true when you cannot verify them from the transcript itself. Do not fix numbers from memory.
-- Never select moments that include: price predictions or financial advice presented as certain, attacks on named competitors, illegal activity, or anything on the creator's blacklist if one is provided.
-- Do not select a moment whose meaning flips when clipped (sarcasm, setup-and-reversal, a quote the speaker goes on to reject). Set context_risk: "high" instead.
-- INTRO BANTER BAN: In videos longer than 3 minutes, NEVER select intro greetings, sponsor reads, or generic 'welcome back' chat. The clip MUST deliver standalone value to a stranger.
-
-## 5% Experiment Policy
-In ~5% of runs, include one experimental candidate marked "is_experiment": true. An experimental candidate is an unconventional, high-variance moment that would normally fall just under the 65 cutoff (score 50-64) or has an unusual angle (bizarre imagery, sudden intense confession, eccentric contrarian claim) with potential breakout upside.
-
-## Output format
-Return ONLY valid JSON, no preamble, no markdown fences:
+## Output Schema
+Return ONLY a valid JSON object matching this schema:
 {
-  "rubric_ver": "sauce-0.1",
+  "rubric_ver": "sauce-0.2",
   "candidates": [
     {
-      "start_s": 0.0,
-      "end_s": 0.0,
-      "hook_line": "first line of the clip as spoken",
-      "hook_type": "contrarian | bizarre | paradoxical | revealing | high_stakes | visceral | curiosity_gap | identity_challenge | none",
-      "broad_angle": "health | wealth | relationships | status | none",
-      "scores": {
-        "hook": 0, "reach": 0, "completeness": 0,
-        "payoff": 0, "delivery": 0, "risk": 0
-      },
-      "score": 0,
-      "context_risk": "low | medium | high",
-      "needs_fact_check": false,
-      "chosen": false,
-      "is_experiment": false,
-      "reason": "one sentence on why, max 25 words",
-      "suggested_title": "3-6 words ALL CAPS specific viral headline, NEVER generic placeholders like THIS MOMENT HITS"
+      "start": 0.0,
+      "end": 0.0,
+      "arc_type": "story|joke|explanation|argument|reaction|hot_take|tutorial_step",
+      "hook_text": "first line a viewer hears",
+      "payoff_text": "the line where it lands",
+      "standalone_score": 0,
+      "completeness_score": 0,
+      "hook_strength": 0,
+      "callbacks": [],
+      "reason": "one sentence"
     }
   ]
 }
-
-Rules for the output:
-- Candidates MUST be between 20 and 35 seconds (end_s - start_s between 20.0 and 35.0s, ideal ~28s).
-- Set chosen: true for at most the top 3 per hour of source, and only for candidates scoring 65 or higher.
-- Keep reason to one sentence (max 25 words).
-- Timestamps must come directly from the transcript. Never invent them.
-- Ensure chosen candidates do NOT overlap each other (minimum 45s separation between clips).
-- Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65). DO NOT return rejected or unchosen candidates to guarantee complete valid JSON without token exhaustion.
+Note: standalone_score, completeness_score, and hook_strength are integers from 0 to 10.
 """
 
 
@@ -500,12 +462,16 @@ def build_relativsauce_prompt(
     video_meta: Dict,
     creator_profile: Optional[Dict] = None,
     is_experiment: bool = False,
-    max_picks: int = 3,
+    max_picks: int = 4,
+    hot_regions: Optional[List[Tuple[float, float, float]]] = None,
+    compressed_summary: Optional[str] = None,
 ) -> str:
     """
-    Build the RelatiVSauce rubric prompt (sauce-0.1).
-    Keeps the rubric preamble identical for Anthropic/Claude prompt caching.
+    Build the RelatiVSauce rubric prompt (sauce-0.2).
+    Supports Stage A/B heatmap priors: focuses detailed transcript on hot regions
+    while retaining compressed summary of the remainder for callbacks.
     """
+    import json
     parts: List[str] = [RELATIVSAUCE_RUBRIC_TEXT.strip()]
 
     # Video metadata
@@ -514,27 +480,40 @@ def build_relativsauce_prompt(
     parts.append(f"\n## Video Context\nTitle: {title[:100]!r}\nDuration: {dur:.0f} seconds")
 
     if creator_profile:
-        parts.append(f"\n## Creator Profile (Overrides default weights)\n{json.dumps(creator_profile, indent=2)}")
+        parts.append(f"\n## Creator Profile\n{json.dumps(creator_profile, indent=2)}")
 
     if is_experiment:
         parts.append(
             "\n## Active Policy: 5% EXPLORATION RUN\n"
             "This run is selected for experimental exploration! You MUST include one high-variance wildcard candidate "
-            "with \"is_experiment\": true (score 50-64, bizarre, visceral, intense confession, or eccentric contrarian angle)."
+            "(bizarre, visceral, intense confession, or eccentric contrarian angle)."
         )
+
+    # If long video summary is provided, include it so setups/callbacks anywhere are discoverable
+    if compressed_summary:
+        parts.append(f"\n## Video Overview & Context Outline (for callback discovery)\n{compressed_summary.strip()}")
 
     # Formatted transcript lines
     transcript_lines = []
     segs = transcript_segments if transcript_segments else [
         {"start": m.start, "end": m.end, "text": m.snippet} for m in moments[:40]
     ]
-    for seg in segs[:650]:
+
+    for seg in segs[:800]:
         s = float(seg.get("start", 0))
         e = float(seg.get("end", 0))
         txt = seg.get("text", "").strip()
         if not txt:
             continue
+
         markers = []
+        # Check heat region hint
+        if hot_regions:
+            for hr_s, hr_e, hr_val in hot_regions:
+                if not (e < hr_s or s > hr_e):
+                    markers.append(f"🔥 [ENGAGEMENT HEAT: {hr_val:.2f}]")
+                    break
+
         for m in moments:
             if not (e < m.start or s > m.end):
                 if m.signal_type in ("peak", "steep_peak"):
@@ -542,16 +521,22 @@ def build_relativsauce_prompt(
                 elif m.signal_type in ("valley", "steep_valley", "silence"):
                     markers.append("🤫 [DRAMATIC PAUSE]")
                 break
-        marker_str = f" {markers[0]}" if markers else ""
+
+        marker_str = f" {' '.join(markers[:2])}" if markers else ""
         m_s, s_s = int(s // 60), int(s % 60)
         m_e, s_e = int(e // 60), int(e % 60)
         transcript_lines.append(f"[{m_s:02d}:{s_s:02d}-{m_e:02d}:{s_e:02d}] {txt}{marker_str}")
 
-    parts.append("\n## Transcript with Acoustic Energy Markers\n" + "\n".join(transcript_lines))
+    parts.append("\n## Transcript with Timing & Engagement Markers\n" + "\n".join(transcript_lines))
     parts.append(
-        "\nApply the RelatiVSauce rubric strictly. Return ONLY the top 3-5 winning candidates (chosen: true, score >= 65) in the JSON object with rubric_ver='sauce-0.1'. Do NOT output unchosen or rejected candidates to avoid output token limits. "
-        "MANDATORY REQUIREMENT: Candidates MUST be between 20 and 35 seconds (end_s - start_s between 20.0 and 35.0s, ideal ~28s) and deliver clear value to the viewer: Hook (0-3s) -> Escalation/Proof (3-20s) -> Payoff/Takeaway/Punchline (End). Do NOT pick intro banter or greetings. Each candidate must come from a distinct, non-overlapping moment. Every suggested_title MUST be an exciting, specific 3-6 word ALL CAPS headline (e.g. 'THE $500,000 MISTAKE'). NEVER output generic placeholders like 'THIS MOMENT HITS'. "
-        "Output ONLY valid JSON. No markdown code fences, no introductory remarks."
+        "\nApply the RelatiVSauce rubric strictly. Return ONLY winning candidates that form complete micro-stories in valid JSON with rubric_ver='sauce-0.2'.\n"
+        "REMINDER:\n"
+        "- A clip is a complete micro-story: hook → context/setup → payoff. It must make sense to a viewer who has seen nothing before it.\n"
+        "- Choose start where the viewer first needs to understand what is going on, not earlier and not later. Choose end immediately after the payoff lands (punchline, answer, reaction beat). Do not cut before the payoff. Do not trail on after it.\n"
+        "- Length is determined ONLY by how long the arc takes. Do NOT aim for any duration. Valid clips range from 12s to 120s. A 20s joke, a 56s explanation and a 90s story are all correct if each is complete. Return the natural length.\n"
+        "- If a payoff depends on an earlier setup elsewhere in the video, return callbacks: [{'setup_start': 0.0, 'setup_end': 0.0, 'why': '...'}] so we can prepend a short setup snippet.\n"
+        "- If the moment cannot stand alone without more than 20s of context, REJECT it.\n"
+        "- Output ONLY strict JSON matching the schema. No markdown code fences, no conversational preface."
     )
 
     return "\n\n".join(parts)
@@ -662,45 +647,141 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
     raise ValueError("LLM response is not valid JSON in new or legacy format")
 
 
+def parse_moment_response_with_retry(
+    llm_output: str,
+    llm_callable: Optional[Callable[[str], str]] = None,
+    original_prompt: Optional[str] = None,
+) -> List[Dict]:
+    """
+    Parses LLM response with 1 retry on malformed JSON or schema rejection.
+    """
+    try:
+        return parse_moment_response(llm_output)
+    except Exception as first_err:
+        if not llm_callable:
+            raise first_err
+
+        corrective_prompt = (
+            f"{original_prompt or ''}\n\n"
+            f"[CRITICAL ERROR ON PREVIOUS ATTEMPT]: Your previous response could not be parsed: {first_err}.\n"
+            "Return ONLY a valid JSON object matching the exact schema:\n"
+            '{"rubric_ver": "sauce-0.2", "candidates": [{"start": 0.0, "end": 0.0, "arc_type": "story", "hook_text": "...", "payoff_text": "...", "standalone_score": 8, "completeness_score": 8, "hook_strength": 8, "callbacks": [], "reason": "..."}]}\n'
+            "NO prose, NO markdown fences, ONLY pure JSON."
+        )
+        retry_output = llm_callable(corrective_prompt)
+        return parse_moment_response(retry_output)
+
+
+def validate_candidate_schema(candidate: Dict) -> Tuple[bool, Optional[Dict], Optional[str]]:
+    """
+    Validates a candidate dict against strict micro-story schema.
+    Returns (is_valid, sanitized_dict, error_message).
+    """
+    if not isinstance(candidate, dict):
+        return False, None, "Candidate is not a dictionary"
+
+    start = candidate.get("start", candidate.get("start_s"))
+    end = candidate.get("end", candidate.get("end_s"))
+    if start is None or end is None:
+        return False, None, "Missing start or end timestamp"
+
+    try:
+        start_f = float(start)
+        end_f = float(end)
+    except (TypeError, ValueError):
+        return False, None, "Start and end must be numeric floats"
+
+    if end_f <= start_f:
+        return False, None, f"End ({end_f}) must be strictly greater than start ({start_f})"
+
+    # Valid arc types
+    valid_arcs = {"story", "joke", "explanation", "argument", "reaction", "hot_take", "tutorial_step"}
+    arc = str(candidate.get("arc_type", "story")).lower().strip()
+    if arc not in valid_arcs:
+        arc = "story"
+
+    hook = str(candidate.get("hook_text", candidate.get("hook_line", candidate.get("hook", "")))).strip()
+    payoff = str(candidate.get("payoff_text", candidate.get("payoff", ""))).strip()
+
+    def _to_score(val, default=7):
+        try:
+            s = int(round(float(val)))
+            return max(0, min(10, s))
+        except (TypeError, ValueError):
+            return default
+
+    standalone = _to_score(candidate.get("standalone_score", 7))
+    completeness = _to_score(candidate.get("completeness_score", 7))
+    hook_strength = _to_score(candidate.get("hook_strength", 7))
+
+    callbacks = candidate.get("callbacks", [])
+    if not isinstance(callbacks, list):
+        callbacks = []
+
+    reason = str(candidate.get("reason", "")).strip()
+
+    sanitized = {
+        "start": round(start_f, 2),
+        "end": round(end_f, 2),
+        "arc_type": arc,
+        "hook_text": hook,
+        "payoff_text": payoff,
+        "standalone_score": standalone,
+        "completeness_score": completeness,
+        "hook_strength": hook_strength,
+        "callbacks": callbacks,
+        "reason": reason,
+    }
+    return True, sanitized, None
+
+
 def _parse_relativsauce_candidates(candidates: list) -> Optional[List[Dict]]:
-    """Parse RelatiVSauce rubric candidates (sauce-0.1)."""
+    """Parse RelatiVSauce rubric candidates (sauce-0.2 and sauce-0.1 back-compat)."""
     if not isinstance(candidates, list):
         return None
 
     valid: List[Dict] = []
     # Sort candidates by score descending
-    sorted_cands = sorted(
-        [c for c in candidates if isinstance(c, dict)],
-        key=lambda c: float(c.get("score", 0)),
-        reverse=True,
-    )
+    sorted_cands = [c for c in candidates if isinstance(c, dict)]
 
     for i, c in enumerate(sorted_cands):
-        start_val = c.get("start_s", c.get("start"))
-        end_val = c.get("end_s", c.get("end"))
-        if start_val is None or end_val is None:
-            continue
-        try:
-            start_s = float(start_val)
-            end_s = float(end_val)
-        except (TypeError, ValueError):
-            continue
-        if end_s <= start_s:
+        is_valid, item, err = validate_candidate_schema(c)
+        if not is_valid or item is None:
             continue
 
-        score = float(c.get("score", 50))
-        chosen = bool(c.get("chosen", False))
+        start_s = item["start"]
+        end_s = item["end"]
+        arc_type = item["arc_type"]
+        hook_text = item["hook_text"]
+        payoff_text = item["payoff_text"]
+        standalone = item["standalone_score"]
+        completeness = item["completeness_score"]
+        hook_str = item["hook_strength"]
+        callbacks = item["callbacks"]
+        reason = item["reason"]
+
+        # If legacy score field exists, use it; otherwise compute from sub-scores
+        legacy_score = c.get("score")
+        if legacy_score is not None:
+            score = float(legacy_score)
+        else:
+            # 0.30 standalone + 0.25 completeness + 0.25 hook + 0.20 base
+            score = round(0.30 * (standalone * 10) + 0.25 * (completeness * 10) + 0.25 * (hook_str * 10) + 0.20 * 70, 1)
+
+        chosen = bool(c.get("chosen", score >= 65))
         is_experiment = bool(c.get("is_experiment", False))
-        hook_type = str(c.get("hook_type", "none"))
-        broad_angle = str(c.get("broad_angle", "none"))
-        hook_line = str(c.get("hook_line", ""))
-        suggested_title = str(c.get("suggested_title", ""))
-        reason = str(c.get("reason", ""))
-        context_risk = str(c.get("context_risk", "low"))
-        needs_fact_check = bool(c.get("needs_fact_check", False))
+        hook_type = str(c.get("hook_type", "revealing"))
+        broad_angle = str(c.get("broad_angle", "status"))
 
+        # Generate title from hook or payoff
+        suggested_title = str(c.get("suggested_title", "")).strip()
+        if not suggested_title:
+            seed_text = hook_text if hook_text else payoff_text
+            clean_words = [w for w in re.findall(r"\b[A-Za-z0-9\']+\b", seed_text) if len(w) > 1]
+            suggested_title = " ".join(clean_words[:5]).upper() if clean_words else f"STORY ARC #{i+1}"
+
+        title = suggested_title.upper()
         conf = max(0.0, min(1.0, score / 100.0))
-        title = (suggested_title or hook_line[:40] or "VIRAL STORY").strip().upper()
 
         valid.append({
             "moment_index": i + 1,
@@ -715,15 +796,22 @@ def _parse_relativsauce_candidates(candidates: list) -> Optional[List[Dict]]:
             "is_experiment": is_experiment,
             "title": title,
             "viral_title": title,
-            "hook": hook_line,
+            "hook": hook_text or c.get("hook_line", ""),
+            "hook_text": hook_text,
+            "payoff_text": payoff_text,
+            "arc_type": arc_type,
+            "standalone_score": standalone,
+            "completeness_score": completeness,
+            "hook_strength": hook_str,
+            "callbacks": callbacks,
             "retention_bridge": reason,
-            "caption": f"{suggested_title}\n\n{hook_line}".strip() if hook_line else suggested_title,
+            "caption": f"{title}\n\n{hook_text}\n\n{payoff_text}".strip() if hook_text else title,
             "reason": reason,
             "hook_type": hook_type,
             "broad_angle": broad_angle,
-            "context_risk": context_risk,
-            "needs_fact_check": needs_fact_check,
-            "rubric_ver": "sauce-0.1",
+            "context_risk": str(c.get("context_risk", "low")),
+            "needs_fact_check": bool(c.get("needs_fact_check", False)),
+            "rubric_ver": "sauce-0.2",
         })
 
     return valid if valid else None

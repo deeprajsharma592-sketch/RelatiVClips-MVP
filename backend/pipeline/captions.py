@@ -8,6 +8,48 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+CAPTION_FONT_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+CAPTION_PRESETS = {
+    "studio": {
+        "label": "Studio",
+        "font_name": "Montserrat",
+        "font_size": 76,
+        "words_per_group": 3,
+        "outline": 5,
+        "spacing": 1,
+    },
+    "impact": {
+        "label": "Impact",
+        "font_name": "Anton",
+        "font_size": 84,
+        "words_per_group": 3,
+        "outline": 6,
+        "spacing": 2,
+    },
+    "broadcast": {
+        "label": "Broadcast",
+        "font_name": "Barlow Condensed ExtraBold",
+        "font_size": 88,
+        "words_per_group": 4,
+        "outline": 5,
+        "spacing": 1,
+    },
+    "clean": {
+        "label": "Clean",
+        "font_name": "Open Sans",
+        "font_size": 70,
+        "words_per_group": 4,
+        "outline": 4,
+        "spacing": 0,
+    },
+}
+
+
+def normalize_caption_preset(value: object) -> str:
+    preset = str(value or "studio").strip().lower()
+    return preset if preset in CAPTION_PRESETS else "studio"
+
+
 def _format_ass_timestamp(seconds: float) -> str:
     """Format float seconds to ASS format: H:MM:SS.cs (centiseconds)."""
     if seconds < 0:
@@ -33,9 +75,9 @@ def _sanitize_text(text: str) -> str:
 def generate_viral_ass_subtitles(
     clip: Dict,
     output_path: Path,
-    words_per_group: int = 3,
-    font_name: str = "Arial",
-    font_size: int = 76,
+    words_per_group: Optional[int] = None,
+    font_name: Optional[str] = None,
+    font_size: Optional[int] = None,
     highlight_color: str = "&H0000E5FF",  # Bright Yellow/Amber in &HAABBGGRR
     text_color: str = "&H00FFFFFF",       # Pure White
     outline_color: str = "&H00000000",    # Deep Black
@@ -59,6 +101,13 @@ def generate_viral_ass_subtitles(
     clip_start = float(clip.get("start", 0))
     clip_end = float(clip.get("end", clip_start + 15))
     clip_duration = max(1.0, clip_end - clip_start)
+    preset_id = normalize_caption_preset(clip.get("caption_font") or clip.get("caption_style"))
+    preset = CAPTION_PRESETS[preset_id]
+    font_name = font_name or str(preset["font_name"])
+    font_size = int(font_size or preset["font_size"])
+    words_per_group = int(words_per_group or preset["words_per_group"])
+    outline_size = int(preset["outline"])
+    letter_spacing = int(preset["spacing"])
 
     # 1. Collect all words within [clip_start, clip_end]
     raw_words = []
@@ -235,7 +284,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_name},{font_size},{text_color},&H000000FF,{outline_color},&H80000000,-1,0,0,0,100,100,1,0,1,5,2,2,40,40,280,1
+Style: Default,{font_name},{font_size},{text_color},&H000000FF,{outline_color},&H80000000,-1,0,0,0,100,100,{letter_spacing},0,1,{outline_size},2,2,40,40,280,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -277,6 +326,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             dialogue_lines.append(
                 f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{event_text}"
             )
+
+    # 5. Optional closing CTA / reward card in the final 2.2s
+    from ..utils.config import ENABLE_CLOSING_CTA, CLOSING_CTA_TEXT
+    cta_text = clip.get("closing_cta") or (CLOSING_CTA_TEXT if ENABLE_CLOSING_CTA else None)
+    if cta_text and clip_duration >= 4.0:
+        cta_start = max(0.0, clip_duration - 2.2)
+        cta_end = clip_duration
+        w_start = _format_ass_timestamp(cta_start)
+        w_end = _format_ass_timestamp(cta_end)
+        dialogue_lines.append(
+            f"Dialogue: 1,{w_start},{w_end},Default,,0,0,140,,{{\\an2\\c&H00D24D\\b1\\fscx105\\fscy105}}▶ {cta_text.upper()}{{\\r}}"
+        )
 
     full_ass = ass_header + "\n".join(dialogue_lines) + "\n"
 

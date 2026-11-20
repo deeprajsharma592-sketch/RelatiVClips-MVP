@@ -309,6 +309,34 @@ def plan_camera_single_shot(
     return plans
 
 
+def plan_camera_context_shot(
+    track_samples: List[Dict[str, Any]],
+    start_frame: int,
+    end_frame: int,
+    fps: float,
+    src_w: int,
+    src_h: int,
+    config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """Track one subject for the 9:8 half paired with a full-scene panel."""
+    cam_cfg = config.get("camera", {})
+    plans = plan_panel_camera_path(
+        track_samples=track_samples,
+        start_frame=start_frame,
+        end_frame=end_frame,
+        fps=fps,
+        src_w=src_w,
+        src_h=src_h,
+        aspect_ratio=9.0 / 8.0,
+        face_height_frac=float(cam_cfg.get("context_face_height_frac", 0.34)),
+        eye_line_frac=float(cam_cfg.get("eye_line_frac", 0.38)),
+        config=config,
+    )
+    for plan in plans:
+        plan["state"] = "CONTEXT_STACK"
+    return plans
+
+
 def plan_camera_stack_shot(
     p1_samples: List[Dict[str, Any]],
     p2_samples: List[Dict[str, Any]],

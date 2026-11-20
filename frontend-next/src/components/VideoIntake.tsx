@@ -22,6 +22,13 @@ import { getDashDashboardUrl } from "@/lib/domain";
 
 const URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/i;
 
+const CAPTION_FONTS = [
+  { id: "studio", label: "Studio", family: "Relativ Montserrat" },
+  { id: "impact", label: "Impact", family: "Relativ Anton" },
+  { id: "broadcast", label: "Broadcast", family: "Relativ Barlow" },
+  { id: "clean", label: "Clean", family: "Relativ Open Sans" },
+] as const;
+
 interface VideoIntakeProps {
   className?: string;
   onStartProcess?: (taskId: string) => void;
@@ -40,6 +47,7 @@ export default function VideoIntake({
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [captionFont, setCaptionFont] = useState("studio");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle local file selection
@@ -202,6 +210,41 @@ export default function VideoIntake({
                   </button>
                 </div>
 
+                <fieldset className="space-y-2.5">
+                  <legend className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                    Caption type
+                  </legend>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="radiogroup" aria-label="Caption font">
+                    {CAPTION_FONTS.map((font) => {
+                      const selected = captionFont === font.id;
+                      return (
+                        <button
+                          key={font.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setCaptionFont(font.id)}
+                          className={`min-h-16 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+                            selected
+                              ? "border-cyan-500/70 bg-cyan-500/[0.08] text-zinc-950 dark:text-white"
+                              : "border-black/10 bg-white/70 text-zinc-600 hover:border-black/20 dark:border-white/10 dark:bg-white/[0.025] dark:text-zinc-300 dark:hover:border-white/20"
+                          }`}
+                        >
+                          <span
+                            className="block text-lg leading-none"
+                            style={{ fontFamily: `'${font.family}', sans-serif` }}
+                          >
+                            Aa
+                          </span>
+                          <span className="mt-2 block text-[10px] text-zinc-500 dark:text-zinc-400">
+                            {font.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+
                 {/* Secondary Actions & Helpers */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-zinc-500 dark:text-zinc-400">
                   <span className="text-zinc-500 dark:text-zinc-400">
@@ -323,6 +366,7 @@ export default function VideoIntake({
       {isTransitioning && youtubeUrl && (
         <SickLoadingTransition
           url={youtubeUrl}
+          captionFont={captionFont}
           autoRedirect={false}
           onComplete={(taskId) => {
             setIsTransitioning(false);

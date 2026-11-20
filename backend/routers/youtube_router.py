@@ -541,7 +541,13 @@ def create_progress_callback(task_id: str):
     return callback
 
 
-async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: str = "tiktok"):
+async def run_youtube_orchestrator(
+    task_id: str,
+    url: str,
+    callback,
+    platform: str = "tiktok",
+    caption_font: str = "studio",
+):
     """New pipeline path (PIPELINE_VERSION=2) — caption-first, audio-only-for-librosa.
 
     Flow (the "v3" pipeline):
@@ -705,6 +711,7 @@ async def run_youtube_orchestrator(task_id: str, url: str, callback, platform: s
             callback=callback,
             info=info,
             platform=platform,
+            caption_font=caption_font,
         ),
     )
     return final_clips
@@ -721,6 +728,7 @@ def _run_moment_pipeline(
     callback,
     info: dict,
     platform: str = "tiktok",
+    caption_font: str = "studio",
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
 
@@ -849,16 +857,122 @@ def _run_moment_pipeline(
         _bridge("video_dl", f"Speculative video download failed: {e}",
                 step=4, sub_progress=0.84)
 
-    # 2. Try LLM taste select
-    _bridge("taste", "Calling LLM with strict-JSON prompt...")
+    # 2. Engagement Signal Layer + Narrative Unit Segmentation + LLM Discovery
+    _bridge("taste", "Analyzing engagement signals & narrative units...")
+    import time
+    from ..signals import (
+        fetch_youtube_replay_signal,
+        fetch_twitch_clips_signal,
+        fetch_twitch_chat_signal,
+        extract_transcript_density_signal,
+        fuse_signals,
+    )
+    from ..segmentation import (
+        build_narrative_units,
+        refine_clip_candidate,
+        apply_length_policy,
+        dedup_and_rank_candidates,
+        run_clip_check_pass,
+    )
+    from ..taste.icl import (
+        build_relativsauce_prompt,
+        parse_moment_response_with_retry,
+    )
+    from ..utils.config import LONG_VIDEO_THRESHOLD_S
+
+    dur_s = float(video_duration_s or 0)
+    orig_transcript = info.get("transcript") or {}
+    all_orig_segs = orig_transcript.get("segments") or []
+
+    # 2a. Fetch signals in parallel/safe execution
+    sig_start_t = time.time()
+    raw_signals = {
+        "youtube_replay": fetch_youtube_replay_signal(url),
+        "twitch_clips": fetch_twitch_clips_signal(url),
+        "twitch_chat": None,
+        "transcript_density": extract_transcript_density_signal(orig_transcript, dur_s),
+    }
+    fusion_res = fuse_signals(raw_signals, dur_s)
+    sig_elapsed_s = time.time() - sig_start_t
+
+    # 2b. Build narrative units
+    narrative_units = build_narrative_units(orig_transcript)
+
+    # 2c. Long video Stage A filter (peaks ±90s, <=35% of video) + compressed summary of rest
+    is_long_video = (dur_s >= LONG_VIDEO_THRESHOLD_S)
+    hot_regions = fusion_res.hot_regions if is_long_video else None
+    compressed_summary = None
+    transcript_segs_for_prompt = all_orig_segs
+
+    if is_long_video and hot_regions and all_orig_segs:
+        # Filter segments to those overlapping hot regions
+        hot_segs = []
+        non_hot_segs = []
+        for s in all_orig_segs:
+            s_start = float(s.get("start", 0))
+            s_end = float(s.get("end", 0))
+            in_hot = any(hr_s <= s_end and s_start <= hr_e for hr_s, hr_e, _ in hot_regions)
+            if in_hot:
+                hot_segs.append(s)
+            else:
+                non_hot_segs.append(s)
+
+        transcript_segs_for_prompt = hot_segs if hot_segs else all_orig_segs
+        pct_sent = round((len(transcript_segs_for_prompt) / max(1, len(all_orig_segs))) * 100.0, 1)
+
+        # Build 1-line-per-30s compressed summary of non-hot sections
+        summary_lines = []
+        bucket_s = 30.0
+        current_bucket = -1
+        current_bucket_text = []
+
+        for s in non_hot_segs:
+            s_s = float(s.get("start", 0))
+            b_idx = int(s_s // bucket_s)
+            if b_idx != current_bucket:
+                if current_bucket >= 0 and current_bucket_text:
+                    m_s = int((current_bucket * bucket_s) // 60)
+                    sec_s = int((current_bucket * bucket_s) % 60)
+                    summary_lines.append(f"[{m_s:02d}:{sec_s:02d}] {' '.join(current_bucket_text)[:90]}…")
+                current_bucket = b_idx
+                current_bucket_text = [s.get("text", "").strip()]
+            else:
+                current_bucket_text.append(s.get("text", "").strip())
+
+        if current_bucket >= 0 and current_bucket_text:
+            m_s = int((current_bucket * bucket_s) // 60)
+            sec_s = int((current_bucket * bucket_s) % 60)
+            summary_lines.append(f"[{m_s:02d}:{sec_s:02d}] {' '.join(current_bucket_text)[:90]}…")
+
+        compressed_summary = "\n".join(summary_lines[:50])
+
+        _bridge(
+            "signals",
+            f"Signals: {fusion_res.signals_used or ['baseline']} ({sig_elapsed_s:.2f}s) | "
+            f"{len(fusion_res.peaks)} peaks | Long video Stage A filter: {pct_sent}% transcript sent to LLM "
+            f"({len(transcript_segs_for_prompt)}/{len(all_orig_segs)} segments)",
+        )
+    else:
+        _bridge(
+            "signals",
+            f"Signals: {fusion_res.signals_used or ['baseline']} ({sig_elapsed_s:.2f}s) | "
+            f"{len(fusion_res.peaks)} peaks | Video <20m: 100% transcript sent to LLM",
+        )
+
+    # 2d. Re-build RelatiVSauce prompt with heatmap hints & compressed summary
+    prompt = build_relativsauce_prompt(
+        transcript_segments=transcript_segs_for_prompt,
+        moments=moments,
+        video_meta=video_meta,
+        hot_regions=hot_regions,
+        compressed_summary=compressed_summary,
+        max_picks=4,
+    )
+
     picks = []
     provider_used = None
-    # LLM is a quick call within stage 4 (60-70%). Keep sub_progress at
-    # 0.85 (≈68%) so the bar doesn't visually dip from surgical-complete.
-    _bridge("taste", "Calling LLM with strict-JSON prompt...", step=4, sub_progress=0.85)
+    _bridge("taste", "Calling LLM with narrative micro-story prompt...", step=4, sub_progress=0.85)
 
-    # Snapshot the cost before the LLM call so we can report the
-    # per-run cost in the final response.
     cost_before_usd = 0.0
     try:
         from ..llm.cost_control import cost_status
@@ -869,80 +983,65 @@ def _run_moment_pipeline(
     try:
         text, provider_used = call_with_fallback(prompt)
         if text:
-            picks = parse_moment_response(text)
-            _bridge("taste", f"LLM ({provider_used}) picked {len(picks)} moments",
-                    step=4, sub_progress=0.95)
+            picks = parse_moment_response_with_retry(
+                text,
+                llm_callable=lambda p: call_with_fallback(p)[0],
+                original_prompt=prompt,
+            )
+            _bridge("taste", f"LLM ({provider_used}) suggested {len(picks)} candidate story arcs",
+                    step=4, sub_progress=0.92)
 
-            # ── NEW 2026-06-15: archetype + retention + post-check pre-pass ──
-            try:
-                from ..pipeline.archetype import detect_archetype
-                from ..pipeline.postcheck import post_check_picks
-                from ..pipeline.clip_design import design_clip
+            # 2e. Boundary refinement + Length policy + Dedup + Check pass
+            refined_cands = []
+            rejection_log = []
 
-                # Reconstruct a transcript dict from the moment snippets so
-                # archetype detection can run. Each moment's snippet is a
-                # 8-20 word window of the original transcript.
-                transcript_segments = []
-                # Use the original transcript from info if available, otherwise
-                # synthesize from moment snippets.
-                orig_transcript = info.get("transcript") or {}
-                if orig_transcript.get("segments"):
-                    transcript_segments = orig_transcript["segments"]
-                else:
-                    for m in moments:
-                        transcript_segments.append({
-                            "start": m.start,
-                            "end": m.end,
-                            "text": m.snippet,
-                        })
-                transcript_dict = {"segments": transcript_segments}
-                moment_by_idx = {m.index: m for m in moments}
+            for p in picks:
+                c_start = float(p.get("start", 0))
+                idx = min(len(fusion_res.heat_scores) - 1, max(0, int(c_start // 5.0)))
+                p["heat_score"] = float(fusion_res.heat_scores[idx]) if len(fusion_res.heat_scores) > 0 else 0.5
 
-                arch_result = detect_archetype(transcript_dict)
-                _bridge("taste",
-                        f"Archetype: {arch_result.primary} "
-                        f"(conf={arch_result.confidence:.2f})",
-                        step=4, sub_progress=0.96)
+                refined, rej_reason = refine_clip_candidate(p, narrative_units)
+                if not refined:
+                    rejection_log.append(f"boundary ({rej_reason})")
+                    continue
 
-                # Source-side clip design: snap picks to sentence boundaries
-                for p in picks:
-                    mid = int(p.get("moment_index", 0))
-                    m = moment_by_idx.get(mid)
-                    p_start = float(p.get("start", m.start if m else 0))
-                    p_end = float(p.get("end", m.end if m else 0))
-                    if p_end <= p_start:
-                        continue
-                    bounds = design_clip(
-                        start=p_start,
-                        end=p_end,
-                        transcript=transcript_dict,
-                        audio_features={},
-                        video_duration=video_duration_s,
-                    )
-                    p["start"] = bounds.start
-                    p["end"] = bounds.end
-                    p["_snap_reasons"] = {
-                        "start": bounds.snap_start_reason,
-                        "end": bounds.snap_end_reason,
-                    }
+                with_len, len_reason = apply_length_policy(refined)
+                if not with_len:
+                    rejection_log.append(f"length ({len_reason})")
+                    continue
 
-                # Post-check: hook quality, title rewrite, time overlap
-                picks, _post_results = post_check_picks(
-                    picks, archetype=arch_result.primary, min_confidence=0.3,
+                refined_cands.append(with_len)
+
+            if rejection_log:
+                _bridge("taste", f"Refinement rejected {len(rejection_log)} candidate(s): {', '.join(rejection_log[:3])}")
+
+            # Deduplication & composite ranking (0.30 standalone + 0.25 completeness + 0.25 hook + 0.20 heat)
+            ranked_cands = dedup_and_rank_candidates(refined_cands)
+
+            # Pre-render Check Pass (Haiku / check model)
+            verified_cands = []
+            for cand in ranked_cands:
+                passed, checked = run_clip_check_pass(
+                    cand,
+                    narrative_units,
+                    llm_callable=lambda p: call_with_fallback(p)[0],
                 )
-                rewrites = sum(len(r.rewrites_applied) for r in _post_results)
-                _bridge("taste",
-                        f"Post-check: {rewrites} rewrite(s) for "
-                        f"archetype={arch_result.primary}",
-                        step=4, sub_progress=0.97)
-            except Exception as e:
-                _bridge("taste", f"Archetype/retention pre-pass failed: {e}",
-                        step=4, sub_progress=0.96)
+                if passed:
+                    verified_cands.append(checked)
+                else:
+                    issues = checked.get("check_pass", {}).get("issues", [])
+                    _bridge("taste", f"Check pass dropped candidate: issues={issues}")
+
+            if verified_cands:
+                picks = verified_cands
+            elif ranked_cands:
+                # If all failed check pass, keep top 1 best-effort candidate
+                picks = ranked_cands[:1]
     except Exception as e:
         _bridge("taste", f"LLM failed: {e} — using moment-based fallback",
                 step=4, sub_progress=0.95)
 
-    # Compute the per-run LLM cost
+    # Compute per-run LLM cost
     cost_after_usd = cost_before_usd
     try:
         from ..llm.cost_control import cost_status
@@ -953,77 +1052,12 @@ def _run_moment_pipeline(
     _bridge("taste", f"LLM cost this run: ${run_cost_usd:.4f} (provider: {provider_used or 'none'})",
             step=4, sub_progress=0.95)
 
-    # 3. Map LLM picks to actual moments (using moment_index)
-    # Sort by confidence descending so the best pick is first
     picks_sorted = sorted(
         picks,
-        key=lambda p: float(p.get("confidence", 0.0)),
+        key=lambda p: float(p.get("final_score", p.get("score", p.get("confidence", 0.0)))),
         reverse=True,
     )
     moment_by_idx = {m.index: m for m in moments}
-
-    # ── NEW 2026-06-15: archetype + retention + post-check pre-pass ──
-    try:
-        from ..pipeline.archetype import detect_archetype
-        from ..pipeline.postcheck import post_check_picks
-        from ..pipeline.clip_design import design_clip
-
-        # Reconstruct a transcript dict from the moment snippets so
-        # archetype detection can run. Each moment's snippet is a
-        # 8-20 word window of the original transcript.
-        transcript_segments = []
-        orig_transcript = info.get("transcript") or {}
-        if orig_transcript.get("segments"):
-            transcript_segments = orig_transcript["segments"]
-        else:
-            for m in moments:
-                transcript_segments.append({
-                    "start": m.start,
-                    "end": m.end,
-                    "text": m.snippet,
-                })
-        transcript_dict = {"segments": transcript_segments}
-
-        arch_result = detect_archetype(transcript_dict)
-        _bridge("taste",
-                f"Archetype: {arch_result.primary} "
-                f"(conf={arch_result.confidence:.2f})",
-                step=4, sub_progress=0.96)
-
-        # Source-side clip design: snap picks to sentence boundaries
-        for p in picks_sorted:
-            mid = int(p.get("moment_index", 0))
-            m = moment_by_idx.get(mid)
-            p_start = float(p.get("start", m.start if m else 0))
-            p_end = float(p.get("end", m.end if m else 0))
-            if p_end <= p_start:
-                continue
-            bounds = design_clip(
-                start=p_start,
-                end=p_end,
-                transcript=transcript_dict,
-                audio_features={},
-                video_duration=video_duration_s,
-            )
-            p["start"] = bounds.start
-            p["end"] = bounds.end
-            p["_snap_reasons"] = {
-                "start": bounds.snap_start_reason,
-                "end": bounds.snap_end_reason,
-            }
-
-        # Post-check: hook quality, title rewrite, time overlap
-        picks_sorted, _post_results = post_check_picks(
-            picks_sorted, archetype=arch_result.primary, min_confidence=0.3,
-        )
-        rewrites = sum(len(r.rewrites_applied) for r in _post_results)
-        _bridge("taste",
-                f"Post-check: {rewrites} rewrite(s) for "
-                f"archetype={arch_result.primary}",
-                step=4, sub_progress=0.97)
-    except Exception as e:
-        _bridge("taste", f"Archetype/retention pre-pass failed: {e}",
-                step=4, sub_progress=0.96)
 
     final_clips: List[Dict] = []
     unverified_count = 0
@@ -1031,7 +1065,7 @@ def _run_moment_pipeline(
         for p in picks_sorted:
             m = moment_by_idx.get(int(p.get("moment_index", 0)))
             conf = float(p.get("confidence", 0.0))
-            if conf < 0.4:
+            if conf < 0.35 and not p.get("verified"):
                 unverified_count += 1
                 _bridge(
                     "filter",
@@ -1048,20 +1082,17 @@ def _run_moment_pipeline(
                 trim_s = float(p.get("trim_start", 0))
                 trim_e = float(p.get("trim_end", 0))
                 clip_start = max(0, m.start + trim_s)
-                clip_end = max(clip_start + 5, m.end - trim_e)
+                clip_end = max(clip_start + 10, m.end - trim_e)
             else:
                 continue
 
-            # Prevent duplicate / overlapping clips (must have minimum 20s separation or IoU < 0.15)
+            # Prevent duplicate / overlapping clips (IoU < 0.25)
             is_overlapping = False
             for prev in final_clips:
                 p_s, p_e = prev["start"], prev["end"]
                 inter = max(0.0, min(clip_end, p_e) - max(clip_start, p_s))
-                union = max(clip_end, p_e) - min(clip_start, p_s)
-                if union > 0 and (inter / union) > 0.15:
-                    is_overlapping = True
-                    break
-                if abs(clip_start - p_s) < 20.0:
+                min_len = min(clip_end - clip_start, p_e - p_s)
+                if min_len > 0 and (inter / min_len) > 0.30:
                     is_overlapping = True
                     break
             if is_overlapping:
@@ -1081,6 +1112,42 @@ def _run_moment_pipeline(
             )
             title = p.get("title") or p.get("viral_title") or (m.snippet[:40] if m else "VIRAL STORY")
             caption = p.get("retention_bridge") or p.get("caption") or ""
+            clip_dur = round(clip_end - clip_start, 2)
+
+            # Match original transcript segments inside [clip_start, clip_end]
+            clip_segs = [
+                s for s in all_orig_segs
+                if float(s.get("end", 0)) >= clip_start and float(s.get("start", 0)) <= clip_end
+            ]
+            final_clips.append({
+                "start": round(clip_start, 2),
+                "end": round(clip_end, 2),
+                "duration_s": clip_dur,
+                "fits_shorts": bool(clip_dur <= 180.0),
+                "fits_reels_ideal": bool(clip_dur <= 90.0),
+                "source_start": matching_seg.get("source_start") if matching_seg else round(clip_start, 2),
+                "source_end": matching_seg.get("source_end") if matching_seg else round(clip_end, 2),
+                "audio_path": matching_seg.get("audio_path") if matching_seg else None,
+                "transcript": {"segments": clip_segs} if clip_segs else None,
+                "viral_title": title,
+                "caption": caption,
+                "hashtags": p.get("hashtags", "#shorts #viral"),
+                "reason": p.get("reason", m.snippet[:60] if m else "Story-driven narrative arc"),
+                "signal_type": m.signal_type if m else "narrative_arc",
+                "llm_provider": provider_used or "claude",
+                "confidence": round(conf, 3),
+                "score": p.get("final_score", p.get("score")),
+                "verified": bool(p.get("verified", True)),
+                "is_experiment": bool(p.get("is_experiment", False)),
+                "hook_type": p.get("hook_type", "none"),
+                "broad_angle": p.get("broad_angle", "none"),
+                "arc_type": p.get("arc_type", "story"),
+                "hook_text": p.get("hook_text", ""),
+                "payoff_text": p.get("payoff_text", ""),
+                "callbacks": p.get("callbacks", []),
+                "heat_score": p.get("heat_score", 0.5),
+                "rubric_ver": p.get("rubric_ver", "sauce-0.2"),
+            })
             # Match original transcript segments inside [clip_start, clip_end]
             all_orig_segs = info.get("transcript", {}).get("segments", []) if info.get("transcript") else []
             clip_segs = [
@@ -1216,23 +1283,24 @@ def _run_moment_pipeline(
                 "verified": False,
             })
 
-    # 3a. Apply universal format adjustments (20-35s viral short-form window)
+    # 3a. Validate format bounds & natural variable durations
     try:
-        _bridge("platform", f"Applying universal format adjustments (20-35s, target 28s)")
         adjusted = []
         for clip in final_clips:
+            c_start = float(clip.get("start", 0))
+            c_end = float(clip.get("end", 0))
             new_start, new_end, reason = adjust_clip_for_platform(
-                float(clip.get("start", 0)),
-                float(clip.get("end", 0)),
+                c_start,
+                c_end,
                 video_duration=float(video_duration_s),
             )
             clip["start"] = round(new_start, 2)
             clip["end"] = round(new_end, 2)
+            clip["duration_s"] = round(new_end - new_start, 2)
+            clip["fits_shorts"] = bool(clip["duration_s"] <= 180.0)
+            clip["fits_reels_ideal"] = bool(clip["duration_s"] <= 90.0)
             clip["source_start"] = round(new_start, 2)
             clip["source_end"] = round(new_end, 2)
-            # Formatting may extend a short moment around the hook. Refresh
-            # source captions to cover the final interval so fallback caption
-            # timing does not stop at the original moment boundary.
             all_orig_segs = info.get("transcript", {}).get("segments", []) if info.get("transcript") else []
             clip_segs = [
                 seg for seg in all_orig_segs
@@ -1241,11 +1309,13 @@ def _run_moment_pipeline(
             ]
             clip["transcript"] = {"segments": clip_segs} if clip_segs else None
             clip["_platform_adjustment"] = reason
-            # Apply universal caption styling + hashtag limit
             clip["caption"] = style_caption(clip.get("caption", ""))
             clip["hashtags"] = limit_hashtags(clip.get("hashtags", ""))
             adjusted.append(clip)
         final_clips = adjusted
+
+        final_durations = [round(c["duration_s"], 1) for c in final_clips]
+        _bridge("platform", f"Final clips approved for render: {len(final_clips)} | Durations: {final_durations}")
     except Exception as e:
         _bridge("platform", f"Format adjustment skipped: {e}")
 
@@ -1436,6 +1506,7 @@ def _run_moment_pipeline(
             # Pass absolute start/end to render_clip — it computes rel_start/rel_end internally.
             # Only set video_source_start so render_clip knows where the file actually starts.
             render_clip = dict(clip)
+            render_clip["caption_font"] = caption_font
             render_clip["video_path"] = str(source_for_renderer)
             render_clip["video_source_start"] = _vsrc
             render_clip["video_source_end"] = clip.get("video_source_end", float(clip.get("source_end", clip.get("end", 0))) + SURGICAL_BUFFER_SECONDS)
@@ -1512,14 +1583,22 @@ def _run_moment_pipeline(
     }
 
 
-async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform: str = "tiktok"):
+async def run_youtube_pipeline_async(
+    task_id: str,
+    url: str,
+    callback,
+    platform: str = "tiktok",
+    caption_font: str = "studio",
+):
     # Unified Database Cache Check (Supabase / PostgreSQL with local file fallback)
     # Checks by canonical 11-char video ID so all URL variants share the same entry.
     try:
         from ..caching.service import get_cached_video
         from ..database.session import async_session, _DB_AVAILABLE
         cached = None
-        if _DB_AVAILABLE:
+        if caption_font != "studio":
+            cached = None
+        elif _DB_AVAILABLE:
             async with async_session() as session:
                 cached = await get_cached_video(session, url, verify_media=True)
         else:
@@ -1565,7 +1644,9 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
     if PIPELINE_VERSION == 2:
         # Delegate to the new orchestrator.
         try:
-            result = await run_youtube_orchestrator(task_id, url, callback, platform=platform)
+            result = await run_youtube_orchestrator(
+                task_id, url, callback, platform=platform, caption_font=caption_font
+            )
             clips = result.get("clips", [])
             cost_usd = result.get("llm_cost_usd", 0.0)
             cpp = result.get("cost_per_clip_usd", 0.0)
@@ -1600,7 +1681,7 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
             )
             # Save to Database Cache (Supabase PostgreSQL + local file backup)
             # Universal cache key (canonical video_id) so all formats share the entry.
-            if clips and clips[0].get("file_path"):
+            if caption_font == "studio" and clips and clips[0].get("file_path"):
                 try:
                     from ..caching.service import save_cached_video
                     from ..database.session import async_session, _DB_AVAILABLE
@@ -1674,6 +1755,8 @@ async def process_youtube_url(request: dict):
     # clip. We keep the param for downstream analytics/logging, but no longer
     # differentiate output. Default = "universal" for clarity.
     platform = (request.get("platform") or "universal").lower().strip() or "universal"
+    from ..pipeline.captions import normalize_caption_preset
+    caption_font = normalize_caption_preset(request.get("caption_font"))
 
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}")
 
@@ -1684,6 +1767,7 @@ async def process_youtube_url(request: dict):
             url,
             create_progress_callback(task["task_id"]),
             platform=platform,
+            caption_font=caption_font,
         )
     )
 

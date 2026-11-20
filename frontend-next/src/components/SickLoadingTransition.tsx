@@ -20,6 +20,7 @@ import { getDashDashboardUrl } from "@/lib/domain";
 
 interface SickLoadingTransitionProps {
   url: string;
+  captionFont?: string;
   onComplete?: (taskId?: string) => void;
   autoRedirect?: boolean;
 }
@@ -107,6 +108,7 @@ const TELEMETRY_STAGES: {
 
 export default function SickLoadingTransition({
   url,
+  captionFont = "studio",
   onComplete,
   autoRedirect = true,
 }: SickLoadingTransitionProps) {
@@ -138,7 +140,7 @@ export default function SickLoadingTransition({
     let isMounted = true;
     if (!url) return;
 
-    submitYouTubeUrl(url)
+    submitYouTubeUrl(url, captionFont)
       .then((res) => {
         if (!isMounted) return;
         if (res.taskId) {
@@ -153,7 +155,7 @@ export default function SickLoadingTransition({
     return () => {
       isMounted = false;
     };
-  }, [url]);
+  }, [url, captionFont]);
 
   // 2. High-energy smooth progress and stage sequencer
   useEffect(() => {

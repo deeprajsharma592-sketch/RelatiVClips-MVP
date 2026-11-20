@@ -37,6 +37,7 @@ from ..utils.config import (
     MAX_SURGICAL_SEGMENTS,
     AUDIO_ONLY_BITRATE,
     PARALLEL_SURGICAL_WORKERS,
+    BGUTIL_POT_BASE_URL,
 )
 
 log = logging.getLogger(__name__)
@@ -78,6 +79,8 @@ def _ytdlp_section_url(
         "-o", out_template,
         "--no-warnings",
     ]
+    if BGUTIL_POT_BASE_URL:
+        cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}"])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     if use_cookies:
@@ -142,6 +145,8 @@ def _ytdlp_video_section_url(
         "-o", out_template,
         "--no-warnings",
     ]
+    if BGUTIL_POT_BASE_URL:
+        cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}"])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     if use_cookies:
@@ -402,35 +407,40 @@ def _download_one_video_segment(
     _log(f"  Downloading video segment {seg_idx + 1}/{total} [{start:.1f}s - {end:.1f}s]...")
 
     final_ok = False
-    # Primary: ytagent downloads and verifies one high-quality source per
-    # video, then every winning moment is sliced locally from that cache.
+    # 1. If a verified high-quality source was already downloaded and cached,
+    # slice the segment directly via local ffmpeg (<0.5s).
     try:
-        from ..utils.ytagent_downloader import download_segment as ytagent_segment
-
-        ytagent_result = ytagent_segment(
-            str(url),
-            video_path,
-            start=s,
-            end=e,
-            log=_log,
-        )
-        final_ok = True
-        _log(
-            f"  [video seg {seg_idx + 1}/{total}] ytagent "
-            f"{ytagent_result['width']}x{ytagent_result['height']} "
-            f"via {ytagent_result['method']}"
-        )
+        from ..utils.ytagent_downloader import _cached_source, download_segment as ytagent_segment
+        from ytagent.utils.ids import to_video_id
+        vid_id = to_video_id(url)
+        if _cached_source(vid_id):
+            ytagent_result = ytagent_segment(
+                str(url),
+                video_path,
+                start=s,
+                end=e,
+                log=_log,
+            )
+            final_ok = True
+            _log(
+                f"  [video seg {seg_idx + 1}/{total}] ytagent cache slice "
+                f"{ytagent_result['width']}x{ytagent_result['height']}"
+            )
     except Exception as ytagent_err:
-        _log(f"  ytagent unavailable ({str(ytagent_err)[:180]}), trying residential downloader...")
+        _log(f"  ytagent cache check: {ytagent_err}")
 
-    # Try residential downloader first (laptop's residential IP)
-    try:
-        if not final_ok:
+    # 2. Try residential downloader if configured (laptop's residential IP)
+    if not final_ok:
+        try:
             from ..utils.residential_downloader import download_video as resi_download
             resi_download(str(url), str(video_path), start=s, end=e)
             final_ok = True
-    except Exception as resi_err:
-        _log(f"  Residential download failed ({resi_err}), trying yt-dlp...")
+        except Exception:
+            pass
+
+    # 3. Direct surgical yt-dlp with PO token (fastest: downloads only the ~30s clip in ~4s)
+    if not final_ok:
+        _log(f"  Downloading section [{s:.1f}s - {e:.1f}s] via surgical yt-dlp + PO token...")
         for seg_attempt in range(1, 4):
             # Attempt 1: web_embedded with cookies and Node JS challenge solver (verified 1080p download)
             # Attempt 2: android_vr with cookies
@@ -443,7 +453,7 @@ def _download_one_video_segment(
                 cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android;formats=missing_pot")
             try:
                 result = subprocess.run(
-                    cmd, capture_output=True, timeout=180
+                    cmd, capture_output=True, timeout=60
                 )
                 if not video_path.exists():
                     for ext in (".mp4", ".mkv", ".webm"):
