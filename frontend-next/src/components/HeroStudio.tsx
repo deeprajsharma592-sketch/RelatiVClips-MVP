@@ -87,16 +87,6 @@ export default function HeroStudio() {
 
       {/* ── UPPER LAYER: img 2 (Main text, subtitle, input bar) ── */}
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center space-y-6 pointer-events-none">
-        {/* Eyebrow Badge (OpusClip exact match) */}
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-[11px] font-mono uppercase tracking-wider text-zinc-400 border border-white/[0.1] bg-black/60 backdrop-blur-md"
-        >
-          <span>#1 AI VIDEO EDITOR AND CLIPPING TOOL</span>
-        </motion.div>
-
         {/* Master Headline (OpusClip exact match) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
