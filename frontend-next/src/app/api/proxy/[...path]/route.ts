@@ -9,8 +9,8 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
-const DEFAULT_TUNNEL_BACKEND = "https://participate-pending-retail-johns.trycloudflare.com";
-const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing")
+const DEFAULT_TUNNEL_BACKEND = "https://api.relativclips.com";
+const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing") && !configuredBackendBase.includes("participate-pending")
   ? configuredBackendBase.replace(/\/$/, "")
   : DEFAULT_TUNNEL_BACKEND;
 const REQUEST_TIMEOUT_MS = 25_000;
