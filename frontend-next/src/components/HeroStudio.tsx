@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   UploadCloud,
   ArrowRight,
@@ -14,12 +14,27 @@ import {
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
 
+const ROTATING_PHRASES = [
+  "Tasteful Clips",
+  "Get More Views",
+  "According to your Niche",
+  "Hyperpersonalised Content",
+];
+
 export default function HeroStudio() {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phraseIndex, setPhraseIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPhraseIndex((prev) => (prev + 1) % ROTATING_PHRASES.length);
+    }, 2600);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,9 +80,24 @@ export default function HeroStudio() {
             Turn any footage into
           </h1>
           <div className="flex items-center justify-center flex-wrap gap-2 text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight">
-            <span className="px-4 py-1 rounded-full bg-white/10 border border-white/15 text-white backdrop-blur-md">
-              a week of posts
-            </span>
+            <motion.span
+              layout
+              transition={{ layout: { duration: 0.3, ease: "easeOut" } }}
+              className="relative inline-flex items-center justify-center overflow-hidden px-4 py-1 rounded-full bg-white/10 border border-white/15 text-white backdrop-blur-md h-[1.35em]"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={ROTATING_PHRASES[phraseIndex]}
+                  initial={{ y: 24, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -24, opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className="inline-block whitespace-nowrap"
+                >
+                  {ROTATING_PHRASES[phraseIndex]}
+                </motion.span>
+              </AnimatePresence>
+            </motion.span>
             <span className="text-white">10x faster</span>
           </div>
         </motion.div>
