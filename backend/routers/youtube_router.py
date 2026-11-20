@@ -752,6 +752,13 @@ def _run_moment_pipeline(
     # analytics logging but doesn't change output. The functions above are
     # aliased to the universal format variants.
 
+    INTRO_FILLER_PHRASES = (
+        "welcome back", "welcome to", "today's episode", "today we are", "today we have",
+        "sponsored by", "hit subscribe", "in this video", "leave a comment", "let's get into it",
+        "before we begin", "before we start", "hey guys", "make sure to subscribe"
+    )
+    is_long_form = (video_duration_s > 180.0) if video_duration_s else (float(info.get("duration_s", 0)) > 180.0 if info else False)
+
     def _bridge(stage_or_msg: str, msg: str = None, step: int = None, sub_progress: float = None) -> None:
         """Bridge accepts (stage, msg) or just (msg) — the renderer uses a
         single-arg progress callback, but the orchestrator stages use

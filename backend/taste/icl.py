@@ -19,6 +19,8 @@ Why moments instead of full transcript:
 
 Strict JSON only. No prose, no markdown, no explanation.
 """
+import re
+import json
 from typing import List, Dict, Optional, Tuple, Any, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
