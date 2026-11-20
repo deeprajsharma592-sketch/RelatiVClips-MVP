@@ -38,7 +38,13 @@ export default function HeroStudio() {
 
   return (
     <>
-      <section id="homepage-hero" className="relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden bg-[#050507] px-5 py-20 text-white sm:px-8">
+      {/* HERO MESSAGE — use this name when referring to the homepage headline and supporting copy. */}
+      <section
+        id="homepage-hero"
+        data-section-name="hero-message"
+        aria-label="Hero message"
+        className="relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden bg-[#050507] px-5 py-20 text-white sm:px-8"
+      >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(45,38,62,0.22),transparent_58%)]" />
         <div className="relative z-[1] mx-auto flex w-full max-w-[1500px] flex-col items-center text-center">
           <p className="mb-7 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500 sm:text-xs">RelatiV <span className="mx-2 text-zinc-700">/</span> Made to move</p>
