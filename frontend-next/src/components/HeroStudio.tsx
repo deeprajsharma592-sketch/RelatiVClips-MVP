@@ -76,7 +76,7 @@ export default function HeroStudio() {
             <motion.span
               layout
               transition={{ layout: { type: "spring", stiffness: 115, damping: 24, mass: 0.9 } }}
-              className="relative inline-flex items-center justify-center overflow-hidden px-5 py-1.5 rounded-full bg-black/70 border border-white/25 text-white backdrop-blur-xl h-[1.38em]"
+              className="relative inline-flex items-center justify-center overflow-hidden px-5 py-1.5 rounded-xl bg-black/70 border border-white/25 text-white backdrop-blur-xl h-[1.38em]"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -118,7 +118,7 @@ export default function HeroStudio() {
         >
           <form
             onSubmit={handleSubmit}
-            className="flex items-center rounded-full border border-white/20 bg-black/60 p-1.5 backdrop-blur-xl shadow-2xl focus-within:border-white/40 transition"
+            className="flex items-center rounded-xl border border-white/20 bg-black/60 p-1.5 backdrop-blur-xl shadow-2xl focus-within:border-white/40 transition"
           >
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -147,7 +147,7 @@ export default function HeroStudio() {
 
             <button
               type="submit"
-              className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm"
+              className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm"
             >
               Get free clips
             </button>
