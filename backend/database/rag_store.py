@@ -22,9 +22,11 @@ import json
 import logging
 import os
 import re
+import tempfile
 import time
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 import chromadb
@@ -35,8 +37,33 @@ log = logging.getLogger("rag_store")
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
-CHROMA_DIR = os.environ.get("CHROMA_PERSIST_DIR", "/app/chroma_data")
-os.makedirs(CHROMA_DIR, exist_ok=True)
+def _resolve_chroma_dir() -> str:
+    """Pick a writable persistence directory for Docker and bare-host runs."""
+    configured = os.environ.get("CHROMA_PERSIST_DIR", "").strip()
+    project_default = Path(__file__).resolve().parents[2] / "chroma_data"
+    temp_fallback = Path(tempfile.gettempdir()) / "relativ" / "chroma_data"
+
+    candidates = [Path(configured).expanduser()] if configured else []
+    candidates.extend([project_default, temp_fallback])
+
+    errors: list[str] = []
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            probe = candidate / ".relativ-write-test"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            if configured and candidate != Path(configured).expanduser():
+                log.warning("Configured ChromaDB path is unavailable; using %s", candidate)
+            return str(candidate)
+        except OSError as exc:
+            errors.append(f"{candidate}: {exc}")
+            log.warning("ChromaDB directory is not writable (%s): %s", candidate, exc)
+
+    raise RuntimeError("No writable ChromaDB directory: " + "; ".join(errors))
+
+
+CHROMA_DIR = _resolve_chroma_dir()
 
 # ─── Singleton model (loaded once, reused) ───────────────────────────────────
 
