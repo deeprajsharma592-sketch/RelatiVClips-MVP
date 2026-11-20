@@ -746,6 +746,24 @@ async def get_task_queue():
     return TaskQueueInfo(**task_store.get_queue_info())
 
 
+@app.get("/api/v1/tasks/recent")
+async def get_recent_tasks():
+    from .routers.youtube_router import progress_logs as youtube_logs
+    res = []
+    for tid, t in list(task_store._tasks.items())[-10:]:
+        res.append({
+            "task_id": tid,
+            "status": t.get("status"),
+            "progress": t.get("progress"),
+            "current_step": t.get("current_step"),
+            "step_name": t.get("step_name"),
+            "error": t.get("error"),
+            "created_at": str(t.get("created_at")),
+            "logs": youtube_logs.get(tid, [])[-15:],
+        })
+    return res
+
+
 def stream_video_file(
     path: Path,
     request: Request,
