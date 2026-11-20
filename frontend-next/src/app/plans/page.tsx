@@ -54,61 +54,61 @@ interface Tier {
 
 const CREATOR_TIERS: Tier[] = [
   {
-    name: "Go",
-    price: "₹499",
+    name: "Starter",
+    price: "$5.99",
     unit: "/month",
-    cta: "Start Go",
-    href: "/signup?plan=creator_go",
+    cta: "Get Starter",
+    href: "/signup?plan=creator_starter",
     bestFor: "Solo creators dipping toes in",
-    clipsIncluded: 20,
+    clipsIncluded: 40,
     features: [
-      "20 AI-generated clips per month",
-      "Vertical 9:16 rendering, hardcoded captions",
-      "Hook detection from energy + transcript",
-      "3 YouTube channels connected",
-      "Standard rendering queue",
-      "UPI / card billing",
+      "40 viral clips / month",
+      "AI virality scoring & hook detection",
+      "9:16 vertical dynamic face framing",
+      "Karaoke word-by-word subtitles",
+      "No RelatiV watermark",
+      "Up to 30 min source video length",
+      "Global card billing (Visa, Mastercard, Amex)",
     ],
     planKey: "creator_go",
   },
   {
-    name: "Pro",
-    price: "₹899",
+    name: "Pro Studio",
+    price: "$11.99",
     unit: "/month",
-    cta: "Try Pro",
+    cta: "Get Pro Studio",
     href: "/signup?plan=creator_pro",
     highlight: true,
     bestFor: "Active creators shipping 2-3 videos/week",
-    clipsIncluded: 50,
-    cpmHint: "Best value · 50 clips/mo",
+    clipsIncluded: 90,
+    cpmHint: "Best value · 90 clips/mo",
     features: [
-      "50 AI-generated clips per month",
-      "AI taste-select (DeepSeek V3) on every video",
-      "Auto-caption + viral-title generation",
-      "10 YouTube channels + local device upload",
-      "Priority render queue (3× faster)",
-      "A/B hook variants (3 per clip)",
-      "Email + Discord community support",
+      "90 viral clips / month",
+      "All 4 Content Archetypes (Streamer, Gaming, Podcast, Edu)",
+      "1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)",
+      "Auto B-roll insertion & AI Emojis",
+      "Fast priority GPU processing queue",
+      "Up to 90 min source video length",
+      "Priority Discord & Email support",
     ],
     planKey: "creator_pro",
   },
   {
-    name: "Premium",
-    price: "₹1,999",
-    unit: "/month",
-    cta: "Go Premium",
-    href: "/signup?plan=creator_premium",
-    bestFor: "Agencies, podcast networks, power creators",
-    clipsIncluded: 150,
-    cpmHint: "Lowest cost per clip",
+    name: "Agency & Brand",
+    price: "Custom",
+    unit: "",
+    cta: "Contact us",
+    href: "/contact?intent=enterprise",
+    bestFor: "Media houses, podcast networks, power creators",
+    clipsIncluded: 999,
+    cpmHint: "Unlimited capacity",
     features: [
-      "150 AI-generated clips per month",
-      "Everything in Pro, plus:",
-      "Custom branding (logo, color, font on captions)",
-      "Reserved GPU lane (10× faster transcription)",
-      "Team seats (up to 5)",
-      "Priority support — 4h response SLA",
-      "Quarterly strategy call with founders",
+      "Unlimited clips & source hours",
+      "Team seats & shared brand templates",
+      "Dedicated GPU compute instance",
+      "Custom subtitle typography & branding",
+      "API & Webhook integrations",
+      "Dedicated account manager & SLA",
     ],
     planKey: "creator_premium",
   },
@@ -129,15 +129,15 @@ const CREATOR_FAQS = [
   },
   {
     q: "How does the pricing per clip work?",
-    a: "We sized the tiers so the cost per clip drops as you scale: ~₹25/clip on Go, ~₹18/clip on Pro, and ~₹13/clip on Premium. Each tier includes full AI hook detection, automated karaoke captions, and 9:16 vertical framing.",
+    a: "We sized the tiers so the cost per clip drops as you scale: ~$0.15/clip on Starter and ~$0.13/clip on Pro Studio. Each tier includes full AI hook detection, automated karaoke captions, and 9:16 vertical framing.",
   },
   {
     q: "Can I connect multiple YouTube channels?",
-    a: "Yes. Go connects up to 3 channels, Pro connects up to 10 channels plus direct local file uploads, and Premium supports up to 10 channels with 5 multi-seat team accounts.",
+    a: "Yes. Starter connects up to 3 channels, Pro Studio connects up to 10 channels plus direct local file uploads, and Agency supports unlimited team accounts.",
   },
   {
-    q: "What payment methods are supported in India and worldwide?",
-    a: "We accept all major Indian payment methods via UPI, RuPay, debit cards, credit cards, and net banking, as well as international Visa, Mastercard, and American Express cards.",
+    q: "What payment methods are supported worldwide?",
+    a: "We accept all major international payment methods including Visa, Mastercard, American Express, Apple Pay, and Google Pay with secure 1-click checkout.",
   },
 ];
 
@@ -375,10 +375,10 @@ export default function PlansPage() {
           <div className="mt-8 sm:mt-10 rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0B0D12] p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm dark:shadow-lg">
             <div className="space-y-1">
               <h3 className="font-display font-semibold text-lg text-zinc-900 dark:text-white">
-                Need 150+ clips, team accounts, or pay-as-you-go?
+                Need custom volume, team accounts, or dedicated GPU lanes?
               </h3>
               <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-sans max-w-2xl">
-                Our Enterprise tier starts at ₹25/clip with no upfront commitment, volume discounts, and dedicated GPU lanes.
+                Our Agency & Enterprise tier starts with volume discounts, no watermark, dedicated compute, and custom API integrations.
               </p>
             </div>
             <Link

@@ -187,14 +187,8 @@ export default function Header() {
           {!loading && !user && (
             <>
               <Link
-                href="/login"
-                className="hidden sm:inline-block text-xs font-medium text-zinc-400 hover:text-white px-3 py-2 transition-colors"
-              >
-                Sign in
-              </Link>
-              <Link
                 href="/dashboard"
-                className="hidden sm:inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
+                className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
               >
                 My dashboard
               </Link>

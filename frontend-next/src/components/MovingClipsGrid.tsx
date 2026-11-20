@@ -103,11 +103,6 @@ export default function MovingClipsGrid() {
           transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col items-center text-center mb-8 sm:mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[11px] font-mono text-zinc-400 mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span>02 · OUTPUT GALLERY</span>
-          </div>
-
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white font-sans">
             One video becomes{" "}
             <span className="text-amber-400">ten viral clips.</span>
