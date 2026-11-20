@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { motion, useInView, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { ArrowDown, Film } from "lucide-react";
 import styles from "./TasteTimeline.module.css";
 
 const MESSAGE = "RelatiV continuously learns your content taste and becomes better at making your clips go viral";
+
 const BEATS = [
   { text: "RelatiV", image: "portraits/neon-profile-4x5.jpg", tilt: -12 },
   { text: "continuously learns your content taste", image: "fashion/orange-visor-4x5.jpg", tilt: 10 },
@@ -14,6 +15,65 @@ const BEATS = [
   { text: "at making your clips", image: "fashion/chunky-knit-4x5.jpg", tilt: 12 },
   { text: "go viral", image: "portraits/tinted-glasses-4x5.jpg", tilt: -9 },
 ];
+
+type WordToken = {
+  type: "word";
+  id: string;
+  text: string;
+  index: number;
+  hue: number;
+};
+
+type SpaceToken = {
+  type: "space";
+  id: string;
+};
+
+type ThumbnailToken = {
+  type: "thumbnail";
+  id: string;
+  beatIndex: number;
+};
+
+type Token = WordToken | SpaceToken | ThumbnailToken;
+
+const TOKENS: Token[] = (() => {
+  const list: Token[] = [];
+  let totalWordCount = 0;
+  BEATS.forEach((beat) => {
+    totalWordCount += beat.text.trim().split(/\s+/).length;
+  });
+
+  let wordIdx = 0;
+  BEATS.forEach((beat, bIdx) => {
+    if (bIdx > 0) {
+      list.push({ type: "space", id: `space-beat-${bIdx}` });
+    }
+    const words = beat.text.trim().split(/\s+/);
+    words.forEach((w, wSubIdx) => {
+      if (wSubIdx > 0) {
+        list.push({ type: "space", id: `space-w-${bIdx}-${wSubIdx}` });
+      }
+      // Iridescent hue sweep from cyan (180deg) through sapphire, purple, magenta, to warm coral (350deg)
+      const hue = Math.round(180 + (wordIdx * 170) / Math.max(1, totalWordCount - 1));
+      list.push({
+        type: "word",
+        id: `word-${wordIdx}`,
+        text: w,
+        index: wordIdx,
+        hue,
+      });
+      wordIdx++;
+    });
+    list.push({ type: "space", id: `space-thumb-${bIdx}` });
+    list.push({
+      type: "thumbnail",
+      id: `thumb-${bIdx}`,
+      beatIndex: bIdx,
+    });
+  });
+  return list;
+})();
 
 type Box = { x: number; y: number; width: number; height: number };
 type Journey = { from: Box; to: Box };
@@ -37,6 +97,21 @@ function FlyingThumbnail({ index, journey, progress }: { index: number; journey:
   return <motion.div className={styles.flyingThumbnail} style={{ x, y, width, height, rotate, borderRadius }}><Thumbnail index={index} /></motion.div>;
 }
 
+function AnimatedTimecode({ progress }: { progress: MotionValue<number> }) {
+  const [time, setTime] = useState("00:00");
+  useEffect(() => {
+    return progress.on("change", (latest) => {
+      const clamped = Math.max(0, Math.min(1, (latest - 0.66) / 0.34));
+      const totalSec = Math.floor(clamped * 30);
+      const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+      const ss = String(totalSec % 60).padStart(2, "0");
+      setTime(`${mm}:${ss}`);
+    });
+  }, [progress]);
+
+  return <span className={styles.timecode}>{time} / 00:30</span>;
+}
+
 export default function TasteTimeline() {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -50,11 +125,35 @@ export default function TasteTimeline() {
   // whose native ViewTimeline interpolation differs from the JS scroll offsets.
   const progress = useTransform(() => scrollYProgress.get());
   const textOpacity = useTransform(progress, [0, 0.32, 0.58], [1, 1, 0]);
-  const textColor = useTransform(progress, [0.06, 0.25], ["rgba(255,255,255,1)", "rgba(255,255,255,0)"]);
   const timelineOpacity = useTransform(progress, [0.38, 0.66], [0, 1]);
   const hintOpacity = useTransform(progress, [0, 0.18], [1, 0]);
   const playhead = useTransform(progress, [0.66, 1], ["0%", "100%"]);
   const ready = journeys.length === BEATS.length;
+
+  // Iridescent glow wave trigger: glows for 1-2s upon scrolling into view, then smoothly settles into crisp pure white
+  const stageInView = useInView(stageRef, { margin: "-10% 0px -10% 0px", amount: 0.25 });
+  const [glowIteration, setGlowIteration] = useState(0);
+  const [isGlowing, setIsGlowing] = useState(false);
+
+  useEffect(() => {
+    if (stageInView && !reduceMotion) {
+      setIsGlowing(true);
+      setGlowIteration((prev) => prev + 1);
+      const timer = setTimeout(() => {
+        setIsGlowing(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [stageInView, reduceMotion]);
+
+  const handleReplayGlow = () => {
+    if (reduceMotion) return;
+    setIsGlowing(true);
+    setGlowIteration((prev) => prev + 1);
+    setTimeout(() => {
+      setIsGlowing(false);
+    }, 2000);
+  };
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -90,24 +189,65 @@ export default function TasteTimeline() {
   return (
     <section ref={sectionRef} className={styles.section} aria-labelledby="taste-timeline-title" data-reduced-motion={reduceMotion ? "true" : undefined}>
       <div ref={stageRef} className={styles.stage}>
-        <motion.h2 ref={headingRef} id="taste-timeline-title" className={styles.headline} style={reduceMotion ? undefined : { opacity: textOpacity, color: textColor }}>
+        <motion.h2
+          ref={headingRef}
+          id="taste-timeline-title"
+          className={styles.headline}
+          style={reduceMotion ? undefined : { opacity: textOpacity }}
+          onMouseEnter={handleReplayGlow}
+          title="Scroll or hover to replay glow"
+        >
           <span className="sr-only">{MESSAGE}</span>
           <span aria-hidden="true">
-            {BEATS.map((beat, index) => (
-              <span key={beat.text}>
-                {index > 0 && " "}{beat.text}{" "}
-                <span ref={(node) => { inlineRefs.current[index] = node; }} className={styles.inlineThumbnail}>
-                  <span className={styles.inlineImage} style={{ opacity: ready && !reduceMotion ? 0 : 1 }}><Thumbnail index={index} /></span>
-                </span>
-              </span>
-            ))}
+            {TOKENS.map((token) => {
+              if (token.type === "space") {
+                return " ";
+              }
+              if (token.type === "word") {
+                return (
+                  <span
+                    key={`${token.id}-${glowIteration}`}
+                    className={`${styles.word} ${isGlowing && !reduceMotion ? styles.wordGlowing : ""}`}
+                    style={
+                      {
+                        "--word-hue": `${token.hue}`,
+                        "--word-index": token.index,
+                        animationDelay: `${token.index * 0.048}s`,
+                      } as React.CSSProperties
+                    }
+                  >
+                    {token.text}
+                  </span>
+                );
+              }
+              if (token.type === "thumbnail") {
+                const bIndex = token.beatIndex;
+                return (
+                  <span
+                    key={token.id}
+                    ref={(node) => {
+                      inlineRefs.current[bIndex] = node;
+                    }}
+                    className={styles.inlineThumbnail}
+                  >
+                    <span
+                      className={styles.inlineImage}
+                      style={{ opacity: ready && !reduceMotion ? 0 : 1 }}
+                    >
+                      <Thumbnail index={bIndex} />
+                    </span>
+                  </span>
+                );
+              }
+              return null;
+            })}
           </span>
         </motion.h2>
 
         <motion.div className={styles.timeline} aria-hidden="true" style={reduceMotion ? undefined : { opacity: timelineOpacity }}>
           <div className={styles.toolbar}>
             <span className={styles.toolbarTitle}><Film size={15} /> Your next clip</span>
-            <span className={styles.timecode}>00:00 / 00:30</span>
+            <AnimatedTimecode progress={progress} />
           </div>
           <div className={styles.ruler}>
             {["0s", "6s", "12s", "18s", "24s", "30s"].map((label) => <span key={label}>{label}</span>)}
