@@ -57,22 +57,22 @@ export default function HeroStudio() {
   };
 
   return (
-    <section className="relative w-full h-[760px] sm:h-[800px] md:h-[840px] flex items-center justify-center bg-black text-white px-4 overflow-hidden font-sans">
+    <section className="relative w-full min-h-[calc(100svh-72px)] flex items-center justify-center bg-black text-white px-4 sm:px-6 py-16 sm:py-20 overflow-hidden font-sans">
       {/* Main text, subtitle, and input bar sit on a clean background. */}
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center space-y-6 pointer-events-none">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-2 sm:px-6 text-center flex flex-col items-center space-y-8 pointer-events-none">
         {/* Master Headline (OpusClip exact match) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.05 }}
-          className="flex flex-col items-center justify-center space-y-3 select-none"
+          className="w-full flex flex-col items-center justify-center space-y-4 select-none"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
+          <h1 className="text-[clamp(2.5rem,6.4vw,6.5rem)] font-display font-extrabold tracking-tight text-white leading-[1.06] drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             Turn any footage into
           </h1>
 
           {/* Rotating Phrase Pill on its own layer above 20x faster */}
-          <div className="relative z-20 flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
+          <div className="relative z-20 flex w-full items-center justify-center text-[clamp(1.75rem,4.8vw,4.75rem)] font-display font-extrabold tracking-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             <motion.span
               layout
               transition={{ layout: { duration: 0.3, ease: "easeOut" } }}
@@ -94,7 +94,7 @@ export default function HeroStudio() {
           </div>
 
           {/* 20x faster on the layer below */}
-          <div className="relative z-10 text-3xl sm:text-4xl md:text-5xl font-display font-extrabold tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
+          <div className="relative z-10 text-[clamp(2rem,4.8vw,4.75rem)] font-display font-extrabold tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]">
             20x faster
           </div>
         </motion.div>
@@ -104,7 +104,7 @@ export default function HeroStudio() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-xs sm:text-sm text-zinc-300 max-w-lg mx-auto leading-relaxed drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]"
+          className="text-sm sm:text-base lg:text-lg text-zinc-300 max-w-3xl mx-auto leading-relaxed drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]"
         >
           Paste a link or drop a raw take, and RelatiV clips, edits, sizes and publishes them to all social platforms in one click.
         </motion.p>
@@ -114,7 +114,7 @@ export default function HeroStudio() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="w-full max-w-xl mx-auto pt-2 pointer-events-auto"
+          className="w-full max-w-4xl mx-auto pt-2 pointer-events-auto"
         >
           <form
             onSubmit={handleSubmit}
