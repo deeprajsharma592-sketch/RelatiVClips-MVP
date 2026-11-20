@@ -63,6 +63,7 @@ async def get_session() -> AsyncSession:
 async def init_db():
     global _DB_AVAILABLE
     from .models import Base
+    from ..caching.models import VideoCacheModel
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Additive bridge columns let existing app records link to Supabase

@@ -1516,15 +1516,22 @@ def _run_moment_pipeline(
 
 
 async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform: str = "tiktok"):
-    # NEW 2026-06-15: Result cache check (Option 1, SIMPLIFIED to URL-only key).
-    # All platforms now produce the same universal 9:16 22-30s clip, so
-    # `platform` is purely cosmetic (kept for analytics logging).
-    # Same URL = same cache entry = 3x hit rate vs the old (url, platform) key.
+    # Unified Database Cache Check (Supabase / PostgreSQL with local file fallback)
+    # Checks by canonical 11-char video ID so all URL variants share the same entry.
     try:
-        from ..pipeline.cache import get_cached_result
-        cached = get_cached_result(url)
+        from ..caching.service import get_cached_video
+        from ..database.session import async_session, _DB_AVAILABLE
+        cached = None
+        if _DB_AVAILABLE:
+            async with async_session() as session:
+                cached = await get_cached_video(session, url, verify_media=True)
+        else:
+            cached = await get_cached_video(None, url, verify_media=True)
+
         if cached and cached.get("clips"):
             clips = cached.get("clips", [])
+            savings = cached.get("_cache_savings_usd", 0.0)
+            age_h = cached.get("_cache_age_hours", 0.0)
             task_store.update_task(
                 task_id,
                 status=TaskStatus.COMPLETE,
@@ -1534,31 +1541,29 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
                 clips=clips,
                 current_step=(
                     f"Cache hit · {len(clips)} clips · "
-                    f"${cached.get('_cache_savings_usd', 0):.4f} saved · "
-                    f"age {cached.get('_cache_age_hours', 0):.1f}h"
+                    f"${savings:.4f} saved · age {age_h:.1f}h"
                 ),
             )
             callback(
-                f"CACHE HIT: {len(clips)} clips returned from cache "
-                f"(${cached.get('_cache_savings_usd', 0):.4f} saved, "
-                f"age {cached.get('_cache_age_hours', 0):.1f}h)",
+                f"CACHE HIT: {len(clips)} clips returned from database cache "
+                f"(${savings:.4f} saved, age {age_h:.1f}h)",
                 step=6, progress=100,
             )
             task_store.update_task(
                 task_id,
                 llm_cost_usd=0.0,
                 cost_per_clip_usd=0.0,
-                llm_provider="cache",
+                llm_provider=cached.get("llm_provider", "database_cache"),
                 cache_hit=True,
-                cache_age_hours=cached.get("_cache_age_hours"),
-                cache_savings_usd=cached.get("_cache_savings_usd"),
+                cache_age_hours=age_h,
+                cache_savings_usd=savings,
             )
             _active_tasks.pop(task_id, None)
             task_store.try_promote_queued()
             return
     except Exception as e:
         # Cache must never break the pipeline — log and continue
-        print(f"[CACHE] Result cache check failed (continuing): {e}")
+        print(f"[CACHE] Database cache check failed (continuing): {e}")
 
     if PIPELINE_VERSION == 2:
         # Delegate to the new orchestrator.
@@ -1596,15 +1601,19 @@ async def run_youtube_pipeline_async(task_id: str, url: str, callback, platform:
                 honest_result=result.get("honest_result", False),
                 honest_message=result.get("honest_message"),
             )
-            # NEW 2026-06-15: Save result cache (Option 1) on success.
-            # Universal cache key (URL only) — all platforms share the entry.
-            # Only cache when we actually got clips (no point caching failures).
+            # Save to Database Cache (Supabase PostgreSQL + local file backup)
+            # Universal cache key (canonical video_id) so all formats share the entry.
             if clips and clips[0].get("file_path"):
                 try:
-                    from ..pipeline.cache import save_result_cache
-                    save_result_cache(url, result)
+                    from ..caching.service import save_cached_video
+                    from ..database.session import async_session, _DB_AVAILABLE
+                    if _DB_AVAILABLE:
+                        async with async_session() as session:
+                            await save_cached_video(session, url, result)
+                    else:
+                        await save_cached_video(None, url, result)
                 except Exception as e:
-                    print(f"[CACHE] Result cache save failed (continuing): {e}")
+                    print(f"[CACHE] Database cache save failed (continuing): {e}")
         except Exception as e:
             import traceback
             tb = traceback.format_exc()

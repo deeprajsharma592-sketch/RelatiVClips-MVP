@@ -106,7 +106,8 @@ export default function HeroStudio() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="Drop a video link or upload a file"
-              className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none py-1.5"
+              className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 ring-0 border-0 py-1.5"
+              style={{ outline: "none", boxShadow: "none" }}
             />
 
             <input

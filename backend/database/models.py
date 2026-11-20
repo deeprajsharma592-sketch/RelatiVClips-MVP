@@ -5,9 +5,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional, List
 import enum
 
-
-class Base(DeclarativeBase):
-    pass
+from .base import Base
 
 
 class TaskStatus(str, enum.Enum):

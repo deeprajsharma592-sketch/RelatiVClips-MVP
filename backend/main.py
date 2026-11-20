@@ -63,6 +63,7 @@ from .routers import (
     admin_router,
     socials_router,
 )
+from .caching import cache_router
 from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
 from .utils.task_store import set_event_loop, task_store
 from .services.supabase_auth import is_supabase_auth_configured
@@ -175,6 +176,8 @@ app.include_router(verification_router.router)
 app.include_router(taste_router.router)
 app.include_router(admin_router.router)
 app.include_router(socials_router.router)
+app.include_router(cache_router)
+app.include_router(cache_router, prefix="/api/v1")
 
 
 # ─── App identity ───────────────────────────────────────────────────────────

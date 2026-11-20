@@ -60,7 +60,8 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="Paste YouTube link to clip..."
-                  className="w-full bg-transparent text-xs sm:text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
+                  className="w-full bg-transparent text-xs sm:text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0"
+                  style={{ outline: "none", boxShadow: "none" }}
                 />
                 <button
                   type="submit"
