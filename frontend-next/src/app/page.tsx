@@ -43,7 +43,7 @@ export default function HomePage() {
       <StickyInputBar />
 
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
-      <HeroStudio />
+      <CylinderScrollReveal><HeroStudio /></CylinderScrollReveal>
 
       {/* ── MANIFESTO TRANSITION: Apple Glass Fluid Scroll ── */}
       <CylinderScrollReveal><OwnYourTaste /></CylinderScrollReveal>
