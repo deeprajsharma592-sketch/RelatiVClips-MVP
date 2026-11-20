@@ -11,7 +11,9 @@
  * - Final 20-minute consultation CTA
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -24,8 +26,13 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { createCheckout, getBillingConfig, type BillingConfig } from "@/lib/api";
 import { getAppDashboardUrl } from "@/lib/domain";
+import {
+  createRazorpayOrder,
+  openRazorpayCheckout,
+  verifyRazorpayPayment,
+  type RazorpayPayment,
+} from "@/lib/razorpay";
 
 interface Tier {
   name: string;
@@ -37,7 +44,7 @@ interface Tier {
   bestFor: string;
   features: string[];
   cpmHint?: string;
-  stripePlan?:
+  planKey?:
     | "creator_go"
     | "creator_pro"
     | "creator_premium"
@@ -62,7 +69,7 @@ const CREATOR_TIERS: Tier[] = [
       "Standard rendering queue",
       "UPI / card billing",
     ],
-    stripePlan: "creator_go",
+    planKey: "creator_go",
   },
   {
     name: "Pro",
@@ -83,7 +90,7 @@ const CREATOR_TIERS: Tier[] = [
       "A/B hook variants (3 per clip)",
       "Email + Discord community support",
     ],
-    stripePlan: "creator_pro",
+    planKey: "creator_pro",
   },
   {
     name: "Premium",
@@ -103,7 +110,7 @@ const CREATOR_TIERS: Tier[] = [
       "Priority support — 4h response SLA",
       "Quarterly strategy call with founders",
     ],
-    stripePlan: "creator_premium",
+    planKey: "creator_premium",
   },
 ];
 
@@ -136,47 +143,60 @@ const CREATOR_FAQS = [
 
 export default function PlansPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Stripe config check
-  const [billing, setBilling] = useState<BillingConfig | null>(null);
-  useEffect(() => {
-    getBillingConfig().then(setBilling).catch(() => setBilling(null));
-  }, []);
-
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const handleSubscribe = async (tier: Tier) => {
-    if (!tier.stripePlan) return;
+    if (!tier.planKey) return;
     setCheckoutError(null);
 
     if (!user) {
-      window.location.href = `/signup?next=${encodeURIComponent("/plans")}`;
+      router.push(`/signup?next=${encodeURIComponent("/plans")}`);
       return;
     }
 
-    setLoadingPlan(tier.stripePlan);
+    setLoadingPlan(tier.planKey);
     try {
-      const { checkout_url } = await createCheckout(tier.stripePlan);
-      window.location.href = checkout_url;
-    } catch (e: any) {
-      setCheckoutError(e?.message || "Checkout failed. Try again in a moment.");
-    } finally {
+      const order = await createRazorpayOrder({ plan: tier.planKey });
+      openRazorpayCheckout(order, {
+        onSuccess: async (payment: RazorpayPayment) => {
+          try {
+            const result = await verifyRazorpayPayment(payment);
+            if (!result.success) {
+              setCheckoutError(result.message || "Payment is awaiting confirmation. Do not pay again.");
+              return;
+            }
+            router.push(`/account?billing=success&plan=${encodeURIComponent(tier.planKey!)}`);
+          } catch (error) {
+            setCheckoutError(`${error instanceof Error ? error.message : "Payment verification failed."} Do not pay again; contact support with your payment ID.`);
+          } finally {
+            setLoadingPlan(null);
+          }
+        },
+        onDismiss: () => setLoadingPlan(null),
+        onFailure: (message) => {
+          setCheckoutError(message);
+          setLoadingPlan(null);
+        },
+      });
+    } catch (error: unknown) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout failed. Try again in a moment.");
       setLoadingPlan(null);
     }
   };
 
-  const canSubscribeViaStripe = (tier: Tier) => {
-    if (!tier.stripePlan) return false;
-    if (!user) return false;
-    if (!billing?.stripe_enabled) return false;
-    const plan = billing.plans.find((p) => p.key === tier.stripePlan);
-    return plan?.available === true;
-  };
-
   return (
     <div className="relative w-full bg-[#F7F8FA] dark:bg-[#05060A] text-[#111318] dark:text-[#F4F6FA] selection:bg-amber-400 selection:text-black overflow-hidden transition-colors">
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onReady={() => setRazorpayReady(true)}
+        onError={() => setCheckoutError("Razorpay Checkout could not load. Check your connection and reload the page.")}
+      />
       {/* ── Subtle Background Grid & Atmospheric Illumination ── */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#D1D5DB_1px,transparent_1px)] dark:bg-[radial-gradient(#1A1F2C_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
       <div className="pointer-events-none absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-b from-indigo-500/10 via-purple-500/05 to-transparent blur-[140px]" />
@@ -280,18 +300,18 @@ export default function PlansPage() {
 
                     {/* 6. Primary Plan CTA */}
                     <div className="mb-6">
-                      {canSubscribeViaStripe(tier) ? (
+                      {user && tier.planKey ? (
                         <button
                           type="button"
                           onClick={() => handleSubscribe(tier)}
-                          disabled={loadingPlan === tier.stripePlan}
+                          disabled={!razorpayReady || loadingPlan === tier.planKey}
                           className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer ${
                             isHighlight
                               ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"
                               : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10"
                           }`}
                         >
-                          {loadingPlan === tier.stripePlan ? (
+                          {loadingPlan === tier.planKey ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin" />
                               <span>Opening Checkout…</span>
