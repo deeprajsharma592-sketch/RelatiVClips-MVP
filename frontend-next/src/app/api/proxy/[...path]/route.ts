@@ -9,7 +9,7 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
-const DEFAULT_TUNNEL_BACKEND = "https://api.relativclips.com";
+const DEFAULT_TUNNEL_BACKEND = "https://most-sports-analysts-units.trycloudflare.com";
 const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing") && !configuredBackendBase.includes("participate-pending")
   ? configuredBackendBase.replace(/\/$/, "")
   : DEFAULT_TUNNEL_BACKEND;
