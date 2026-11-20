@@ -22,3 +22,4 @@ yolov10n.pt
 demo_test/
 e2e_youtube_run/
 cloudflared.exe
+cache/

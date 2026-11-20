@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
+import HeroCardGallery from "./HeroCardGallery";
 
 const ROTATING_PHRASES = [
   "Tasteful Clips",
@@ -168,6 +169,9 @@ export default function HeroStudio() {
 
           {error && <p className="text-xs text-rose-400 mt-2">{error}</p>}
         </motion.div>
+
+        {/* ── 3D Rotating Card Gallery Showcase (DiMaac ImageGallery) ── */}
+        <HeroCardGallery />
       </div>
 
       {/* Loading transition */}

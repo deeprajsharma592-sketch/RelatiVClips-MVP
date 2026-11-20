@@ -405,8 +405,8 @@ function ProcessInner() {
                         style={{ color: "var(--color-text-muted)" }}
                       >
                         Processing · {elapsedSec}s
-                        {etaSec !== null && etaSec > 0
-                          ? ` · ~${formatTime(etaSec)} left`
+                        {etaSec !== null && (etaSec as number) > 0
+                          ? ` · ~${formatTime(etaSec as number)} left`
                           : ""}
                       </span>
                     </div>
@@ -424,17 +424,17 @@ function ProcessInner() {
                           CACHE HIT
                         </span>
                       )}
-                      {costUsd !== null && costUsd > 0 && (
+                      {costUsd !== null && (costUsd as number) > 0 && (
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                           style={{
                             background: "rgba(245, 158, 11, 0.12)",
                             color: "#F59E0B",
                           }}
-                          title={`LLM cost: $${costUsd.toFixed(4)} (${llmProvider ?? "—"})`}
+                          title={`LLM cost: $${(costUsd as number).toFixed(4)} (${llmProvider ?? "—"})`}
                         >
                           <Coins className="h-3 w-3" />
-                          ${costUsd.toFixed(4)}
+                          ${(costUsd as number).toFixed(4)}
                         </span>
                       )}
                     </div>
@@ -651,7 +651,7 @@ function ProcessInner() {
                       Cache hit · saved ${(cacheSavings ?? 0).toFixed(4)} · {(cacheAgeH ?? 0).toFixed(1)}h old
                     </span>
                   )}
-                  {costUsd !== null && costUsd > 0 && (
+                  {costUsd !== null && (costUsd as number) > 0 && (
                     <span
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
                       style={{
@@ -660,7 +660,7 @@ function ProcessInner() {
                       }}
                     >
                       <Coins className="h-3.5 w-3.5" />
-                      ${costUsd.toFixed(4)} total · ${(costPerClip ?? 0).toFixed(4)}/clip
+                      ${(costUsd as number).toFixed(4)} total · ${(costPerClip ?? 0).toFixed(4)}/clip
                     </span>
                   )}
                   <span
