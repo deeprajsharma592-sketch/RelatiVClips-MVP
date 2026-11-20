@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Zap, Download, Link2 } from "lucide-react";
 
 import HeroStudio from "@/components/HeroStudio";
+import TasteTimeline from "@/components/TasteTimeline";
 import CreatorProof from "@/components/CreatorProof";
 import MovingClipsGrid from "@/components/MovingClipsGrid";
 import StickyInputBar from "@/components/StickyInputBar";
@@ -41,6 +42,8 @@ export default function HomePage() {
 
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
+
+      <TasteTimeline />
 
       {/* ── SOCIAL PROOF & CREATOR METRICS (Opus Style Authority) ── */}
       <CreatorProof />

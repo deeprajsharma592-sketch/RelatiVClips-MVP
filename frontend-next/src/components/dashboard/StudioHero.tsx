@@ -65,15 +65,6 @@ const DEMO_PROJECTS: DemoProject[] = [
     template: "streamer",
   },
   {
-    id: "demo-2",
-    title: "Curry Drills 12 Threes Including The Game Winner",
-    speaker: "Steph Curry",
-    clipsCount: 12,
-    thumbnailUrl: "/thumb_r2.webp",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    template: "gaming",
-  },
-  {
     id: "demo-3",
     title: "Tal Wilkenfeld #408 Lex Fridman Podcast",
     speaker: "Tal Wilkenfeld & Lex",

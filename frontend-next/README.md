@@ -80,7 +80,7 @@ The frontend has been completely rebuilt and polished to achieve enterprise-grad
 frontend-next/
 ├── public/                       # Static public assets (logos, video posters, mockups)
 │   ├── relativ-logo.webp         # Brand logo
-│   ├── thumb_l1.webp .. l5.webp  # Long-form video thumbnails (hero left)
+│   ├── thumb_l*.webp           # Long-form video thumbnails
 │   ├── thumb_r1.webp .. r5.webp  # Vertical short-form thumbnails (hero right)
 │   └── progress.mp4              # Ambient UI video loop
 ├── src/
