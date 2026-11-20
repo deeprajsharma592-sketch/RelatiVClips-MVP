@@ -16,7 +16,22 @@ import {
 import PreGenConfigModal, { RecipeConfig } from "./PreGenConfigModal";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
 
-const URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/i;
+function normalizeYouTubeUrl(value: string) {
+  const candidate = value.trim();
+  if (!candidate) return null;
+
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`);
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const isYouTube =
+      hostname === "youtu.be" ||
+      hostname === "youtube.com" ||
+      hostname.endsWith(".youtube.com");
+    return isYouTube ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 interface StudioHeroProps {
   onStartProcess?: (taskId: string, template?: string) => void;
@@ -88,24 +103,44 @@ export default function StudioHero({
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
 
   const handleUrlSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    const trimmed = inputText.trim();
-    if (!trimmed) return;
+    const normalized = normalizeYouTubeUrl(inputText);
+    if (!inputText.trim()) return;
 
-    if (!URL_REGEX.test(trimmed)) {
+    if (!normalized) {
       setError("Please paste a valid YouTube video link (e.g. youtube.com/watch?v=...)");
       return;
     }
 
+    setInputText(normalized);
     setError(null);
     setIsConfigModalOpen(true);
   };
 
+  const pasteFromClipboard = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      if (!clipboardText.trim()) {
+        setError("Your clipboard does not contain a link.");
+        return;
+      }
+      setInputText(clipboardText.trim());
+      setError(null);
+      requestAnimationFrame(() => {
+        urlInputRef.current?.focus();
+        urlInputRef.current?.setSelectionRange(clipboardText.trim().length, clipboardText.trim().length);
+      });
+    } catch {
+      setError("Clipboard access was blocked. Use Ctrl+V or Cmd+V to paste the link.");
+    }
+  };
+
   const handlePillClick = (pillId: string) => {
     setSelectedTemplate(pillId);
-    if (inputText.trim() && URL_REGEX.test(inputText.trim())) {
+    if (normalizeYouTubeUrl(inputText)) {
       setIsConfigModalOpen(true);
     } else {
       setInputText("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
@@ -182,22 +217,46 @@ export default function StudioHero({
 
         {/* Input Bar */}
         <form onSubmit={handleUrlSubmit} className="space-y-3">
-          <div className="relative flex items-center rounded-lg border border-white/10 bg-[#0A0A0C] px-3.5 py-1.5 focus-within:border-white/30 transition">
-            <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => {
-                setInputText(e.target.value);
-                if (error) setError(null);
-              }}
-              placeholder="Drop a YouTube link"
-              className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none py-2"
-            />
+          <div className="relative flex flex-col gap-2 rounded-lg border border-white/10 bg-[#0A0A0C] p-2 focus-within:border-white/30 transition sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-center px-1.5">
+              <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
+              <input
+                ref={urlInputRef}
+                type="text"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="url"
+                spellCheck={false}
+                maxLength={2048}
+                aria-label="YouTube video URL"
+                value={inputText}
+                onPaste={(event) => {
+                  const pasted = event.clipboardData.getData("text");
+                  if (!pasted) return;
+                  event.preventDefault();
+                  setInputText(pasted.trim());
+                  setError(null);
+                }}
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder="Paste the full YouTube URL here"
+                className="min-w-0 w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none py-2"
+              />
+              <button
+                type="button"
+                onClick={pasteFromClipboard}
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                Paste
+              </button>
+            </div>
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="ml-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm"
+              className="w-full px-4 py-2.5 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm sm:w-auto"
             >
               Get clips in 1 click
             </button>
