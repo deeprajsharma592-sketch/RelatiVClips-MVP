@@ -106,15 +106,17 @@
 
 .featuredSlot {
   display: inline-block;
-  width: 0.63em;
+  width: 0;
   height: 0.72em;
-  margin-inline-end: 0.2em;
   vertical-align: 0.01em;
+}
+
+.featuredSlot[data-open] {
+  width: 0.82em;
 }
 
 .shatterSlot {
   flex: none;
-  margin-inline: 0.15em 0;
   pointer-events: none;
 }
 

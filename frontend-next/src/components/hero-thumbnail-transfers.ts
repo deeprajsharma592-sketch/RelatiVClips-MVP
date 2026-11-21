@@ -4,7 +4,7 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
   if (!layer) return;
   const sources = Array.from(hero.querySelectorAll<HTMLImageElement>("[data-orbit-thumbnail]"));
   const flights = new Map<HTMLElement, { restore: () => void; returnToRing: (duration: number) => void }>();
-  const slots = ["headline", "speed"];
+  const slots = ["opening", "speed", "headline", "speed"];
   let cycle = 0;
   let interval: number | undefined;
   let stagger: number | undefined;
@@ -13,8 +13,11 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     const slot = hero.querySelector<HTMLElement>(`[data-thumbnail-slot="${name}"]`);
     if (!slot || flights.has(slot) || flights.size >= 2 || motion.matches || document.hidden) return;
 
-    const destination = slot.getBoundingClientRect();
-    if (!destination.width || !destination.height) return;
+    if (!slot.getBoundingClientRect().height) return;
+    slot.setAttribute("data-open", "");
+    const openBounds = slot.getBoundingClientRect();
+    const inset = openBounds.width * 0.13;
+    const destination = new DOMRect(openBounds.left + inset, openBounds.top, openBounds.width - 2 * inset, openBounds.height);
     const nearby = sources
       .filter((card) => !card.hasAttribute("data-in-flight") && card.complete && card.naturalWidth > 0)
       .map((card) => {
@@ -27,7 +30,10 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
       })
       .sort((a, b) => a.distance - b.distance);
     const source = nearby[0];
-    if (!source || !layer) return;
+    if (!source || !layer || !destination.width) {
+      slot.removeAttribute("data-open");
+      return;
+    }
 
     const { card, bounds } = source;
     const thumb = document.createElement("img");
@@ -49,6 +55,10 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
       opacity: ringStyle.opacity,
     });
 
+    const openWidth = getComputedStyle(slot).width;
+    let spacing = slot.animate([{ width: "0px" }, { width: openWidth }], {
+      duration: 460, delay: 125, easing: "cubic-bezier(.22,.78,.24,1)", fill: "backwards",
+    });
     layer.append(thumb);
     let holdTimer: number | undefined;
     let animation = thumb.animate([wheelFrame(bounds), featured], {
@@ -58,12 +68,22 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     const restore = () => {
       window.clearTimeout(holdTimer);
       animation.cancel();
+      spacing.cancel();
+      slot.removeAttribute("data-open");
       thumb.remove();
       card.removeAttribute("data-in-flight");
       flights.delete(slot);
     };
     const returnToRing = (duration: number) => {
       window.clearTimeout(holdTimer);
+      if (slot.hasAttribute("data-open")) {
+        const currentWidth = getComputedStyle(slot).width;
+        spacing.cancel();
+        slot.removeAttribute("data-open");
+        spacing = slot.animate([{ width: currentWidth }, { width: "0px" }], {
+          duration, easing: "ease-in-out",
+        });
+      }
       const style = getComputedStyle(thumb);
       const currentFrame = { transform: style.transform, opacity: style.opacity, filter: style.filter };
       animation.cancel();
@@ -79,10 +99,10 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
   }
 
   function featureNext() {
-    const index = cycle++ % slots.length;
-    fly(slots[index], 1450);
-    if (cycle % 3 === 0) {
-      stagger = window.setTimeout(() => fly(slots[1 - index], 1100), 250);
+    const slot = slots[cycle++ % slots.length];
+    fly(slot, 1450);
+    if (slot !== "speed" && cycle % slots.length === 3) {
+      stagger = window.setTimeout(() => fly("speed", 1100), 250);
     }
   }
 
