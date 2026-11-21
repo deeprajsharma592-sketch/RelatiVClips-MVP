@@ -33,6 +33,7 @@ type MorphShard = {
 type Morph = { start: number; next: number; target: PhraseLayout; pieces: MorphShard[] };
 
 const PHRASE_COLOR = "#264bf9";
+const PHRASE_OPACITY = 0.86;
 
 const TAU = 2 * Math.PI;
 const MORPH_DURATION = 1580;
@@ -451,13 +452,14 @@ export default function ShatterPhrase({
       <span className={ready ? "sr-only motion-reduce:not-sr-only" : undefined}>
         <span
           className="inline-block"
-          style={{ color: PHRASE_COLOR }}
+          style={{ color: PHRASE_COLOR, opacity: PHRASE_OPACITY }}
         >
           {phrases[index]}
         </span>
       </span>
       <canvas
         ref={canvasRef}
+        style={{ opacity: PHRASE_OPACITY }}
         aria-hidden="true"
         className="absolute inset-x-0 -top-1/2 h-[200%] w-full cursor-default touch-pan-y select-none motion-reduce:hidden"
       />
