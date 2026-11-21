@@ -25,20 +25,12 @@
   line-height: 1;
 }
 
-.floor {
-  width: min(46vw, 620px);
-  height: 1px;
-  margin-top: clamp(1.25rem, 3vw, 2rem);
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 85%), transparent);
-}
-
 .word {
   position: relative;
   isolation: isolate;
   display: inline-block;
   opacity: 0;
   color: rgb(222 234 245 / 19%);
-  -webkit-text-stroke: clamp(0.7px, 0.01em, 1.4px) rgb(229 242 253 / 71%);
   letter-spacing: -0.03em;
 }
 
@@ -46,7 +38,6 @@
   opacity: 1;
 }
 
-.word::before,
 .word::after {
   content: attr(data-text);
   position: absolute;
@@ -54,15 +45,7 @@
   pointer-events: none;
 }
 
-.word::before {
-  color: transparent;
-  -webkit-text-stroke: clamp(0.7px, 0.01em, 1.4px) rgb(255 255 255 / 84%);
-  /* Light catches one side of the rim without outlining the word twice. */
-  mask-image: linear-gradient(155deg, #000 4%, transparent 45%, transparent 72%, rgb(0 0 0 / 35%));
-}
-
 .word::after {
-  -webkit-text-stroke: 0;
   background:
     radial-gradient(ellipse 80% 21% at 23% 27%, rgb(247 252 255 / 47%), transparent 75%),
     radial-gradient(ellipse 64% 21% at 76% 68%, rgb(181 224 255 / 26%), transparent 82%),

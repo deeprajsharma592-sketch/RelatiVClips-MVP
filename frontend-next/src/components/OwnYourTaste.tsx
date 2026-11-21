@@ -28,13 +28,11 @@ function sideKeyframes(direction: -1 | 1): Keyframe[] {
 export default function OwnYourTaste() {
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const floorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const section = sectionRef.current;
     const title = titleRef.current;
-    const floor = floorRef.current;
-    if (!section || !title || !floor) return;
+    if (!section || !title) return;
 
     const left = title.querySelector<HTMLElement>('[data-word="left"]');
     const middle = title.querySelector<HTMLElement>('[data-word="middle"]');
@@ -76,10 +74,6 @@ export default function OwnYourTaste() {
           { transform: "scale(1.05, 0.96)", offset: 0.78 },
           { transform: "scale(1, 1)", offset: 1 },
         ], wordTiming),
-        floor.animate([
-          { transform: "scaleX(0)", opacity: 0 },
-          { transform: "scaleX(1)", opacity: 1 },
-        ], { duration: 500, delay: IMPACT_DELAY, easing: RISE_EASING, fill: "both" }),
         title.animate([
           { filter: "brightness(1)" },
           { filter: "brightness(1.7)" },
@@ -105,7 +99,6 @@ export default function OwnYourTaste() {
         <span className={styles.word} data-word="middle" data-text="Your">Your</span>{" "}
         <span className={styles.word} data-word="right" data-text="Taste">Taste</span>
       </h2>
-      <div ref={floorRef} className={styles.floor} aria-hidden="true" />
     </section>
   );
 }
