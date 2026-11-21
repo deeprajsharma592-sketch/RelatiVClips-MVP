@@ -1,0 +1,72 @@
+.stage {
+  display: flex;
+  min-height: clamp(14rem, 34svh, 22rem);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-x: clip;
+  background:
+    radial-gradient(ellipse 28% 20% at 32% 46%, rgb(176 201 232 / 13%), transparent),
+    radial-gradient(ellipse 30% 22% at 70% 55%, rgb(137 167 200 / 10%), transparent),
+    linear-gradient(to bottom, var(--homepage-hero-surface, #050507), #07080b 25%, #07080b 60%, #000);
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25em 0.3em;
+  margin: 0;
+  font-family: var(--font-inter), Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: clamp(2.8rem, 11vw, 9rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.floor {
+  width: min(46vw, 620px);
+  height: 1px;
+  margin-top: clamp(1.25rem, 3vw, 2rem);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 85%), transparent);
+}
+
+.word {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  color: rgb(222 234 245 / 19%);
+  -webkit-text-stroke: clamp(0.7px, 0.01em, 1.4px) rgb(229 242 253 / 71%);
+  letter-spacing: -0.03em;
+}
+
+.word::before,
+.word::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.word::before {
+  color: transparent;
+  -webkit-text-stroke: clamp(0.7px, 0.01em, 1.4px) rgb(255 255 255 / 84%);
+  /* Light catches one side of the rim without outlining the word twice. */
+  mask-image: linear-gradient(155deg, #000 4%, transparent 45%, transparent 72%, rgb(0 0 0 / 35%));
+}
+
+.word::after {
+  -webkit-text-stroke: 0;
+  background:
+    radial-gradient(ellipse 80% 21% at 23% 27%, rgb(247 252 255 / 47%), transparent 75%),
+    radial-gradient(ellipse 64% 21% at 76% 68%, rgb(181 224 255 / 26%), transparent 82%),
+    linear-gradient(165deg, rgb(245 251 255 / 19%), transparent 45% 62%, rgb(207 229 248 / 19%) 79%, transparent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.word[data-word="left"] { transform-origin: right center; }
+.word[data-word="middle"] { transform-origin: center bottom; }
+.word[data-word="right"] { transform-origin: left center; }

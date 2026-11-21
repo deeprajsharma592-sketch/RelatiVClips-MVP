@@ -8,24 +8,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
-const configuredBackendBase = process.env.BACKEND_BASE_URL?.trim();
-const DEFAULT_TUNNEL_BACKEND = "https://most-sports-analysts-units.trycloudflare.com";
-const BACKEND_BASE = configuredBackendBase && !configuredBackendBase.includes("summer-clearing") && !configuredBackendBase.includes("participate-pending")
-  ? configuredBackendBase.replace(/\/$/, "")
-  : DEFAULT_TUNNEL_BACKEND;
+import { getBackendBase } from "@/lib/backend-base";
+
+const BACKEND_BASE = getBackendBase();
 const REQUEST_TIMEOUT_MS = 25_000;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
-  if (!BACKEND_BASE) {
-    return NextResponse.json(
-      {
-        error: "BACKEND_NOT_CONFIGURED",
-        detail: "RelatiV’s processing service is not connected yet. Please try again later.",
-      },
-      { status: 503 },
-    );
-  }
-
   const { path } = await ctx.params;
   const pathStr = path.join("/");
   const search = req.nextUrl.search;
@@ -38,6 +26,11 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   if (unPrefixed.some((prefix) => cleanedPath === prefix || cleanedPath.startsWith(prefix + "/"))) {
     cleanedPath = cleanedPath.slice("api/v1/".length);
   }
+
+  const download = /^download\/[^/]+$/i.test(cleanedPath) &&
+    req.nextUrl.searchParams.has("download");
+  const legacyDownload = /^clips\/[^/]+$/i.test(cleanedPath);
+  const requiresDownloadSession = download || legacyDownload;
 
   const targetUrl = `${BACKEND_BASE}/${cleanedPath}${search}`;
 
@@ -77,10 +70,30 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
         setAll: (cookies) => { supabaseCookiesToSet = cookies; },
       },
     });
+    if (requiresDownloadSession) {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        return NextResponse.json({ detail: "Sign in to download this clip." }, { status: 401 });
+      }
+    }
     const { data } = await supabase.auth.getSession();
     if (data.session?.access_token) {
       headers.set("authorization", `Bearer ${data.session.access_token}`);
     }
+  }
+
+  if (requiresDownloadSession && !headers.has("authorization")) {
+    return NextResponse.json({ detail: "Sign in to download this clip." }, { status: 401 });
+  }
+
+  if (!BACKEND_BASE) {
+    return NextResponse.json(
+      {
+        error: "BACKEND_NOT_CONFIGURED",
+        detail: "RelatiV’s processing service is not connected yet. Please try again later.",
+      },
+      { status: 503 },
+    );
   }
 
   const withSupabaseCookies = (response: NextResponse) => {
@@ -121,6 +134,8 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     responseHeaders.set("access-control-allow-credentials", "true");
     responseHeaders.set("access-control-allow-methods", "GET,POST,PUT,DELETE,OPTIONS");
     responseHeaders.set("access-control-allow-headers", "content-type,authorization");
+
+    if (requiresDownloadSession) responseHeaders.set("cache-control", "private, no-store");
 
     // Forward important upstream response headers (media streaming & auth!)
     const headersToForward = [

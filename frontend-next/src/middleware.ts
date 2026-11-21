@@ -23,6 +23,7 @@
  * role gate. Belt + suspenders.
  */
 import { NextResponse, type NextRequest } from "next/server";
+import { authPageHref, safeAuthDestination } from "@/lib/auth-destination";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 // Workspace routes that REQUIRE auth. Note: /brands, /creators, /clippers
@@ -76,6 +77,13 @@ export function middleware(req: NextRequest) {
     host.startsWith("app.");
   const isMarketingHost = host === "relativclips.com" || host === "www.relativclips.com";
 
+  const isStudioRoute = pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") || (isStudioHost && pathname === "/");
+  if (!isAuthed && isStudioRoute) {
+    const nextPath = `${pathname}${req.nextUrl.search}`;
+    return NextResponse.redirect(new URL(authPageHref("/login", nextPath), req.url));
+  }
+
   // Case A: studio.relativclips.com (or studio.localhost / dash. / app.) -> Creator Studio Workspace
   if (isStudioHost) {
     // If root path on studio subdomain, rewrite to /dashboard
@@ -107,11 +115,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(target, 307);
   }
 
-  // 1. Authed users hitting /login or /signup → send to /account
-  if (isAuthed && AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/account";
-    return NextResponse.redirect(url);
+  // Let the workspace request a fresh login when its session check fails.
+  const needsFreshSession = req.nextUrl.searchParams.get("auth_error") === "session";
+  if (isAuthed && !needsFreshSession && AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    const next = safeAuthDestination(req.nextUrl.searchParams.get("next"));
+    return NextResponse.redirect(new URL(next || "/account", req.url));
   }
 
   // 2. Anonymous users hitting protected routes → /signup (with a hint)

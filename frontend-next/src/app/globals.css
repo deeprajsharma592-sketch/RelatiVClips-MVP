@@ -1,33 +1,5 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Relativ Montserrat";
-  src: url("/fonts/Montserrat-Variable.ttf") format("truetype");
-  font-weight: 100 900;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Relativ Anton";
-  src: url("/fonts/Anton-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Relativ Barlow";
-  src: url("/fonts/BarlowCondensed-ExtraBold.ttf") format("truetype");
-  font-weight: 800;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Relativ Open Sans";
-  src: url("/fonts/OpenSans-Variable.ttf") format("truetype");
-  font-weight: 300 800;
-  font-display: swap;
-}
-
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -407,12 +379,13 @@
   --font-fraunces: var(--font-fraunces);
   --font-mono: var(--font-mono);
 
-  /* Radius (generous, premium) */
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 22px;
-  --radius-xl: 32px;
-  --radius-2xl: 42px;
+  /* Radius — crisp, restrained corners across the interface */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-xl: 9px;
+  --radius-2xl: 12px;
+  --radius-3xl: 14px;
   --radius-full: 9999px;
   --grid-gutter: 24px;
   --border-width: 1px;

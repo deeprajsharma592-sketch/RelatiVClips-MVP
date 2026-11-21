@@ -33,6 +33,7 @@ import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
+import { authPageHref } from "@/lib/auth-destination";
 import { apiPath } from "@/lib/apiBase";
 import { checkProcessingStatus, submitYouTubeUrl } from "@/lib/api";
 import {
@@ -52,8 +53,6 @@ function DashboardContent() {
 
   const taskIdParam = searchParams.get("taskId");
   const urlParam = searchParams.get("url");
-  const clipCountParam = searchParams.get("clipCount");
-  const requestedClipCount = clipCountParam ? Number(clipCountParam) : null;
   const tabParam = searchParams.get("tab") as StudioTab | null;
 
   // Active Navigation Tab
@@ -111,7 +110,7 @@ function DashboardContent() {
     setActiveProjectId(newProj.id);
     setIsGenerating(true);
     setElapsedSec(0);
-    setGenerationProgress(5);
+    setGenerationProgress(20);
 
     let isMounted = true;
     let pollInterval: NodeJS.Timeout | null = null;
@@ -124,15 +123,9 @@ function DashboardContent() {
           if (!isMounted) return;
           consecutiveErrors = 0;
 
-          if (status.status === "complete") {
+          if (status.status === "complete" && status.clips && status.clips.length > 0) {
             if (pollInterval) clearInterval(pollInterval);
             setIsGenerating(false);
-            if (!status.clips?.length) {
-              setGenerationError("Processing completed, but no usable clips were returned.");
-              updateProjectStatus(newProj.id, "failed", [], 0);
-              setProjects(getStoredProjects());
-              return;
-            }
             setGenerationProgress(100);
             updateProjectStatus(newProj.id, "ready", status.clips, 100);
             setProjects(getStoredProjects());
@@ -150,9 +143,7 @@ function DashboardContent() {
                   : status.progress * 100
                 : 25;
             const progress = Math.min(95, Math.max(15, raw));
-            // Poll responses and stage changes can arrive out of order. Never
-            // let the visible loader move backwards.
-            setGenerationProgress((previous) => Math.max(previous, progress));
+            setGenerationProgress(progress);
             if (status.step_name || status.current_step) {
               setCurrentStepName(status.step_name || status.current_step || "Analyzing video stream...");
             }
@@ -175,13 +166,7 @@ function DashboardContent() {
     if (taskIdParam) {
       startPolling(taskIdParam);
     } else if (urlParam) {
-      submitYouTubeUrl(
-        urlParam,
-        "studio",
-        requestedClipCount && requestedClipCount >= 1 && requestedClipCount <= 4
-          ? requestedClipCount
-          : null,
-      )
+      submitYouTubeUrl(urlParam)
         .then((init) => {
           if (!isMounted) return;
           if (init.taskId) {
@@ -209,13 +194,14 @@ function DashboardContent() {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [taskIdParam, urlParam, requestedClipCount]);
+  }, [taskIdParam, urlParam]);
 
   // Elapsed timer when generation is active
   useEffect(() => {
     if (!isGenerating) return;
     const interval = setInterval(() => {
       setElapsedSec((prev) => prev + 1);
+      setGenerationProgress((prev) => (prev < 90 ? prev + 3 : prev));
     }, 1000);
     return () => clearInterval(interval);
   }, [isGenerating]);
@@ -267,7 +253,7 @@ function DashboardContent() {
         <StudioHeader onOpenUpgrade={() => setIsUpgradeModalOpen(true)} />
 
         {/* Content Pane */}
-        <main className="flex-1 p-6 sm:p-8 max-w-5xl w-full mx-auto space-y-8">
+        <main className="flex-1 w-full min-w-0 max-w-[1800px] mx-auto p-5 sm:p-8 xl:p-10 space-y-8">
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
             <div className="space-y-8">
@@ -276,10 +262,8 @@ function DashboardContent() {
                 onStartProcess={(tid) => {
                   router.push(`/dashboard?taskId=${tid}`);
                 }}
-                onSubmitUrl={(u, _template, clipCount) => {
-                  const query = new URLSearchParams({ url: u });
-                  if (clipCount) query.set("clipCount", String(clipCount));
-                  router.push(`/dashboard?${query.toString()}`);
+                onSubmitUrl={(u) => {
+                  router.push(`/dashboard?url=${encodeURIComponent(u)}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
               />
@@ -713,11 +697,26 @@ class DashboardErrorBoundary extends Component<
   }
 }
 
+function DashboardEntry() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (loading || user) return;
+    const query = searchParams.toString();
+    const next = query ? `/dashboard?${query}` : "/dashboard";
+    router.replace(`${authPageHref("/login", next)}&auth_error=session`);
+  }, [loading, user, router, searchParams]);
+
+  return user ? <DashboardContent /> : <div className="min-h-screen bg-[#09090C]" />;
+}
+
 export default function DashboardPage() {
   return (
     <DashboardErrorBoundary>
       <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
-        <DashboardContent />
+        <DashboardEntry />
       </Suspense>
     </DashboardErrorBoundary>
   );

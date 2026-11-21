@@ -10,6 +10,7 @@ import { ROLE_LABEL, type UserRole } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getAppDashboardUrl } from "@/lib/domain";
 import { SOLUTIONS_COLUMNS, SOLUTIONS_LIST } from "@/lib/solutionsData";
+import BrandLogo from "@/components/BrandLogo";
 
 interface NavLink {
   href: string;
@@ -73,25 +74,20 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#08080A]/95 backdrop-blur-md border-b border-white/[0.08]">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="w-full px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between">
         {/* Brand Logo (Clean, crisp white) */}
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMenu}>
-            <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-black text-sm tracking-tighter">
-              R
-            </span>
-            <span className="text-base font-bold text-white tracking-tight">
-              RelatiV
-            </span>
+          <Link href="/" className="group" onClick={closeMenu} aria-label="RelatiV home">
+            <BrandLogo iconWidth={46} wordmarkClassName="font-display text-base font-bold tracking-tight text-white" />
           </Link>
         </div>
 
         {/* Center Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-8 lg:gap-10">
           <Link
             href="/"
             aria-current={pathname === "/" ? "page" : undefined}
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname === "/" ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
@@ -106,7 +102,7 @@ export default function Header() {
           >
             <button
               onClick={() => setSolutionsOpen((v) => !v)}
-              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors cursor-pointer py-2 ${
+              className={`inline-flex items-center gap-1.5 text-base font-medium transition-colors cursor-pointer py-2 ${
                 solutionsOpen ? "text-white" : "text-zinc-400 hover:text-white"
               }`}
               aria-expanded={solutionsOpen}
@@ -156,7 +152,7 @@ export default function Header() {
 
           <Link
             href="/plans"
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname?.startsWith("/plans") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
@@ -164,7 +160,7 @@ export default function Header() {
           </Link>
           <Link
             href="/blog"
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname?.startsWith("/blog") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
@@ -172,7 +168,7 @@ export default function Header() {
           </Link>
           <Link
             href="/about"
-            className={`text-sm font-medium transition-colors ${
+            className={`text-base font-medium transition-colors ${
               pathname?.startsWith("/about") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
             }`}
           >
