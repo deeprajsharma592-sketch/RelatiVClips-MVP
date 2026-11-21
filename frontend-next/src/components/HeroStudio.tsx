@@ -4,9 +4,7 @@ import { useState, useRef, type CSSProperties, type DragEvent, type FormEvent } 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Link2, Upload } from "lucide-react";
-import { uploadVideoFile } from "@/lib/api";
-import { useAuth } from "@/lib/AuthContext";
-import { authPageHref, studioEntryHref } from "@/lib/auth-destination";
+import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
 import ShatterPhrase from "./ShatterPhrase";
 import styles from "./HeroStudio.module.css";
 
@@ -20,44 +18,49 @@ const HERO_PHRASES = ["personalized short clips", "more views in less time", "re
 export default function HeroStudio() {
   const router = useRouter();
   const [url, setUrl] = useState("");
-  const { user, loading: authLoading } = useAuth();
-  const [isUploading, setIsUploading] = useState(false);
+  const [pending, setPending] = useState<"upload" | "link" | null>(null);
+  const submitting = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    if (isUploading) return;
-    router.push(studioEntryHref(url));
-  };
-
-  const uploadFile = async (file: File) => {
-    if (isUploading || authLoading) return;
-    if (!user) {
-      router.push(authPageHref("/login", "/dashboard"));
-      return;
-    }
-    setIsUploading(true);
+  const startJob = async (source: string | File) => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setPending(typeof source === "string" ? "link" : "upload");
     setError(null);
     try {
-      const { taskId } = await uploadVideoFile(file);
-      router.push(`/dashboard?taskId=${taskId}`);
-    } catch {
-      setError("Upload failed. Try pasting a YouTube link instead.");
-      setIsUploading(false);
+      const job = typeof source === "string"
+        ? await submitYouTubeUrl(source)
+        : await submitLocalVideo((await uploadVideoFile(source)).filePath);
+      if (!job.taskId) throw new Error("The processing service did not return a clip job.");
+      router.push(`/process?${new URLSearchParams({ taskId: job.taskId })}`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not start processing. Try again.");
+      submitting.current = false;
+      setPending(null);
     }
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const source = url.trim();
+    if (!source) {
+      setError("Paste a YouTube link or upload a video to get started.");
+      return;
+    }
+    void startJob(source);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    if (isUploading || authLoading) return;
+    if (pending !== null) return;
     const file = event.dataTransfer.files[0];
     if (file) {
       if (file.type && !file.type.startsWith("video/")) {
         setError("Choose a video file to upload.");
         return;
       }
-      void uploadFile(file);
+      void startJob(file);
       return;
     }
     const link = event.dataTransfer.getData("text/uri-list").split("\n").find((line) => line.trim() && !line.startsWith("#"));
@@ -110,7 +113,7 @@ export default function HeroStudio() {
             <form
               onSubmit={handleSubmit}
               aria-label="Create clips"
-              aria-busy={isUploading}
+              aria-busy={pending !== null}
               className="flex items-center gap-1.5 rounded-[28px] border border-zinc-300 bg-white p-1.5 shadow-[0_8px_30px_#0002] sm:gap-2 sm:p-2 dark:border-[#373044] dark:bg-[#191621] dark:shadow-black/30"
             >
               <div
@@ -137,18 +140,15 @@ export default function HeroStudio() {
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   event.target.value = "";
-                  if (file) void uploadFile(file);
+                  if (file) void startJob(file);
                 }}
                 className="hidden"
               />
 
               <button
                 type="button"
-                onClick={() => {
-                  if (user) fileInputRef.current?.click();
-                  else router.push(authPageHref("/login", "/dashboard"));
-                }}
-                disabled={isUploading || authLoading}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={pending !== null}
                 aria-label="Upload file"
                 title="Upload file"
                 className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-[20px] border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-wait sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
@@ -159,11 +159,11 @@ export default function HeroStudio() {
 
               <button
                 type="submit"
-                disabled={isUploading}
-                aria-label={isUploading ? "Uploading video" : "Get free clips"}
+                disabled={pending !== null}
+                aria-label={pending ? "Starting clip generation" : "Get free clips"}
                 className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-violet-700 px-2.5 text-sm font-bold text-white transition hover:bg-violet-800 disabled:cursor-wait sm:min-h-[52px] sm:px-4 dark:bg-violet-200 dark:text-violet-950 dark:hover:bg-violet-100"
               >
-                {isUploading ? "Uploading…" : (
+                {pending ? (pending === "upload" ? "Uploading…" : "Starting…") : (
                   <>
                     <span className="sm:hidden">Get clips</span>
                     <span className="hidden sm:inline">Get free clips</span>

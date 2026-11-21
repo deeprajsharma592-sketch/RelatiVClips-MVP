@@ -9,7 +9,6 @@ import { useState } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { studioEntryHref } from "@/lib/auth-destination";
 
 interface StickyInputBarProps {
   threshold?: number;
@@ -32,7 +31,8 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(studioEntryHref(url));
+    const source = url.trim();
+    if (source) router.push(`/process?${new URLSearchParams({ url: source })}`);
   };
 
   return (
@@ -58,6 +58,7 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
 
               <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
                 <input
+                  required
                   type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}

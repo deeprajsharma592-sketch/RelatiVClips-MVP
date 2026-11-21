@@ -6,8 +6,3 @@ export function safeAuthDestination(value: string | null | undefined): string | 
 export function authPageHref(page: "/login" | "/signup", next: string | null): string {
   return next ? `${page}?${new URLSearchParams({ next })}` : page;
 }
-
-export function studioEntryHref(videoUrl: string): string {
-  const url = videoUrl.trim();
-  return url ? `/dashboard?${new URLSearchParams({ url })}` : "/dashboard";
-}

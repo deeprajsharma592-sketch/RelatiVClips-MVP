@@ -16,7 +16,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
+import { uploadVideoFile, submitLocalVideo, submitYouTubeUrl } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
 import { getDashDashboardUrl } from "@/lib/domain";
 
@@ -100,16 +100,27 @@ export default function VideoIntake({
     if (file) handleFileProcess(file);
   };
 
-  const handleYoutubeSubmit = (e: React.FormEvent) => {
+  const handleYoutubeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = youtubeUrl.trim();
-    if (!trimmed) return;
+    if (!trimmed || isTransitioning) return;
     if (!URL_REGEX.test(trimmed)) {
       setError("Please enter a valid YouTube URL (youtube.com or youtu.be)");
       return;
     }
     setError(null);
     setIsTransitioning(true);
+    if (onStartProcess) {
+      try {
+        const { taskId } = await submitYouTubeUrl(trimmed);
+        if (!taskId) throw new Error("The processing service did not return a clip job.");
+        onStartProcess(taskId);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not start processing.");
+      } finally {
+        setIsTransitioning(false);
+      }
+    }
   };
 
   return (
@@ -320,22 +331,18 @@ export default function VideoIntake({
       </div>
 
       {/* ── SICK LOADING TRANSITION OVERLAY ── */}
-      {isTransitioning && youtubeUrl && (
+      {!onStartProcess && isTransitioning && youtubeUrl && (
         <SickLoadingTransition
           url={youtubeUrl}
           autoRedirect={false}
           onComplete={(taskId) => {
             setIsTransitioning(false);
-            if (onStartProcess && taskId) {
-              onStartProcess(taskId);
-            } else {
-              router.push(
-                getDashDashboardUrl("", {
-                  url: youtubeUrl.trim(),
-                  taskId: taskId || undefined,
-                })
-              );
-            }
+            router.push(
+              getDashDashboardUrl("", {
+                url: youtubeUrl.trim(),
+                taskId: taskId || undefined,
+              })
+            );
           }}
         />
       )}

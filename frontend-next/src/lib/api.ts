@@ -24,7 +24,7 @@ export async function submitYouTubeUrl(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Request failed with status ${res.status}`);
+    throw new Error(err.detail || err.error || `Request failed with status ${res.status}`);
   }
 
   const data = await res.json();
@@ -80,7 +80,7 @@ export async function uploadVideoFile(
       }
     };
 
-    xhr.onerror = () => reject(new Error("Network error during file upload"));
+    xhr.onerror = () => reject(new Error("Could not reach the upload service. Please try again."));
     const formData = new FormData();
     formData.append("file", file);
     xhr.send(formData);
@@ -110,7 +110,7 @@ export async function submitLocalVideo(filePath: string): Promise<ProcessInitRes
 export async function checkProcessingStatus(
   taskId: string
 ): Promise<StatusResponse> {
-  const res = await fetch(apiPath(`/api/v1/status/${taskId}`));
+  const res = await fetch(apiPath(`/api/v1/status/${encodeURIComponent(taskId)}`), { cache: "no-store" });
 
   if (!res.ok) {
     if (res.status === 404) {

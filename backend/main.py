@@ -67,7 +67,7 @@ from .routers import (
 from .caching import cache_router
 from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
 from .utils.task_store import set_event_loop, task_store
-from .services.supabase_auth import is_supabase_auth_configured
+from .services.supabase_auth import get_verified_supabase_user, is_supabase_auth_configured
 
 # Upload directory — sibling to TEMP_DIR, holds raw uploads before pipeline run
 UPLOADS_DIR = TEMP_DIR / "uploads"
@@ -200,10 +200,18 @@ async def download_ytdlp_server():
     return FileResponse(script_path, filename="ytdlp-server.py", media_type="text/plain")
 
 
+async def require_clip_download_session(request: Request):
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Sign in to download this clip.")
+    await get_verified_supabase_user(token.strip())
+
+
 # Serve finished clip files for download
 @app.get("/clips/{filename}", include_in_schema=False)
-async def download_clip(filename: str):
+async def download_clip(filename: str, request: Request):
     """Download a finished clip MP4 file."""
+    await require_clip_download_session(request)
     from pathlib import Path
     import os
     # Security: only allow files in the outputs directory
@@ -213,7 +221,7 @@ async def download_clip(filename: str):
     file_path = outputs_dir / safe_name
     if not file_path.exists():
         raise HTTPException(404, "Clip not found")
-    return FileResponse(file_path, filename=safe_name, media_type="video/mp4")
+    return FileResponse(file_path, filename=safe_name, media_type="video/mp4", headers={"Cache-Control": "private, no-store"})
 
 
 @app.get("/")
@@ -775,6 +783,9 @@ def stream_video_file(
         "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length, Content-Disposition",
     }
 
+    if download:
+        base_headers["Cache-Control"] = "private, no-store"
+
     # Handle HEAD preflight from browsers
     if request.method == "HEAD":
         headers = {
@@ -854,6 +865,8 @@ def stream_video_file(
 @app.api_route("/download/{clip_id}", methods=["GET", "HEAD"])
 @app.api_route("/api/v1/download/{clip_id}", methods=["GET", "HEAD"])
 async def download_clip(clip_id: str, request: Request, download: bool = False):
+    if download:
+        await require_clip_download_session(request)
     if not SAFE_CLIP_ID_REGEX.match(clip_id):
         raise HTTPException(status_code=400, detail="Invalid clip identifier")
 
