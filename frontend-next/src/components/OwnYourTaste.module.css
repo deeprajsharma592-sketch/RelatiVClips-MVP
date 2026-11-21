@@ -34,7 +34,7 @@
   margin: 0;
   text-align: center;
   font-family: var(--font-geist), system-ui, sans-serif;
-  font-size: clamp(1.5rem, 8.3vw, 5.6rem);
+  font-size: clamp(1.5rem, 8.8vw, 6.25rem);
   font-weight: 800;
   line-height: 1.06;
   letter-spacing: -0.067em;
