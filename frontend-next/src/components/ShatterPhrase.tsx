@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Point = { x: number; y: number };
 type Flight = {
@@ -20,7 +20,7 @@ type Shard = {
 };
 type Crack = { center: Point; path: Path2D; until: number };
 
-type PhraseLayout = { ink: HTMLCanvasElement; fontSize: number; shards: Shard[]; cracks: Crack[] };
+type PhraseLayout = { ink: HTMLCanvasElement; splitX: number; fontSize: number; shards: Shard[]; cracks: Crack[] };
 type MorphShard = {
   from: Shard;
   to: Shard;
@@ -42,7 +42,13 @@ const MORPH_DURATION = 1580;
 const clamp = (n: number, min = 0, max = 1) => Math.max(min, Math.min(max, n));
 const smooth = (n: number) => n * n * (3 - 2 * n);
 
-export default function ShatterPhrase({ phrases }: { phrases: readonly string[] }) {
+export default function ShatterPhrase({
+  phrases,
+  thumbnailSlot,
+}: {
+  phrases: readonly string[];
+  thumbnailSlot?: ReactNode;
+}) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [index, setIndex] = useState(0);
@@ -52,6 +58,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
     const root = rootRef.current;
     const canvas = canvasRef.current;
     if (!root || !canvas || !phrases.length) return;
+    const slot = root.querySelector<HTMLElement>("[data-thumbnail-slot]");
     const output = canvas.getContext("2d");
     if (!output) return;
 
@@ -81,10 +88,17 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
       const suggested = parseFloat(style.fontSize);
       source.setTransform(ratio, 0, 0, ratio, 0, 0);
       source.font = font(suggested);
-      const fontSize = Math.min(suggested, (width * 0.94 * suggested) / Math.max(1, source.measureText(text).width));
+      const available = Math.max(1, width * 0.94 - (slot ? suggested * 0.82 : 0));
+      const fontSize = Math.min(suggested, (available * suggested) / Math.max(1, source.measureText(text).width));
       source.font = font(fontSize);
       source.textAlign = "center";
       const metrics = source.measureText(text);
+      // Split in whitespace closest to the visual center, between whole words.
+      const spaceWidth = source.measureText(" ").width;
+      const split = Array.from(text.matchAll(/ /g), ({ index }) =>
+        source.measureText(text.slice(0, index)).width + spaceWidth / 2 - metrics.width / 2,
+      ).reduce((nearest, offset) => Math.abs(offset) < Math.abs(nearest) ? offset : nearest, Infinity);
+      const splitX = width / 2 + (Number.isFinite(split) ? split : 0);
       const baseline = height / 2 + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
       const leftInk = width / 2 - metrics.actualBoundingBoxLeft;
       const rightInk = width / 2 + metrics.actualBoundingBoxRight;
@@ -162,7 +176,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
           }
         }
       }
-      return { ink, fontSize, shards, cracks };
+      return { ink, splitX, fontSize, shards, cracks };
     }
 
     function burst(now: number, point: Point, { shards, fontSize }: PhraseLayout) {
@@ -278,6 +292,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         canvas.width = Math.ceil(width * ratio);
         canvas.height = Math.ceil(height * ratio);
         current = build(phrases[phrase]);
+        if (current && slot) slot.style.left = `${current.splitX}px`;
         setReady(Boolean(current?.shards.length));
         dirty = false;
         nextBurst = now + 4800;
@@ -288,6 +303,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         phrase = morph.next;
         setIndex(phrase);
         current = morph.target;
+        if (slot) slot.style.left = `${current.splitX}px`;
         root?.dispatchEvent(new Event("hero-phrase-settled", { bubbles: true }));
         nextBurst = now + 4800;
         morph = undefined;
@@ -304,7 +320,25 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         return;
       }
 
-      const { ink, shards, cracks } = current;
+      const { ink, splitX, shards, cracks } = current;
+      const gap = slot?.getBoundingClientRect().width ?? 0;
+      if (gap > 0 && !shards.some((shard) => shard.flight)) {
+        // Draw the same raster on either side of the opening so the gradient stays continuous.
+        output.save();
+        output.beginPath();
+        output.rect(0, 0, splitX - gap / 2, height);
+        output.clip();
+        output.drawImage(ink, -gap / 2, 0, width, height);
+        output.restore();
+        output.save();
+        output.beginPath();
+        output.rect(splitX + gap / 2, 0, width - splitX - gap / 2, height);
+        output.clip();
+        output.drawImage(ink, gap / 2, 0, width, height);
+        output.restore();
+        schedule();
+        return;
+      }
       output.drawImage(ink, 0, 0, width, height);
       const moving: { shard: Shard; flight: Flight; offset: number }[] = [];
       output.globalCompositeOperation = "destination-out";
@@ -352,7 +386,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         }
         output.restore();
       }
-      if (moving.length || cracking) schedule();
+      if (moving.length || cracking || slot?.hasAttribute("data-open")) schedule();
       else if (phrases.length > 1) {
         wakeup = window.setTimeout(schedule, Math.max(0, nextBurst - now));
       }
@@ -435,6 +469,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         aria-hidden="true"
         className="absolute inset-x-0 -top-1/2 h-[200%] w-full cursor-default touch-pan-y select-none motion-reduce:hidden"
       />
+      {thumbnailSlot}
     </span>
   );
 }
