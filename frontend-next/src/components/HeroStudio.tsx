@@ -2,7 +2,7 @@
 
 import { useState, useRef, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Link2, Upload, Wand2 } from "lucide-react";
+import { ArrowRight, Link2, Upload } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
 import ShatterPhrase from "./ShatterPhrase";
@@ -124,17 +124,6 @@ export default function HeroStudio() {
               >
                 <Upload className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Upload file</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard")}
-                aria-label="Auto-edit"
-                title="Auto-edit"
-                className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
-              >
-                <Wand2 className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Auto-edit</span>
               </button>
 
               <button
