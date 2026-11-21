@@ -6,14 +6,13 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Link2, Upload } from "lucide-react";
 import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
 import ShatterPhrase from "./ShatterPhrase";
+import { animateHeroThumbnails } from "./hero-thumbnail-transfers";
 import styles from "./HeroStudio.module.css";
 
 const WHEEL_PHOTOS = [
   "tinted-glasses", "neon-profile", "gold-visor", "red-coat", "lime-blazer",
   "orange-visor", "chunky-knit", "purple-hoodie", "platinum-blonde", "orange-ring",
 ];
-
-const FEATURED_PHOTO_INTERVAL = 4600;
 
 const HERO_PHRASES = ["personalized short clips", "more views in less time", "ready for every platform", "make every moment count"];
 
@@ -25,28 +24,10 @@ export default function HeroStudio() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-  const featuredPhoto = WHEEL_PHOTOS[featuredIndex];
+  const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let timer: number | undefined;
-    const schedule = () => {
-      window.clearInterval(timer);
-      if (!motion.matches && !document.hidden) {
-        timer = window.setInterval(() => {
-          setFeaturedIndex((index) => (index + 3) % WHEEL_PHOTOS.length);
-        }, FEATURED_PHOTO_INTERVAL);
-      }
-    };
-    schedule();
-    motion.addEventListener("change", schedule);
-    document.addEventListener("visibilitychange", schedule);
-    return () => {
-      window.clearInterval(timer);
-      motion.removeEventListener("change", schedule);
-      document.removeEventListener("visibilitychange", schedule);
-    };
+    if (heroRef.current) return animateHeroThumbnails(heroRef.current, styles.flyingPhoto);
   }, []);
 
   const startJob = async (source: string | File) => {
@@ -101,6 +82,7 @@ export default function HeroStudio() {
     <>
       {/* HERO MESSAGE — use this name when referring to the homepage headline and supporting copy. */}
       <section
+        ref={heroRef}
         id="homepage-hero"
         data-section-name="hero-message"
         aria-label="Hero message"
@@ -118,7 +100,7 @@ export default function HeroStudio() {
               loading="eager"
               unoptimized
               className={styles.photo}
-              data-featured={photo === featuredPhoto}
+              data-orbit-thumbnail
               style={{
                 "--start-angle": `${-112 + index * 360 / WHEEL_PHOTOS.length}deg`,
                 "--entry-delay": `${index * 62}ms`,
@@ -126,30 +108,27 @@ export default function HeroStudio() {
             />
           ))}
         </div>
+        <div className={styles.thumbnailLayer} data-thumbnail-layer aria-hidden="true" />
         <div className="pointer-events-none relative z-[1] mx-auto flex w-full max-w-[1500px] flex-col items-center text-center">
           <div className={`${styles.entryCopy} pointer-events-auto flex max-w-full flex-col items-center cursor-default`}>
             <p className="mb-7 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500 sm:text-xs">RelatiV <span className="mx-2 text-zinc-700">/</span> Made to move</p>
             <h1 className="max-w-[1200px] text-[clamp(2.625rem,6.8vw,7rem)] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white">
               Turn any footage{" "}
               <span className={styles.headlineEnd}>
-                <span className={styles.featuredSlot} aria-hidden="true">
-                  <Image
-                    key={featuredPhoto}
-                    src={`/hero-wheel/${featuredPhoto}-4x5.jpg`}
-                    alt=""
-                    width={160}
-                    height={200}
-                    unoptimized
-                    className={styles.featuredPhoto}
-                  />
-                </span>
+                <span className={styles.featuredSlot} data-thumbnail-slot="headline" aria-hidden="true" />
                 into
               </span>
-              <span className="mt-3 block w-full text-[0.62em] font-sans font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
+              <span className="relative mt-3 block w-full text-[0.62em] font-sans font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
                 <ShatterPhrase phrases={HERO_PHRASES} />
+                <span className={`${styles.featuredSlot} ${styles.shatterSlot}`} data-thumbnail-slot="shatter" aria-hidden="true" />
               </span>
             </h1>
-            <p className="mt-7 text-[clamp(1.75rem,4vw,3.875rem)] font-sans font-semibold leading-none tracking-[-0.04em] text-white">20× faster</p>
+            <p className="mt-7 text-[clamp(1.75rem,4vw,3.875rem)] font-sans font-semibold leading-none tracking-[-0.04em] text-white">20×{" "}
+              <span className={styles.headlineEnd}>
+                <span className={styles.featuredSlot} data-thumbnail-slot="speed" aria-hidden="true" />
+                faster
+              </span>
+            </p>
             <p className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base lg:text-lg">
               Paste a link or drop a raw take. RelatiV finds the moments, edits the clips, and sizes them for every platform.
             </p>

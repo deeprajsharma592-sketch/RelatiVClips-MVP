@@ -219,6 +219,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         };
       });
       morph = { start: now, next, target, pieces };
+      root?.dispatchEvent(new Event("hero-phrase-shatter", { bubbles: true }));
     }
 
     function drawMorph(ctx: CanvasRenderingContext2D, now: number, from: PhraseLayout, transition: Morph) {
