@@ -11,7 +11,6 @@ type Flight = {
   spin: number;
   flip: number;
   hold: number;
-  incoming?: boolean;
 };
 type Shard = {
   center: Point;
@@ -21,7 +20,23 @@ type Shard = {
 };
 type Crack = { center: Point; path: Path2D; until: number };
 
+type PhraseLayout = { ink: HTMLCanvasElement; fontSize: number; shards: Shard[]; cracks: Crack[] };
+type MorphShard = {
+  from: Shard;
+  to: Shard;
+  extraFrom: boolean;
+  extraTo: boolean;
+  drift: Point;
+  spin: number;
+  flip: number;
+  delay: number;
+};
+type Morph = { start: number; next: number; target: PhraseLayout; pieces: MorphShard[] };
+
 const TAU = 2 * Math.PI;
+const MORPH_DURATION = 1580;
+const clamp = (n: number, min = 0, max = 1) => Math.max(min, Math.min(max, n));
+const smooth = (n: number) => n * n * (3 - 2 * n);
 
 export default function ShatterPhrase({ phrases }: { phrases: readonly string[] }) {
   const rootRef = useRef<HTMLSpanElement>(null);
@@ -34,9 +49,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
     const canvas = canvasRef.current;
     if (!root || !canvas || !phrases.length) return;
     const output = canvas.getContext("2d");
-    const ink = document.createElement("canvas");
-    const source = ink.getContext("2d", { willReadFrequently: true });
-    if (!output || !source) return;
+    if (!output) return;
 
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     let active = true;
@@ -48,27 +61,23 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
     let width = 0;
     let height = 0;
     let ratio = 1;
-    let fontSize = 0;
-    let shards: Shard[] = [];
-    let cracks: Crack[] = [];
-    let changeAt = 0;
+    let current: PhraseLayout | undefined;
+    let morph: Morph | undefined;
     let nextBurst = 0;
 
-    function layout(now: number, incoming: boolean) {
-      if (!root || !canvas || !source) return;
-      width = root.clientWidth;
-      height = root.clientHeight * 2;
-      if (!width || !height) return;
-      ratio = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = ink.width = Math.ceil(width * ratio);
-      canvas.height = ink.height = Math.ceil(height * ratio);
+    function build(text: string): PhraseLayout | undefined {
+      if (!root || !width || !height) return;
+      const ink = document.createElement("canvas");
+      ink.width = Math.ceil(width * ratio);
+      ink.height = Math.ceil(height * ratio);
+      const source = ink.getContext("2d", { willReadFrequently: true });
+      if (!source) return;
       const style = getComputedStyle(root);
-      const text = phrases[phrase];
       const font = (size: number) => `800 ${size}px ${style.fontFamily}`;
       const suggested = parseFloat(style.fontSize);
       source.setTransform(ratio, 0, 0, ratio, 0, 0);
       source.font = font(suggested);
-      fontSize = Math.min(suggested, (width * 0.94 * suggested) / Math.max(1, source.measureText(text).width));
+      const fontSize = Math.min(suggested, (width * 0.94 * suggested) / Math.max(1, source.measureText(text).width));
       source.font = font(fontSize);
       source.textAlign = "center";
       const metrics = source.measureText(text);
@@ -89,8 +98,8 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
           y: top + row * step + (Math.random() - 0.5) * step * 0.65,
         })),
       );
-      shards = [];
-      cracks = [];
+      const shards: Shard[] = [];
+      const cracks: Crack[] = [];
       const edges = new Set<string>();
 
       function addShard(a: Point, b: Point, c: Point) {
@@ -113,20 +122,6 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         path.lineTo(c.x, c.y);
         path.closePath();
         const shard: Shard = { path, center, color: Math.random() < 0.7 ? "#8f70ff" : "#b0aacb" };
-        if (incoming) {
-          const angle = Math.random() * TAU;
-          const travel = fontSize * (0.5 + Math.random() * 0.9);
-          shard.flight = {
-            start: now + ((center.x - left) / Math.max(1, right - left)) * 280 + Math.random() * 100,
-            x: Math.cos(angle) * travel,
-            y: Math.sin(angle) * travel,
-            depth: 0.55,
-            spin: (Math.random() - 0.5) * 7,
-            flip: (Math.random() - 0.5) * 10,
-            hold: 0,
-            incoming: true,
-          };
-        }
         shards.push(shard);
         for (const [p, q] of [[a, b], [b, c], [c, a]]) {
           const key = [`${p.x},${p.y}`, `${q.x},${q.y}`].sort().join("|");
@@ -156,15 +151,15 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
           }
         }
       }
-      setReady(shards.length > 0);
+      return { ink, fontSize, shards, cracks };
     }
 
-    function burst(now: number, point?: Point) {
+    function burst(now: number, point: Point, { shards, fontSize }: PhraseLayout) {
       for (const shard of shards) {
-        const dx = shard.center.x - (point?.x ?? width / 2);
-        const dy = shard.center.y - (point?.y ?? height / 2);
-        if (point && Math.hypot(dx, dy) > fontSize * 0.85) continue;
-        const angle = (point ? Math.atan2(dy, dx) : Math.random() * TAU) + (Math.random() - 0.5);
+        const dx = shard.center.x - point.x;
+        const dy = shard.center.y - point.y;
+        if (Math.hypot(dx, dy) > fontSize * 0.85) continue;
+        const angle = Math.atan2(dy, dx) + (Math.random() - 0.5);
         const travel = fontSize * (0.55 + Math.random() * 0.85);
         shard.flight = {
           start: now,
@@ -178,30 +173,127 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
       }
     }
 
+    function startMorph(now: number, from: PhraseLayout) {
+      const next = (phrase + 1) % phrases.length;
+      const target = build(phrases[next]);
+      if (!target?.shards.length || !from.shards.length) return;
+      const byPosition = (a: Shard, b: Shard) => a.center.x - b.center.x;
+      const outgoing = [...from.shards].sort(byPosition);
+      const incoming = [...target.shards].sort(byPosition);
+      const count = Math.max(outgoing.length, incoming.length);
+      const pieces = Array.from({ length: count }, (_, i) => {
+        const fromIndex = Math.floor(i * outgoing.length / count);
+        const toIndex = Math.floor(i * incoming.length / count);
+        const fromShard = outgoing[fromIndex];
+        const toShard = incoming[toIndex];
+        const left = Math.min(fromShard.center.x, toShard.center.x);
+        const right = Math.max(fromShard.center.x, toShard.center.x);
+        const top = Math.min(fromShard.center.y, toShard.center.y);
+        const bottom = Math.max(fromShard.center.y, toShard.center.y);
+        const padding = Math.max(from.fontSize, target.fontSize) * 0.2;
+        const angle = Math.random() * TAU;
+        const distance = from.fontSize * (0.45 + Math.random() * 0.85);
+        return {
+          from: fromShard,
+          to: toShard,
+          extraFrom: i > 0 && fromIndex === Math.floor((i - 1) * outgoing.length / count),
+          extraTo: i > 0 && toIndex === Math.floor((i - 1) * incoming.length / count),
+          drift: {
+            x: clamp(Math.cos(angle) * distance, Math.min(0, padding - left), Math.max(0, width - padding - right)),
+            y: clamp(Math.sin(angle) * distance, Math.min(0, padding - top), Math.max(0, height - padding - bottom)),
+          },
+          spin: (Math.random() - 0.5) * 6,
+          flip: 1.5 + Math.random() * 3.5,
+          delay: i / count * 0.12,
+        };
+      });
+      morph = { start: now, next, target, pieces };
+    }
+
+    function drawMorph(ctx: CanvasRenderingContext2D, now: number, from: PhraseLayout, transition: Morph) {
+      const progress = clamp((now - transition.start) / MORPH_DURATION);
+      const intactFrom = 1 - smooth(clamp(progress / 0.09));
+      const intactTo = smooth(clamp((progress - 0.88) / 0.12));
+      for (const piece of transition.pieces) {
+        const t = clamp((progress - piece.delay) / (0.94 - piece.delay));
+        const travel = smooth(t);
+        const arc = Math.sin(Math.PI * travel);
+        const x = piece.from.center.x * (1 - travel) + piece.to.center.x * travel + piece.drift.x * arc;
+        const y = piece.from.center.y * (1 - travel) + piece.to.center.y * travel + piece.drift.y * arc;
+        const blend = smooth(clamp((t - 0.25) / 0.5));
+        const face = Math.cos(piece.flip * arc);
+        const depth = 1 + 0.35 * arc;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(piece.spin * arc);
+        ctx.scale(Math.max(0.08, Math.abs(face)) * depth, depth);
+        drawPiece(piece.from, from.ink, (1 - blend) * (piece.extraFrom ? blend : 1));
+        drawPiece(piece.to, transition.target.ink, blend * (piece.extraTo ? 1 - blend : 1));
+        ctx.restore();
+
+        function drawPiece(shard: Shard, ink: HTMLCanvasElement, opacity: number) {
+          const alpha = opacity * (1 - intactFrom) * (1 - intactTo);
+          if (alpha <= 0) return;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(-shard.center.x, -shard.center.y);
+          if (face < 0) {
+            ctx.fillStyle = shard.color;
+            ctx.fill(shard.path);
+          } else {
+            ctx.clip(shard.path);
+            ctx.drawImage(ink, 0, 0, width, height);
+          }
+          ctx.restore();
+        }
+      }
+      ctx.globalAlpha = intactFrom;
+      ctx.drawImage(from.ink, 0, 0, width, height);
+      ctx.globalAlpha = intactTo;
+      ctx.drawImage(transition.target.ink, 0, 0, width, height);
+      ctx.globalAlpha = 1;
+    }
+
     function render(now: number) {
       frame = 0;
-      if (!active || !visible || document.hidden || media.matches || !output) return;
+      if (!active || !visible || document.hidden || media.matches || !output || !root || !canvas) return;
       if (dirty) {
-        layout(now, false);
+        width = root.clientWidth;
+        height = root.clientHeight * 2;
+        if (!width || !height) return;
+        ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.ceil(width * ratio);
+        canvas.height = Math.ceil(height * ratio);
+        current = build(phrases[phrase]);
+        setReady(Boolean(current?.shards.length));
         dirty = false;
         nextBurst = now + 4800;
-        changeAt = 0;
+        morph = undefined;
       }
-      if (changeAt && now >= changeAt) {
-        phrase = (phrase + 1) % phrases.length;
+      if (!current) return;
+      if (morph && now >= morph.start + MORPH_DURATION) {
+        phrase = morph.next;
         setIndex(phrase);
-        layout(now, true);
-        nextBurst = now + 5000;
-        changeAt = 0;
-      } else if (!changeAt && phrases.length > 1 && now >= nextBurst) {
-        burst(now);
-        changeAt = now + 740;
+        current = morph.target;
+        nextBurst = now + 4800;
+        morph = undefined;
+      } else if (!morph && phrases.length > 1 && now >= nextBurst) {
+        startMorph(now, current);
+        nextBurst = now + 4800;
       }
 
       output.setTransform(ratio, 0, 0, ratio, 0, 0);
       output.clearRect(0, 0, width, height);
+      if (morph) {
+        drawMorph(output, now, current, morph);
+        schedule();
+        return;
+      }
+
+      const { ink, shards, cracks } = current;
       output.drawImage(ink, 0, 0, width, height);
-      const moving: { shard: Shard; flight: Flight; offset: number; alpha: number }[] = [];
+      const moving: { shard: Shard; flight: Flight; offset: number }[] = [];
       output.globalCompositeOperation = "destination-out";
       for (const shard of shards) {
         const flight = shard.flight;
@@ -212,11 +304,10 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
           shard.flight = undefined;
           continue;
         }
-        const offset = flight.incoming || elapsed >= flight.hold
+        const offset = elapsed >= flight.hold
           ? Math.exp(-6 * settle) * Math.cos(settle * 8)
           : 1 - Math.exp(-elapsed / 160);
-        const alpha = flight.incoming ? Math.min(1, elapsed / 180) : 1;
-        moving.push({ shard, flight, offset, alpha });
+        moving.push({ shard, flight, offset });
         output.fill(shard.path);
       }
       let cracking = false;
@@ -230,13 +321,11 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
       output.globalAlpha = 1;
       output.globalCompositeOperation = "source-over";
 
-      for (const { shard, flight, offset, alpha } of moving) {
-        if (alpha <= 0) continue;
+      for (const { shard, flight, offset } of moving) {
         const { x, y } = shard.center;
         const face = Math.cos(flight.flip * offset);
         const depth = 1 + flight.depth * Math.max(0, offset);
         output.save();
-        output.globalAlpha = alpha;
         output.translate(x + flight.x * offset, y + flight.y * offset);
         output.rotate(flight.spin * offset);
         output.scale(face * depth, depth);
@@ -250,7 +339,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         }
         output.restore();
       }
-      if (moving.length || cracking || changeAt) schedule();
+      if (moving.length || cracking) schedule();
       else if (phrases.length > 1) {
         wakeup = window.setTimeout(schedule, Math.max(0, nextBurst - now));
       }
@@ -269,7 +358,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
     }
 
     function pointer(event: PointerEvent) {
-      if (!canvas || media.matches) return;
+      if (!canvas || !current || morph || media.matches) return;
       const bounds = canvas.getBoundingClientRect();
       if (!bounds.width || !bounds.height) return;
       const point = {
@@ -277,13 +366,13 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         y: (event.clientY - bounds.top) * height / bounds.height,
       };
       const now = performance.now();
-      for (const crack of cracks) {
-        if (Math.hypot(point.x - crack.center.x, point.y - crack.center.y) < fontSize * 0.5) {
+      for (const crack of current.cracks) {
+        if (Math.hypot(point.x - crack.center.x, point.y - crack.center.y) < current.fontSize * 0.5) {
           crack.until = now + 700;
         }
       }
-      if (event.type === "pointerdown" && event.button === 0 && !changeAt) {
-        burst(now, point);
+      if (event.type === "pointerdown" && event.button === 0) {
+        burst(now, point, current);
         nextBurst = now + 4800;
       }
       schedule();
