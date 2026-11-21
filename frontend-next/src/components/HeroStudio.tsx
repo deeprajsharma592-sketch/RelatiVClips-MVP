@@ -96,7 +96,7 @@ export default function HeroStudio() {
           ))}
         </div>
         <div className="pointer-events-none relative z-[1] mx-auto flex w-full max-w-[1500px] flex-col items-center text-center">
-          <div className={`${styles.textBackdrop} pointer-events-auto flex max-w-full flex-col items-center`}>
+          <div className="pointer-events-auto flex max-w-full flex-col items-center">
             <p className="mb-7 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500 sm:text-xs">RelatiV <span className="mx-2 text-zinc-700">/</span> Made to move</p>
             <h1 className="max-w-[1200px] text-[clamp(2.625rem,6.8vw,7rem)] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white">
               Turn any footage into
@@ -109,7 +109,7 @@ export default function HeroStudio() {
               Paste a link or drop a raw take. RelatiV finds the moments, edits the clips, and sizes them for every platform.
             </p>
           </div>
-          <div className={`${styles.formBackdrop} mt-10 w-full max-w-[62rem] pointer-events-auto`}>
+          <div className="mt-10 w-full max-w-[62rem] pointer-events-auto">
             <form
               onSubmit={handleSubmit}
               aria-label="Create clips"
