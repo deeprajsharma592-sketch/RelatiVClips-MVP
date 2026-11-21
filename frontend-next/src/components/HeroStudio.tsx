@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, type CSSProperties, type DragEvent, type FormEvent } from "react";
+import { useState, useRef, useEffect, type CSSProperties, type DragEvent, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Link2, Upload } from "lucide-react";
@@ -13,6 +13,8 @@ const WHEEL_PHOTOS = [
   "orange-visor", "chunky-knit", "purple-hoodie", "platinum-blonde", "orange-ring",
 ];
 
+const FEATURED_PHOTO_INTERVAL = 4600;
+
 const HERO_PHRASES = ["personalized short clips", "more views in less time", "ready for every platform", "make every moment count"];
 
 export default function HeroStudio() {
@@ -22,6 +24,30 @@ export default function HeroStudio() {
   const submitting = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const featuredPhoto = WHEEL_PHOTOS[featuredIndex];
+
+  useEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let timer: number | undefined;
+    const schedule = () => {
+      window.clearInterval(timer);
+      if (!motion.matches && !document.hidden) {
+        timer = window.setInterval(() => {
+          setFeaturedIndex((index) => (index + 3) % WHEEL_PHOTOS.length);
+        }, FEATURED_PHOTO_INTERVAL);
+      }
+    };
+    schedule();
+    motion.addEventListener("change", schedule);
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      window.clearInterval(timer);
+      motion.removeEventListener("change", schedule);
+      document.removeEventListener("visibilitychange", schedule);
+    };
+  }, []);
 
   const startJob = async (source: string | File) => {
     if (submitting.current) return;
@@ -92,6 +118,7 @@ export default function HeroStudio() {
               loading="eager"
               unoptimized
               className={styles.photo}
+              data-featured={photo === featuredPhoto}
               style={{
                 "--start-angle": `${-112 + index * 360 / WHEEL_PHOTOS.length}deg`,
                 "--entry-delay": `${index * 62}ms`,
@@ -103,7 +130,21 @@ export default function HeroStudio() {
           <div className={`${styles.entryCopy} pointer-events-auto flex max-w-full flex-col items-center cursor-default`}>
             <p className="mb-7 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500 sm:text-xs">RelatiV <span className="mx-2 text-zinc-700">/</span> Made to move</p>
             <h1 className="max-w-[1200px] text-[clamp(2.625rem,6.8vw,7rem)] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white">
-              Turn any footage into
+              Turn any footage{" "}
+              <span className={styles.headlineEnd}>
+                <span className={styles.featuredSlot} aria-hidden="true">
+                  <Image
+                    key={featuredPhoto}
+                    src={`/hero-wheel/${featuredPhoto}-4x5.jpg`}
+                    alt=""
+                    width={160}
+                    height={200}
+                    unoptimized
+                    className={styles.featuredPhoto}
+                  />
+                </span>
+                into
+              </span>
               <span className="mt-3 block w-full text-[0.62em] font-sans font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
                 <ShatterPhrase phrases={HERO_PHRASES} />
               </span>
