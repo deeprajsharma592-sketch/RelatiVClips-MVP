@@ -26,14 +26,32 @@
   --angle: calc(var(--start-angle) + var(--relativ-hero-orbit, 0deg));
   --depth: sin(var(--angle));
   --side: cos(var(--angle));
-  --x: calc(var(--side) * 45cqw);
-  --y: calc(var(--depth) * min(36cqh, 40cqw));
-  --tilt: 26deg;
+  --photo-size: clamp(3.5rem, 12cqw, 10rem);
+  --tilt: 18deg;
+  /* Leave room for the largest transformed card at every point on the orbit. */
+  --edge-clearance: calc(var(--photo-size) * 0.86 + 0.75rem);
+  --safe-x: max(0px, calc(50cqw - var(--edge-clearance)));
+  --safe-y: max(0px, calc(50cqh - var(--edge-clearance)));
+
+  /* Each projected pair stays within its axis budget even at the peak of the ellipse. */
+  --radius-x: min(
+    45cqw,
+    calc(var(--safe-x) * 0.93 / cos(var(--tilt))),
+    calc(var(--safe-y) * 0.67 / sin(var(--tilt)))
+  );
+  --radius-y: min(
+    36cqh,
+    40cqw,
+    calc(var(--safe-x) * 0.35 / sin(var(--tilt))),
+    calc(var(--safe-y) * 0.74 / cos(var(--tilt)))
+  );
+  --x: calc(var(--side) * var(--radius-x));
+  --y: calc(var(--depth) * var(--radius-y));
 
   position: absolute;
   left: calc(50% + var(--x) * cos(var(--tilt)) - var(--y) * sin(var(--tilt)));
   top: calc(50% + var(--x) * sin(var(--tilt)) + var(--y) * cos(var(--tilt)));
-  width: clamp(3.5rem, 12cqw, 10rem);
+  width: var(--photo-size);
   height: auto;
   aspect-ratio: 4 / 5;
   object-fit: cover;
