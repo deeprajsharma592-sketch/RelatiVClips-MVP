@@ -87,7 +87,9 @@ CLIP_DURATION_MIN = int(CLIP_DURATION_HARD_MIN)
 CLIP_DURATION_MAX = int(CLIP_DURATION_HARD_MAX)
 
 # Bump whenever cached rendered media must be regenerated for a new layout.
-RENDER_VERSION = os.getenv("RENDER_VERSION", "context-seam-v2")
+RENDER_VERSION = os.getenv("RENDER_VERSION", "thumbnail-cta-v3")
+CTA_OUTRO_ENABLED = os.getenv("CTA_OUTRO_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+CTA_OUTRO_SECONDS = max(0.0, float(os.getenv("CTA_OUTRO_SECONDS", "4.0")))
 NUM_CLIPS_LOCAL = 3
 NUM_CLIPS_YOUTUBE = 3
 

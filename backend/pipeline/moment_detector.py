@@ -2,46 +2,28 @@
 Moment detector — the single signal source for the pipeline.
 
 Replaces the old "download audio → run energy peaks → run hook detector" path
-with a smarter, caption-first, audio-only-for-librosa flow.
+with a timestamped-transcript-first flow.
 
 Priority (cost-ordered, cheapest first):
   1. YouTube captions (free) → detect moments from word density + pauses
-  2. Audio download → librosa peaks + valleys (only if captions fail)
-  3. Whisper transcription of the WHOLE audio (last resort, expensive)
+  2. Audio download → Whisper transcription (only if captions fail)
 
 A "moment" is a candidate 10-25s window that might be a good clip. The
 LLM is given a ranked list of moments and picks 2-5 to actually cut.
 
-What gets detected (regardless of source):
-  - HIGH-ENERGY peaks (loud shout, applause, emphasis)
-  - LOW-ENERGY valleys (awkward silence, dramatic pause, awkward laugh)
-  - The valley→peak PAIR is often the real hook ("I lost everything..."
-    (valley, quiet) "...and then I made 10 Cr" (peak, loud))
+What gets detected:
+  - complete ideas and content signals in timestamped text
+  - word-density changes and meaningful pauses
+  - story windows with enough context for the LLM to judge the payoff
 
-For captions, the proxy for "energy" is word density:
-  - High density (many words per second) ≈ peak (excited, fast talker)
-  - Long pause between captions ≈ valley (dramatic beat, awkward silence)
-
-The LLM doesn't need the full transcript. It only needs the candidate
-moments with their signal type, score, and a short snippet (a few words
-of context, NOT the whole transcript).
+The LLM receives the timestamped transcript so it can judge self-contained
+story arcs rather than treating loudness as taste.
 """
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 import logging
-import re
-from pathlib import Path
 
 from ..taste.icl import Moment  # canonical type — defined in taste/icl.py
-
-from ..utils.config import (
-    TEMP_DIR,
-    YTDLP_PATH,
-    COOKIES_PATH,
-    PEAK_THRESHOLD_MULTIPLIER,
-    TARGET_SAMPLE_RATE,
-)
-from . import audio_analysis
 from .transcript_fetcher import (
     _try_ytdlp_transcript,
     _download_audio,
@@ -476,6 +458,10 @@ def _audio_moments_from_file(
     window overlap (higher score wins). The LLM/fallback picks from
     the unified list.
     """
+    # Legacy helper retained for callers outside the transcript-first YouTube
+    # pipeline. Keep the heavy optional dependency out of module startup.
+    from . import audio_analysis
+
     result = audio_analysis.analyze_audio_peaks_and_valleys(audio_path)
     moments: List[Moment] = []
 
@@ -671,11 +657,10 @@ def detect_moments(
     Detect candidate moments for the LLM. Returns (moments, info).
 
     info contains:
-      - source: "captions" | "audio" | "merged" | "none"
+      - source: "captions" | "whisper" | "none"
       - transcript: optional, the transcript used
       - audio_path: optional, the local audio file (if downloaded)
       - duration_s: video duration
-      - audio_analysis: raw peaks/valleys (if audio path was used)
     """
     if log is None:
         log = lambda m: None
@@ -723,68 +708,13 @@ def detect_moments(
                 moments = _merge_text_and_audio_moments(moments, more_content)
                 log(f"  Added {len(more_content)} more low-threshold content moments → {len(moments)} total")
 
-        # ── If we already have an audio file (caller passed precomputed_audio_path),
-        # do the audio analysis and MERGE. This is the "nail in the coffin" path:
-        # text-only detection + audio-only detection, merged, boosted for overlap.
-        if precomputed_audio_path and Path(precomputed_audio_path).exists():
-            try:
-                log("  Audio already present — running combined analysis for merging...")
-                audio_info = audio_analysis.analyze_audio_peaks_and_valleys(precomputed_audio_path)
-                audio_moments = _audio_moments_from_file(precomputed_audio_path, info["duration_s"])
-                log(f"  Built {len(audio_moments)} audio candidate moments "
-                    f"({len(audio_info.get('steep_peaks', []))} steep peaks, "
-                    f"{len(audio_info.get('steep_valleys', []))} steep valleys)")
-                # Build a synthetic Moment list from the audio analysis so we can merge
-                # (without going through the moment_conversion)
-                synth_audio_moments: List[Moment] = []
-                for sp in audio_info.get("steep_peaks", [])[:8]:
-                    synth_audio_moments.append(Moment(
-                        index=0,
-                        start=sp["start"],
-                        end=sp["end"],
-                        signal_type="steep_peak",
-                        score=sp["score"],
-                        snippet=f"[STEEP PEAK at {sp['peak_s']:.1f}s, +{sp['relative_rise']:.2f}×]",
-                        source="audio_steep_peak",
-                        story_position=sp["start"] / max(1.0, info["duration_s"]),
-                    ))
-                for sv in audio_info.get("steep_valleys", [])[:8]:
-                    synth_audio_moments.append(Moment(
-                        index=0,
-                        start=sv["start"],
-                        end=sv["end"],
-                        signal_type="steep_valley",
-                        score=sv["score"],
-                        snippet=f"[STEEP VALLEY at {sv['trough_s']:.1f}s, -{sv['relative_drop']:.2f}×]",
-                        source="audio_steep_valley",
-                        story_position=sv["start"] / max(1.0, info["duration_s"]),
-                    ))
-                for p in audio_info.get("peaks", [])[:5]:
-                    synth_audio_moments.append(Moment(
-                        index=0,
-                        start=max(0, p["timestamp"] - 5.0),
-                        end=min(info["duration_s"], p["timestamp"] + 10.0),
-                        signal_type="peak",
-                        score=min(1.0, p["relative_to_mean"] / 3.0),
-                        snippet=f"[PEAK at {p['timestamp']:.1f}s, {p['relative_to_mean']:.2f}×]",
-                        source="audio_peak",
-                        story_position=p["timestamp"] / max(1.0, info["duration_s"]),
-                    ))
-                moments = _merge_text_and_audio_moments(text_moments, synth_audio_moments)
-                info["source"] = "merged"
-                info["audio_analysis"] = audio_info
-                log(f"  Merged to {len(moments)} final moments "
-                    f"(text + audio, boosted for overlap)")
-            except Exception as e:
-                log(f"  Audio merge failed, keeping text-only moments: {e}")
-
         # Re-index
         for i, m in enumerate(moments[:20], 1):
             m.index = i
         return moments, info
 
-    # --- PATH 2: Audio fallback (librosa peaks + valleys + steep) ---
-    log("  Captions unavailable — downloading audio for librosa peaks+valleys+steep")
+    # --- PATH 2: Whisper transcript fallback ---
+    log("  Captions unavailable — downloading audio for Whisper transcription")
     audio_path = _download_audio(source, task_id, log)
     if not audio_path:
         log("  Audio download also failed — returning empty moments")
@@ -792,14 +722,6 @@ def detect_moments(
 
     info["source"] = "audio"
     info["audio_path"] = audio_path
-    # Use safe audio loader to get the actual duration
-    try:
-        from .audio_analysis import load_audio_safely
-        y, sr = load_audio_safely(audio_path, target_sr=TARGET_SAMPLE_RATE)
-        info["duration_s"] = float(len(y)) / sr
-    except Exception:
-        info["duration_s"] = 0.0
-
     # Try transcribing audio with Whisper so we have words for captions and moments
     try:
         from .transcript_fetcher import _try_whisper_transcript
@@ -807,10 +729,21 @@ def detect_moments(
         if whisper_tr and whisper_tr.get("segments"):
             info["transcript"] = whisper_tr
             info["source"] = "whisper"
+            info["duration_s"] = float(whisper_tr["segments"][-1].get("end", 0.0))
             log(f"  Whisper transcription succeeded ({len(whisper_tr['segments'])} segments)")
     except Exception as e:
         log(f"  Whisper transcription skipped: {e}")
 
-    moments = _audio_moments_from_file(audio_path, info["duration_s"])
-    log(f"  Built {len(moments)} candidate moments from audio (peaks + valleys + steep)")
+    transcript = info.get("transcript")
+    if not transcript or not transcript.get("segments"):
+        log("  Whisper did not produce a transcript — returning empty moments")
+        return [], info
+
+    text_moments = _caption_moments_from_transcript(transcript, info["duration_s"])
+    content_moments = _content_signal_moments(transcript, info["duration_s"])
+    moments = _merge_text_and_audio_moments(text_moments, content_moments)
+    moments = _pad_with_temporal_candidates(moments, info["duration_s"], target_count=3)
+    for i, moment in enumerate(moments[:20], 1):
+        moment.index = i
+    log(f"  Built {len(moments)} candidate moments from Whisper transcript")
     return moments, info

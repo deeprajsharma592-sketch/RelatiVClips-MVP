@@ -30,7 +30,7 @@ function normalizeYouTubeUrl(value: string) {
 
 interface StudioHeroProps {
   onStartProcess?: (taskId: string, template?: string) => void;
-  onSubmitUrl?: (url: string, template?: string) => void;
+  onSubmitUrl?: (url: string, template?: string, clipCount?: number | null) => void;
   onOpenUpgrade?: () => void;
 }
 
@@ -294,7 +294,7 @@ export default function StudioHero({
         onConfirm={(config: RecipeConfig) => {
           setIsConfigModalOpen(false);
           if (onSubmitUrl) {
-            onSubmitUrl(inputText, config.template);
+            onSubmitUrl(inputText, config.template, config.clipCount);
           }
         }}
         onOpenUpgrade={onOpenUpgrade}

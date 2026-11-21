@@ -48,6 +48,7 @@ export default function VideoIntake({
   const [error, setError] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [captionFont, setCaptionFont] = useState("studio");
+  const [clipCount, setClipCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle local file selection
@@ -245,6 +246,42 @@ export default function VideoIntake({
                   </div>
                 </fieldset>
 
+                <fieldset className="space-y-2.5">
+                  <legend className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                    Number of clips
+                  </legend>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Number of clips">
+                    {[
+                      { value: null, label: "Auto" },
+                      { value: 1, label: "1" },
+                      { value: 2, label: "2" },
+                      { value: 3, label: "3" },
+                      { value: 4, label: "4" },
+                    ].map((option) => {
+                      const selected = clipCount === option.value;
+                      return (
+                        <button
+                          key={option.label}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setClipCount(option.value)}
+                          className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+                            selected
+                              ? "border-cyan-500/70 bg-cyan-500/[0.1] text-zinc-950 dark:text-white"
+                              : "border-black/10 bg-white/70 text-zinc-600 dark:border-white/10 dark:bg-white/[0.025] dark:text-zinc-300"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                    Auto selects 1 clip per 5 minutes, up to the best 4.
+                  </p>
+                </fieldset>
+
                 {/* Secondary Actions & Helpers */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-zinc-500 dark:text-zinc-400">
                   <span className="text-zinc-500 dark:text-zinc-400">
@@ -367,6 +404,7 @@ export default function VideoIntake({
         <SickLoadingTransition
           url={youtubeUrl}
           captionFont={captionFont}
+          clipCount={clipCount}
           autoRedirect={false}
           onComplete={(taskId) => {
             setIsTransitioning(false);

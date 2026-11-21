@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import subprocess
 import json
@@ -15,7 +17,10 @@ from ..utils.config import (
     FFMPEG_AUDIO_BITRATE,
     FILE_RETENTION_HOURS,
     RENDER_VERSION,
-    FFMPEG_PATH
+    FFMPEG_PATH,
+    FFPROBE_PATH,
+    CTA_OUTRO_ENABLED,
+    CTA_OUTRO_SECONDS,
 )
 from .clip_selector import generate_ass_subtitle, generate_simple_ass
 from .captions import CAPTION_FONT_DIR, generate_viral_ass_subtitles, normalize_caption_preset
@@ -23,6 +28,168 @@ from ..utils.vram_manager import clear_gpu
 from framing.layout_policy import batch_context_position
 
 _THUMB_CACHE: Dict[str, str] = {}
+
+
+def _media_profile(path: str | Path) -> Dict[str, float]:
+    """Read the output cadence/audio rate so the CTA can concatenate cleanly."""
+    profile = {"fps": 30.0, "audio_rate": 48000.0}
+    try:
+        result = subprocess.run(
+            [
+                FFPROBE_PATH,
+                "-v", "error",
+                "-show_entries", "stream=codec_type,avg_frame_rate,sample_rate",
+                "-of", "json",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode != 0:
+            return profile
+        streams = json.loads(result.stdout or "{}").get("streams", [])
+        video = next((s for s in streams if s.get("codec_type") == "video"), {})
+        audio = next((s for s in streams if s.get("codec_type") == "audio"), {})
+        rate = str(video.get("avg_frame_rate") or "30/1")
+        numerator, denominator = rate.split("/", 1)
+        fps = float(numerator) / max(float(denominator), 1.0)
+        if 1 <= fps <= 120:
+            profile["fps"] = fps
+        sample_rate = float(audio.get("sample_rate") or 48000)
+        if sample_rate > 0:
+            profile["audio_rate"] = sample_rate
+    except Exception:
+        pass
+    return profile
+
+
+def _append_thumbnail_cta(
+    output_path: Path,
+    source_path: str | Path,
+    source_audio_start_s: float,
+    video_id: str,
+    task_id: str,
+    clip_index: int,
+    duration_s: float = 4.0,
+) -> bool:
+    """Append a thumbnail CTA while continuing the next source-audio seconds."""
+    if duration_s <= 0 or not output_path.exists() or not Path(source_path).exists():
+        return False
+    thumbnail = _fetch_youtube_thumbnail(video_id, task_id)
+    if not thumbnail:
+        print(f"[Renderer] CTA skipped for clip {clip_index}: YouTube thumbnail unavailable")
+        return False
+
+    profile = _media_profile(output_path)
+    fps = profile["fps"]
+    audio_rate = int(profile["audio_rate"])
+    cta_path = TEMP_DIR / f"cta_{task_id}_{clip_index}.mp4"
+    joined_path = TEMP_DIR / f"joined_{task_id}_{clip_index}.mp4"
+    concat_list = TEMP_DIR / f"concat_{task_id}_{clip_index}.txt"
+    font_path = CAPTION_FONT_DIR / "BarlowCondensed-ExtraBold.ttf"
+    escaped_font = str(font_path.as_posix()).replace(":", "\\:").replace("'", "\\'")
+
+    # Ease the card from fully below frame to the vertical center in 0.85s.
+    slide_y = "if(lt(t,0.85),H-(H-(H-h)/2)*(1-cos(PI*t/0.85))/2,(H-h)/2)"
+    visual_filter = (
+        f"[0:v]split=2[bgsrc][cardsrc];"
+        f"[bgsrc]scale={CROP_WIDTH}:{CROP_HEIGHT}:force_original_aspect_ratio=increase,"
+        f"crop={CROP_WIDTH}:{CROP_HEIGHT},gblur=sigma=38,eq=brightness=-0.32:saturation=0.75[bg];"
+        f"[cardsrc]scale=900:-2:flags=lanczos,pad=iw+10:ih+10:5:5:color=white[card];"
+        f"[bg][card]overlay=x=(W-w)/2:y='{slide_y}':eval=frame,"
+        f"drawtext=fontfile='{escaped_font}':text='WATCH THE FULL VIDEO':"
+        f"fontcolor=white:fontsize=58:x=(w-text_w)/2:y=235:"
+        f"borderw=3:bordercolor=black@0.55,"
+        f"drawtext=fontfile='{escaped_font}':text='Continue watching on YouTube':"
+        f"fontcolor=white@0.88:fontsize=30:x=(w-text_w)/2:y=320,"
+        f"fade=t=in:st=0:d=0.28,fade=t=out:st={max(0.0, duration_s - 0.28):.2f}:d=0.28,"
+        f"format=yuv420p[v]"
+    )
+    # Check whether source has an audio stream
+    has_audio = True
+    try:
+        probe = subprocess.run(
+            [
+                FFPROBE_PATH, "-v", "error",
+                "-select_streams", "a",
+                "-show_entries", "stream=codec_type",
+                "-of", "csv=p=0",
+                str(source_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if not probe.stdout.strip():
+            has_audio = False
+    except Exception:
+        has_audio = True
+
+    if has_audio:
+        audio_input = ["-ss", str(max(0.0, source_audio_start_s)), "-t", str(duration_s), "-i", str(source_path)]
+        audio_filter = (
+            f"[1:a]aresample={audio_rate},apad=pad_dur={duration_s},"
+            f"atrim=0:{duration_s},asetpts=PTS-STARTPTS,"
+            f"afade=t=out:st={max(0.0, duration_s - 0.3):.2f}:d=0.3[a]"
+        )
+    else:
+        audio_input = ["-f", "lavfi", "-t", str(duration_s), "-i", f"anullsrc=r={audio_rate}:cl=stereo"]
+        audio_filter = f"[1:a]asetpts=PTS-STARTPTS[a]"
+
+    cta_cmd = [
+        FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
+        "-loop", "1", "-framerate", str(fps), "-t", str(duration_s), "-i", thumbnail,
+        *audio_input,
+        "-filter_complex", f"{visual_filter};{audio_filter}",
+        "-map", "[v]", "-map", "[a]",
+        "-r", str(fps), "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-ar", str(audio_rate),
+        "-t", str(duration_s), "-movflags", "+faststart", str(cta_path),
+    ]
+    try:
+        made_cta = subprocess.run(cta_cmd, capture_output=True, text=True, timeout=90)
+        if made_cta.returncode != 0 or not cta_path.exists() or cta_path.stat().st_size < 1024:
+            print(f"[Renderer] CTA generation failed: {made_cta.stderr[-500:]}")
+            return False
+
+        def _concat_line(path: Path) -> str:
+            return "file '" + str(path.resolve()).replace("'", "'\\''") + "'"
+
+        concat_list.write_text(
+            _concat_line(output_path) + "\n" + _concat_line(cta_path) + "\n",
+            encoding="utf-8",
+        )
+        copy_cmd = [
+            FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
+            "-f", "concat", "-safe", "0", "-i", str(concat_list),
+            "-c", "copy", "-movflags", "+faststart", str(joined_path),
+        ]
+        joined = subprocess.run(copy_cmd, capture_output=True, text=True, timeout=45)
+        if joined.returncode != 0 or not joined_path.exists() or joined_path.stat().st_size < 1024:
+            # Rare codec/timebase mismatch: re-encode the joined streams safely.
+            fallback_cmd = [
+                FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(output_path), "-i", str(cta_path),
+                "-filter_complex", "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[v][a]",
+                "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "fast",
+                "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+                "-movflags", "+faststart", str(joined_path),
+            ]
+            joined = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=180)
+        if joined.returncode != 0 or not joined_path.exists() or joined_path.stat().st_size < 1024:
+            print(f"[Renderer] CTA concatenation failed: {joined.stderr[-500:]}")
+            return False
+        os.replace(joined_path, output_path)
+        print(f"[Renderer] Added {duration_s:.1f}s thumbnail CTA to clip {clip_index}")
+        return True
+    except Exception as exc:
+        print(f"[Renderer] CTA append failed for clip {clip_index}: {exc}")
+        return False
+    finally:
+        cta_path.unlink(missing_ok=True)
+        joined_path.unlink(missing_ok=True)
+        concat_list.unlink(missing_ok=True)
 
 
 def _fetch_youtube_thumbnail(video_id: str, task_id: str) -> Optional[str]:
@@ -474,6 +641,40 @@ def render_clip(
             raise RuntimeError(f"Render timeout for clip {clip_index}")
 
     if output_path.exists():
+        cta_added = False
+        resolved_video_id = video_id
+        if (
+            not resolved_video_id
+            or resolved_video_id in ("local", "unknown")
+            or str(resolved_video_id).startswith(("yt_", "surgical_"))
+        ) and clip.get("url"):
+            try:
+                from ..pipeline.transcript_fetcher import _extract_video_id
+                extracted_id = _extract_video_id(str(clip.get("url")))
+                if extracted_id:
+                    resolved_video_id = extracted_id
+            except Exception:
+                pass
+
+        if (
+            CTA_OUTRO_ENABLED
+            and CTA_OUTRO_SECONDS > 0
+            and resolved_video_id
+            and resolved_video_id not in ("local", "unknown")
+            and not str(resolved_video_id).startswith(("yt_", "surgical_"))
+        ):
+            if progress_callback:
+                progress_callback(f"Adding {CTA_OUTRO_SECONDS:.0f}s full-video CTA...")
+            cta_added = _append_thumbnail_cta(
+                output_path=output_path,
+                source_path=video_path,
+                source_audio_start_s=rel_end,
+                video_id=resolved_video_id,
+                task_id=task_id,
+                clip_index=clip_index,
+                duration_s=CTA_OUTRO_SECONDS,
+            )
+
         file_size_mb = round(output_path.stat().st_size / (1024 * 1024), 2)
 
         # Check for 0 KB files - delete them
@@ -508,7 +709,10 @@ def render_clip(
             "clip_id": clip_id,
             "start": start,
             "end": end,
-            "duration_s": round(duration, 1),
+            "duration_s": round(duration + (CTA_OUTRO_SECONDS if cta_added else 0.0), 1),
+            "source_duration_s": round(duration, 1),
+            "cta_duration_s": round(CTA_OUTRO_SECONDS if cta_added else 0.0, 1),
+            "cta_added": cta_added,
             "caption": clip.get("caption", ""),
             "viral_title": clip.get("viral_title", ""),
             "hashtags": clip.get("hashtags", ""),

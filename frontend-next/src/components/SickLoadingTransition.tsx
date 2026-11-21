@@ -15,6 +15,7 @@ import { getDashDashboardUrl } from "@/lib/domain";
 interface SickLoadingTransitionProps {
   url: string;
   captionFont?: string;
+  clipCount?: number | null;
   onComplete?: (taskId?: string) => void;
   autoRedirect?: boolean;
 }
@@ -45,12 +46,12 @@ const TELEMETRY_STAGES: {
   },
   {
     pct: 28,
-    stageName: "ACOUSTIC ENERGY FLUX",
-    subtext: "Librosa 44.1kHz spectral centroid & vocal cadence extraction",
+    stageName: "TRANSCRIPT STORY MAPPING",
+    subtext: "Finding self-contained hooks, tension, context, and payoff",
     log: {
       time: "00:00.64",
-      phase: "AUDIO",
-      text: "Extracted vocal frequency peaks & dialogue density metrics.",
+      phase: "TASTE",
+      text: "Mapped complete story arcs and removed low-context fragments.",
       status: "done",
     },
   },
@@ -103,6 +104,7 @@ const TELEMETRY_STAGES: {
 export default function SickLoadingTransition({
   url,
   captionFont = "studio",
+  clipCount = null,
   onComplete,
   autoRedirect = true,
 }: SickLoadingTransitionProps) {
@@ -137,7 +139,7 @@ export default function SickLoadingTransition({
     let isMounted = true;
     if (!url) return;
 
-    submitYouTubeUrl(url, captionFont)
+    submitYouTubeUrl(url, captionFont, clipCount)
       .then((res) => {
         if (!isMounted) return;
         if (res.taskId) {
@@ -159,7 +161,7 @@ export default function SickLoadingTransition({
     return () => {
       isMounted = false;
     };
-  }, [url, captionFont]);
+  }, [url, captionFont, clipCount]);
 
   // 2. High-energy smooth progress and stage sequencer
   useEffect(() => {

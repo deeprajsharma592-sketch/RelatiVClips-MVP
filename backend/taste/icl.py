@@ -535,7 +535,7 @@ def build_relativsauce_prompt(
 
     parts.append("\n## Transcript with Timing & Engagement Markers\n" + "\n".join(transcript_lines))
     parts.append(
-        "\nApply the RelatiVSauce rubric strictly. Return ONLY winning candidates that form complete micro-stories in valid JSON with rubric_ver='sauce-0.2'.\n"
+        f"\nApply the RelatiVSauce rubric strictly. Return the best {max_picks} distinct candidates, ranked strongest first, as complete micro-stories in valid JSON with rubric_ver='sauce-0.2'. Never return more than {max_picks}.\n"
         "REMINDER:\n"
         "- A clip is a complete micro-story: hook → context/setup → payoff. It must make sense to a viewer who has seen nothing before it.\n"
         "- Choose start where the viewer first needs to understand what is going on, not earlier and not later. Choose end immediately after the payoff lands (punchline, answer, reaction beat). Do not cut before the payoff. Do not trail on after it.\n"

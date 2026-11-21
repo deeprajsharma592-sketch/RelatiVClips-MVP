@@ -52,6 +52,8 @@ function DashboardContent() {
 
   const taskIdParam = searchParams.get("taskId");
   const urlParam = searchParams.get("url");
+  const clipCountParam = searchParams.get("clipCount");
+  const requestedClipCount = clipCountParam ? Number(clipCountParam) : null;
   const tabParam = searchParams.get("tab") as StudioTab | null;
 
   // Active Navigation Tab
@@ -173,7 +175,13 @@ function DashboardContent() {
     if (taskIdParam) {
       startPolling(taskIdParam);
     } else if (urlParam) {
-      submitYouTubeUrl(urlParam)
+      submitYouTubeUrl(
+        urlParam,
+        "studio",
+        requestedClipCount && requestedClipCount >= 1 && requestedClipCount <= 4
+          ? requestedClipCount
+          : null,
+      )
         .then((init) => {
           if (!isMounted) return;
           if (init.taskId) {
@@ -201,7 +209,7 @@ function DashboardContent() {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [taskIdParam, urlParam]);
+  }, [taskIdParam, urlParam, requestedClipCount]);
 
   // Elapsed timer when generation is active
   useEffect(() => {
@@ -268,8 +276,10 @@ function DashboardContent() {
                 onStartProcess={(tid) => {
                   router.push(`/dashboard?taskId=${tid}`);
                 }}
-                onSubmitUrl={(u) => {
-                  router.push(`/dashboard?url=${encodeURIComponent(u)}`);
+                onSubmitUrl={(u, _template, clipCount) => {
+                  const query = new URLSearchParams({ url: u });
+                  if (clipCount) query.set("clipCount", String(clipCount));
+                  router.push(`/dashboard?${query.toString()}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
               />

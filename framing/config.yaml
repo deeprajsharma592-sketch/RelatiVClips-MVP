@@ -1,13 +1,13 @@
 output:
   width: 1080
   height: 1920
-  fps: null # fps null = keep source fps clamped
+  fps: null # preserve source cadence, clamped to the normalize ceiling below
   crf: 18
-  preset: medium
+  preset: fast
 
 normalize:
   target_fps_min: 24
-  target_fps_max: 60
+  target_fps_max: 30
   default_fps: 30
 
 shots:
@@ -17,7 +17,7 @@ shots:
 
 faces:
   detector: yunet
-  detect_fps: 8
+  detect_fps: 5
   detect_width: 640
   score_threshold: 0.7
   min_face_height_frac: 0.03

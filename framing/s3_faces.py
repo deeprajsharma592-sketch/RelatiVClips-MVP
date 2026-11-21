@@ -133,7 +133,9 @@ def detect_and_track_faces(
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
 
-    face_cfg = config.get("face_detection", {})
+    # `faces` is the canonical config section. Keep the legacy key as a
+    # fallback for older custom configs.
+    face_cfg = config.get("faces", config.get("face_detection", {}))
     detect_fps = float(face_cfg.get("detect_fps", 8.0))
     detect_width = int(face_cfg.get("detect_width", 640))
     score_threshold = float(face_cfg.get("score_threshold", 0.7))

@@ -166,6 +166,8 @@ def save_result_cache(url: str, result: dict) -> bool:
             "llm_provider": result.get("llm_provider"),
             "llm_model": result.get("llm_model"),
             "archetype": result.get("archetype"),
+            "duration": float(result.get("duration", 0.0) or 0.0),
+            "target_clip_count": result.get("target_clip_count"),
             "n_clips": len(result.get("clips", [])),
             "cached_at": time.time(),
             "cached_url_hash": url_hash(url),

@@ -157,6 +157,7 @@ async def get_cached_video(
                     "llm_provider": "database_cache",
                     "llm_model": entry.llm_model,
                     "archetype": entry.archetype,
+                    "duration_s": float(entry.duration_s or 0.0),
                     "_cache_hit": True,
                     "_cache_age_hours": round(age_hours, 1),
                     "_cache_savings_usd": savings,

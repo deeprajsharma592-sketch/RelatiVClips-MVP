@@ -21,7 +21,6 @@ from ..models import ProcessResponse, TaskStatus
 from ..utils.task_store import task_store, PIPELINE_STEPS
 from ..utils.config import (
     TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, FFPROBE_PATH,
-    TARGET_SAMPLE_RATE, PEAK_THRESHOLD_MULTIPLIER,
     NUM_CLIPS_YOUTUBE, SURGICAL_DOWNLOAD_SECONDS,
     MAX_SURGICAL_SEGMENTS, COOKIES_PATH, MIN_CLIPS, PIPELINE_VERSION,
 )
@@ -38,14 +37,6 @@ VIRAL_KEYWORDS = [
     "quick story", "fun fact", "did you know", "most important", "key point",
     "main reason", "guess what", "wait for it", "hold on", "don't skip"
 ]
-
-try:
-    import librosa
-    import numpy as np
-    LIBROSA_AVAILABLE = True
-except ImportError:
-    LIBROSA_AVAILABLE = False
-
 
 class YouTubeSurgicalFunnel:
     """YouTube Surgical Funnel Pipeline"""
@@ -206,30 +197,6 @@ class YouTubeSurgicalFunnel:
                         "text": segment["text"][:100]
                     })
                     break
-
-        if LIBROSA_AVAILABLE and os.path.exists(audio_path):
-            try:
-                self.log("  Running Librosa audio analysis...")
-                y, sr = librosa.load(audio_path, sr=TARGET_SAMPLE_RATE, mono=True)
-                hop_length = 512
-                rms = librosa.feature.rms(y=y, hop_length=hop_length)[0]
-                mean_energy = float(np.mean(rms))
-                threshold = mean_energy * PEAK_THRESHOLD_MULTIPLIER
-
-                for i, energy in enumerate(rms):
-                    if energy > threshold:
-                        timestamp = float(i * hop_length / sr)
-                        peaks.append({
-                            "timestamp": round(timestamp, 2),
-                            "energy_score": round(float(energy), 4),
-                            "relative_to_mean": round(float(energy / mean_energy), 2)
-                        })
-
-                peaks.sort(key=lambda x: x["energy_score"], reverse=True)
-                peaks = peaks[:15]
-                self.log(f"  Found {len(peaks)} audio peaks")
-            except Exception as e:
-                self.log(f"  Librosa error: {e}")
 
         return {"peaks": peaks, "keywords": keywords[:15]}
 
@@ -547,21 +514,21 @@ async def run_youtube_orchestrator(
     callback,
     platform: str = "tiktok",
     caption_font: str = "studio",
+    requested_clip_count: Optional[int] = None,
 ):
-    """New pipeline path (PIPELINE_VERSION=2) — caption-first, audio-only-for-librosa.
+    """New pipeline path (PIPELINE_VERSION=2) — transcript-first selection.
 
     Flow (the "v3" pipeline):
       1. Try YouTube captions via yt-dlp (FREE, no audio download)
       2. If captions succeed: build candidate moments from word density + pauses
-      3. If captions fail: download audio (low priority), run librosa peaks + valleys,
-         build candidate moments from those
+      3. If captions fail: transcribe audio with Whisper and build the same
+         transcript-driven candidates
       4. Run the rest of the pipeline (surgical, render) on top moments
       5. LLM (claude/deepseek) picks 2-5 with strict JSON, low token cost
       6. Apply platform-specific duration + caption style (NEW 2026-06-15)
 
-    Audio is NEVER used as input to the LLM. Audio is ONLY used for librosa
-    energy analysis when captions aren't available. Captions are 80%+ of the
-    pipeline; audio is the fallback.
+    The LLM receives timestamped transcript text. Audio is downloaded only when
+    captions are unavailable and Whisper must produce that transcript.
 
     `platform` is one of "tiktok" | "reels" | "shorts". Default = "tiktok".
     """
@@ -576,11 +543,11 @@ async def run_youtube_orchestrator(
             pass
 
     # --- STAGE 1 + 2 (combined): caption-first signal extraction ---
-    # Try captions first; if they fail, download audio for librosa.
+    # Try captions first; if they fail, Whisper supplies a transcript.
     callback("Fetching captions and source metadata...", step=1, sub_progress=0.0)
 
     def _detect_source_moments():
-        # Import and run in a worker. yt-dlp, transcript parsing, and librosa
+        # Import and run in a worker. yt-dlp and transcript parsing
         # are synchronous and must never block FastAPI's status/health loop.
         from ..pipeline.moment_detector import detect_moments
 
@@ -615,9 +582,21 @@ async def run_youtube_orchestrator(
             "stages_run": [1, 2],
             "task_id": task_id,
         }
+
+    from ..pipeline.clip_count import resolve_target_clip_count
+    target_clip_count = resolve_target_clip_count(
+        info.get("duration_s", 0),
+        requested_clip_count,
+    )
+    callback(
+        f"Selecting the best {target_clip_count} clip(s) "
+        f"({'user choice' if requested_clip_count is not None else 'automatic by video length'})",
+        step=2,
+        sub_progress=0.9,
+    )
     callback(
         f"Built {len(moments)} candidate moments from "
-        f"{'captions (no audio download)' if info['source'] == 'captions' else 'audio peaks + valleys'}",
+        f"{'captions (no audio download)' if info['source'] == 'captions' else 'Whisper transcript'}",
         step=2,
         sub_progress=1.0,
     )
@@ -687,12 +666,12 @@ async def run_youtube_orchestrator(
             moments=moments,
             video_meta=video_meta,
             is_experiment=is_experiment_run,
-            max_picks=3,
+            max_picks=target_clip_count,
         )
     except Exception as e:
         _bridge("taste", f"RelatiVSauce prompt fallback: {e}")
         from ..taste.icl import build_moment_prompt
-        prompt = build_moment_prompt(moments, video_meta, max_picks=4)
+        prompt = build_moment_prompt(moments, video_meta, max_picks=target_clip_count)
     # NOTE: the LLM key is INVALID in this env, so this will fail and the
     # energy/moment fallback will be used. Once the key is rotated, the
     # LLM call below activates and replaces the fallback picks.
@@ -712,6 +691,7 @@ async def run_youtube_orchestrator(
             info=info,
             platform=platform,
             caption_font=caption_font,
+            target_clip_count=target_clip_count,
         ),
     )
     return final_clips
@@ -729,6 +709,7 @@ def _run_moment_pipeline(
     info: dict,
     platform: str = "tiktok",
     caption_font: str = "studio",
+    target_clip_count: int = 2,
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
 
@@ -737,7 +718,6 @@ def _run_moment_pipeline(
     picks the top-N moments by score and synthesizes viral_title/caption.
     """
     from ..pipeline import surgical as surgical_stage
-    from ..pipeline import face_detection as face_stage
     from ..pipeline import renderer as renderer_module
     from ..pipeline.platforms import (
         adjust_clip_to_format as adjust_clip_for_platform,
@@ -773,10 +753,9 @@ def _run_moment_pipeline(
         except Exception:
             pass
 
-    # 1. Surgical download of the top moments
-    # Note: surgical_download_youtube uses dict-style access, so convert
-    # Moment objects to dicts first.
-    _bridge("surgical", f"Fetching audio for top {len(top_for_surgery)} moments...")
+    # Candidate selection is transcript-first. Do not download and analyze the
+    # same moments as audio before the LLM: the full timestamped transcript is
+    # already in the prompt and the video pass below supplies render media.
     moment_dicts = [
         {
             "start": m.start,
@@ -787,57 +766,13 @@ def _run_moment_pipeline(
         }
         for m in top_for_surgery
     ]
-    _bridge("surgical", "Fetching audio for top moments...", step=4, sub_progress=0.0)
-
-    # Track per-segment progress for the UI progress bar.
-    # Surgical downloads run in parallel; we count done/total.
-    _seg_done = {"n": 0}
-    _seg_total = len(moment_dicts)
-
-    def _on_seg_done(idx: int, total: int, ok: bool) -> None:
-        _seg_done["n"] += 1
-        frac = min(0.85, _seg_done["n"] / max(1, _seg_total))
-        _bridge(
-            "surgical",
-            f"Fetched {_seg_done['n']}/{_seg_total} audio segments",
-            step=4,
-            sub_progress=frac,
-        )
-
-    segments = surgical_stage.surgical_download_youtube(
-        url, moment_dicts, task_id,
-        log_fn=_bridge,
-        on_segment_done=_on_seg_done,
+    segments = []
+    _bridge(
+        "surgical",
+        "Transcript candidates ready — skipped redundant audio/librosa pass",
+        step=4,
+        sub_progress=0.8,
     )
-    _bridge("surgical", f"Fetched {len(segments)} audio segments", step=4, sub_progress=1.0)
-
-    # 1b. Run audio analysis on each downloaded segment so the LLM sees
-    # real audio features (peaks, valleys, energy) — not just the text
-    # snippet. The Moment.audio_features dict gets populated here.
-    try:
-        from ..pipeline import audio_analysis
-        from ..pipeline.moment_detector import (
-            _audio_moments_from_file, _merge_text_and_audio_moments,
-        )
-        for seg, m in zip(segments, top_for_surgery):
-            ap = seg.get("audio_path")
-            if not ap or not Path(ap).exists():
-                continue
-            try:
-                audio_moments = _audio_moments_from_file(ap, m.end - m.start)
-                if audio_moments:
-                    # Boost the matching text moment with audio features
-                    # from the segment that overlaps its range.
-                    merged = _merge_text_and_audio_moments([m], audio_moments)
-                    if merged:
-                        m.audio_features = merged[0].audio_features
-                        m.signal_type = merged[0].signal_type
-                        m.score = merged[0].score
-            except Exception as e:
-                _bridge("audio_an", f"  audio analysis failed for seg {ap}: {e}")
-        _bridge("audio_an", "Audio features extracted for all segments", step=4, sub_progress=0.8)
-    except Exception as e:
-        _bridge("audio_an", f"Audio enrichment skipped: {e}", step=4, sub_progress=0.8)
 
     # 1c. NEW 2026-06-15 (A1+A3): Speculative video download for top-3
     #     candidates in PARALLEL with the LLM call. If LLM picks one of
@@ -848,11 +783,12 @@ def _run_moment_pipeline(
     spec_results: Dict[int, Dict] = {}
     try:
         from ..pipeline.speculative import speculative_video_download
-        _bridge("video_dl", "Pre-fetching video for top-3 candidates (speculative, in parallel with LLM)...",
+        speculative_candidates = moment_dicts[:target_clip_count]
+        _bridge("video_dl", f"Pre-fetching video for top-{min(3, len(speculative_candidates))} candidates...",
                 step=4, sub_progress=0.82)
         spec_results = speculative_video_download(
             url=url,
-            top_candidates=moment_dicts,  # 0-indexed list, same order as top_for_surgery
+            top_candidates=speculative_candidates,
             task_id=task_id,
             log_fn=_bridge,
             max_workers=2,
@@ -979,7 +915,7 @@ def _run_moment_pipeline(
         video_meta=video_meta,
         hot_regions=hot_regions,
         compressed_summary=compressed_summary,
-        max_picks=4,
+        max_picks=target_clip_count,
     )
 
     picks = []
@@ -1076,6 +1012,8 @@ def _run_moment_pipeline(
     unverified_count = 0
     if picks_sorted:
         for p in picks_sorted:
+            if len(final_clips) >= target_clip_count:
+                break
             m = moment_by_idx.get(int(p.get("moment_index", 0)))
             conf = float(p.get("confidence", 0.0))
             if conf < 0.35 and not p.get("verified"):
@@ -1205,17 +1143,17 @@ def _run_moment_pipeline(
                 "verified": False,
                 "best_effort": True,
             })
-    if len(final_clips) < MIN_CLIPS:
+    if len(final_clips) < target_clip_count:
         # A strict check pass can leave only one excellent clip. Backfill from
         # distinct high-signal moments instead of duplicating that source range.
         # These remain explicitly unverified/best-effort in the result metadata.
         _bridge(
             "taste",
             f"Only {len(final_clips)} verified clip(s) survived — "
-            f"backfilling distinct moments up to {MIN_CLIPS}",
+            f"backfilling the best distinct moments up to {target_clip_count}",
         )
         for m in moments:
-            if len(final_clips) >= MIN_CLIPS:
+            if len(final_clips) >= target_clip_count:
                 break
             # Skip intro filler in fallback for long videos
             if is_long_form and m.start < 45.0:
@@ -1280,6 +1218,7 @@ def _run_moment_pipeline(
     from ..segmentation import deduplicate_preserving_order
     selected_count = len(final_clips)
     final_clips = deduplicate_preserving_order(final_clips)
+    final_clips = final_clips[:target_clip_count]
     if len(final_clips) != selected_count:
         _bridge(
             "filter",
@@ -1444,7 +1383,7 @@ def _run_moment_pipeline(
     # the fastest render. Expected saving: 30-90s on a 3-clip run.
     _bridge("render", f"Streaming {len(final_clips)} clip(s) — download+face+render in parallel...",
             step=6, sub_progress=0.0)
-    rendered = []
+    rendered_by_rank: Dict[int, Dict] = {}
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from ..utils.config import SURGICAL_BUFFER_SECONDS
@@ -1452,7 +1391,14 @@ def _run_moment_pipeline(
         info.get("transcript", {}).get("video_id")
         if info.get("transcript")
         else None
-    ) or f"yt_{task_id[:12]}"
+    )
+    if not video_id:
+        try:
+            from ..pipeline.transcript_fetcher import _extract_video_id
+            video_id = _extract_video_id(url)
+        except Exception:
+            video_id = None
+    video_id = video_id or f"yt_{task_id[:12]}"
 
     def _process_clip(i: int, clip: dict) -> Optional[Dict]:
         """Full per-clip pipeline: download (if needed) → face → render.
@@ -1476,33 +1422,13 @@ def _run_moment_pipeline(
                     seg_path = Path(clip["video_path"])
                     if seg_path.exists():
                         save_segment_cache(url, cand["start"], cand["end"], seg_path)
-                _on_vid_done(i, len(final_clips), True)
 
-            # 2. Face detection (fast, ~1s)
-            vp = clip.get("video_path")
-            if vp and Path(vp).exists():
-                try:
-                    # The downloaded file is a padded local segment, while
-                    # clip start/end remain source-video timestamps. Convert
-                    # the face-sampling interval into that file's local time.
-                    video_start = float(clip.get("video_source_start", 0.0))
-                    face_clip = {
-                        **clip,
-                        "start": max(0.0, float(clip["start"]) - video_start),
-                        "end": max(0.0, float(clip["end"]) - video_start),
-                    }
-                    face_data = face_stage.get_batch_face_data(vp, [face_clip])
-                    if face_data:
-                        clip["x_offset"] = face_data[0].get("x_offset", 0)
-                        clip["face_detected"] = face_data[0].get("face_detected", False)
-                    clip["face_data"] = face_data[0] if face_data else None
-                except Exception as e:
-                    _bridge("face", f"  face {i+1} failed: {e}")
-                    clip["face_data"] = None
-            else:
-                clip["face_data"] = None
+            # The dynamic framing engine performs its own YuNet tracking. The
+            # old face_stage pass duplicated that work for every selected clip
+            # and its result was never consumed by the dynamic renderer.
+            clip["face_data"] = None
 
-            # 3. Render (~5s)
+            # 2. Render
             source_for_renderer = (
                 clip.get("video_path")
                 or clip.get("audio_path")
@@ -1534,6 +1460,7 @@ def _run_moment_pipeline(
             render_clip["video_path"] = str(source_for_renderer)
             render_clip["video_source_start"] = _vsrc
             render_clip["video_source_end"] = clip.get("video_source_end", float(clip.get("source_end", clip.get("end", 0))) + SURGICAL_BUFFER_SECONDS)
+            render_clip["url"] = url
             if "transcript" in clip:
                 render_clip["transcript"] = clip["transcript"]
             out = renderer_module.render_clip(
@@ -1567,19 +1494,23 @@ def _run_moment_pipeline(
                 try:
                     out = fut.result()
                     if out:
-                        rendered.append(out)
+                        rendered_by_rank[i] = out
                 except Exception as e:
                     _bridge("render", f"  clip {i+1} worker crashed: {e}")
                 completed_count += 1
                 _bridge("render", f"Rendered {completed_count}/{len(final_clips)} clips",
                         step=6, sub_progress=completed_count / max(1, len(final_clips)))
         except TimeoutError:
-            _bridge("render", f"Render deadline reached — keeping {len(rendered)} completed clip(s)")
-            if not rendered:
+            _bridge("render", f"Render deadline reached — keeping {len(rendered_by_rank)} completed clip(s)")
+            if not rendered_by_rank:
                 raise RuntimeError("All clip render tasks timed out")
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
 
+    # Parallel workers finish in duration/hardware order. Restore the original
+    # LLM rank so clip 1 and cache slices always mean "best clip", not
+    # "fastest render".
+    rendered = [rendered_by_rank[i] for i in sorted(rendered_by_rank)]
     _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
     from ..segmentation import deduplicate_preserving_order
     rendered_count = len(rendered)
@@ -1611,11 +1542,14 @@ def _run_moment_pipeline(
         "llm_provider": provider_used or "fallback",
         "llm_cost_usd": round(run_cost_usd, 6),
         "cost_per_clip_usd": round(run_cost_usd / n_clips, 6),
-        "clips_requested": len(picks_sorted),
+        "clips_requested": target_clip_count,
+        "clips_suggested_by_llm": len(picks_sorted),
         "clips_verified": sum(1 for c in clean_rendered if c.get("verified")),
         "clips_unverified": sum(1 for c in clean_rendered if not c.get("verified")),
         "best_effort_count": sum(1 for c in clean_rendered if c.get("best_effort")),
         "platform": "universal",  # SIMPLIFIED 2026-06-15
+        "target_clip_count": target_clip_count,
+        "duration": float(video_duration_s or 0.0),
     }
 
 
@@ -1625,6 +1559,7 @@ async def run_youtube_pipeline_async(
     callback,
     platform: str = "tiktok",
     caption_font: str = "studio",
+    requested_clip_count: Optional[int] = None,
 ):
     # Unified Database Cache Check (Supabase / PostgreSQL with local file fallback)
     # Checks by canonical 11-char video ID so all URL variants share the same entry.
@@ -1642,7 +1577,20 @@ async def run_youtube_pipeline_async(
 
         if cached and cached.get("clips"):
             from ..segmentation import deduplicate_preserving_order
+            from ..pipeline.clip_count import resolve_target_clip_count
+            cached_duration = float(cached.get("duration_s") or cached.get("duration") or 0.0)
+            cached_target = (
+                resolve_target_clip_count(cached_duration, requested_clip_count)
+                if requested_clip_count is not None or cached_duration > 0
+                else None
+            )
             clips = deduplicate_preserving_order(cached.get("clips", []))
+            if cached_target is None or len(clips) < cached_target:
+                cached = None
+            else:
+                clips = clips[:cached_target]
+
+        if cached and cached.get("clips"):
             savings = cached.get("_cache_savings_usd", 0.0)
             age_h = cached.get("_cache_age_hours", 0.0)
             task_store.update_task(
@@ -1682,7 +1630,12 @@ async def run_youtube_pipeline_async(
         # Delegate to the new orchestrator.
         try:
             result = await run_youtube_orchestrator(
-                task_id, url, callback, platform=platform, caption_font=caption_font
+                task_id,
+                url,
+                callback,
+                platform=platform,
+                caption_font=caption_font,
+                requested_clip_count=requested_clip_count,
             )
             clips = result.get("clips", [])
             cost_usd = result.get("llm_cost_usd", 0.0)
@@ -1794,6 +1747,15 @@ async def process_youtube_url(request: dict):
     platform = (request.get("platform") or "universal").lower().strip() or "universal"
     from ..pipeline.captions import normalize_caption_preset
     caption_font = normalize_caption_preset(request.get("caption_font"))
+    raw_clip_count = request.get("clip_count")
+    requested_clip_count = None
+    if raw_clip_count not in (None, "", "auto"):
+        try:
+            requested_clip_count = int(raw_clip_count)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="clip_count must be an integer from 1 to 4, or omitted for Auto")
+        if requested_clip_count < 1 or requested_clip_count > 4:
+            raise HTTPException(status_code=422, detail="clip_count must be between 1 and 4")
 
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}")
 
@@ -1805,6 +1767,7 @@ async def process_youtube_url(request: dict):
             create_progress_callback(task["task_id"]),
             platform=platform,
             caption_font=caption_font,
+            requested_clip_count=requested_clip_count,
         )
     )
 

@@ -52,7 +52,7 @@ const MAX_POLL_DURATION_MS = 5 * 60 * 1000; // 5 min hard cap
 // drives per-stage animations in StageAnimation.tsx.
 const STEPS: PipelineStep[] = [
   { number: 1, label: "Fetching source",       sub: "YouTube · captions · audio",  icon: "📥", vibe: "fetch" },
-  { number: 2, label: "Analyzing",             sub: "librosa · energy peaks",      icon: "🎵", vibe: "audio" },
+  { number: 2, label: "Analyzing",             sub: "Transcript · story signals",  icon: "💬", vibe: "audio" },
   { number: 3, label: "Transcribing",          sub: "Captions · Whisper fallback", icon: "💬", vibe: "transcribe" },
   { number: 4, label: "Selecting clips",       sub: "RelatiV AI · hook scoring",       icon: "🧠", vibe: "llm" },
   { number: 5, label: "Detecting faces",       sub: "Center-crop · OpenCV",        icon: "👤", vibe: "face" },
