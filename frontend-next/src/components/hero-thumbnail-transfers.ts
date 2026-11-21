@@ -57,16 +57,18 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
 
     const openWidth = getComputedStyle(slot).width;
     let spacing = slot.animate([{ width: "0px" }, { width: openWidth }], {
-      duration: 460, delay: 125, easing: "cubic-bezier(.22,.78,.24,1)", fill: "backwards",
+      duration: 640, delay: 150, easing: "cubic-bezier(.22,.78,.24,1)", fill: "backwards",
     });
     layer.append(thumb);
     let holdTimer: number | undefined;
+    let returnFrame = 0;
     let animation = thumb.animate([wheelFrame(bounds), featured], {
-      duration: 620, easing: "cubic-bezier(.22,.78,.24,1)", fill: "forwards",
+      duration: 900, easing: "cubic-bezier(.25,.68,.24,1)", fill: "forwards",
     });
     card.setAttribute("data-in-flight", "");
     const restore = () => {
       window.clearTimeout(holdTimer);
+      window.cancelAnimationFrame(returnFrame);
       animation.cancel();
       spacing.cancel();
       slot.removeAttribute("data-open");
@@ -76,25 +78,34 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     };
     const returnToRing = (duration: number) => {
       window.clearTimeout(holdTimer);
+      window.cancelAnimationFrame(returnFrame);
       if (slot.hasAttribute("data-open")) {
         const currentWidth = getComputedStyle(slot).width;
         spacing.cancel();
         slot.removeAttribute("data-open");
         spacing = slot.animate([{ width: currentWidth }, { width: "0px" }], {
-          duration, easing: "ease-in-out",
+          duration, easing: "cubic-bezier(.4,0,.25,1)",
         });
       }
       const style = getComputedStyle(thumb);
       const currentFrame = { transform: style.transform, opacity: style.opacity, filter: style.filter };
       animation.cancel();
       animation = thumb.animate([currentFrame, wheelFrame(card.getBoundingClientRect())], {
-        duration, easing: "ease-in-out", fill: "forwards",
+        duration, easing: "cubic-bezier(.4,0,.25,1)", fill: "forwards",
       });
+      const effect = animation.effect;
+      if (effect instanceof KeyframeEffect) {
+        const followOrbit = () => {
+          effect.setKeyframes([currentFrame, wheelFrame(card.getBoundingClientRect())]);
+          returnFrame = window.requestAnimationFrame(followOrbit);
+        };
+        returnFrame = window.requestAnimationFrame(followOrbit);
+      }
       animation.onfinish = restore;
     };
     flights.set(slot, { restore, returnToRing });
     animation.onfinish = () => {
-      holdTimer = window.setTimeout(() => returnToRing(360), hold);
+      holdTimer = window.setTimeout(() => returnToRing(620), hold);
     };
   }
 
@@ -102,7 +113,7 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     const slot = slots[cycle++ % slots.length];
     fly(slot, 1450);
     if (slot !== "speed" && cycle % slots.length === 3) {
-      stagger = window.setTimeout(() => fly("speed", 1100), 250);
+      stagger = window.setTimeout(() => fly("speed", 1100), 380);
     }
   }
 
@@ -115,7 +126,7 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     window.clearInterval(interval);
     restoreAll();
     if (!motion.matches && !document.hidden) {
-      interval = window.setInterval(featureNext, 3200);
+      interval = window.setInterval(featureNext, 3800);
     }
   }
 
