@@ -32,7 +32,7 @@ type MorphShard = {
 };
 type Morph = { start: number; next: number; target: PhraseLayout; pieces: MorphShard[] };
 
-const PHRASE_COLOR = "#ff294c";
+const PHRASE_COLOR = "#264bf9";
 
 const TAU = 2 * Math.PI;
 const MORPH_DURATION = 1580;
