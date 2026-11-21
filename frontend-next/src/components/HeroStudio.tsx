@@ -4,7 +4,8 @@ import { useState, useRef, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Link2, Upload } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
-import SickLoadingTransition from "./SickLoadingTransition";
+import { useAuth } from "@/lib/AuthContext";
+import { authPageHref, studioEntryHref } from "@/lib/auth-destination";
 import ShatterPhrase from "./ShatterPhrase";
 
 const HERO_PHRASES = ["personalized short clips", "more views in less time", "ready for every platform", "make every moment count"];
@@ -12,19 +13,23 @@ const HERO_PHRASES = ["personalized short clips", "more views in less time", "re
 export default function HeroStudio() {
   const router = useRouter();
   const [url, setUrl] = useState("");
-  const [clipUrl, setClipUrl] = useState("");
+  const { user, loading: authLoading } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isUploading || !url.trim()) return;
-    setClipUrl(url.trim());
+    if (isUploading) return;
+    router.push(studioEntryHref(url));
   };
 
   const uploadFile = async (file: File) => {
-    if (isUploading || clipUrl) return;
+    if (isUploading || authLoading) return;
+    if (!user) {
+      router.push(authPageHref("/login", "/dashboard"));
+      return;
+    }
     setIsUploading(true);
     setError(null);
     try {
@@ -38,7 +43,7 @@ export default function HeroStudio() {
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    if (isUploading || clipUrl) return;
+    if (isUploading || authLoading) return;
     const file = event.dataTransfer.files[0];
     if (file) {
       if (file.type && !file.type.startsWith("video/")) {
@@ -116,8 +121,11 @@ export default function HeroStudio() {
 
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || Boolean(clipUrl)}
+                onClick={() => {
+                  if (user) fileInputRef.current?.click();
+                  else router.push(authPageHref("/login", "/dashboard"));
+                }}
+                disabled={isUploading || authLoading}
                 aria-label="Upload file"
                 title="Upload file"
                 className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-wait sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
@@ -128,7 +136,7 @@ export default function HeroStudio() {
 
               <button
                 type="submit"
-                disabled={isUploading || Boolean(clipUrl)}
+                disabled={isUploading}
                 aria-label={isUploading ? "Uploading video" : "Get free clips"}
                 className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-violet-700 px-2.5 text-sm font-bold text-white transition hover:bg-violet-800 disabled:cursor-wait sm:min-h-[52px] sm:px-4 dark:bg-violet-200 dark:text-violet-950 dark:hover:bg-violet-100"
               >
@@ -146,8 +154,6 @@ export default function HeroStudio() {
           <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">Scroll to explore ↓</p>
         </div>
       </section>
-
-      {clipUrl && <SickLoadingTransition url={clipUrl} autoRedirect />}
     </>
   );
 }

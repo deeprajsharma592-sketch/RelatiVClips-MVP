@@ -9,7 +9,7 @@ import { useState } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import SickLoadingTransition from "./SickLoadingTransition";
+import { studioEntryHref } from "@/lib/auth-destination";
 
 interface StickyInputBarProps {
   threshold?: number;
@@ -20,7 +20,6 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
   const { scrollY } = useScroll();
   const [visible, setVisible] = useState(false);
   const [url, setUrl] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const hero = document.getElementById("homepage-hero");
@@ -33,14 +32,13 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) return;
-    setIsSubmitting(true);
+    router.push(studioEntryHref(url));
   };
 
   return (
     <>
       <AnimatePresence>
-        {visible && !isSubmitting && (
+        {visible && (
           <motion.div
             key="sticky-conversion-dock"
             initial={{ y: 80, opacity: 0 }}
@@ -80,13 +78,6 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
         )}
       </AnimatePresence>
 
-      {/* ── SICK LOADING TRANSITION OVERLAY ── */}
-      {isSubmitting && url && (
-        <SickLoadingTransition
-          url={url}
-          autoRedirect={true}
-        />
-      )}
     </>
   );
 }

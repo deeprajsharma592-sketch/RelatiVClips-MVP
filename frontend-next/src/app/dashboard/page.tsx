@@ -33,6 +33,7 @@ import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
+import { authPageHref } from "@/lib/auth-destination";
 import { apiPath } from "@/lib/apiBase";
 import { checkProcessingStatus, submitYouTubeUrl } from "@/lib/api";
 import {
@@ -696,11 +697,26 @@ class DashboardErrorBoundary extends Component<
   }
 }
 
+function DashboardEntry() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (loading || user) return;
+    const query = searchParams.toString();
+    const next = query ? `/dashboard?${query}` : "/dashboard";
+    router.replace(`${authPageHref("/login", next)}&auth_error=session`);
+  }, [loading, user, router, searchParams]);
+
+  return user ? <DashboardContent /> : <div className="min-h-screen bg-[#09090C]" />;
+}
+
 export default function DashboardPage() {
   return (
     <DashboardErrorBoundary>
       <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
-        <DashboardContent />
+        <DashboardEntry />
       </Suspense>
     </DashboardErrorBoundary>
   );
