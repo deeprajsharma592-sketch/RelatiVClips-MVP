@@ -61,9 +61,9 @@ from ..utils.config import CLAUDE_MODEL
 # one of the other three at runtime. We omit it from TIER_CONFIG.
 TIER_CONFIG = {
     LLMTier.CALIBRATION: {
-        "primary": "claude-haiku-4-5-20251001",
-        "fallback": ["claude-haiku-5-5", "claude-sonnet-4-6"],
-        "description": "High quality for story/hook calibration.",
+        "primary": "claude-haiku-5-5",
+        "fallback": ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"],
+        "description": "High quality for story/hook calibration using Haiku 5.5.",
         "use_cache": True,
     },
     LLMTier.BUDGET: {
@@ -93,6 +93,10 @@ COST_PER_MTOK = {
     "claude-3-5-haiku-20241022": {
         "input": 0.80, "output": 4.0,
         "cache_read": 0.08, "cache_write": 1.0,
+    },
+    "claude-haiku-5-5": {
+        "input": 1.0, "output": 5.0,
+        "cache_read": 0.10, "cache_write": 1.25,
     },
     "claude-haiku-4-5-20251001": {
         "input": 1.0, "output": 5.0,
