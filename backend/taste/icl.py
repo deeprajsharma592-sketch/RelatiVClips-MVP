@@ -414,6 +414,10 @@ A clip is a complete micro-story: **hook → context/setup → payoff** (or clai
 2. **Precise Landing**: Choose `start` where the viewer would first need to understand what is going on, not earlier and not later. Choose `end` immediately after the payoff lands (punchline, answer, conclusion, or reaction beat). Do not cut before the payoff. Do not trail on after it. Never end abruptly without reward.
 3. **Self-Containment**: If the moment cannot stand alone without more than 20s of context, REJECT it. If a payoff depends on an earlier setup elsewhere in the video, return `callbacks: [{"setup_start": 0.0, "setup_end": 0.0, "why": "..."}]` so we can prepend a short setup snippet.
 4. **No Intro Banter**: In videos longer than 3 minutes, NEVER select intro greetings, audio mic tests, sponsor reads, or generic welcome chat.
+5. **Interview & Q&A Complete Arc Rule (CRITICAL)**:
+   - When a speaker asks a question or sets up a topic (e.g. "How do you stop yourself from getting egoistic? How did you two manage it?"), NEVER end the clip at the end of the question or setup!
+   - The question is only the HOOK / TENSION. The clip's `end` MUST extend through the answer until the core insight, revelation, punchline, or takeaway concludes (typically 45s to 90s).
+   - Set `payoff_text` to the exact concluding line of the answer, and set `end` to where that line concludes. A clip containing only the question has ZERO payoff and will be rejected.
 
 ## Hook Types
 Tag each candidate with the one that fits best:

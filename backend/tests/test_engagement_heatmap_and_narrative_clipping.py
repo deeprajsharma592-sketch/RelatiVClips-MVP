@@ -399,3 +399,39 @@ def test_setup_payoff_callback_snippet_handling():
     refined, rej = refine_clip_candidate(sanitized, units)
     assert refined is not None, f"Expected candidate with callback to be accepted: {rej}"
     assert len(refined["callbacks"]) == 1
+
+
+def test_ensure_payoff_included_auto_extends_to_answer():
+    """Verify that when candidate end timestamp stops prematurely at the end of a question,
+    refine_clip_candidate auto-extends end to cover the declared payoff text.
+    """
+    transcript = {
+        "segments": [
+            {"start": 3.5, "end": 6.0, "text": "65% of startups shut down because founders fight."},
+            {"start": 6.0, "end": 29.2, "text": "How do you stop yourself from getting egoistic? One will be more popular than the other."},
+            {"start": 30.0, "end": 58.0, "text": "Can I ask you that question? With Nithin right? How did you do that?"},
+            {"start": 58.0, "end": 88.0, "text": "We do completely different things. All my time is spent on stock market related stuff and his on broking so we don't get in each other's way."},
+        ]
+    }
+    units = build_narrative_units(transcript)
+
+    # Candidate with premature end at question (29.2s) but declared payoff at 88.0s
+    candidate = {
+        "start": 3.5,
+        "end": 29.2,
+        "arc_type": "story",
+        "hook_text": "65% of startups shut down because founders fight.",
+        "payoff_text": "all my time is spent on stock market related stuff and his on broking so we don't get in each other's way",
+        "standalone_score": 9,
+        "completeness_score": 9,
+        "hook_strength": 9,
+        "callbacks": [],
+        "reason": "Complete founder story arc",
+    }
+
+    refined, rej = refine_clip_candidate(candidate, units)
+    assert refined is not None, f"Expected candidate to be accepted: {rej}"
+    # Verify it auto-extended past 29.2s to include the payoff answer (~88s)
+    assert refined["end"] >= 88.0
+    assert refined["duration_s"] > 80.0
+

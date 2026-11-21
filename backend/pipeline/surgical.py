@@ -123,18 +123,15 @@ def _ytdlp_video_section_url(
 
     cmd = [
         YTDLP_PATH,
-        # Native 1080p and 720p HD streams with progressive format fallback (format 18 / best)
+        # Native 1080p and 720p HD streams (never allow low-resolution 360p / format 18)
         "-f", (
-            "137+140/"
-            "bv*[height=1080]+ba/"
             "bv*[height>=1080]+ba/"
-            "136+140/"
-            "bv*[height=720]+ba/"
+            "137+140/"
             "bv*[height>=720]+ba/"
+            "136+140/"
             "bv*+ba/"
-            "b[height<=1080]/"
-            "best/"
-            "18"
+            "bestvideo[height>=720]+bestaudio/"
+            "b[height>=720]"
         ),
         "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
@@ -445,12 +442,13 @@ def _download_one_video_segment(
     # 3. Direct surgical yt-dlp with PO token (fastest: downloads only the ~30s clip in ~4s)
     if not final_ok:
         _log(f"  Downloading section [{s:.1f}s - {e:.1f}s] via surgical yt-dlp + PO token...")
+        fallback_path = video_path.with_suffix(".fallback.mp4")
         for seg_attempt in range(1, 4):
-            # Attempt 1: android client without cookies (fastest & most reliable on datacenter IPs)
-            # Attempt 2: web_embedded with Node JS solver
+            # Attempt 1: android_vr client without cookies (fastest & provides native 1080p/720p without PO-token block)
+            # Attempt 2: web_embedded with Node JS solver & cookies
             # Attempt 3: ios client fallback
             if seg_attempt == 1:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android;formats=missing_pot")
+                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android_vr")
             elif seg_attempt == 2:
                 cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="web_embedded")
             else:
@@ -478,10 +476,14 @@ def _download_one_video_segment(
                         w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         cap.release()
-                        if frames > 0 and h > 0:
+                        if frames > 0 and h >= 720:
                             final_ok = True
-                            _log(f"  [video seg {seg_idx + 1}/{total}] Downloaded stream resolution: {w}x{h} ({video_path.stat().st_size / (1024*1024):.1f} MB)")
+                            _log(f"  [video seg {seg_idx + 1}/{total}] Downloaded HD stream resolution: {w}x{h} ({video_path.stat().st_size / (1024*1024):.1f} MB)")
                             break
+                        elif frames > 0 and h > 0:
+                            _log(f"  [video seg {seg_idx + 1}/{total}] Stream resolution {w}x{h} < 720p, retrying for HD...")
+                            import shutil
+                            shutil.copy2(video_path, fallback_path)
                     except Exception:
                         pass
                 err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
@@ -492,6 +494,13 @@ def _download_one_video_segment(
                 _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 crashed: {e}")
             if seg_attempt < 3:
                 time.sleep(2 * seg_attempt)
+
+        if not final_ok and fallback_path.exists() and fallback_path.stat().st_size > 1024:
+            fallback_path.replace(video_path)
+            final_ok = True
+            _log(f"  [video seg {seg_idx + 1}/{total}] Using best-effort stream ({video_path.stat().st_size / 1024:.0f} KB)")
+        else:
+            fallback_path.unlink(missing_ok=True)
 
     try:
         if on_segment_done is not None:
@@ -519,6 +528,7 @@ def surgical_download_video_youtube(
     Returns a list of {video_path, source_start, source_end} dicts in
     the same order as the input candidates.
     """
+    import uuid
     log_fn = log_fn or (lambda m: None)
     log_lock = threading.Lock()
     workers = max(1, min(PARALLEL_SURGICAL_WORKERS, len(candidates)))
@@ -532,7 +542,7 @@ def surgical_download_video_youtube(
         for i, cand in enumerate(candidates):
             start = float(cand["start"])
             end = float(cand["end"])
-            video_path = TEMP_DIR / f"{task_id}_vidseg_{int(start)}_{int(end)}_{i}.mp4"
+            video_path = TEMP_DIR / f"{task_id}_vidseg_{int(start)}_{int(end)}_{i}_{uuid.uuid4().hex[:6]}.mp4"
             fut = pool.submit(
                 _download_one_video_segment,
                 url, start, end, video_path, log_fn, i, len(candidates), log_lock,

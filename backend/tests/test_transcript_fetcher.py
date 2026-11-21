@@ -55,6 +55,30 @@ class TestParseVtt:
         assert segments[0]["end"] == 4.0
         assert segments[0]["text"] == "Hello world"
 
+    def test_parses_youtube_rolling_karaoke_vtt(self, tmp_path):
+        rolling_vtt = """WEBVTT
+Kind: captions
+Language: en
+
+00:00:01.120 --> 00:00:03.510 align:start position:0%
+ 
+65%<00:00:02.120><c> of</c><00:00:02.320><c> startups</c><00:00:02.760><c> shut</c><00:00:03.000><c> down</c>
+
+00:00:03.510 --> 00:00:03.520 align:start position:0%
+65% of startups shut down
+ 
+
+00:00:03.520 --> 00:00:06.030 align:start position:0%
+65% of startups shut down
+founders<00:00:03.960><c> fight</c>
+"""
+        path = tmp_path / "rolling.vtt"
+        path.write_text(rolling_vtt)
+        segments = _parse_vtt(str(path))
+        assert len(segments) == 1
+        assert "65% of startups shut down" in segments[0]["text"]
+        assert "founders fight" in segments[0]["text"]
+
     def test_empty_file(self, tmp_path):
         path = tmp_path / "empty.vtt"
         path.write_text("")

@@ -30,15 +30,21 @@ def _parse_vtt(vtt_path: str) -> list:
 
 
 def _parse_vtt_content(content: str) -> list:
-    """Parse VTT string (used for in-memory subtitle data from laptop proxy)."""
-    blocks = re.split(r"\n\s*\n", content)
-    segments = []
-    for block in blocks:
-        lines = block.strip().split("\n")
-        if len(lines) < 2:
+    """Parse VTT string. Handles both standard WebVTT and YouTube rolling karaoke captions.
+    Deduplicates overlapping rolling lines and merges words into clean speech chunks.
+    """
+    if not content or not content.strip():
+        return []
+
+    has_karaoke = bool(re.search(r"<\d{2}:\d{2}:\d{2}", content))
+    # Split by timestamp cue lines (never splits blank line between timestamp and text)
+    cue_blocks = re.split(r"\n(?=(?:\d{1,2}:)?\d{2}:\d{2}[\.,]\d{3}\s*-->)", content)
+
+    raw_segments = []
+    for block in cue_blocks:
+        lines = [l.strip() for l in block.strip().split("\n") if l.strip()]
+        if not lines or any(lines[0].startswith(x) for x in ("WEBVTT", "Kind:", "Language:")):
             continue
-        if lines[0].startswith("WEBVTT"):
-            lines = lines[1:]
         timing_line = None
         text_lines = []
         for i, line in enumerate(lines):
@@ -46,19 +52,56 @@ def _parse_vtt_content(content: str) -> list:
                 timing_line = line
                 text_lines = lines[i + 1:]
                 break
-        if not timing_line:
+        if not timing_line or not text_lines:
             continue
         try:
             start_str = timing_line.split("-->")[0].strip().replace(",", ".")
             end_str = timing_line.split("-->")[1].split()[0].strip().replace(",", ".")
             start = sum(float(x) * mult for x, mult in zip(start_str.split(":"), [3600, 60, 1]))
             end = sum(float(x) * mult for x, mult in zip(end_str.split(":"), [3600, 60, 1]))
-            text = re.sub(r"<[^>]+>", "", " ".join(text_lines)).strip()
-            if text and start < end:
-                segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
         except Exception:
             continue
-    return segments
+
+        if end <= start:
+            continue
+
+        if has_karaoke:
+            # YouTube rolling karaoke: last line is the newest spoken text; skip near-zero transitions
+            if (end - start) < 0.08:
+                continue
+            text = re.sub(r"<[^>]+>", "", text_lines[-1]).strip()
+        else:
+            text = re.sub(r"<[^>]+>", "", " ".join(text_lines)).strip()
+
+        if text:
+            raw_segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
+
+    if not has_karaoke or not raw_segments:
+        return raw_segments
+
+    # Merge rolling cues into natural sentences (~4-8s or pause >= 0.6s)
+    merged = []
+    curr = None
+    for cue in raw_segments:
+        if curr is None:
+            curr = dict(cue)
+            continue
+        if cue["text"] == curr["text"]:
+            curr["end"] = max(curr["end"], cue["end"])
+            continue
+        gap = cue["start"] - curr["end"]
+        dur = curr["end"] - curr["start"]
+        if gap >= 0.6 or dur >= 7.0:
+            merged.append(curr)
+            curr = dict(cue)
+        else:
+            curr["text"] += " " + cue["text"]
+            curr["end"] = cue["end"]
+
+    if curr:
+        merged.append(curr)
+
+    return merged
 
 
 def _parse_srt(srt_path: str) -> list:

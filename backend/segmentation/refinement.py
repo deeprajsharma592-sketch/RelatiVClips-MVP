@@ -137,16 +137,53 @@ def trim_dead_air(
     return max(0.0, start), max(start + 1.0, end)
 
 
+def ensure_payoff_included(
+    start: float,
+    end: float,
+    payoff_text: Optional[str],
+    units: List[NarrativeUnit],
+    max_duration_s: float = 150.0,
+) -> float:
+    """
+    If the LLM specified a payoff_text that occurs after the initial candidate 'end',
+    extend 'end' so the full narrative payoff is captured (up to max_duration_s).
+    Prevents interview/story clips from cutting off right after the question before the answer.
+    """
+    if not payoff_text or not units:
+        return end
+
+    clean_payoff = re.sub(r"[^\w\s]", "", str(payoff_text).lower()).strip()
+    payoff_words = [w for w in clean_payoff.split() if len(w) > 3]
+    if len(payoff_words) < 2:
+        return end
+
+    best_matching_unit_end = None
+    for u in units:
+        if u.start < start or (u.end - start) > max_duration_s:
+            continue
+        u_clean = re.sub(r"[^\w\s]", "", u.text.lower())
+        u_words = set(u_clean.split())
+        match_count = sum(1 for w in payoff_words if w in u_words)
+        if match_count >= min(3, len(payoff_words)):
+            best_matching_unit_end = u.end
+
+    if best_matching_unit_end and best_matching_unit_end > end:
+        return best_matching_unit_end
+
+    return end
+
+
 def refine_clip_candidate(
     candidate: Dict[str, Any],
     units: List[NarrativeUnit],
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
     Runs complete boundary refinement pipeline on a candidate from LLM:
-    1. Snap to narrative units.
-    2. Check dangling references.
-    3. Check mid-thought ending.
-    4. Trim dead air.
+    1. Ensure payoff is included (auto-extend if LLM gave question-end as clip-end).
+    2. Snap to narrative units.
+    3. Check dangling references.
+    4. Check mid-thought ending.
+    5. Trim dead air.
     Returns (refined_candidate_dict, rejection_reason).
     """
     raw_start = float(candidate.get("start", 0.0))
@@ -154,6 +191,11 @@ def refine_clip_candidate(
 
     if raw_end <= raw_start:
         return None, "Candidate end timestamp is before or equal to start timestamp"
+
+    # Auto-extend if candidate declared a payoff_text that lands later in the narrative
+    payoff_text = candidate.get("payoff_text")
+    if payoff_text:
+        raw_end = ensure_payoff_included(raw_start, raw_end, payoff_text, units)
 
     # Snap boundaries
     snapped_start, snapped_end, included_units = snap_to_narrative_units(raw_start, raw_end, units)
