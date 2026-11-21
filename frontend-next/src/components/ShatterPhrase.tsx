@@ -82,7 +82,7 @@ export default function ShatterPhrase({
       const source = ink.getContext("2d", { willReadFrequently: true });
       if (!source) return;
       const style = getComputedStyle(root);
-      const font = (size: number) => `800 ${size}px ${style.fontFamily}`;
+      const font = (size: number) => `${style.fontWeight} ${size}px ${style.fontFamily}`;
       const suggested = parseFloat(style.fontSize);
       source.setTransform(ratio, 0, 0, ratio, 0, 0);
       source.font = font(suggested);
