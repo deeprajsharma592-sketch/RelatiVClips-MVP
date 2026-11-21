@@ -87,7 +87,7 @@ export const metadata: Metadata = {
   generator: "Next.js",
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/relativ-favicon.svg", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: [
