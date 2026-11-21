@@ -860,9 +860,15 @@ def _run_moment_pipeline(
         n_spec_ok = sum(1 for v in spec_results.values() if v.get("video_path"))
         _bridge("video_dl", f"Speculative video: {n_spec_ok}/{len(spec_results)} ready",
                 step=4, sub_progress=0.84)
+        if n_spec_ok == 0:
+            raise RuntimeError(
+                "Source video download failed before paid clip selection. "
+                "No LLM call was made; check yt-dlp/ytagent formats and credentials."
+            )
     except Exception as e:
         _bridge("video_dl", f"Speculative video download failed: {e}",
                 step=4, sub_progress=0.84)
+        raise
 
     # 2. Engagement Signal Layer + Narrative Unit Segmentation + LLM Discovery
     _bridge("taste", "Analyzing engagement signals & narrative units...")
@@ -1582,6 +1588,10 @@ def _run_moment_pipeline(
         _bridge(
             "filter",
             f"Removed {rendered_count - len(rendered)} duplicate rendered output(s)",
+        )
+    if not rendered:
+        raise RuntimeError(
+            "Rendering produced zero playable clips. The task is failed and will not be reported as successful."
         )
     # Strip non-serializable / circular fields before returning
     clean_rendered = []
