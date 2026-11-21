@@ -171,10 +171,10 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             split_point = last_nl
         cacheable = prompt[:split_point]
         variable = prompt[split_point:]
-        # Target approved Haiku models ONLY — never auto-fallback to expensive Sonnet or internal models
-        primary_model = os.getenv("CLAUDE_MODEL") or model_name or "claude-haiku-4-5-20251001"
+        # Primary: Haiku 5.5, Fallback: Haiku 4.5 (strictly Haiku tier only)
+        primary_model = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
         candidate_models = []
-        for m in [primary_model, "claude-haiku-4-5-20251001", "claude-3-5-haiku-20241022", "claude-3-haiku-20240307"]:
+        for m in [primary_model, "claude-haiku-5-5", "claude-haiku-4-5-20251001", "claude-3-5-haiku-20241022"]:
             if m and m not in candidate_models:
                 candidate_models.append(m)
 
@@ -214,6 +214,10 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                         if block.get("type") == "text":
                             print(f"[Claude] SUCCESS with {current_model} (tokens: in={in_tok}, out={out_tok})")
                             return block.get("text", "")
+                    full_text = "".join(b.get("text", "") for b in body.get("content", []) if isinstance(b, dict))
+                    if full_text:
+                        print(f"[Claude] SUCCESS with {current_model} (combined text, tokens: in={in_tok}, out={out_tok})")
+                        return full_text
                     raise RuntimeError(f"Claude returned no text block: {body}")
                 last_error = f"Claude API error {r.status_code}: {r.text[:300]}"
                 print(f"[Claude] Model {current_model} returned HTTP {r.status_code}: {r.text[:150]}")

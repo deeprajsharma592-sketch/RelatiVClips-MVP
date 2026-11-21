@@ -28,8 +28,8 @@ VRAM_MODEL_LIMIT_GB = MAX_VRAM_GB - VRAM_BUFFER_GB
 MAX_CONCURRENT_TASKS = 1
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-# Default to Claude Haiku — fast, accurate, and cost-efficient for viral hook selection.
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+# Default to Claude Haiku 5.5 — primary choice, with Haiku 4.5 as fallback.
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
 
 # --- DeepSeek API (cheaper alternative to Claude, ~30x cheaper) ---
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
