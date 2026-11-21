@@ -109,7 +109,7 @@ function DashboardContent() {
     setActiveProjectId(newProj.id);
     setIsGenerating(true);
     setElapsedSec(0);
-    setGenerationProgress(20);
+    setGenerationProgress(5);
 
     let isMounted = true;
     let pollInterval: NodeJS.Timeout | null = null;
@@ -122,9 +122,15 @@ function DashboardContent() {
           if (!isMounted) return;
           consecutiveErrors = 0;
 
-          if (status.status === "complete" && status.clips && status.clips.length > 0) {
+          if (status.status === "complete") {
             if (pollInterval) clearInterval(pollInterval);
             setIsGenerating(false);
+            if (!status.clips?.length) {
+              setGenerationError("Processing completed, but no usable clips were returned.");
+              updateProjectStatus(newProj.id, "failed", [], 0);
+              setProjects(getStoredProjects());
+              return;
+            }
             setGenerationProgress(100);
             updateProjectStatus(newProj.id, "ready", status.clips, 100);
             setProjects(getStoredProjects());
@@ -142,7 +148,9 @@ function DashboardContent() {
                   : status.progress * 100
                 : 25;
             const progress = Math.min(95, Math.max(15, raw));
-            setGenerationProgress(progress);
+            // Poll responses and stage changes can arrive out of order. Never
+            // let the visible loader move backwards.
+            setGenerationProgress((previous) => Math.max(previous, progress));
             if (status.step_name || status.current_step) {
               setCurrentStepName(status.step_name || status.current_step || "Analyzing video stream...");
             }
@@ -200,7 +208,6 @@ function DashboardContent() {
     if (!isGenerating) return;
     const interval = setInterval(() => {
       setElapsedSec((prev) => prev + 1);
-      setGenerationProgress((prev) => (prev < 90 ? prev + 3 : prev));
     }, 1000);
     return () => clearInterval(interval);
   }, [isGenerating]);

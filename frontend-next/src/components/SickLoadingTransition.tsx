@@ -3,15 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles,
   Zap,
   Radio,
-  Cpu,
-  Layers,
-  CheckCircle2,
-  Video,
   ArrowRight,
-  ShieldCheck,
   Activity,
   Terminal,
 } from "lucide-react";
@@ -115,7 +109,10 @@ export default function SickLoadingTransition({
   const [progress, setProgress] = useState(4);
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [activeLogs, setActiveLogs] = useState<TelemetryLog[]>([]);
-  const [taskId, setTaskId] = useState<string | null>(null);
+  const taskIdRef = useRef<string | null>(null);
+  const submissionErrorRef = useRef<string | null>(null);
+  const [taskReady, setTaskReady] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isWarping, setIsWarping] = useState(false);
   const hasTriggeredComplete = useRef(false);
 
@@ -144,12 +141,19 @@ export default function SickLoadingTransition({
       .then((res) => {
         if (!isMounted) return;
         if (res.taskId) {
-          setTaskId(res.taskId);
+          taskIdRef.current = res.taskId;
+          setTaskReady(true);
+        } else {
+          const message = "The processing service did not return a task ID.";
+          submissionErrorRef.current = message;
+          setSubmissionError(message);
         }
       })
       .catch((err) => {
-        // Degrade gracefully; the dashboard will retry if needed
-        console.warn("[Transition] Background submission status:", err?.message);
+        if (!isMounted) return;
+        const message = err?.message || "Could not start video processing.";
+        submissionErrorRef.current = message;
+        setSubmissionError(message);
       });
 
     return () => {
@@ -172,7 +176,7 @@ export default function SickLoadingTransition({
       const eased = Math.round(
         100 * (1 - Math.pow(1 - rawPct / 100, 2.2))
       );
-      setProgress(Math.max(5, eased));
+      setProgress(Math.max(5, taskIdRef.current ? eased : Math.min(eased, 92)));
 
       // Reveal telemetry logs according to progress
       const matchingStageIndex = TELEMETRY_STAGES.findIndex(
@@ -192,6 +196,12 @@ export default function SickLoadingTransition({
 
       if (eased < 100) {
         frameId = requestAnimationFrame(tick);
+      } else if (!taskIdRef.current) {
+        // The visual animation may finish before the backend returns a task.
+        // Hold here instead of redirecting and accidentally submitting twice.
+        if (!submissionErrorRef.current) {
+          frameId = requestAnimationFrame(tick);
+        }
       } else {
         // Warp transition climax!
         setIsWarping(true);
@@ -199,12 +209,12 @@ export default function SickLoadingTransition({
           if (!hasTriggeredComplete.current) {
             hasTriggeredComplete.current = true;
             if (onComplete) {
-              onComplete(taskId || undefined);
+              onComplete(taskIdRef.current || undefined);
             }
             if (autoRedirect) {
               const targetUrl = getDashDashboardUrl("", {
                 url,
-                taskId: taskId || undefined,
+                taskId: taskIdRef.current || undefined,
               });
               window.location.href = targetUrl;
             }
@@ -215,7 +225,7 @@ export default function SickLoadingTransition({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [taskId, url, onComplete, autoRedirect]);
+  }, [url, onComplete, autoRedirect]);
 
   const currentStage =
     TELEMETRY_STAGES[currentStageIndex] ||
@@ -366,8 +376,8 @@ export default function SickLoadingTransition({
             <span>{currentStage.stageName}</span>
           </div>
 
-          <h2 className="text-lg sm:text-2xl font-display font-bold text-white tracking-tight">
-            {currentStage.subtext}
+          <h2 className={`text-lg sm:text-2xl font-display font-bold tracking-tight ${submissionError ? "text-rose-300" : "text-white"}`}>
+            {submissionError || currentStage.subtext}
           </h2>
         </div>
 
@@ -442,10 +452,10 @@ export default function SickLoadingTransition({
         <div className="flex items-center justify-between text-xs font-mono text-zinc-400">
           <div className="flex items-center gap-2">
             <span className="text-white font-semibold">{progress}%</span>
-            <span>COMPLETED</span>
+            <span>{submissionError ? "FAILED" : taskReady ? "READY" : "STARTING"}</span>
           </div>
           <div className="flex items-center gap-2 text-cyan-300">
-            <span>Launching Studio Workspace</span>
+            <span>{submissionError ? "Processing could not be started" : taskReady ? "Launching Studio Workspace" : "Waiting for processing service"}</span>
             <ArrowRight className="w-3.5 h-3.5 animate-pulse" />
           </div>
         </div>

@@ -3,15 +3,10 @@
 import { useState, useRef } from "react";
 import {
   Upload,
-  Sparkles,
   Link2,
   FolderOpen,
-  ArrowRight,
-  Film,
   Scissors,
   Wand2,
-  Tv,
-  Check,
 } from "lucide-react";
 import PreGenConfigModal, { RecipeConfig } from "./PreGenConfigModal";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
@@ -57,37 +52,6 @@ const RECIPE_PILLS: RecipePill[] = [
   { id: "broll", label: "AI B-roll" },
   { id: "cleanup", label: "Clean up recording", isHot: true },
   { id: "translate", label: "Translate & dub" },
-];
-
-interface DemoProject {
-  id: string;
-  title: string;
-  speaker: string;
-  clipsCount: number;
-  thumbnailUrl: string;
-  videoUrl: string;
-  template: "podcast" | "streamer" | "gaming";
-}
-
-const DEMO_PROJECTS: DemoProject[] = [
-  {
-    id: "demo-1",
-    title: "24 Hours with Danny Duncan (The $1M Van)",
-    speaker: "Danny Duncan",
-    clipsCount: 18,
-    thumbnailUrl: "/thumb_r1.webp",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    template: "streamer",
-  },
-  {
-    id: "demo-3",
-    title: "Tal Wilkenfeld #408 Lex Fridman Podcast",
-    speaker: "Tal Wilkenfeld & Lex",
-    clipsCount: 25,
-    thumbnailUrl: "/thumb_r3.webp",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    template: "podcast",
-  },
 ];
 
 export default function StudioHero({
@@ -290,15 +254,6 @@ export default function StudioHero({
             <span>Google Drive</span>
           </button>
 
-          <button
-            onClick={() => {
-              setInputText("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-              setIsConfigModalOpen(true);
-            }}
-            className="text-zinc-400 hover:text-white transition underline underline-offset-2 cursor-pointer ml-auto"
-          >
-            Try a sample project
-          </button>
         </div>
 
         {uploadStatus && (
@@ -328,58 +283,6 @@ export default function StudioHero({
           >
             See all Recipes &gt;
           </button>
-        </div>
-      </div>
-
-      {/* ── START FROM A DEMO PROJECT CAROUSEL (Exact match to OpusClip picture) ── */}
-      <div className="space-y-3.5 pt-2">
-        <h2 className="text-sm font-semibold text-white">Start from a demo project</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {DEMO_PROJECTS.map((demo) => (
-            <div
-              key={demo.id}
-              className="rounded-xl border border-white/[0.08] bg-[#121215] overflow-hidden flex flex-col justify-between group shadow-lg"
-            >
-              {/* Cover thumbnail */}
-              <div className="relative aspect-video w-full bg-black overflow-hidden flex items-center justify-center">
-                <img
-                  src={demo.thumbnailUrl}
-                  alt={demo.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    // Fallback to stylized abstract cover if local asset missing
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                <div className="absolute top-2.5 left-2.5">
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-black/60 text-zinc-300 backdrop-blur-md">
-                    {demo.clipsCount} clips
-                  </span>
-                </div>
-              </div>
-
-              {/* Title & Try It button */}
-              <div className="p-3.5 flex items-center justify-between gap-2">
-                <div className="truncate">
-                  <p className="text-xs font-medium text-white truncate">{demo.title}</p>
-                  <p className="text-[10px] text-zinc-500 truncate">{demo.speaker}</p>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setInputText(demo.videoUrl);
-                    setSelectedTemplate(demo.template);
-                    setIsConfigModalOpen(true);
-                  }}
-                  className="px-3 py-1 rounded-md bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition shrink-0 cursor-pointer"
-                >
-                  Try it
-                </button>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 
