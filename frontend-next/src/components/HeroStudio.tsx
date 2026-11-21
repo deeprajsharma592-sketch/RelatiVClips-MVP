@@ -118,14 +118,14 @@ export default function HeroStudio() {
               onSubmit={handleSubmit}
               aria-label="Create clips"
               aria-busy={pending !== null}
-              className="flex items-center gap-1.5 rounded-[28px] border border-zinc-300 bg-white p-1.5 shadow-[0_8px_30px_#0002] sm:gap-2 dark:border-[#373044] dark:bg-[#191621] dark:shadow-black/30"
+              className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2.5 rounded-[20px] border border-[#43394f] bg-[#191621] p-3 shadow-[4px_5px_0_#08070b] sm:flex sm:items-center sm:gap-2 sm:rounded-[28px] sm:border-zinc-300 sm:bg-white sm:p-1.5 sm:shadow-[0_8px_30px_#0002] sm:dark:border-[#373044] sm:dark:bg-[#191621] sm:dark:shadow-black/30"
             >
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-[20px] border border-zinc-200 bg-zinc-50 px-2 focus-within:border-violet-500 sm:min-h-12 sm:px-3 dark:border-[#373044] dark:bg-[#100e17] dark:focus-within:border-violet-400"
+                className="col-span-2 flex min-h-[52px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#373044] bg-[#100e17] px-3 focus-within:border-violet-400 sm:min-h-12 sm:rounded-[20px] sm:border-zinc-200 sm:bg-zinc-50 sm:focus-within:border-violet-500 sm:dark:border-[#373044] sm:dark:bg-[#100e17] sm:dark:focus-within:border-violet-400"
               >
-                <Link2 className="hidden size-4 shrink-0 text-zinc-500 sm:block dark:text-zinc-400" aria-hidden="true" />
+                <Link2 className="size-4 shrink-0 text-zinc-400 sm:text-zinc-500 sm:dark:text-zinc-400" aria-hidden="true" />
                 <input
                   type="text"
                   inputMode="url"
@@ -133,7 +133,7 @@ export default function HeroStudio() {
                   value={url}
                   onChange={(event) => setUrl(event.target.value)}
                   placeholder="Paste a link"
-                  className="min-w-0 flex-1 border-0 bg-transparent py-2.5 text-sm text-zinc-900 placeholder:text-zinc-600 focus-visible:outline-none sm:text-base dark:text-white dark:placeholder:text-zinc-400"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-2.5 text-base text-white placeholder:text-zinc-400 focus-visible:outline-none sm:text-zinc-900 sm:placeholder:text-zinc-600 sm:dark:text-white sm:dark:placeholder:text-zinc-400"
                 />
               </div>
 
@@ -155,22 +155,21 @@ export default function HeroStudio() {
                 disabled={pending !== null}
                 aria-label="Upload file"
                 title="Upload file"
-                className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-[20px] border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-wait sm:min-h-12 sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
+                className="col-start-2 row-start-2 inline-flex min-h-12 min-w-0 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#52465f] px-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:cursor-wait sm:min-w-10 sm:gap-2 sm:rounded-[20px] sm:border-zinc-200 sm:px-3 sm:font-medium sm:text-zinc-700 sm:hover:bg-zinc-100 sm:dark:border-[#373044] sm:dark:text-zinc-200 sm:dark:hover:bg-white/10"
               >
                 <Upload className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Upload file</span>
+                <span>Upload file</span>
               </button>
 
               <button
                 type="submit"
                 disabled={pending !== null}
                 aria-label={pending ? "Starting clip generation" : "Get free clips"}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-violet-700 px-2.5 text-sm font-bold text-white transition hover:bg-violet-800 disabled:cursor-wait sm:min-h-12 sm:px-4 dark:bg-violet-200 dark:text-violet-950 dark:hover:bg-violet-100"
+                className="col-start-1 row-start-2 inline-flex min-h-12 min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-violet-200 px-2.5 text-sm font-bold text-violet-950 transition hover:bg-violet-100 disabled:cursor-wait sm:rounded-[20px] sm:bg-violet-700 sm:px-4 sm:text-white sm:hover:bg-violet-800 sm:dark:bg-violet-200 sm:dark:text-violet-950 sm:dark:hover:bg-violet-100"
               >
                 {pending ? (pending === "upload" ? "Uploading…" : "Starting…") : (
                   <>
-                    <span className="sm:hidden">Get clips</span>
-                    <span className="hidden sm:inline">Get free clips</span>
+                    <span>Get free clips</span>
                     <ArrowRight className="hidden size-4 sm:block" aria-hidden="true" />
                   </>
                 )}
