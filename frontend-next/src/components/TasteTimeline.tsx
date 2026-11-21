@@ -64,10 +64,12 @@ function FlyingThumbnail({ index, journey, progress }: { index: number; journey:
   );
 }
 
-function SocialReaction({ index, progress }: { index: number; progress: MotionValue<number> }) {
+function SocialReaction({ index, progress, stageWidth }: { index: number; progress: MotionValue<number>; stageWidth: number }) {
   const reaction = REACTIONS[index];
   const angle = (index * 137.5) * Math.PI / 180;
-  const distance = 44 + (index * 23) % 104;
+  // Send reactions well clear of the clip stack, while keeping their paths
+  // proportional to the available width on narrow screens.
+  const distance = Math.min(190 + (index * 37) % 220, stageWidth * 0.42);
   const start = 0.5 + (index % 4) * 0.025;
   const end = start + 0.28;
   const x = useTransform(progress, [start, end], [0, Math.cos(angle) * distance]);
@@ -190,7 +192,7 @@ export default function TasteTimeline() {
         </motion.div>
         <motion.span className={styles.sourceLabel} style={{ opacity: sourceOpacity }} aria-hidden="true">Your long video · 48:12</motion.span>
         <div className={styles.reactions} aria-hidden="true">
-          {REACTIONS.map((_, index) => <SocialReaction key={index} index={index} progress={progress} />)}
+          {REACTIONS.map((_, index) => <SocialReaction key={index} index={index} progress={progress} stageWidth={journeys[0]?.stageWidth ?? 1440} />)}
         </div>
 
         <motion.div className={styles.timeline} inert={!canInteract} style={reduceMotion ? undefined : { opacity: timelineOpacity }}>
