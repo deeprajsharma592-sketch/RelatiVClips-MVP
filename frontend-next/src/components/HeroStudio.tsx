@@ -123,7 +123,7 @@ export default function HeroStudio() {
                 <span className={styles.featuredSlot} data-thumbnail-slot="headline" aria-hidden="true" />
                 into
               </span>
-              <span className="mt-3 flex w-full items-center text-[0.62em] font-sans font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
+              <span className="mt-3 flex w-full items-center text-[0.62em] font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
                 <ShatterPhrase
                   phrases={HERO_PHRASES}
                   thumbnailSlot={<span className={`${styles.featuredSlot} ${styles.shatterSlot}`} data-thumbnail-slot="shatter" aria-hidden="true" />}
