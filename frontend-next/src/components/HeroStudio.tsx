@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
-import GravityPhrase from "./GravityPhrase";
+import ShatterPhrase from "./ShatterPhrase";
 
 const HERO_PHRASES = ["personalized short clips", "more views in less time", "ready for every platform", "make every moment count"];
 
@@ -51,7 +51,7 @@ export default function HeroStudio() {
           <h1 className="max-w-[1200px] text-[clamp(3rem,8vw,8rem)] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white">
             Turn any footage into
             <span className="mt-3 block w-full text-[0.62em] font-sans font-medium tracking-[-0.035em] text-zinc-300 sm:mt-5">
-              <GravityPhrase phrases={HERO_PHRASES} />
+              <ShatterPhrase phrases={HERO_PHRASES} />
             </span>
           </h1>
           <p className="mt-7 text-[clamp(2rem,4.8vw,4.5rem)] font-sans font-semibold leading-none tracking-[-0.04em] text-white">20× faster</p>
