@@ -7,7 +7,6 @@ import HeroStudio from "@/components/HeroStudio";
 import OwnYourTaste from "@/components/OwnYourTaste";
 import TasteTimeline from "@/components/TasteTimeline";
 import CreatorProof from "@/components/CreatorProof";
-import MovingClipsGrid from "@/components/MovingClipsGrid";
 import StickyInputBar from "@/components/StickyInputBar";
 import SolutionsSection from "@/components/SolutionsSection";
 
@@ -51,9 +50,6 @@ export default function HomePage() {
 
       {/* ── SOCIAL PROOF & CREATOR METRICS (Opus Style Authority) ── */}
       <CreatorProof />
-
-      {/* ── SECTION 02: THE OUTPUT SHOWCASE (6 Vertical 9:16 Clips) ── */}
-      <MovingClipsGrid />
 
       {/* ── SECTION: SOLUTIONS FOR EVERY CREATOR & TEAM ── */}
       <SolutionsSection />
