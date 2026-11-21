@@ -411,27 +411,26 @@ def _download_one_video_segment(
     _log(f"  Downloading video segment {seg_idx + 1}/{total} [{start:.1f}s - {end:.1f}s]...")
 
     final_ok = False
-    # 1. If a verified high-quality source was already downloaded and cached,
-    # slice the segment directly via local ffmpeg (<0.5s).
+    # 1. Ask ytagent for a verified high-quality source. It reuses an existing
+    # cache when present and creates that cache on the first request. The old
+    # implementation checked `_cached_source` first, which meant ytagent could
+    # never populate an empty cache.
     try:
-        from ..utils.ytagent_downloader import _cached_source, download_segment as ytagent_segment
-        from ytagent.utils.ids import to_video_id
-        vid_id = to_video_id(url)
-        if _cached_source(vid_id):
-            ytagent_result = ytagent_segment(
-                str(url),
-                video_path,
-                start=s,
-                end=e,
-                log=_log,
-            )
-            final_ok = True
-            _log(
-                f"  [video seg {seg_idx + 1}/{total}] ytagent cache slice "
-                f"{ytagent_result['width']}x{ytagent_result['height']}"
-            )
+        from ..utils.ytagent_downloader import download_segment as ytagent_segment
+        ytagent_result = ytagent_segment(
+            str(url),
+            video_path,
+            start=s,
+            end=e,
+            log=_log,
+        )
+        final_ok = True
+        _log(
+            f"  [video seg {seg_idx + 1}/{total}] ytagent verified slice "
+            f"{ytagent_result['width']}x{ytagent_result['height']}"
+        )
     except Exception as ytagent_err:
-        _log(f"  ytagent cache check: {ytagent_err}")
+        _log(f"  ytagent source unavailable: {ytagent_err}")
 
     # 2. Try residential downloader if configured (laptop's residential IP)
     if not final_ok:
