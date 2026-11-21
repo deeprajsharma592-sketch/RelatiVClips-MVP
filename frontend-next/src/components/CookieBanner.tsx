@@ -31,7 +31,7 @@ export default function CookieBanner() {
     sessionStorage.setItem("url-banner-dismissed", "1");
     setTimeout(() => {
       setVisible(false);
-      router.push(`/dashboard?url=${encodeURIComponent(url.trim())}`);
+      router.push(`/process?url=${encodeURIComponent(url.trim())}`);
     }, 800);
   };
 

@@ -58,8 +58,8 @@ export default function PasteLinkInput({
       setError(null);
       setSubmitting(true);
       try {
-        // Hand off directly to studio dashboard
-        router.push(`/dashboard?url=${encodeURIComponent(trimmed)}`);
+        // Hand off to the transition loader, then into studio.relativclips.com
+        router.push(`/process?url=${encodeURIComponent(trimmed)}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
         setSubmitting(false);
