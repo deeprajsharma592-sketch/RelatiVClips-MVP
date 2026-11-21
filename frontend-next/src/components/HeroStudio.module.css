@@ -13,10 +13,6 @@
   animation: orbit 58s linear infinite;
 }
 
-.wheel[data-paused="true"] {
-  animation-play-state: paused;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .photo { pointer-events: auto; }
   .wheel:has(.photo:hover) { animation-play-state: paused; }
@@ -81,5 +77,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .wheel { animation: none; }
-  .wheelControl { display: none; }
 }

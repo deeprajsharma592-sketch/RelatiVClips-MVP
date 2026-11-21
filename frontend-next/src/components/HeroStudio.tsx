@@ -3,7 +3,7 @@
 import { useState, useRef, type CSSProperties, type DragEvent, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Link2, Pause, Play, Upload } from "lucide-react";
+import { ArrowRight, Link2, Upload } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { authPageHref, studioEntryHref } from "@/lib/auth-destination";
@@ -19,7 +19,6 @@ const HERO_PHRASES = ["personalized short clips", "more views in less time", "re
 
 export default function HeroStudio() {
   const router = useRouter();
-  const [wheelPaused, setWheelPaused] = useState(false);
   const [url, setUrl] = useState("");
   const { user, loading: authLoading } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
@@ -79,7 +78,7 @@ export default function HeroStudio() {
         className="relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden bg-[#050507] px-5 py-20 text-white sm:px-8"
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(45,38,62,0.22),transparent_58%)]" />
-        <div className={styles.wheel} data-paused={wheelPaused} aria-hidden="true">
+        <div className={styles.wheel} aria-hidden="true">
           {WHEEL_PHOTOS.map((photo, index) => (
             <Image
               key={photo}
@@ -174,17 +173,6 @@ export default function HeroStudio() {
               </button>
             </form>
             {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
-          </div>
-          <div className="mt-12 flex items-center gap-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">Scroll to explore ↓</p>
-            <button
-              type="button"
-              onClick={() => setWheelPaused((paused) => !paused)}
-              aria-label={wheelPaused ? "Play photo wheel" : "Pause photo wheel"}
-              className={`${styles.wheelControl} pointer-events-auto inline-flex size-9 items-center justify-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300`}
-            >
-              {wheelPaused ? <Play className="size-3.5" aria-hidden="true" /> : <Pause className="size-3.5" aria-hidden="true" />}
-            </button>
           </div>
         </div>
       </section>
