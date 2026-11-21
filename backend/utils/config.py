@@ -182,7 +182,8 @@ AUDIO_FALLBACK_LIMIT_MB = 50
 SURGICAL_BUFFER_SECONDS = 10
 
 _possible_cookies = [
-    Path(os.getenv("COOKIES_PATH", "")) if os.getenv("COOKIES_PATH") else None,
+    Path(os.getenv("COOKIES_PATH") or os.getenv("YOUTUBE_COOKIES_FILE", ""))
+    if (os.getenv("COOKIES_PATH") or os.getenv("YOUTUBE_COOKIES_FILE")) else None,
     BASE_DIR / "cookies.txt",
     BASE_DIR / "backend" / "cookies.txt",
     BASE_DIR.parent / "cookies.txt",

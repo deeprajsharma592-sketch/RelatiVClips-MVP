@@ -196,6 +196,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
             except Exception:
                 pass
 
+    cookie_args = get_cookie_args()
     cmd = [
         YTDLP_PATH,
         "--write-subs",
@@ -203,12 +204,16 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
         "--sub-langs", "en.*,en,en-orig,en-US,en-GB",
         "--sub-format", "vtt/srt/best",
         "--skip-download",
-        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
         "-o", str(subs_base) + ".%(ext)s",
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     ]
+    # Authenticated browser cookies work best with yt-dlp's default client
+    # selection. Forcing embedded/mobile clients can turn a valid session into
+    # a misleading "video unavailable" response.
+    if not cookie_args:
+        cmd.extend(["--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android"])
     if BGUTIL_POT_BASE_URL:
         cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}"])
     if FFMPEG_PATH:
@@ -217,7 +222,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     if shutil.which("node"):
         cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
 
-    cmd.extend(get_cookie_args())
+    cmd.extend(cookie_args)
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])
@@ -393,40 +398,46 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         except Exception:
             pass
 
-    # Captions are the cheap first path. When they are unavailable, ask ytagent
-    # for one verified video+audio source and extract a small mono WAV locally.
+    cookie_args = get_cookie_args()
+
+    # Captions are the cheap first path. When they are unavailable and there is
+    # no authenticated session, ask ytagent for one verified video+audio source
+    # and extract a small mono WAV locally.
     # This fixes the old ordering where the pipeline died on direct yt-dlp audio
     # before ytagent (wired only into segment rendering) could ever run.
-    try:
-        from ..utils.ytagent_downloader import download_high_quality_source
+    if not cookie_args:
+        try:
+            from ..utils.ytagent_downloader import download_high_quality_source
 
-        log("  Fetching a verified source through ytagent for transcription...")
-        source = download_high_quality_source(url, log=lambda message: log(f"  {message}"))
-        extract_cmd = [
-            FFMPEG_PATH,
-            "-y",
-            "-hide_banner",
-            "-loglevel", "error",
-            "-i", source["path"],
-            "-map", "0:a:0",
-            "-vn",
-            "-ac", "1",
-            "-ar", "16000",
-            "-c:a", "pcm_s16le",
-            str(audio_path),
-        ]
-        extracted = subprocess.run(extract_cmd, capture_output=True, text=True, timeout=900)
-        if extracted.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 1024:
-            log(
-                f"  Audio extracted locally from ytagent source "
-                f"({audio_path.stat().st_size / 1024 / 1024:.1f}MB; source={source['method']})"
-            )
-            return str(audio_path)
-        audio_path.unlink(missing_ok=True)
-        error = (extracted.stderr or "FFmpeg did not create audio")[:180].replace("\n", " ")
-        log(f"  ytagent source audio extraction failed: {error}")
-    except Exception as exc:
-        log(f"  ytagent audio source unavailable: {str(exc)[:220]}")
+            log("  Fetching a verified source through ytagent for transcription...")
+            source = download_high_quality_source(url, log=lambda message: log(f"  {message}"))
+            extract_cmd = [
+                FFMPEG_PATH,
+                "-y",
+                "-hide_banner",
+                "-loglevel", "error",
+                "-i", source["path"],
+                "-map", "0:a:0",
+                "-vn",
+                "-ac", "1",
+                "-ar", "16000",
+                "-c:a", "pcm_s16le",
+                str(audio_path),
+            ]
+            extracted = subprocess.run(extract_cmd, capture_output=True, text=True, timeout=900)
+            if extracted.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 1024:
+                log(
+                    f"  Audio extracted locally from ytagent source "
+                    f"({audio_path.stat().st_size / 1024 / 1024:.1f}MB; source={source['method']})"
+                )
+                return str(audio_path)
+            audio_path.unlink(missing_ok=True)
+            error = (extracted.stderr or "FFmpeg did not create audio")[:180].replace("\n", " ")
+            log(f"  ytagent source audio extraction failed: {error}")
+        except Exception as exc:
+            log(f"  ytagent audio source unavailable: {str(exc)[:220]}")
+    else:
+        log("  Authenticated YouTube cookies found; using direct audio download")
 
     cmd = [
         YTDLP_PATH,
@@ -434,18 +445,19 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
         "--extract-audio",
         "--audio-format", "wav",
         "--audio-quality", "0",
-        "--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android",
         "-o", str(audio_path),
         "--no-warnings",
         "--no-check-certificates",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     ]
+    if not cookie_args:
+        cmd.extend(["--extractor-args", "youtube:player_client=tv_embedded,web_creator,mweb,web,android"])
     if BGUTIL_POT_BASE_URL:
         cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={BGUTIL_POT_BASE_URL}"])
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
 
-    cmd.extend(get_cookie_args())
+    cmd.extend(cookie_args)
     _proxy = get_proxy()
     if _proxy:
         cmd.extend(["--proxy", _proxy])

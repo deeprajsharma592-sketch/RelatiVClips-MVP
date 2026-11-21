@@ -141,6 +141,7 @@ class TestYouTubeAudioFallback:
         source_path = tmp_path / "verified.mp4"
         source_path.write_bytes(b"verified source")
         monkeypatch.setattr(fetcher, "TEMP_DIR", tmp_path)
+        monkeypatch.setattr(fetcher, "get_cookie_args", lambda: [])
         monkeypatch.setattr(
             ytagent_downloader,
             "download_high_quality_source",
@@ -157,6 +158,32 @@ class TestYouTubeAudioFallback:
         result = fetcher._download_audio("https://youtu.be/abc", "audio_task", lambda _: None)
 
         assert result == str(tmp_path / "audio_task_audio.wav")
+
+    def test_authenticated_audio_uses_default_client_and_skips_ytagent(self, monkeypatch, tmp_path):
+        from backend.pipeline import transcript_fetcher as fetcher
+        from backend.utils import ytagent_downloader
+
+        monkeypatch.setattr(fetcher, "TEMP_DIR", tmp_path)
+        monkeypatch.setattr(fetcher, "get_cookie_args", lambda: ["--cookies", "/secret/cookies.txt"])
+        monkeypatch.setattr(
+            ytagent_downloader,
+            "download_high_quality_source",
+            lambda *args, **kwargs: pytest.fail("ytagent should not run when cookies are available"),
+        )
+
+        observed = {}
+
+        def fake_run(command, **kwargs):
+            observed["command"] = command
+            (tmp_path / "cookie_task_audio.wav").write_bytes(b"0" * 2048)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        monkeypatch.setattr(fetcher.subprocess, "run", fake_run)
+        result = fetcher._download_audio("https://youtu.be/abc", "cookie_task", lambda _: None)
+
+        assert result == str(tmp_path / "cookie_task_audio.wav")
+        assert "--cookies" in observed["command"]
+        assert "youtube:player_client=tv_embedded,web_creator,mweb,web,android" not in observed["command"]
 
     def test_auth_challenge_stops_direct_retries(self, monkeypatch):
         from backend.pipeline import transcript_fetcher as fetcher
