@@ -12,6 +12,7 @@ const PORTRAITS = [
   "neon-profile", "orange-visor", "lime-blazer", "chunky-knit", "tinted-glasses",
   "gold-visor", "red-coat", "purple-hoodie", "platinum-blonde", "orange-ring",
 ].map((name) => `/hero-wheel/${name}-4x5.jpg`);
+const VIDEO_THUMBNAILS = ["l2", "r3", "l4", "r5", "l3"].map((name) => `/thumb_${name}.webp`);
 const CLIP_IMAGES = [
   ...PORTRAITS,
   ...["l2", "r3", "l4", "r5", "l3", "r1", "l5", "r4"].map((name) => `/thumb_${name}.webp`),
@@ -36,7 +37,7 @@ function FlyingThumbnail({ index, journey, progress }: { index: number; journey:
   const { from, to, stageWidth } = journey;
   const centerY = to.y + to.height / 2;
   const stackWidth = Math.min(stageWidth * 0.18, 118);
-  const stackHeight = stackWidth * 1.55;
+  const stackHeight = stackWidth * (9 / 16);
   const stackX = stageWidth * 0.2 - stackWidth / 2 + (index - 2) * 3;
   const portalX = stageWidth / 2 - 4;
   const phases = [0.04 + index * 0.02, 0.31 + index * 0.015, 0.55, 0.73 + index * 0.02, 0.89 + index * 0.02];
@@ -48,7 +49,7 @@ function FlyingThumbnail({ index, journey, progress }: { index: number; journey:
   const opacity = useTransform(progress, [0.49, 0.55, 0.58, 0.96, 0.98], [1, 0, 1, 1, 0]);
   return (
     <motion.div className={styles.flyingThumbnail} style={{ x, y, width, height, rotate, opacity }}>
-      <Thumbnail src={PORTRAITS[index]} />
+      <Thumbnail src={VIDEO_THUMBNAILS[index]} />
     </motion.div>
   );
 }
@@ -150,7 +151,7 @@ export default function TasteTimeline() {
                 {index > 0 && " "}{text}{" "}
                 <span ref={(node) => { inlineRefs.current[index] = node; }} className={styles.inlineThumbnail}>
                   <span className={styles.inlineImage} style={{ opacity: ready && !reduceMotion ? 0 : 1 }}>
-                    <Thumbnail src={PORTRAITS[index]} />
+                    <Thumbnail src={VIDEO_THUMBNAILS[index]} />
                   </span>
                 </span>
               </span>

@@ -36,9 +36,14 @@
   position: relative;
   isolation: isolate;
   display: inline-block;
+  opacity: 0;
   color: rgb(222 234 245 / 19%);
   -webkit-text-stroke: clamp(0.7px, 0.01em, 1.4px) rgb(229 242 253 / 71%);
   letter-spacing: -0.03em;
+}
+
+.stage[data-animation-started="true"] .word {
+  opacity: 1;
 }
 
 .word::before,
@@ -70,3 +75,7 @@
 .word[data-word="left"] { transform-origin: right center; }
 .word[data-word="middle"] { transform-origin: center bottom; }
 .word[data-word="right"] { transform-origin: left center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .word { opacity: 1; }
+}

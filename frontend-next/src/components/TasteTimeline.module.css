@@ -32,10 +32,10 @@
 .inlineThumbnail {
   position: relative;
   display: inline-block;
-  width: 0.81em;
-  height: 1.03em;
+  width: 1.55em;
+  height: 0.88em;
   margin-inline: 0.02em;
-  vertical-align: -0.17em;
+  vertical-align: -0.04em;
 }
 
 .inlineImage, .flyingThumbnail { overflow: hidden; border-radius: 0.48rem; }

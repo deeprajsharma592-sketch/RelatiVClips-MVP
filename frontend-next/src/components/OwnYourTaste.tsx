@@ -8,7 +8,7 @@ const IMPACT = 0.55;
 const IMPACT_DELAY = DURATION * IMPACT;
 const SWING_EASING = "cubic-bezier(.55,0,.9,.6)";
 const RISE_EASING = "cubic-bezier(.2,.8,.3,1)";
-const PLAYED_KEY = "relativ-own-your-taste-animation-played";
+let hasPlayedInPage = false;
 
 function sideKeyframes(direction: -1 | 1): Keyframe[] {
   return [
@@ -44,12 +44,7 @@ export default function OwnYourTaste() {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const wordTiming = { duration: DURATION, fill: "backwards" } as const;
     let running: Animation[] = [];
-    let hasPlayed = false;
-    try {
-      hasPlayed = window.sessionStorage.getItem(PLAYED_KEY) === "true";
-    } catch {
-      // Keep the animation usable if browser storage is unavailable.
-    }
+    if (hasPlayedInPage) section.dataset.animationStarted = "true";
 
     function stop() {
       running.forEach((animation) => animation.cancel());
@@ -58,14 +53,15 @@ export default function OwnYourTaste() {
 
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry) return;
-      if (!entry.isIntersecting || hasPlayed) return;
-
-      hasPlayed = true;
-      try {
-        window.sessionStorage.setItem(PLAYED_KEY, "true");
-      } catch {
-        // The in-memory guard still prevents repeat triggers until unmount.
+      if (!entry.isIntersecting) return;
+      if (hasPlayedInPage) {
+        section.dataset.animationStarted = "true";
+        observer.unobserve(section);
+        return;
       }
+
+      hasPlayedInPage = true;
+      section.dataset.animationStarted = "true";
       observer.unobserve(section);
       if (reducedMotion.matches) return;
 
