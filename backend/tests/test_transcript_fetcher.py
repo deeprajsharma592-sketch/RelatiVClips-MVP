@@ -1,4 +1,5 @@
 import pytest
+from types import SimpleNamespace
 
 from backend.pipeline.transcript_fetcher import (
     _extract_video_id,
@@ -130,3 +131,48 @@ class TestFetchTranscriptContract:
 
         result = fetch_transcript("https://example.com/whatever", "test_task_1")
         assert result == {"segments": [], "language": "en", "source": None}
+
+
+class TestYouTubeAudioFallback:
+    def test_ytagent_source_is_used_for_local_audio(self, monkeypatch, tmp_path):
+        from backend.pipeline import transcript_fetcher as fetcher
+        from backend.utils import ytagent_downloader
+
+        source_path = tmp_path / "verified.mp4"
+        source_path.write_bytes(b"verified source")
+        monkeypatch.setattr(fetcher, "TEMP_DIR", tmp_path)
+        monkeypatch.setattr(
+            ytagent_downloader,
+            "download_high_quality_source",
+            lambda url, log=None: {"path": str(source_path), "method": "cache"},
+        )
+
+        def fake_run(command, **kwargs):
+            # Simulate FFmpeg creating the 16 kHz mono WAV requested by the adapter.
+            if command[0] == fetcher.FFMPEG_PATH:
+                (tmp_path / "audio_task_audio.wav").write_bytes(b"0" * 2048)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        monkeypatch.setattr(fetcher.subprocess, "run", fake_run)
+        result = fetcher._download_audio("https://youtu.be/abc", "audio_task", lambda _: None)
+
+        assert result == str(tmp_path / "audio_task_audio.wav")
+
+    def test_auth_challenge_stops_direct_retries(self, monkeypatch):
+        from backend.pipeline import transcript_fetcher as fetcher
+
+        calls = []
+
+        def blocked_run(*args, **kwargs):
+            calls.append(1)
+            return SimpleNamespace(
+                returncode=1,
+                stdout="",
+                stderr="ERROR: Sign in to confirm you're not a bot",
+            )
+
+        monkeypatch.setattr(fetcher.subprocess, "run", blocked_run)
+        result = fetcher._run_with_retry(["yt-dlp"], lambda _: None, max_attempts=4)
+
+        assert result.returncode == 1
+        assert len(calls) == 1

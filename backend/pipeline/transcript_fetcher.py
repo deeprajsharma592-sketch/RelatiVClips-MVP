@@ -9,6 +9,21 @@ from typing import Optional, Callable
 from ..utils.config import TEMP_DIR, YTDLP_PATH, FFMPEG_PATH, COOKIES_PATH, get_proxy, get_cookie_args, BGUTIL_POT_BASE_URL
 
 
+_YOUTUBE_AUTH_MARKERS = (
+    "sign in to confirm you're not a bot",
+    "sign in to confirm you’re not a bot",
+    "use --cookies-from-browser",
+    "use --cookies for the authentication",
+    "youtube said: sign in",
+)
+
+
+def _is_youtube_auth_error(message: str) -> bool:
+    """Return True for deterministic YouTube authentication/bot challenges."""
+    normalized = (message or "").lower()
+    return any(marker in normalized for marker in _YOUTUBE_AUTH_MARKERS)
+
+
 def _extract_video_id(url: str) -> str:
     if "watch?v=" in url:
         return url.split("watch?v=")[-1].split("&")[0]
@@ -222,6 +237,9 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
                 break
             err_snippet = last_stderr[:150].replace("\n", " ")
             log(f"  [subtitle direct] attempt {attempt}/{max_attempts} failed (rc={result.returncode}): {err_snippet}")
+            if _is_youtube_auth_error(last_stderr):
+                log("  YouTube challenged the server IP; skipping identical subtitle retries")
+                break
         except subprocess.TimeoutExpired:
             log(f"  [subtitle direct] attempt {attempt}/{max_attempts} timed out after {timeout}s")
         except Exception as e:
@@ -231,7 +249,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
 
     if not success:
         combined = last_stderr.lower()
-        if "sign in" in combined or "cookies" in combined or "not a bot" in combined:
+        if _is_youtube_auth_error(combined) or "cookies" in combined:
             log("  Auth/cookie error — returning auth_error flag")
             return {"segments": [], "auth_error": True}
         log("  yt-dlp subtitle download failed after retries")
@@ -361,7 +379,12 @@ def _try_whisper_transcript(audio_path: str, task_id: str, log: Callable) -> Opt
 
 
 def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
-    """Download audio from a URL using yt-dlp."""
+    """Build transcription audio, preferring ytagent's verified cached source.
+
+    This is deliberately the same source cache used later by surgical clip
+    downloads. One successful YouTube download therefore feeds Whisper and all
+    rendered clips instead of hitting YouTube independently for each stage.
+    """
     audio_path = TEMP_DIR / f"{task_id}_audio.wav"
 
     if audio_path.exists():
@@ -369,6 +392,41 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
             audio_path.unlink()
         except Exception:
             pass
+
+    # Captions are the cheap first path. When they are unavailable, ask ytagent
+    # for one verified video+audio source and extract a small mono WAV locally.
+    # This fixes the old ordering where the pipeline died on direct yt-dlp audio
+    # before ytagent (wired only into segment rendering) could ever run.
+    try:
+        from ..utils.ytagent_downloader import download_high_quality_source
+
+        log("  Fetching a verified source through ytagent for transcription...")
+        source = download_high_quality_source(url, log=lambda message: log(f"  {message}"))
+        extract_cmd = [
+            FFMPEG_PATH,
+            "-y",
+            "-hide_banner",
+            "-loglevel", "error",
+            "-i", source["path"],
+            "-map", "0:a:0",
+            "-vn",
+            "-ac", "1",
+            "-ar", "16000",
+            "-c:a", "pcm_s16le",
+            str(audio_path),
+        ]
+        extracted = subprocess.run(extract_cmd, capture_output=True, text=True, timeout=900)
+        if extracted.returncode == 0 and audio_path.exists() and audio_path.stat().st_size > 1024:
+            log(
+                f"  Audio extracted locally from ytagent source "
+                f"({audio_path.stat().st_size / 1024 / 1024:.1f}MB; source={source['method']})"
+            )
+            return str(audio_path)
+        audio_path.unlink(missing_ok=True)
+        error = (extracted.stderr or "FFmpeg did not create audio")[:180].replace("\n", " ")
+        log(f"  ytagent source audio extraction failed: {error}")
+    except Exception as exc:
+        log(f"  ytagent audio source unavailable: {str(exc)[:220]}")
 
     cmd = [
         YTDLP_PATH,
@@ -396,6 +454,7 @@ def _download_audio(url: str, task_id: str, log: Callable) -> Optional[str]:
 
     try:
         log("  Downloading audio...")
+        log("  Falling back to direct yt-dlp audio...")
         result = _run_with_retry(cmd, log, label="audio download", max_attempts=4, timeout=600)
         if result is None or result.returncode != 0:
             log("  Audio download failed after retries")
@@ -434,7 +493,7 @@ def fetch_transcript(
 
     transcript = _try_ytdlp_transcript(url, task_id, log)
 
-    if transcript:
+    if transcript and transcript.get("segments"):
         return transcript
 
     log("  yt-dlp captions unavailable, falling back to audio transcription...")
@@ -467,6 +526,10 @@ def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, t
             err_snippet = (result.stderr or "")[:150].replace("\n", " ")
             if log_fn:
                 log_fn(f"  [{label}] attempt {attempt}/{max_attempts} failed (rc={result.returncode}): {err_snippet}")
+            if _is_youtube_auth_error(result.stderr or ""):
+                if log_fn:
+                    log_fn(f"  [{label}] YouTube auth challenge is not transient; stopping retries")
+                return result
         except subprocess.TimeoutExpired:
             if log_fn:
                 log_fn(f"  [{label}] attempt {attempt}/{max_attempts} timed out after {timeout}s")
