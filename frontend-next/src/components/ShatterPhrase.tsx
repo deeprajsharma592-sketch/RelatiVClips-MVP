@@ -430,7 +430,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
       <canvas
         ref={canvasRef}
         aria-hidden="true"
-        className="absolute inset-x-0 -top-1/2 h-[200%] w-full cursor-crosshair touch-pan-y select-none motion-reduce:hidden"
+        className="absolute inset-x-0 -top-1/2 h-[200%] w-full cursor-default touch-pan-y select-none motion-reduce:hidden"
       />
     </span>
   );
