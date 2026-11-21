@@ -40,7 +40,7 @@ export default function HeroStudio() {
         ? await submitYouTubeUrl(source)
         : await submitLocalVideo((await uploadVideoFile(source)).filePath);
       if (!job.taskId) throw new Error("The processing service did not return a clip job.");
-      router.push(`/process?${new URLSearchParams({ taskId: job.taskId })}`);
+      router.push(`/dashboard?${new URLSearchParams({ taskId: job.taskId })}`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start processing. Try again.");
       submitting.current = false;

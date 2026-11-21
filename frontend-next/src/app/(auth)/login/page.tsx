@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, Shield, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { login, signInWithGoogle, type User } from "@/lib/auth";
+import { useAuth } from "@/lib/AuthContext";
 import { authPageHref, safeAuthDestination } from "@/lib/auth-destination";
 
 /**
@@ -28,6 +29,7 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const nextPath = safeAuthDestination(search.get("next"));
+  const { user: authedUser, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState(() => search.get("email") || "");
   const [password, setPassword] = useState("");
@@ -37,6 +39,13 @@ function LoginForm() {
   const [backendOffline, setBackendOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailValid = email ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) : null;
+
+  // If already logged in, redirect straight to dashboard
+  useEffect(() => {
+    if (!authLoading && authedUser) {
+      router.replace(nextPath || "/dashboard");
+    }
+  }, [authedUser, authLoading, nextPath, router]);
 
   const handleGoogleSignIn = async () => {
     setSocialLoading("google");
@@ -73,8 +82,13 @@ function LoginForm() {
         if (msg.includes("502") || msg.includes("503") || msg.includes("504") || msg.toLowerCase().includes("fetch")) {
           setBackendOffline(true);
           setError("RelatiV's account service is temporarily unavailable. Please try again shortly.");
-        } else if (msg.toLowerCase().includes("401") || msg.toLowerCase().includes("invalid")) {
-          setError("Invalid email or password. Try again, or reset below.");
+        } else if (
+          msg.toLowerCase().includes("401") ||
+          msg.toLowerCase().includes("invalid") ||
+          msg.toLowerCase().includes("credentials") ||
+          msg.toLowerCase().includes("confirm")
+        ) {
+          setError("Invalid email or password. If you recently created your account, please verify your email via the confirmation link sent to your inbox, or reset password below.");
         } else if (msg.toLowerCase().includes("locked")) {
           setError("Account locked after too many attempts. Try again in 15 minutes.");
         } else {
