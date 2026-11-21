@@ -41,8 +41,8 @@ _model_router = None
 _COST_PER_MTOK = {
     # Model: (input_usd_per_mtok, output_usd_per_mtok)
     "claude-haiku-5-5": (
-        float(os.getenv("HAIKU_INPUT_COST", "0.80")),
-        float(os.getenv("HAIKU_OUTPUT_COST", "4.00")),
+        float(os.getenv("HAIKU_INPUT_COST", "0.10")),
+        float(os.getenv("HAIKU_OUTPUT_COST", "0.50")),
     ),
     "claude-haiku-4-5-20251001": (1.0, 5.0),
     "claude-3-haiku-20240307": (0.25, 1.25),
@@ -148,8 +148,8 @@ def estimate_cost_usd(
 # instead of the standard input rate. Set to None to disable caching.
 _CACHE_RATES = {
     "claude-haiku-5-5": {
-        "read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.08")),
-        "write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "1.00")),
+        "read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.01")),
+        "write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "0.125")),
     },
     "claude-haiku-4-5-20251001": {
         "read": 0.10,    # 10x cheaper than fresh input

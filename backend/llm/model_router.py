@@ -95,10 +95,10 @@ COST_PER_MTOK = {
         "cache_read": 0.08, "cache_write": 1.0,
     },
     "claude-haiku-5-5": {
-        "input": float(os.getenv("HAIKU_INPUT_COST", "0.80")),
-        "output": float(os.getenv("HAIKU_OUTPUT_COST", "4.00")),
-        "cache_read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.08")),
-        "cache_write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "1.00")),
+        "input": float(os.getenv("HAIKU_INPUT_COST", "0.10")),
+        "output": float(os.getenv("HAIKU_OUTPUT_COST", "0.50")),
+        "cache_read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.01")),
+        "cache_write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "0.125")),
     },
     "claude-haiku-4-5-20251001": {
         "input": 1.0, "output": 5.0,
