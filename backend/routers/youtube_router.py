@@ -1311,6 +1311,18 @@ def _run_moment_pipeline(
             adjusted.append(clip)
         final_clips = adjusted
 
+        # Platform-bound adjustments can make previously distinct candidates
+        # converge onto the same source range. Enforce uniqueness at the last
+        # possible point before any downloads or renders are scheduled.
+        from ..segmentation import deduplicate_preserving_order
+        adjusted_count = len(final_clips)
+        final_clips = deduplicate_preserving_order(final_clips)
+        if len(final_clips) != adjusted_count:
+            _bridge(
+                "filter",
+                f"Removed {adjusted_count - len(final_clips)} duplicate range(s) after format adjustment",
+            )
+
         final_durations = [round(c["duration_s"], 1) for c in final_clips]
         _bridge("platform", f"Final clips approved for render: {len(final_clips)} | Durations: {final_durations}")
     except Exception as e:
@@ -1554,6 +1566,14 @@ def _run_moment_pipeline(
         pool.shutdown(wait=False, cancel_futures=True)
 
     _bridge("done", f"Pipeline complete: {len(rendered)} clip(s)")
+    from ..segmentation import deduplicate_preserving_order
+    rendered_count = len(rendered)
+    rendered = deduplicate_preserving_order(rendered)
+    if len(rendered) != rendered_count:
+        _bridge(
+            "filter",
+            f"Removed {rendered_count - len(rendered)} duplicate rendered output(s)",
+        )
     # Strip non-serializable / circular fields before returning
     clean_rendered = []
     for c in rendered:
@@ -1602,7 +1622,8 @@ async def run_youtube_pipeline_async(
             cached = await get_cached_video(None, url, verify_media=True)
 
         if cached and cached.get("clips"):
-            clips = cached.get("clips", [])
+            from ..segmentation import deduplicate_preserving_order
+            clips = deduplicate_preserving_order(cached.get("clips", []))
             savings = cached.get("_cache_savings_usd", 0.0)
             age_h = cached.get("_cache_age_hours", 0.0)
             task_store.update_task(

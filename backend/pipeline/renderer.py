@@ -14,6 +14,7 @@ from ..utils.config import (
     FFMPEG_CQ,
     FFMPEG_AUDIO_BITRATE,
     FILE_RETENTION_HOURS,
+    RENDER_VERSION,
     FFMPEG_PATH
 )
 from .clip_selector import generate_ass_subtitle, generate_simple_ass
@@ -340,7 +341,7 @@ def render_clip(
     clip["caption_font"] = caption_font
     resolved_layout_mode = layout_mode
     context_position = str(
-        clip.get("context_position") or batch_context_position(clip_index)
+        clip.get("context_position") or batch_context_position(clip_index, task_id)
     ).lower()
     content_hint = next(
         (
@@ -517,6 +518,7 @@ def render_clip(
             "layout_mode": resolved_layout_mode,
             "context_position": context_position,
             "caption_font": caption_font,
+            "render_version": RENDER_VERSION,
             "created_at": datetime.now().isoformat()
         }
 

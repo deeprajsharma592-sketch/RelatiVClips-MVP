@@ -30,7 +30,7 @@ from .s8_zoom import (
     compute_frame_zoom_scale,
     apply_zoom_to_crop,
 )
-from .s9_render import render_video
+from .s9_render import context_scene_panel_height, render_video
 from .s10_qa import generate_qa_report
 
 
@@ -39,8 +39,9 @@ def _caption_safe_subtitle(
     workdir: Path,
     layout_mode: str,
     context_position: str,
+    seam_y: int | None = None,
 ) -> str | Path | None:
-    """Move captions into the intentional outer letterbox of context layouts."""
+    """Pin captions to the seam between scene and tracked panels."""
     if layout_mode != "context" or not subtitle_path or not Path(subtitle_path).exists():
         return subtitle_path
     source = Path(subtitle_path)
@@ -51,8 +52,14 @@ def _caption_safe_subtitle(
             prefix, payload = line.split(": ", 1)
             fields = payload.split(",")
             if len(fields) >= 23:
-                fields[18] = "8" if context_position == "top" else "2"
-                fields[21] = "72"
+                fields[18] = "5"
+                fields[21] = "0"
+                line = f"{prefix}: {','.join(fields)}"
+        elif line.startswith("Dialogue:") and seam_y is not None:
+            prefix, payload = line.split(":", 1)
+            fields = payload.lstrip().split(",", 9)
+            if len(fields) == 10:
+                fields[9] = rf"{{\an5\pos(540,{int(seam_y)})}}" + fields[9]
                 line = f"{prefix}: {','.join(fields)}"
         style_lines.append(line)
     adjusted = workdir / "captions_context_safe.ass"
@@ -315,11 +322,17 @@ def run_pipeline(
         }, f, indent=2)
 
     # ── Stage 9: Render Output
+    output_cfg = config.get("output", {})
+    output_w = int(output_cfg.get("width", 1080))
+    output_h = int(output_cfg.get("height", 1920))
+    scene_h = context_scene_panel_height(src_w, src_h, output_w, output_h)
+    seam_y = scene_h if layout_decision.context_position == "top" else output_h - scene_h
     render_subtitles = _caption_safe_subtitle(
         subtitles_path,
         workdir,
         layout_decision.mode,
         layout_decision.context_position,
+        seam_y,
     )
     render_result = render_video(
         norm_video_path=norm_video,

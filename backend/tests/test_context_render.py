@@ -1,6 +1,7 @@
 import numpy as np
 
-from framing.s9_render import render_scene_panel, warp_crop_affine
+from framing.run import _caption_safe_subtitle
+from framing.s9_render import context_scene_panel_height, render_scene_panel, warp_crop_affine
 
 
 def test_scene_panel_keeps_complete_landscape_frame():
@@ -26,3 +27,19 @@ def test_tracked_half_has_panel_dimensions():
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     tracked = warp_crop_affine(frame, 300, 0, 810, 720, 1080, 960)
     assert tracked.shape == (960, 1080, 3)
+
+
+def test_context_scene_height_has_no_letterbox_for_16_9_source():
+    assert context_scene_panel_height(1920, 1080, 1080, 1920) == 608
+
+
+def test_context_captions_are_pinned_to_panel_seam(tmp_path):
+    source = tmp_path / "captions.ass"
+    source.write_text(
+        "Style: Default,Geist,64,&H00FFFFFF,&H0,&H0,&H0,-1,0,0,0,100,100,0,0,1,4,2,2,40,40,280,1\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,HELLO\n",
+        encoding="utf-8",
+    )
+    adjusted = _caption_safe_subtitle(source, tmp_path, "context", "top", 608)
+    text = adjusted.read_text(encoding="utf-8")
+    assert r"\an5\pos(540,608)" in text

@@ -81,7 +81,7 @@ def generate_viral_ass_subtitles(
     highlight_color: str = "&H0000E5FF",  # Bright Yellow/Amber in &HAABBGGRR
     text_color: str = "&H00FFFFFF",       # Pure White
     outline_color: str = "&H00000000",    # Deep Black
-    lead_time_s: float = float(os.getenv("CAPTION_LEAD_TIME_SECONDS", "0.5")),  # 0.5s visual anticipation
+    lead_time_s: float = float(os.getenv("CAPTION_LEAD_TIME_SECONDS", "0.0")),  # Exact sync by default
 ) -> Optional[str]:
     """
     Generate an ASS subtitle file with word-by-word active highlighting.
@@ -296,7 +296,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     for chunk in grouped_chunks:
         c_words = chunk["words"]
         for active_idx, active_word in enumerate(c_words):
-            # Apply 0.5s pre-sync anticipation so viewer reads right as word is voiced
+            # Pre-sync offset (0.0s by default for audio-accurate sync)
             raw_s = active_word["start"] - lead_time_s
             raw_e = active_word["end"] - lead_time_s
             s_adj = max(0.0, raw_s)

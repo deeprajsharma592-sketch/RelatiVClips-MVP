@@ -316,10 +316,23 @@ def plan_camera_context_shot(
     fps: float,
     src_w: int,
     src_h: int,
-    config: Dict[str, Any]
+    config: Dict[str, Any],
+    tracked_aspect_ratio: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
-    """Track one subject for the 9:8 half paired with a full-scene panel."""
+    """Track one subject paired with a full-scene panel without extreme zoom or distortion."""
     cam_cfg = config.get("camera", {})
+    out_cfg = config.get("output", {})
+    target_w = int(out_cfg.get("width", 1080))
+    target_h = int(out_cfg.get("height", 1920))
+
+    if tracked_aspect_ratio is None:
+        if src_w > 0 and src_h > 0:
+            scene_h = int(round(target_w * (src_h / src_w)))
+            tracked_h = max(1, target_h - scene_h)
+            tracked_aspect_ratio = target_w / tracked_h
+        else:
+            tracked_aspect_ratio = 1080.0 / 1312.0
+
     plans = plan_panel_camera_path(
         track_samples=track_samples,
         start_frame=start_frame,
@@ -327,9 +340,9 @@ def plan_camera_context_shot(
         fps=fps,
         src_w=src_w,
         src_h=src_h,
-        aspect_ratio=9.0 / 8.0,
-        face_height_frac=float(cam_cfg.get("context_face_height_frac", 0.34)),
-        eye_line_frac=float(cam_cfg.get("eye_line_frac", 0.38)),
+        aspect_ratio=tracked_aspect_ratio,
+        face_height_frac=float(cam_cfg.get("context_face_height_frac", 0.20)),
+        eye_line_frac=float(cam_cfg.get("context_eye_line_frac", 0.35)),
         config=config,
     )
     for plan in plans:

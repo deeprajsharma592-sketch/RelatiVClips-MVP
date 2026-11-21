@@ -16,7 +16,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import VideoCacheModel
-from ..utils.config import OUTPUTS_DIR, FILE_RETENTION_HOURS
+from ..utils.config import OUTPUTS_DIR, FILE_RETENTION_HOURS, RENDER_VERSION
 
 log = logging.getLogger("relativ.caching.service")
 
@@ -57,6 +57,8 @@ def check_rendered_files_exist(clips: List[Dict[str, Any]]) -> bool:
         return False
         
     for c in clips:
+        if c.get("render_version") != RENDER_VERSION:
+            return False
         # Check if duration matches standard short-form (> 20s)
         start = float(c.get("start", 0))
         end = float(c.get("end", 0))

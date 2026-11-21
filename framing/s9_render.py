@@ -88,6 +88,19 @@ def render_scene_panel(
     return panel
 
 
+def context_scene_panel_height(
+    src_w: int,
+    src_h: int,
+    target_w: int = 1080,
+    target_h: int = 1920,
+) -> int:
+    """Height needed to show a landscape source edge-to-edge with no void."""
+    if src_w <= 0 or src_h <= 0:
+        return target_h // 2
+    fitted_h = int(round(target_w * (src_h / src_w)))
+    return max(1, min(target_h - 1, fitted_h))
+
+
 def warp_crop_affine(
     frame: np.ndarray,
     crop_x1: float,
@@ -280,12 +293,12 @@ def render_video(
                     cx1, cy1, cw, ch = c["x1"], c["y1"], c["w"], c["h"]
                 else:
                     cx1, cy1, cw, ch = c[0], c[1], c[2] - c[0], c[3] - c[1]
-                panel_h = target_h // 2
+                scene_h = context_scene_panel_height(src_w, src_h, target_w, target_h)
+                tracked_h = target_h - scene_h
                 position = plan.get("context_position", "top")
-                scene_anchor = "bottom" if position == "top" else "top"
-                scene_panel = render_scene_panel(frame_for_render, target_w, panel_h, anchor=scene_anchor)
+                scene_panel = render_scene_panel(frame_for_render, target_w, scene_h)
                 tracked_panel = warp_crop_affine(
-                    frame_for_render, cx1, cy1, cw, ch, target_w, target_h - panel_h
+                    frame_for_render, cx1, cy1, cw, ch, target_w, tracked_h
                 )
                 if position == "bottom":
                     final_frame = np.vstack([tracked_panel, scene_panel])

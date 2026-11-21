@@ -85,6 +85,9 @@ CLIP_DURATION_HARD_MAX = float(os.getenv("CLIP_DURATION_HARD_MAX", "150.0"))
 # Legacy duration aliases kept for back-compat only
 CLIP_DURATION_MIN = int(CLIP_DURATION_HARD_MIN)
 CLIP_DURATION_MAX = int(CLIP_DURATION_HARD_MAX)
+
+# Bump whenever cached rendered media must be regenerated for a new layout.
+RENDER_VERSION = os.getenv("RENDER_VERSION", "context-seam-v2")
 NUM_CLIPS_LOCAL = 3
 NUM_CLIPS_YOUTUBE = 3
 

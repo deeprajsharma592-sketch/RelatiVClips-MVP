@@ -14,10 +14,12 @@ def _signals(**overrides):
     return ContextSignals(**values)
 
 
-def test_four_clip_batch_alternates_in_pairs():
-    assert [batch_context_position(i) for i in range(1, 5)] == [
-        "top", "top", "bottom", "bottom"
-    ]
+def test_four_clip_batch_is_stably_shuffled_and_balanced():
+    first = [batch_context_position(i, "task-123") for i in range(1, 5)]
+    second = [batch_context_position(i, "task-123") for i in range(1, 5)]
+    assert first == second
+    assert first.count("top") == 2
+    assert first.count("bottom") == 2
 
 
 def test_gaming_and_irl_hints_preserve_context():
@@ -31,7 +33,7 @@ def test_visual_graphics_signal_preserves_context():
         "auto", "bottom", None, _signals(edge_density=0.14, face_coverage=0.03)
     )
     assert decision.mode == "context"
-    assert decision.context_position == "top"
+    assert decision.context_position == "bottom"
 
 
 def test_motion_led_irl_signal_keeps_batch_position():

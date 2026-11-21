@@ -9,6 +9,8 @@ layouts unpredictably inside an individual clip.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import hashlib
+import random
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
@@ -41,10 +43,20 @@ class LayoutDecision:
     signals: Dict[str, Any]
 
 
-def batch_context_position(clip_index: int) -> str:
-    """Return TOP, TOP, BOTTOM, BOTTOM for each group of four clips."""
+def batch_context_position(clip_index: int, seed: str = "relativ") -> str:
+    """Return a stable, shuffled 2-up/2-down order for each four-clip batch.
+
+    The task seed makes batches look varied while remaining reproducible during
+    retries. Every full group still contains two context-top and two
+    context-bottom renders.
+    """
     index = max(1, int(clip_index)) - 1
-    return "top" if index % 4 < 2 else "bottom"
+    group, slot = divmod(index, 4)
+    digest = hashlib.blake2b(f"{seed}:{group}".encode(), digest_size=8).digest()
+    rng = random.Random(int.from_bytes(digest, "big"))
+    positions = ["top", "top", "bottom", "bottom"]
+    rng.shuffle(positions)
+    return positions[slot]
 
 
 def _normalise_hint(content_hint: Optional[str]) -> str:
@@ -131,9 +143,6 @@ def choose_layout(
     context_rich = signals.edge_density >= 0.09 or signals.scene_change >= 0.105
     face_is_not_already_dominant = 0 < signals.face_coverage < 0.12
     if signals.landscape and signals.face_count == 1 and context_rich and face_is_not_already_dominant:
-        # Text/UI/slide layouts keep the complete canvas above the speaker.
-        # Motion-led IRL footage keeps the batch alternation passed by caller.
-        visual_position = "top" if signals.edge_density >= 0.09 else position
-        return LayoutDecision("context", visual_position, "visual context would be lost by portrait crop", signal_dict)
+        return LayoutDecision("context", position, "visual context would be lost by portrait crop", signal_dict)
     return LayoutDecision("portrait", position, "single-subject portrait crop", signal_dict)
 
