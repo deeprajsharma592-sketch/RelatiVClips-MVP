@@ -33,6 +33,10 @@ type MorphShard = {
 };
 type Morph = { start: number; next: number; target: PhraseLayout; pieces: MorphShard[] };
 
+// Light tints of the logo's amber, coral, and pink.
+const PHRASE_COLORS = ["#ffe0a5", "#ffbfae", "#f8afd8"] as const;
+const SHARD_COLORS = ["#da9e53", "#d78072", "#cf74aa"] as const;
+
 const TAU = 2 * Math.PI;
 const MORPH_DURATION = 1580;
 const clamp = (n: number, min = 0, max = 1) => Math.max(min, Math.min(max, n));
@@ -82,12 +86,18 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
       source.textAlign = "center";
       const metrics = source.measureText(text);
       const baseline = height / 2 + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
-      source.fillStyle = "#f4f4f7";
+      const leftInk = width / 2 - metrics.actualBoundingBoxLeft;
+      const rightInk = width / 2 + metrics.actualBoundingBoxRight;
+      const inkGradient = source.createLinearGradient(leftInk, 0, rightInk, 0);
+      PHRASE_COLORS.forEach((color, index) => {
+        inkGradient.addColorStop(index / (PHRASE_COLORS.length - 1), color);
+      });
+      source.fillStyle = inkGradient;
       source.fillText(text, width / 2, baseline);
       const pixels = source.getImageData(0, 0, ink.width, ink.height).data;
       const step = Math.max(6, fontSize * 0.15);
-      const left = width / 2 - metrics.actualBoundingBoxLeft - step;
-      const right = width / 2 + metrics.actualBoundingBoxRight + step;
+      const left = leftInk - step;
+      const right = rightInk + step;
       const top = baseline - metrics.actualBoundingBoxAscent - step;
       const bottom = baseline + metrics.actualBoundingBoxDescent + step;
       const cols = Math.ceil((right - left) / step);
@@ -121,7 +131,8 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         path.lineTo(b.x, b.y);
         path.lineTo(c.x, c.y);
         path.closePath();
-        const shard: Shard = { path, center, color: Math.random() < 0.7 ? "#8f70ff" : "#b0aacb" };
+        const colorIndex = Math.round(clamp((center.x - leftInk) / Math.max(1, rightInk - leftInk)) * (SHARD_COLORS.length - 1));
+        const shard: Shard = { path, center, color: SHARD_COLORS[colorIndex] };
         shards.push(shard);
         for (const [p, q] of [[a, b], [b, c], [c, a]]) {
           const key = [`${p.x},${p.y}`, `${q.x},${q.y}`].sort().join("|");
@@ -408,7 +419,14 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
 
   return (
     <span ref={rootRef} className="relative flex min-h-[1.38em] w-full items-center justify-center isolate">
-      <span className={ready ? "sr-only motion-reduce:not-sr-only" : undefined}>{phrases[index]}</span>
+      <span className={ready ? "sr-only motion-reduce:not-sr-only" : undefined}>
+        <span
+          className="inline-block bg-clip-text text-transparent"
+          style={{ backgroundImage: `linear-gradient(90deg, ${PHRASE_COLORS.join(", ")})` }}
+        >
+          {phrases[index]}
+        </span>
+      </span>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
