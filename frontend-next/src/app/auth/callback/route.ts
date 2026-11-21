@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-function safeNext(value: string | null) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/creators/dashboard";
-}
+import { safeAuthDestination } from "@/lib/auth-destination";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  if (!code) {
-    const destination = new URL("/login?auth_error=confirmation", request.url);
+  const next = safeAuthDestination(url.searchParams.get("next"));
+
+  const loginError = (reason: string) => {
+    const destination = new URL("/login", request.url);
+    destination.searchParams.set("auth_error", reason);
+    if (next) destination.searchParams.set("next", next);
     return NextResponse.redirect(destination);
+  };
+
+  if (!code) {
+    return loginError("confirmation");
   }
 
   try {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      const destination = new URL("/login?auth_error=confirmation", request.url);
-      return NextResponse.redirect(destination);
+      return loginError("confirmation");
     }
   } catch {
-    const destination = new URL("/login?auth_error=configuration", request.url);
-    return NextResponse.redirect(destination);
+    return loginError("configuration");
   }
 
-  return NextResponse.redirect(new URL(safeNext(url.searchParams.get("next")), request.url));
+  return NextResponse.redirect(new URL(next || "/creators/dashboard", request.url));
 }

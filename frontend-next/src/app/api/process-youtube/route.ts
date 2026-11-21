@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const configuredBackend = process.env.BACKEND_BASE_URL?.trim();
-const BACKEND = configuredBackend && !configuredBackend.includes("summer-clearing") && !configuredBackend.includes("participate-pending")
-  ? configuredBackend.replace(/\/$/, "")
-  : "https://most-sports-analysts-units.trycloudflare.com";
+import { getBackendBase } from "@/lib/backend-base";
+
+const BACKEND = getBackendBase();
 const TIMEOUT_MS = 120_000; // 2 min for full pipeline
 
 export async function POST(req: NextRequest) {

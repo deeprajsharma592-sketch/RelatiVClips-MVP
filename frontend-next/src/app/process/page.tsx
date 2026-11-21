@@ -15,17 +15,14 @@
  */
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
-  Sparkles,
-  Check,
   AlertCircle,
   ArrowRight,
   Video,
   Download,
-  Share2,
   Clock,
   Zap,
   Coins,
@@ -34,14 +31,12 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import StickyInputBar from "@/components/StickyInputBar";
 import { StageAnimation } from "@/components/StageAnimation";
 import { ActivityFeed, type FeedEvent } from "@/components/ActivityFeed";
 import VideoIntake from "@/components/VideoIntake";
-import SickLoadingTransition from "@/components/SickLoadingTransition";
-import { getDashDashboardUrl } from "@/lib/domain";
+import { useAuth } from "@/lib/AuthContext";
+import { signInWithGoogle } from "@/lib/auth";
 import { submitYouTubeUrl, checkProcessingStatus } from "@/lib/api";
-import { apiPath } from "@/lib/apiBase";
 import type { ProcessState, Clip, PipelineStep, StatusResponse } from "@/types";
 
 const POLL_INTERVAL_MS = 2000;
@@ -52,7 +47,7 @@ const MAX_POLL_DURATION_MS = 5 * 60 * 1000; // 5 min hard cap
 // drives per-stage animations in StageAnimation.tsx.
 const STEPS: PipelineStep[] = [
   { number: 1, label: "Fetching source",       sub: "YouTube · captions · audio",  icon: "📥", vibe: "fetch" },
-  { number: 2, label: "Analyzing",             sub: "Transcript · story signals",  icon: "💬", vibe: "audio" },
+  { number: 2, label: "Analyzing",             sub: "librosa · energy peaks",      icon: "🎵", vibe: "audio" },
   { number: 3, label: "Transcribing",          sub: "Captions · Whisper fallback", icon: "💬", vibe: "transcribe" },
   { number: 4, label: "Selecting clips",       sub: "RelatiV AI · hook scoring",       icon: "🧠", vibe: "llm" },
   { number: 5, label: "Detecting faces",       sub: "Center-crop · OpenCV",        icon: "👤", vibe: "face" },
@@ -79,7 +74,6 @@ function ProcessFallback() {
   return (
     <>
       <Header />
-      <StickyInputBar />
       <main className="relative min-h-[calc(100vh-68px)] flex items-center justify-center">
         <Loader2
           className="h-6 w-6 animate-spin"
@@ -92,36 +86,10 @@ function ProcessFallback() {
 
 function ProcessInner() {
   const params = useSearchParams();
-  const router = useRouter();
 
   const initialUrl = params.get("url") || "";
   const initialTaskId = params.get("taskId") || params.get("task_id") || "";
 
-  // If a video URL is provided, display the sick loading transition before routing to studio.relativclips.com
-  if (initialUrl) {
-    return (
-      <SickLoadingTransition
-        url={initialUrl}
-        autoRedirect={true}
-      />
-    );
-  }
-
-  useEffect(() => {
-    const queryObj: Record<string, string> = {};
-    params.forEach((v, k) => {
-      queryObj[k] = v;
-    });
-    const target = getDashDashboardUrl(
-      "",
-      Object.keys(queryObj).length > 0 ? queryObj : undefined
-    );
-    window.location.href = target;
-  }, [params]);
-
-  return <ProcessFallback />;
-
-  const [url, setUrl] = useState(initialUrl);
   const [state, setState] = useState<ProcessState>(initialUrl || initialTaskId ? "processing" : "idle");
   const [clips, setClips] = useState<Clip[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +111,7 @@ function ProcessInner() {
   const [feed, setFeed] = useState<FeedEvent[]>([]);
   const lastStepMsgRef = useRef<string | null>(null);
   const eventCounterRef = useRef(0);
-  const taskIdRef = useRef<string | null>(null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(initialTaskId || null);
   const startedAtRef = useRef<number>(0);
 
   const pushEvent = useCallback((msg: string, step?: number, kind: FeedEvent["kind"] = "sub") => {
@@ -171,7 +139,10 @@ function ProcessInner() {
       eventCounterRef.current = 0;
       setState("processing");
       startedAtRef.current = Date.now();
-      taskIdRef.current = taskId;
+      setActiveTaskId(taskId);
+      if (new URLSearchParams(window.location.search).get("taskId") !== taskId) {
+        window.history.replaceState(null, "", `/process?${new URLSearchParams({ taskId })}`);
+      }
       pushEvent(`Connected to pipeline · task ${taskId.slice(0, 8)}`, undefined, "info");
 
       try {
@@ -242,6 +213,7 @@ function ProcessInner() {
       try {
         pushEvent("Submitting URL to pipeline…", undefined, "info");
         const init = await submitYouTubeUrl(targetUrl);
+        if (!init.taskId) throw new Error("The processing service did not return a clip job.");
         await startPollingTask(init.taskId);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -252,15 +224,18 @@ function ProcessInner() {
     [pushEvent, startPollingTask]
   );
 
-  // Auto-start if task_id or URL was provided
+  const initialized = useRef(false);
+
+  // Defer starting the job until the page has mounted.
   useEffect(() => {
-    if (initialTaskId && !taskIdRef.current) {
-      startPollingTask(initialTaskId);
-    } else if (initialUrl && state === "processing" && !taskIdRef.current) {
-      startProcessing(initialUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const timer = window.setTimeout(() => {
+      if (initialized.current) return;
+      initialized.current = true;
+      if (initialTaskId) void startPollingTask(initialTaskId);
+      else if (initialUrl) void startProcessing(initialUrl);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialTaskId, initialUrl, startPollingTask, startProcessing]);
 
   // Elapsed timer (independent of progress — always ticks)
   useEffect(() => {
@@ -273,22 +248,9 @@ function ProcessInner() {
     return () => clearInterval(t);
   }, [state]);
 
-  const handleSubmit = useCallback(
-    (e?: React.FormEvent) => {
-      e?.preventDefault();
-      const trimmed = url.trim();
-      if (!trimmed) return;
-      // Update URL so the state is shareable
-      router.replace(`/process?url=${encodeURIComponent(trimmed)}`);
-      startProcessing(trimmed);
-    },
-    [url, router, startProcessing]
-  );
-
   return (
     <>
       <Header />
-      <StickyInputBar />
 
       <main className="relative min-h-[calc(100vh-68px)] pt-32 pb-24">
         <div className="relative max-w-5xl mx-auto px-6">
@@ -360,12 +322,18 @@ function ProcessInner() {
             </h1>
           </div>
 
+          {state === "error" && error && (
+            <p role="alert" className="mb-5 flex items-center justify-center gap-2 text-sm text-rose-600 dark:text-rose-300">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
+          )}
+
           {/* Input (visible in idle/error states) */}
           {(state === "idle" || state === "error") && (
             <div className="mb-10">
               <VideoIntake
                 onStartProcess={(tId) => {
-                  taskIdRef.current = tId;
                   startPollingTask(tId);
                 }}
               />
@@ -677,14 +645,14 @@ function ProcessInner() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
                   {clips.map((clip, i) => (
-                    <ClipCard key={clip.clip_id || i} clip={clip} index={i} />
+                    <ClipCard key={clip.clip_id || i} clip={clip} index={i} taskId={activeTaskId} />
                   ))}
                 </div>
                 <div className="mt-8 text-center">
                   <button
                     onClick={() => {
+                      window.history.replaceState(null, "", "/process");
                       setState("idle");
-                      setUrl("");
                       setClips([]);
                     }}
                     className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-[13px] font-semibold transition-all"
@@ -711,34 +679,39 @@ function ProcessInner() {
 /**
  * ClipCard — Vertical 9:16 Short-Form Clip Preview with Viral Score & 1-Click Export
  */
-function ClipCard({ clip, index }: { clip: Clip; index: number }) {
+function ClipCard({ clip, index, taskId }: { clip: Clip; index: number; taskId: string | null }) {
+  const { user, loading } = useAuth();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState(false);
+  const clipId = clip.clip_id ||
+    clip.download_url?.split(/[/\\]/).pop() ||
+    clip.file_path?.split(/[/\\]/).pop()?.replace(/\.mp4$/i, "");
+  const videoUrl = clipId ? `/api/proxy/download/${encodeURIComponent(clipId)}` : null;
+  const posterUrl = clipId ? `/api/proxy/thumbnail/${encodeURIComponent(clipId)}` : null;
 
   useEffect(() => {
-    if (!clip.file_path && !clip.clip_id && !clip.download_url) return;
-    const cid =
-      clip.clip_id ||
-      (clip.download_url ? clip.download_url.split(/[/\\]/).pop() : null) ||
-      (clip.file_path ? clip.file_path.split(/[/\\]/).pop()?.replace(/\.mp4$/i, "") : null);
-    if (cid) {
-      setVideoUrl(apiPath(`/download/${cid}`));
-      setPosterUrl(apiPath(`/thumbnail/${cid}`));
+    if (window.location.hash === `#clip-${index + 1}`) {
+      document.getElementById(`clip-${index + 1}`)?.scrollIntoView({ block: "center" });
     }
-  }, [clip.clip_id, clip.file_path, clip.download_url]);
+  }, [index]);
 
-  const handleDownload = useCallback(() => {
-    if (!videoUrl) return;
-    const a = document.createElement("a");
-    const downloadUrl = videoUrl.includes("?")
-      ? `${videoUrl}&download=1`
-      : `${videoUrl}?download=1`;
-    a.href = downloadUrl;
-    a.download = `${clip.clip_id || "relativ_clip"}.mp4`;
-    a.click();
-  }, [videoUrl, clip.clip_id]);
+  const handleDownload = async () => {
+    if (!videoUrl || !taskId || signingIn) return;
+    setDownloadError(null);
+    if (!user) {
+      setSigningIn(true);
+      try {
+        await signInWithGoogle(`/process?${new URLSearchParams({ taskId })}#clip-${index + 1}`);
+      } catch (cause) {
+        setDownloadError(cause instanceof Error ? cause.message : "Could not start Google sign-in.");
+        setSigningIn(false);
+      }
+      return;
+    }
+    window.location.assign(`${videoUrl}?download=1`);
+  };
 
   const handleCopyCaption = useCallback(() => {
     const text = `${clip.viral_title || ""}\n\n${clip.caption || ""}\n\n${clip.hashtags || ""}`;
@@ -760,6 +733,7 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
 
   return (
     <motion.div
+      id={`clip-${index + 1}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08 }}
@@ -780,6 +754,7 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
             poster={posterUrl || undefined}
             className="w-full h-full object-cover"
             controls
+            controlsList="nodownload"
             preload="metadata"
             playsInline
             onError={() => setVideoError(true)}
@@ -830,18 +805,22 @@ function ClipCard({ clip, index }: { clip: Clip; index: number }) {
           )}
         </div>
 
+        {downloadError && <p role="alert" className="text-xs text-rose-500">{downloadError}</p>}
+
         {/* Export Buttons */}
         <div className="pt-2 flex items-center gap-2">
           <button
             onClick={handleDownload}
+            disabled={loading || signingIn || !videoUrl}
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-95 shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all"
           >
             <Download className="h-3.5 w-3.5" />
-            <span>Download MP4</span>
+            <span>{signingIn ? "Opening Google…" : user ? "Download MP4" : "Sign in with Google to download"}</span>
           </button>
 
           <button
             onClick={handleCopyCaption}
+            disabled={!user}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 border border-slate-200/80 dark:border-white/10 transition-all"
             title="Copy viral title, caption and hashtags"
           >

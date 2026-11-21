@@ -42,7 +42,6 @@ export interface RecipeConfig {
   enableSpeechCleanup: boolean;
   enableAudioEnhance: boolean;
   enableAutoSfx: boolean;
-  clipCount: number | null;
 }
 
 interface PreGenConfigModalProps {
@@ -110,7 +109,6 @@ export default function PreGenConfigModal({
   const [enableSpeechCleanup, setEnableSpeechCleanup] = useState(true);
   const [enableAudioEnhance, setEnableAudioEnhance] = useState(true);
   const [enableAutoSfx, setEnableAutoSfx] = useState(false);
-  const [clipCount, setClipCount] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -124,7 +122,6 @@ export default function PreGenConfigModal({
       enableSpeechCleanup,
       enableAudioEnhance,
       enableAutoSfx,
-      clipCount,
     });
   };
 
@@ -198,22 +195,6 @@ export default function PreGenConfigModal({
                   <Layers size={13} className="text-purple-400" />
                   <span className="text-zinc-400">Brand Kit:</span>
                   <span className="text-white font-medium">RelatiV Default</span>
-                </div>
-
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-zinc-300">
-                  <span className="text-zinc-400">Clips:</span>
-                  <select
-                    value={clipCount ?? "auto"}
-                    onChange={(e) => setClipCount(e.target.value === "auto" ? null : Number(e.target.value))}
-                    className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
-                    aria-label="Number of clips"
-                  >
-                    <option value="auto" className="bg-zinc-900">Auto by length</option>
-                    <option value="1" className="bg-zinc-900">1 clip</option>
-                    <option value="2" className="bg-zinc-900">2 clips</option>
-                    <option value="3" className="bg-zinc-900">3 clips</option>
-                    <option value="4" className="bg-zinc-900">4 clips</option>
-                  </select>
                 </div>
               </div>
 
@@ -414,9 +395,7 @@ export default function PreGenConfigModal({
                   </div>
                   <div className="flex items-center justify-between text-zinc-400">
                     <span>Expected Clips</span>
-                    <span className="text-white font-medium">
-                      {clipCount ? `${clipCount} Curated Cut${clipCount === 1 ? "" : "s"}` : "Auto · max 4"}
-                    </span>
+                    <span className="text-white font-medium">3 Curated Cuts</span>
                   </div>
                   <div className="flex items-center justify-between text-zinc-400">
                     <span>AI Model</span>

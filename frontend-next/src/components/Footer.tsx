@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import BrandLogo from "@/components/BrandLogo";
 
 const FOOTER_COLS = [
   {
@@ -90,22 +91,12 @@ export default function Footer() {
         {/* Top — brand + tagline + newsletter */}
         <div className="grid lg:grid-cols-12 gap-12 pb-16" style={{ borderBottom: "1px solid var(--color-border)" }}>
           <div className="lg:col-span-5">
-            <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden"
-                style={{
-                  background: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
-                  boxShadow: "0 4px 12px rgba(252, 211, 77, 0.30), 0 1px 0 rgba(255,245,220,0.20) inset",
-                }}
-              >
-                <span className="font-display text-base font-bold" style={{ color: "#1A1814" }}>R</span>
-              </div>
-              <span
-                className="font-display text-xl font-semibold tracking-tight"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Relati<span className="text-gradient-sunset">V</span>
-              </span>
+            <Link href="/" className="inline-flex items-center group" aria-label="RelatiV home">
+              <BrandLogo
+                iconWidth={48}
+                wordmarkClassName="font-display text-xl font-semibold tracking-tight"
+                wordmarkStyle={{ color: "var(--color-text-primary)" }}
+              />
             </Link>
             <p
               className="mt-5 text-[15px] leading-relaxed max-w-md"

@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import BrandLogo from "@/components/BrandLogo";
 
 export type StudioTab = "home" | "projects" | "brand-kit" | "assets" | "analyse" | "socials" | "calendar";
 
@@ -40,13 +41,8 @@ export default function StudioSidebar({
       <div className="p-3.5 space-y-4">
         {/* Brand Header */}
         <div className="flex items-center justify-between px-2 pt-1 pb-1">
-          <Link href="/" className="flex items-center gap-2 group">
-            <span className="w-7 h-7 rounded-md bg-white flex items-center justify-center text-black font-black text-xs tracking-tighter">
-              R
-            </span>
-            <span className="text-sm font-bold text-white tracking-tight">
-              RelatiV
-            </span>
+          <Link href="/" className="group" aria-label="RelatiV home">
+            <BrandLogo iconWidth={34} wordmarkClassName="text-sm font-bold tracking-tight text-white" />
           </Link>
         </div>
 

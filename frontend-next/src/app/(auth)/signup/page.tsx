@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -14,9 +14,13 @@ import {
   Shield,
 } from "lucide-react";
 import { signup, signInWithGoogle } from "@/lib/auth";
+import { authPageHref, safeAuthDestination } from "@/lib/auth-destination";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const search = useSearchParams();
+  const nextPath = safeAuthDestination(search.get("next"));
+  const destination = nextPath || "/creators/dashboard";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +39,7 @@ export default function SignupPage() {
     setSubmitError(null);
 
     try {
-      await signInWithGoogle("/creators/dashboard");
+      await signInWithGoogle(destination);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Google sign-up is unavailable right now.");
       setSocialLoading(null);
@@ -65,13 +69,13 @@ export default function SignupPage() {
         password,
         role: "creator",
         accept_tos: acceptedTerms,
-        redirectTo: "/creators/dashboard",
+        redirectTo: destination,
       });
 
       setSuccess(true);
       setNeedsVerification(Boolean(result.needsEmailVerification));
       if (!result.needsEmailVerification) {
-        setTimeout(() => router.push("/creators/dashboard"), 1000);
+        setTimeout(() => router.push(destination), 1000);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -133,7 +137,7 @@ export default function SignupPage() {
               {needsVerification && (
                 <div className="pt-2">
                   <Link
-                    href="/login"
+                    href={authPageHref("/login", nextPath)}
                     className="px-6 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black font-semibold text-xs hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all inline-block"
                   >
                     Proceed to Sign in
@@ -328,7 +332,7 @@ export default function SignupPage() {
               <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.06] text-center text-sm text-zinc-600 dark:text-zinc-400 font-sans">
                 Already have an account?{" "}
                 <Link
-                  href="/login"
+                  href={authPageHref("/login", nextPath)}
                   className="text-zinc-950 dark:text-white font-semibold hover:underline transition-colors"
                 >
                   Sign in →
@@ -354,5 +358,13 @@ export default function SignupPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-80px)] bg-[#05060A]" />}>
+      <SignupForm />
+    </Suspense>
   );
 }

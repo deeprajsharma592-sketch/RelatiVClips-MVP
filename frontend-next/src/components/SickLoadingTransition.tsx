@@ -3,9 +3,15 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Sparkles,
   Zap,
   Radio,
+  Cpu,
+  Layers,
+  CheckCircle2,
+  Video,
   ArrowRight,
+  ShieldCheck,
   Activity,
   Terminal,
 } from "lucide-react";
@@ -14,8 +20,6 @@ import { getDashDashboardUrl } from "@/lib/domain";
 
 interface SickLoadingTransitionProps {
   url: string;
-  captionFont?: string;
-  clipCount?: number | null;
   onComplete?: (taskId?: string) => void;
   autoRedirect?: boolean;
 }
@@ -46,12 +50,12 @@ const TELEMETRY_STAGES: {
   },
   {
     pct: 28,
-    stageName: "TRANSCRIPT STORY MAPPING",
-    subtext: "Finding self-contained hooks, tension, context, and payoff",
+    stageName: "ACOUSTIC ENERGY FLUX",
+    subtext: "Librosa 44.1kHz spectral centroid & vocal cadence extraction",
     log: {
       time: "00:00.64",
-      phase: "TASTE",
-      text: "Mapped complete story arcs and removed low-context fragments.",
+      phase: "AUDIO",
+      text: "Extracted vocal frequency peaks & dialogue density metrics.",
       status: "done",
     },
   },
@@ -103,18 +107,13 @@ const TELEMETRY_STAGES: {
 
 export default function SickLoadingTransition({
   url,
-  captionFont = "studio",
-  clipCount = null,
   onComplete,
   autoRedirect = true,
 }: SickLoadingTransitionProps) {
   const [progress, setProgress] = useState(4);
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [activeLogs, setActiveLogs] = useState<TelemetryLog[]>([]);
-  const taskIdRef = useRef<string | null>(null);
-  const submissionErrorRef = useRef<string | null>(null);
-  const [taskReady, setTaskReady] = useState(false);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
   const [isWarping, setIsWarping] = useState(false);
   const hasTriggeredComplete = useRef(false);
 
@@ -139,29 +138,22 @@ export default function SickLoadingTransition({
     let isMounted = true;
     if (!url) return;
 
-    submitYouTubeUrl(url, captionFont, clipCount)
+    submitYouTubeUrl(url)
       .then((res) => {
         if (!isMounted) return;
         if (res.taskId) {
-          taskIdRef.current = res.taskId;
-          setTaskReady(true);
-        } else {
-          const message = "The processing service did not return a task ID.";
-          submissionErrorRef.current = message;
-          setSubmissionError(message);
+          setTaskId(res.taskId);
         }
       })
       .catch((err) => {
-        if (!isMounted) return;
-        const message = err?.message || "Could not start video processing.";
-        submissionErrorRef.current = message;
-        setSubmissionError(message);
+        // Degrade gracefully; the dashboard will retry if needed
+        console.warn("[Transition] Background submission status:", err?.message);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [url, captionFont, clipCount]);
+  }, [url]);
 
   // 2. High-energy smooth progress and stage sequencer
   useEffect(() => {
@@ -178,7 +170,7 @@ export default function SickLoadingTransition({
       const eased = Math.round(
         100 * (1 - Math.pow(1 - rawPct / 100, 2.2))
       );
-      setProgress(Math.max(5, taskIdRef.current ? eased : Math.min(eased, 92)));
+      setProgress(Math.max(5, eased));
 
       // Reveal telemetry logs according to progress
       const matchingStageIndex = TELEMETRY_STAGES.findIndex(
@@ -198,12 +190,6 @@ export default function SickLoadingTransition({
 
       if (eased < 100) {
         frameId = requestAnimationFrame(tick);
-      } else if (!taskIdRef.current) {
-        // The visual animation may finish before the backend returns a task.
-        // Hold here instead of redirecting and accidentally submitting twice.
-        if (!submissionErrorRef.current) {
-          frameId = requestAnimationFrame(tick);
-        }
       } else {
         // Warp transition climax!
         setIsWarping(true);
@@ -211,12 +197,12 @@ export default function SickLoadingTransition({
           if (!hasTriggeredComplete.current) {
             hasTriggeredComplete.current = true;
             if (onComplete) {
-              onComplete(taskIdRef.current || undefined);
+              onComplete(taskId || undefined);
             }
             if (autoRedirect) {
               const targetUrl = getDashDashboardUrl("", {
                 url,
-                taskId: taskIdRef.current || undefined,
+                taskId: taskId || undefined,
               });
               window.location.href = targetUrl;
             }
@@ -227,7 +213,7 @@ export default function SickLoadingTransition({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [url, onComplete, autoRedirect]);
+  }, [taskId, url, onComplete, autoRedirect]);
 
   const currentStage =
     TELEMETRY_STAGES[currentStageIndex] ||
@@ -378,8 +364,8 @@ export default function SickLoadingTransition({
             <span>{currentStage.stageName}</span>
           </div>
 
-          <h2 className={`text-lg sm:text-2xl font-display font-bold tracking-tight ${submissionError ? "text-rose-300" : "text-white"}`}>
-            {submissionError || currentStage.subtext}
+          <h2 className="text-lg sm:text-2xl font-display font-bold text-white tracking-tight">
+            {currentStage.subtext}
           </h2>
         </div>
 
@@ -454,10 +440,10 @@ export default function SickLoadingTransition({
         <div className="flex items-center justify-between text-xs font-mono text-zinc-400">
           <div className="flex items-center gap-2">
             <span className="text-white font-semibold">{progress}%</span>
-            <span>{submissionError ? "FAILED" : taskReady ? "READY" : "STARTING"}</span>
+            <span>COMPLETED</span>
           </div>
           <div className="flex items-center gap-2 text-cyan-300">
-            <span>{submissionError ? "Processing could not be started" : taskReady ? "Launching Studio Workspace" : "Waiting for processing service"}</span>
+            <span>Launching Studio Workspace</span>
             <ArrowRight className="w-3.5 h-3.5 animate-pulse" />
           </div>
         </div>

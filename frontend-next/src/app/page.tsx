@@ -37,14 +37,14 @@ const STEPS = [
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen w-full overflow-x-clip bg-[#F7F8FA] dark:bg-[#050507] text-[#111318] dark:text-white selection:bg-amber-400 selection:text-black">
+    <div className="relative min-h-screen w-full overflow-x-clip [--homepage-hero-surface:#050507] bg-[#F7F8FA] dark:bg-[#050507] text-[#111318] dark:text-white selection:bg-amber-400 selection:text-black">
       {/* ── Unobtrusive Floating Bottom Conversion Dock ── */}
       <StickyInputBar />
 
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
 
-      {/* ── MANIFESTO TRANSITION: Apple Glass Fluid Scroll ── */}
+      {/* ── MANIFESTO TRANSITION: Glass word collision ── */}
       <OwnYourTaste />
 
       <TasteTimeline />
@@ -60,7 +60,7 @@ export default function HomePage() {
 
       {/* ── SECTION 03: HOW IT WORKS (3 Simple Steps) ── */}
       <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-[#F0F2F6] dark:bg-[#07080C] border-t border-black/[0.06] dark:border-white/5">
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full max-w-[1600px] mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -112,6 +112,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
     </div>
   );
 }

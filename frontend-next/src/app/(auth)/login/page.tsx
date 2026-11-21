@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, Shield, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { login, signInWithGoogle, type User } from "@/lib/auth";
+import { authPageHref, safeAuthDestination } from "@/lib/auth-destination";
 
 /**
  * Routes user to their appropriate destination based on role or explicit `next` param.
@@ -26,7 +27,7 @@ function roleDestination(user: User): string {
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const nextPath = search.get("next");
+  const nextPath = safeAuthDestination(search.get("next"));
 
   const [email, setEmail] = useState(() => search.get("email") || "");
   const [password, setPassword] = useState("");
@@ -65,8 +66,7 @@ function LoginForm() {
       setError(null);
       try {
         const result = await login({ email: email.trim().toLowerCase(), password });
-        const safeNext = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
-        const dest = safeNext || roleDestination(result.user);
+        const dest = nextPath || roleDestination(result.user);
         router.push(dest);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Invalid email or password.";
@@ -262,7 +262,7 @@ function LoginForm() {
             <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.06] text-center text-sm text-zinc-600 dark:text-zinc-400 font-sans">
               Don&apos;t have an account?{" "}
               <Link
-                href={`/signup${nextPath && nextPath !== "/account" ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
+                href={authPageHref("/signup", nextPath === "/account" ? null : nextPath)}
                 className="text-zinc-950 dark:text-white font-semibold hover:underline transition-colors"
               >
                 Create one →
