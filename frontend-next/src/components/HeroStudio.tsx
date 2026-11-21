@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
@@ -12,27 +12,47 @@ const HERO_PHRASES = ["personalized short clips", "more views in less time", "re
 export default function HeroStudio() {
   const router = useRouter();
   const [url, setUrl] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clipUrl, setClipUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim()) return;
-    setIsSubmitting(true);
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (isUploading || !url.trim()) return;
+    setClipUrl(url.trim());
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsSubmitting(true);
+  const uploadFile = async (file: File) => {
+    if (isUploading || clipUrl) return;
+    setIsUploading(true);
     setError(null);
     try {
       const { taskId } = await uploadVideoFile(file);
       router.push(`/dashboard?taskId=${taskId}`);
     } catch {
       setError("Upload failed. Try pasting a YouTube link instead.");
-      setIsSubmitting(false);
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (isUploading || clipUrl) return;
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      if (file.type && !file.type.startsWith("video/")) {
+        setError("Choose a video file to upload.");
+        return;
+      }
+      void uploadFile(file);
+      return;
+    }
+    const link = event.dataTransfer.getData("text/uri-list").split("\n").find((line) => line.trim() && !line.startsWith("#"));
+    const text = (link || event.dataTransfer.getData("text/plain")).trim();
+    if (text) {
+      setError(null);
+      setUrl(text);
     }
   };
 
@@ -58,53 +78,77 @@ export default function HeroStudio() {
           <p className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base lg:text-lg">
             Paste a link or drop a raw take. RelatiV finds the moments, edits the clips, and sizes them for every platform.
           </p>
-          <div className="mt-10 w-full max-w-5xl pointer-events-auto">
+          <div className="mt-10 w-full max-w-[62rem] pointer-events-auto">
             <form
               onSubmit={handleSubmit}
-              className="flex min-h-[76px] items-center rounded-xl border border-white/20 bg-black/60 p-2 sm:min-h-[88px] sm:p-2.5 backdrop-blur-xl shadow-2xl focus-within:border-white/40 transition"
+              aria-label="Create clips"
+              aria-busy={isUploading}
+              className="grid gap-3 rounded-[20px] border-2 border-zinc-900 bg-white p-3 shadow-[5px_5px_0] shadow-zinc-950 sm:gap-4 sm:rounded-[24px] sm:p-5 sm:shadow-[7px_7px_0] dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-black"
             >
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="pl-3 pr-2 sm:pl-4 text-zinc-400 hover:text-white cursor-pointer transition shrink-0"
-                title="Upload video file"
-                aria-label="Upload video file"
+              <div
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDrop}
+                className="flex min-h-14 items-center gap-2 rounded-xl border border-stone-300 bg-stone-50 pr-3 focus-within:border-zinc-600 sm:min-h-[66px] sm:gap-3 sm:pr-4 dark:border-zinc-700 dark:bg-zinc-950 dark:focus-within:border-zinc-400"
               >
-                <Link2 className="w-5 h-5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading || Boolean(clipUrl)}
+                  className="ml-1.5 grid size-10 shrink-0 place-items-center rounded-lg text-zinc-500 transition hover:bg-stone-200 hover:text-zinc-950 disabled:cursor-wait sm:ml-2.5 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  title="Upload video file"
+                  aria-label="Upload video file"
+                >
+                  <Link2 className="size-5 sm:size-6" aria-hidden="true" />
+                </button>
 
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Drop a video link or upload a file"
-                className="w-full min-w-0 bg-transparent text-sm sm:text-lg text-white placeholder-zinc-500 outline-none ring-0 border-0 py-2.5 sm:py-3"
-              />
+                <input
+                  type="text"
+                  inputMode="url"
+                  aria-label="Video link"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="Drop a video link or upload a file"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm text-zinc-900 placeholder:text-zinc-600 focus-visible:outline-none sm:text-lg dark:text-white dark:placeholder:text-zinc-400"
+                />
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (file) void uploadFile(file);
+                  }}
+                  className="hidden"
+                />
+              </div>
 
-              <button type="submit" className="px-4 sm:px-6 py-3 sm:py-4 rounded-lg bg-white text-black hover:bg-zinc-200 text-sm sm:text-base font-bold transition shrink-0 cursor-pointer shadow-sm">
-                Get free clips
-              </button>
+              <div className="grid grid-cols-[1.25fr_1fr] gap-2.5 sm:gap-4">
+                <button
+                  type="submit"
+                  disabled={isUploading || Boolean(clipUrl)}
+                  className="min-h-12 rounded-xl border-2 border-transparent bg-zinc-950 px-2 py-2.5 text-sm font-bold text-white transition hover:bg-zinc-800 disabled:cursor-wait sm:min-h-[58px] sm:px-4 sm:text-lg dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+                >
+                  {isUploading ? "Uploading…" : "Get free clips"}
+                </button>
 
-              <span className="hidden sm:inline text-zinc-500 text-sm px-2 sm:px-3 shrink-0">or</span>
-              <button type="button" onClick={() => router.push("/dashboard")} className="hidden sm:inline text-sm text-zinc-300 hover:text-white font-medium pr-3 sm:pr-4 shrink-0 transition cursor-pointer">
-                Auto-edit
-              </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard")}
+                  className="min-h-12 rounded-xl border-2 border-zinc-900 px-2 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-stone-100 sm:min-h-[58px] sm:px-4 sm:text-lg dark:border-zinc-600 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  Auto-edit
+                </button>
+              </div>
             </form>
-            {error && <p className="text-xs text-rose-400 mt-2">{error}</p>}
+            {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
           </div>
           <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">Scroll to explore ↓</p>
         </div>
       </section>
 
-      {isSubmitting && url && <SickLoadingTransition url={url} autoRedirect />}
+      {clipUrl && <SickLoadingTransition url={clipUrl} autoRedirect />}
     </>
   );
 }
