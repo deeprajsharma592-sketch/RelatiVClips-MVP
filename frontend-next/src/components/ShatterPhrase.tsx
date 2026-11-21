@@ -288,6 +288,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
         phrase = morph.next;
         setIndex(phrase);
         current = morph.target;
+        root?.dispatchEvent(new Event("hero-phrase-settled", { bubbles: true }));
         nextBurst = now + 4800;
         morph = undefined;
       } else if (!morph && phrases.length > 1 && now >= nextBurst) {
@@ -385,6 +386,7 @@ export default function ShatterPhrase({ phrases }: { phrases: readonly string[] 
       }
       if (event.type === "pointerdown" && event.button === 0) {
         burst(now, point, current);
+        root?.dispatchEvent(new Event("hero-phrase-shatter", { bubbles: true }));
         nextBurst = now + 4800;
       }
       schedule();

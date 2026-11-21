@@ -3,7 +3,7 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
   const layer = hero.querySelector<HTMLElement>("[data-thumbnail-layer]");
   if (!layer) return;
   const sources = Array.from(hero.querySelectorAll<HTMLImageElement>("[data-orbit-thumbnail]"));
-  const flights = new Map<HTMLElement, () => void>();
+  const flights = new Map<HTMLElement, { restore: () => void; returnToRing: (duration: number) => void }>();
   const slots = ["headline", "speed"];
   let cycle = 0;
   let interval: number | undefined;
@@ -62,15 +62,19 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
       card.removeAttribute("data-in-flight");
       flights.delete(slot);
     };
-    flights.set(slot, restore);
+    const returnToRing = (duration: number) => {
+      window.clearTimeout(holdTimer);
+      const style = getComputedStyle(thumb);
+      const currentFrame = { transform: style.transform, opacity: style.opacity, filter: style.filter };
+      animation.cancel();
+      animation = thumb.animate([currentFrame, wheelFrame(card.getBoundingClientRect())], {
+        duration, easing: "ease-in-out", fill: "forwards",
+      });
+      animation.onfinish = restore;
+    };
+    flights.set(slot, { restore, returnToRing });
     animation.onfinish = () => {
-      holdTimer = window.setTimeout(() => {
-        const destinationFrame = wheelFrame(card.getBoundingClientRect());
-        animation = thumb.animate([featured, destinationFrame], {
-          duration: 360, easing: "ease-in-out", fill: "forwards",
-        });
-        animation.onfinish = restore;
-      }, hold);
+      holdTimer = window.setTimeout(() => returnToRing(360), hold);
     };
   }
 
@@ -84,7 +88,7 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
 
   function restoreAll() {
     window.clearTimeout(stagger);
-    for (const restore of flights.values()) restore();
+    for (const flight of flights.values()) flight.restore();
   }
 
   function schedule() {
@@ -95,9 +99,14 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     }
   }
 
-  const shatter = () => fly("shatter", 270);
+  const phraseSlot = hero.querySelector<HTMLElement>('[data-thumbnail-slot="shatter"]');
+  const shatter = () => {
+    if (phraseSlot) flights.get(phraseSlot)?.returnToRing(180);
+  };
+  const settled = () => fly("shatter", 1050);
   schedule();
   hero.addEventListener("hero-phrase-shatter", shatter);
+  hero.addEventListener("hero-phrase-settled", settled);
   motion.addEventListener("change", schedule);
   document.addEventListener("visibilitychange", schedule);
   window.addEventListener("resize", restoreAll);
@@ -105,6 +114,7 @@ export function animateHeroThumbnails(hero: HTMLElement, flightClass: string) {
     window.clearInterval(interval);
     restoreAll();
     hero.removeEventListener("hero-phrase-shatter", shatter);
+    hero.removeEventListener("hero-phrase-settled", settled);
     motion.removeEventListener("change", schedule);
     document.removeEventListener("visibilitychange", schedule);
     window.removeEventListener("resize", restoreAll);
