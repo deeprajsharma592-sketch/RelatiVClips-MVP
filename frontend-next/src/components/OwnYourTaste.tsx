@@ -1,70 +1,105 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, type CSSProperties } from "react";
+import styles from "./OwnYourTaste.module.css";
+
+const PARTS = [
+  [
+    ["O", -8, 21, -0.09],
+    ["w", 14, -35, 0.13],
+    ["n", -26, 58, -0.19, 0.68],
+  ],
+  [
+    ["Y", 27, -58, 0.19, 0.68],
+    ["o", -17, 39, -0.14],
+    ["u", 13, -32, 0.12],
+    ["r", -9, 27, -0.08],
+    [" "],
+    ["T", 9, -25, 0.08],
+    ["a", -8, 21, -0.07],
+    ["s", 8, -19, 0.07],
+    ["t", -6, 16, -0.05],
+    ["e", 5, -12, 0.04],
+  ],
+] as const;
 
 export default function OwnYourTaste() {
-  const containerRef = useRef<HTMLElement>(null);
-  const reduceMotion = useReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
 
-  // Track scroll progress as the section enters the viewport until it reaches center
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "center 48%"],
-  });
+  useEffect(() => {
+    const section = sectionRef.current;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!section || reducedMotion.matches) return;
 
-  // As you scroll: transparency decreases (opacity rises from subtle 0.35 to vibrant 1.0)
-  const textOpacity = useTransform(scrollYProgress, [0.05, 0.85], [0.35, 1]);
-  const textScale = useTransform(scrollYProgress, [0.05, 0.85], [0.96, 1]);
+    const initial = section.getBoundingClientRect();
+    if (initial.top + initial.height / 2 <= window.innerHeight * 0.56) return;
 
-  // Fluid liquid rises from bottom (100% inset) to top (0% inset) filling the glass letters
-  const fluidClip = useTransform(
-    scrollYProgress,
-    [0.1, 0.85],
-    ["inset(100% 0% 0% 0%)", "inset(0% 0% 0% 0%)"]
-  );
+    section.dataset.reveal = "waiting";
+    let frame = 0;
+
+    function stop() {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      cancelAnimationFrame(frame);
+    }
+
+    function checkPosition() {
+      frame = 0;
+      if (!section) return;
+      const { top, height, bottom } = section.getBoundingClientRect();
+      if (top + height / 2 > window.innerHeight * 0.56) return;
+
+      stop();
+      if (bottom > 0 && !reducedMotion.matches) {
+        section.dataset.reveal = "playing";
+      } else {
+        delete section.dataset.reveal;
+      }
+    }
+
+    function schedule() {
+      if (!frame) frame = requestAnimationFrame(checkPosition);
+    }
+
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    schedule();
+
+    return () => {
+      stop();
+      delete section.dataset.reveal;
+    };
+  }, []);
 
   return (
-    <section
-      ref={containerRef}
-      className="relative w-full py-24 sm:py-32 md:py-44 flex items-center justify-center bg-black overflow-hidden select-none"
-      aria-label="Own Your Taste"
-    >
-      {/* ── ONLY THE TEXT: Apple Glass Effect + Liquid Scroll Fill (No box / No container) ── */}
-      <motion.div
-        style={
-          reduceMotion
-            ? { opacity: 1, scale: 1 }
-            : { opacity: textOpacity, scale: textScale }
-        }
-        className="relative inline-block text-center px-4"
-      >
-        {/* Base Layer: Apple Glass Text (Translucent, Frosted Specular Rim) */}
-        <h2
-          className="block text-[clamp(2.8rem,9vw,9rem)] font-display font-black tracking-[-0.04em] leading-none whitespace-nowrap select-none text-transparent"
-          style={{
-            WebkitTextStroke: "1.5px rgba(255, 255, 255, 0.35)",
-            background:
-              "linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.25) 100%)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            textShadow: "0 0 35px rgba(255, 255, 255, 0.08)",
-          }}
-        >
-          Own Your Taste
-        </h2>
-
-        {/* Foreground Layer: Liquid Fluid Fill (Fills Up From Bottom on Scroll) */}
-        <motion.div
-          style={reduceMotion ? undefined : { clipPath: fluidClip }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-          aria-hidden="true"
-        >
-          <span className="block text-[clamp(2.8rem,9vw,9rem)] font-display font-black tracking-[-0.04em] leading-none whitespace-nowrap bg-gradient-to-t from-sky-400 via-indigo-300 to-white bg-clip-text text-transparent [-webkit-background-clip:_text] [-webkit-text-fill-color:_transparent] [filter:drop-shadow(0_0_35px_rgba(56,189,248,0.55))]">
-            Own Your Taste
+    <section ref={sectionRef} className={styles.section} aria-labelledby="own-your-taste-title">
+      <h2 id="own-your-taste-title" className={styles.heading} aria-label="Own Your Taste">
+        {PARTS.map((part, partIndex) => (
+          <span
+            key={partIndex}
+            className={partIndex === 0 ? styles.left : styles.right}
+            aria-hidden="true"
+          >
+            {part.map(([letter, bend, fold, lift, pinch], index) =>
+              letter === " " ? " " : (
+                <span
+                  key={index}
+                  className={styles.glyph}
+                  data-letter={letter}
+                  style={{
+                    "--bend": `${bend}deg`,
+                    "--fold": `${fold}deg`,
+                    "--lift": `${lift}em`,
+                    "--pinch": pinch ?? 0.85,
+                  } as CSSProperties}
+                >
+                  {letter}
+                </span>
+              ),
+            )}
           </span>
-        </motion.div>
-      </motion.div>
+        ))}
+      </h2>
     </section>
   );
 }

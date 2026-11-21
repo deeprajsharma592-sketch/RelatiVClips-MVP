@@ -44,7 +44,7 @@ export default function HomePage() {
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
 
-      {/* ── MANIFESTO TRANSITION: Apple Glass Fluid Scroll ── */}
+      {/* ── MANIFESTO TRANSITION: Glass word collision ── */}
       <OwnYourTaste />
 
       <TasteTimeline />
