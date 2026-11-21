@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
-import { ArrowDown, ArrowRight, Pause, Play, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowDown, ArrowRight, Heart, MessageCircle, Pause, Play, ThumbsDown, ThumbsUp } from "lucide-react";
 import styles from "./TasteTimeline.module.css";
 
 const MESSAGE = "RelatiV continuously learns your content taste and becomes better at making your clips go viral";
@@ -23,6 +23,16 @@ const SCENES = [
   { label: "Twist", platform: "Shorts", title: "And the result broke my brain", score: 81 },
   { label: "Peak", platform: "TikTok", title: "Everyone in the room went quiet", score: 95 },
   { label: "Payoff", platform: "Reels", title: "That is why I never go back", score: 79 },
+];
+const REACTIONS = [
+  { kind: "like", text: "1.2k", tone: "pink" },
+  { kind: "comment", text: "Perfect hook 🔥", tone: "violet" },
+  { kind: "like", text: "842", tone: "coral" },
+  { kind: "comment", text: "I’d watch this twice", tone: "blue" },
+  { kind: "comment", text: "Such a clean edit", tone: "gold" },
+  { kind: "like", text: "2.1k", tone: "pink" },
+  { kind: "comment", text: "Great pacing!", tone: "mint" },
+  { kind: "like", text: "968", tone: "violet" },
 ];
 const PAGE_COUNT = Math.ceil(CLIP_IMAGES.length / SCENES.length);
 
@@ -54,15 +64,27 @@ function FlyingThumbnail({ index, journey, progress }: { index: number; journey:
   );
 }
 
-function PortalSpark({ index, progress }: { index: number; progress: MotionValue<number> }) {
+function SocialReaction({ index, progress }: { index: number; progress: MotionValue<number> }) {
+  const reaction = REACTIONS[index];
   const angle = (index * 137.5) * Math.PI / 180;
-  const distance = 38 + (index * 29) % 155;
-  const start = 0.5 + (index % 5) * 0.027;
-  const end = start + 0.2;
+  const distance = 44 + (index * 23) % 104;
+  const start = 0.5 + (index % 4) * 0.025;
+  const end = start + 0.28;
   const x = useTransform(progress, [start, end], [0, Math.cos(angle) * distance]);
   const y = useTransform(progress, [start, end], [0, Math.sin(angle) * distance]);
-  const opacity = useTransform(progress, [start, start + 0.045, end], [0, 0.86, 0]);
-  return <motion.i style={{ x, y, opacity }} />;
+  const opacity = useTransform(progress, [start, start + 0.06, end], [0, 1, 0]);
+  const scale = useTransform(progress, [start, start + 0.06, end], [0.72, 1, 0.88]);
+  const bubbleClass = reaction.kind === "like" ? styles.socialLike : styles.socialComment;
+  return (
+    <motion.span
+      className={`${styles.socialBubble} ${bubbleClass}`}
+      data-tone={reaction.tone}
+      style={{ x, y, opacity, scale }}
+    >
+      {reaction.kind === "like" ? <Heart size={13} fill="currentColor" /> : <MessageCircle size={13} />}
+      {reaction.text}
+    </motion.span>
+  );
 }
 
 export default function TasteTimeline() {
@@ -167,8 +189,8 @@ export default function TasteTimeline() {
           <span>Get viral videos</span>
         </motion.div>
         <motion.span className={styles.sourceLabel} style={{ opacity: sourceOpacity }} aria-hidden="true">Your long video · 48:12</motion.span>
-        <div className={styles.sparks} aria-hidden="true">
-          {Array.from({ length: 16 }, (_, index) => <PortalSpark key={index} index={index} progress={progress} />)}
+        <div className={styles.reactions} aria-hidden="true">
+          {REACTIONS.map((_, index) => <SocialReaction key={index} index={index} progress={progress} />)}
         </div>
 
         <motion.div className={styles.timeline} inert={!canInteract} style={reduceMotion ? undefined : { opacity: timelineOpacity }}>
