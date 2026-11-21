@@ -2,7 +2,7 @@
 
 import { useState, useRef, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Link2 } from "lucide-react";
+import { ArrowRight, Link2, Upload, Wand2 } from "lucide-react";
 import { uploadVideoFile } from "@/lib/api";
 import SickLoadingTransition from "./SickLoadingTransition";
 import ShatterPhrase from "./ShatterPhrase";
@@ -83,64 +83,74 @@ export default function HeroStudio() {
               onSubmit={handleSubmit}
               aria-label="Create clips"
               aria-busy={isUploading}
-              className="grid gap-3 rounded-[20px] border-2 border-zinc-900 bg-white p-3 shadow-[5px_5px_0] shadow-zinc-950 sm:gap-4 sm:rounded-[24px] sm:p-5 sm:shadow-[7px_7px_0] dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-black"
+              className="flex items-center gap-1.5 rounded-2xl border border-zinc-300 bg-white p-1.5 shadow-[0_8px_30px_#0002] sm:gap-2 sm:p-2 dark:border-[#373044] dark:bg-[#191621] dark:shadow-black/30"
             >
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="flex min-h-14 items-center gap-2 rounded-xl border border-stone-300 bg-stone-50 pr-3 focus-within:border-zinc-600 sm:min-h-[66px] sm:gap-3 sm:pr-4 dark:border-zinc-700 dark:bg-zinc-950 dark:focus-within:border-zinc-400"
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-2 focus-within:border-violet-500 sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:bg-[#100e17] dark:focus-within:border-violet-400"
               >
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || Boolean(clipUrl)}
-                  className="ml-1.5 grid size-10 shrink-0 place-items-center rounded-lg text-zinc-500 transition hover:bg-stone-200 hover:text-zinc-950 disabled:cursor-wait sm:ml-2.5 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-                  title="Upload video file"
-                  aria-label="Upload video file"
-                >
-                  <Link2 className="size-5 sm:size-6" aria-hidden="true" />
-                </button>
-
+                <Link2 className="hidden size-4 shrink-0 text-zinc-500 sm:block dark:text-zinc-400" aria-hidden="true" />
                 <input
                   type="text"
                   inputMode="url"
                   aria-label="Video link"
                   value={url}
                   onChange={(event) => setUrl(event.target.value)}
-                  placeholder="Drop a video link or upload a file"
-                  className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm text-zinc-900 placeholder:text-zinc-600 focus-visible:outline-none sm:text-lg dark:text-white dark:placeholder:text-zinc-400"
-                />
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (file) void uploadFile(file);
-                  }}
-                  className="hidden"
+                  placeholder="Paste a link"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-2.5 text-sm text-zinc-900 placeholder:text-zinc-600 focus-visible:outline-none sm:text-base dark:text-white dark:placeholder:text-zinc-400"
                 />
               </div>
 
-              <div className="grid grid-cols-[1.25fr_1fr] gap-2.5 sm:gap-4">
-                <button
-                  type="submit"
-                  disabled={isUploading || Boolean(clipUrl)}
-                  className="min-h-12 rounded-xl border-2 border-transparent bg-zinc-950 px-2 py-2.5 text-sm font-bold text-white transition hover:bg-zinc-800 disabled:cursor-wait sm:min-h-[58px] sm:px-4 sm:text-lg dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-                >
-                  {isUploading ? "Uploading…" : "Get free clips"}
-                </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void uploadFile(file);
+                }}
+                className="hidden"
+              />
 
-                <button
-                  type="button"
-                  onClick={() => router.push("/dashboard")}
-                  className="min-h-12 rounded-xl border-2 border-zinc-900 px-2 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-stone-100 sm:min-h-[58px] sm:px-4 sm:text-lg dark:border-zinc-600 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                >
-                  Auto-edit
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading || Boolean(clipUrl)}
+                aria-label="Upload file"
+                title="Upload file"
+                className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-wait sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
+              >
+                <Upload className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Upload file</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                aria-label="Auto-edit"
+                title="Auto-edit"
+                className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
+              >
+                <Wand2 className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Auto-edit</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={isUploading || Boolean(clipUrl)}
+                aria-label={isUploading ? "Uploading video" : "Get free clips"}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-violet-700 px-2.5 text-sm font-bold text-white transition hover:bg-violet-800 disabled:cursor-wait sm:min-h-[52px] sm:px-4 dark:bg-violet-200 dark:text-violet-950 dark:hover:bg-violet-100"
+              >
+                {isUploading ? "Uploading…" : (
+                  <>
+                    <span className="sm:hidden">Get clips</span>
+                    <span className="hidden sm:inline">Get free clips</span>
+                    <ArrowRight className="hidden size-4 sm:block" aria-hidden="true" />
+                  </>
+                )}
+              </button>
             </form>
             {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
           </div>
