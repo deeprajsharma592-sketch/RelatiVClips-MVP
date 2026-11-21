@@ -109,17 +109,17 @@ export default function HeroStudio() {
               Paste a link or drop a raw take. RelatiV finds the moments, edits the clips, and sizes them for every platform.
             </p>
           </div>
-          <div className="mt-10 w-full max-w-[62rem] pointer-events-auto">
+          <div className="mt-10 w-full max-w-[56rem] pointer-events-auto">
             <form
               onSubmit={handleSubmit}
               aria-label="Create clips"
               aria-busy={pending !== null}
-              className="flex items-center gap-1.5 rounded-[28px] border border-zinc-300 bg-white p-1.5 shadow-[0_8px_30px_#0002] sm:gap-2 sm:p-2 dark:border-[#373044] dark:bg-[#191621] dark:shadow-black/30"
+              className="flex items-center gap-1.5 rounded-[28px] border border-zinc-300 bg-white p-1.5 shadow-[0_8px_30px_#0002] sm:gap-2 dark:border-[#373044] dark:bg-[#191621] dark:shadow-black/30"
             >
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-[20px] border border-zinc-200 bg-zinc-50 px-2 focus-within:border-violet-500 sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:bg-[#100e17] dark:focus-within:border-violet-400"
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-[20px] border border-zinc-200 bg-zinc-50 px-2 focus-within:border-violet-500 sm:min-h-12 sm:px-3 dark:border-[#373044] dark:bg-[#100e17] dark:focus-within:border-violet-400"
               >
                 <Link2 className="hidden size-4 shrink-0 text-zinc-500 sm:block dark:text-zinc-400" aria-hidden="true" />
                 <input
@@ -151,7 +151,7 @@ export default function HeroStudio() {
                 disabled={pending !== null}
                 aria-label="Upload file"
                 title="Upload file"
-                className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-[20px] border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-wait sm:min-h-[52px] sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
+                className="inline-flex min-h-11 min-w-10 shrink-0 items-center justify-center gap-2 rounded-[20px] border border-zinc-200 px-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-wait sm:min-h-12 sm:px-3 dark:border-[#373044] dark:text-zinc-200 dark:hover:bg-white/10"
               >
                 <Upload className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Upload file</span>
@@ -161,7 +161,7 @@ export default function HeroStudio() {
                 type="submit"
                 disabled={pending !== null}
                 aria-label={pending ? "Starting clip generation" : "Get free clips"}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-violet-700 px-2.5 text-sm font-bold text-white transition hover:bg-violet-800 disabled:cursor-wait sm:min-h-[52px] sm:px-4 dark:bg-violet-200 dark:text-violet-950 dark:hover:bg-violet-100"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-violet-700 px-2.5 text-sm font-bold text-white transition hover:bg-violet-800 disabled:cursor-wait sm:min-h-12 sm:px-4 dark:bg-violet-200 dark:text-violet-950 dark:hover:bg-violet-100"
               >
                 {pending ? (pending === "upload" ? "Uploading…" : "Starting…") : (
                   <>
