@@ -16,7 +16,6 @@ type Shard = {
   center: Point;
   path: Path2D;
   flight?: Flight;
-  color: string;
 };
 type Crack = { center: Point; path: Path2D; until: number };
 
@@ -33,9 +32,7 @@ type MorphShard = {
 };
 type Morph = { start: number; next: number; target: PhraseLayout; pieces: MorphShard[] };
 
-// Light tints of the logo's amber, coral, and pink.
-const PHRASE_COLORS = ["#ffe0a5", "#ffbfae", "#f8afd8"] as const;
-const SHARD_COLORS = ["#da9e53", "#d78072", "#cf74aa"] as const;
+const PHRASE_COLOR = "#ff294c";
 
 const TAU = 2 * Math.PI;
 const MORPH_DURATION = 1580;
@@ -102,11 +99,7 @@ export default function ShatterPhrase({
       const baseline = height / 2 + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
       const leftInk = width / 2 - metrics.actualBoundingBoxLeft;
       const rightInk = width / 2 + metrics.actualBoundingBoxRight;
-      const inkGradient = source.createLinearGradient(leftInk, 0, rightInk, 0);
-      PHRASE_COLORS.forEach((color, index) => {
-        inkGradient.addColorStop(index / (PHRASE_COLORS.length - 1), color);
-      });
-      source.fillStyle = inkGradient;
+      source.fillStyle = PHRASE_COLOR;
       source.fillText(text, width / 2, baseline);
       const pixels = source.getImageData(0, 0, ink.width, ink.height).data;
       const step = Math.max(6, fontSize * 0.15);
@@ -145,8 +138,7 @@ export default function ShatterPhrase({
         path.lineTo(b.x, b.y);
         path.lineTo(c.x, c.y);
         path.closePath();
-        const colorIndex = Math.round(clamp((center.x - leftInk) / Math.max(1, rightInk - leftInk)) * (SHARD_COLORS.length - 1));
-        const shard: Shard = { path, center, color: SHARD_COLORS[colorIndex] };
+        const shard: Shard = { path, center };
         shards.push(shard);
         for (const [p, q] of [[a, b], [b, c], [c, a]]) {
           const key = [`${p.x},${p.y}`, `${q.x},${q.y}`].sort().join("|");
@@ -265,7 +257,7 @@ export default function ShatterPhrase({
           ctx.globalAlpha = alpha;
           ctx.translate(-shard.center.x, -shard.center.y);
           if (face < 0) {
-            ctx.fillStyle = shard.color;
+            ctx.fillStyle = PHRASE_COLOR;
             ctx.fill(shard.path);
           } else {
             ctx.clip(shard.path);
@@ -381,7 +373,7 @@ export default function ShatterPhrase({
           output.clip(shard.path);
           output.drawImage(ink, 0, 0, width, height);
         } else {
-          output.fillStyle = shard.color;
+          output.fillStyle = PHRASE_COLOR;
           output.fill(shard.path);
         }
         output.restore();
@@ -458,8 +450,8 @@ export default function ShatterPhrase({
     <span ref={rootRef} className="relative flex min-h-[1.38em] w-full items-center justify-center isolate">
       <span className={ready ? "sr-only motion-reduce:not-sr-only" : undefined}>
         <span
-          className="inline-block bg-clip-text text-transparent"
-          style={{ backgroundImage: `linear-gradient(90deg, ${PHRASE_COLORS.join(", ")})` }}
+          className="inline-block"
+          style={{ color: PHRASE_COLOR }}
         >
           {phrases[index]}
         </span>
