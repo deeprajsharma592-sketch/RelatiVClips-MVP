@@ -1031,13 +1031,13 @@ def _run_moment_pipeline(
             # Deduplication & composite ranking (0.30 standalone + 0.25 completeness + 0.25 hook + 0.20 heat)
             ranked_cands = dedup_and_rank_candidates(refined_cands)
 
-            # Pre-render Check Pass (Haiku / check model)
+            # Pre-render Check Pass (fast heuristic rule validation — zero extra LLM cost)
             verified_cands = []
             for cand in ranked_cands:
                 passed, checked = run_clip_check_pass(
                     cand,
                     narrative_units,
-                    llm_callable=lambda p: call_with_fallback(p)[0],
+                    llm_callable=None,
                 )
                 if passed:
                     verified_cands.append(checked)

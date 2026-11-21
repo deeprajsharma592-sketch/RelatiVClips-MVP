@@ -171,51 +171,24 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
             split_point = last_nl
         cacheable = prompt[:split_point]
         variable = prompt[split_point:]
-        # Priority: tested active Haiku 5.5, then Haiku 4.5 and other active models from Anthropic API
-        candidate_models = ["claude-haiku-5-5", "claude-haiku-4-5-20251001"]
-        for am in _get_available_claude_models():
-            if am not in candidate_models:
-                candidate_models.append(am)
-        if model_name and model_name not in candidate_models:
-            candidate_models.append(model_name)
-
-        # Prioritize Haiku 5.5 (fastest & most capable for hook extraction) then Haiku 4.5, then Sonnet
-        candidate_models = sorted(
-            candidate_models,
-            key=lambda m: 0 if m == "claude-haiku-5-5" else (1 if m == "claude-haiku-4-5-20251001" else (2 if "haiku" in m.lower() else (3 if "sonnet" in m.lower() else 4)))
-        )
+        # Target approved Haiku models ONLY — never auto-fallback to expensive Sonnet or internal models
+        primary_model = os.getenv("CLAUDE_MODEL") or model_name or "claude-haiku-4-5-20251001"
+        candidate_models = []
+        for m in [primary_model, "claude-haiku-4-5-20251001", "claude-3-5-haiku-20241022", "claude-3-haiku-20240307"]:
+            if m and m not in candidate_models:
+                candidate_models.append(m)
 
         last_error = None
         for current_model in candidate_models:
-            use_cache = (
-                current_model.startswith("claude-")
-                and "haiku" in current_model
-                and len(cacheable) >= 4000
-            )
             try:
                 print(f"[Claude] Calling Anthropic API with model: {current_model}...")
-                with httpx.Client(timeout=15.0, trust_env=False) as client:
+                with httpx.Client(timeout=90.0, trust_env=False) as client:
                     payload = {
                         "model": current_model,
                         "max_tokens": max_out,
+                        "system": system_prompt,
                         "messages": [{"role": "user", "content": prompt}],
                     }
-                    if use_cache:
-                        payload["system"] = [
-                            {
-                                "type": "text",
-                                "text": system_prompt,
-                                "cache_control": {"type": "ephemeral"},
-                            },
-                            {
-                                "type": "text",
-                                "text": cacheable,
-                                "cache_control": {"type": "ephemeral"},
-                            },
-                        ]
-                        payload["messages"] = [{"role": "user", "content": variable}]
-                    else:
-                        payload["system"] = system_prompt
                     r = client.post(
                         "https://api.anthropic.com/v1/messages",
                         headers={
@@ -241,7 +214,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                         if block.get("type") == "text":
                             print(f"[Claude] SUCCESS with {current_model} (tokens: in={in_tok}, out={out_tok})")
                             return block.get("text", "")
-                    raise RuntimeError("Claude returned no text block")
+                    raise RuntimeError(f"Claude returned no text block: {body}")
                 last_error = f"Claude API error {r.status_code}: {r.text[:300]}"
                 print(f"[Claude] Model {current_model} returned HTTP {r.status_code}: {r.text[:150]}")
                 continue

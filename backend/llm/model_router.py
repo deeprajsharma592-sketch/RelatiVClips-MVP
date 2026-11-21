@@ -61,9 +61,9 @@ from ..utils.config import CLAUDE_MODEL
 # one of the other three at runtime. We omit it from TIER_CONFIG.
 TIER_CONFIG = {
     LLMTier.CALIBRATION: {
-        "primary": "claude-haiku-5-5",
-        "fallback": ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"],
-        "description": "High quality for story/hook calibration using Haiku 5.5.",
+        "primary": "claude-haiku-4-5-20251001",
+        "fallback": ["claude-3-5-haiku-20241022"],
+        "description": "High quality for story/hook calibration using Haiku.",
         "use_cache": True,
     },
     LLMTier.BUDGET: {
