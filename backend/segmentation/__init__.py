@@ -19,6 +19,7 @@ from .length_policy import (
 from .dedup_rank import (
     compute_composite_score,
     calculate_overlap_ratio,
+    deduplicate_preserving_order,
     merge_near_adjacent_candidates,
     dedup_and_rank_candidates,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "apply_length_policy",
     "compute_composite_score",
     "calculate_overlap_ratio",
+    "deduplicate_preserving_order",
     "merge_near_adjacent_candidates",
     "dedup_and_rank_candidates",
     "run_clip_check_pass",

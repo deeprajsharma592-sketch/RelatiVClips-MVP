@@ -1155,33 +1155,6 @@ def _run_moment_pipeline(
                 "heat_score": p.get("heat_score", 0.5),
                 "rubric_ver": p.get("rubric_ver", "sauce-0.2"),
             })
-            # Match original transcript segments inside [clip_start, clip_end]
-            all_orig_segs = info.get("transcript", {}).get("segments", []) if info.get("transcript") else []
-            clip_segs = [
-                s for s in all_orig_segs
-                if float(s.get("end", 0)) >= clip_start and float(s.get("start", 0)) <= clip_end
-            ]
-            final_clips.append({
-                "start": round(clip_start, 2),
-                "end": round(clip_end, 2),
-                "source_start": matching_seg.get("source_start") if matching_seg else round(clip_start, 2),
-                "source_end": matching_seg.get("source_end") if matching_seg else round(clip_end, 2),
-                "audio_path": matching_seg.get("audio_path") if matching_seg else None,
-                "transcript": {"segments": clip_segs} if clip_segs else None,
-                "viral_title": title,
-                "caption": caption,
-                "hashtags": p.get("hashtags", "#shorts #viral"),
-                "reason": p.get("reason", m.snippet[:60] if m else "Story-driven narrative hook"),
-                "signal_type": m.signal_type if m else "narrative_story",
-                "llm_provider": provider_used or "claude",
-                "confidence": round(conf, 3),
-                "score": p.get("score"),
-                "verified": bool(p.get("verified", True)),
-                "is_experiment": bool(p.get("is_experiment", False)),
-                "hook_type": p.get("hook_type", "none"),
-                "broad_angle": p.get("broad_angle", "none"),
-                "rubric_ver": p.get("rubric_ver", "sauce-0.1"),
-            })
     if picks_sorted and unverified_count:
         _bridge(
             "filter",
@@ -1226,12 +1199,17 @@ def _run_moment_pipeline(
                 "verified": False,
                 "best_effort": True,
             })
-    if not final_clips:
-        # LLM didn't return picks (network error, etc.) — fall back to non-overlapping
-        # moments by score as a last resort so the user still gets SOMETHING.
-        _bridge("taste", "LLM didn't return picks — using moment-based fallback (top non-overlapping by score)")
+    if len(final_clips) < MIN_CLIPS:
+        # A strict check pass can leave only one excellent clip. Backfill from
+        # distinct high-signal moments instead of duplicating that source range.
+        # These remain explicitly unverified/best-effort in the result metadata.
+        _bridge(
+            "taste",
+            f"Only {len(final_clips)} verified clip(s) survived — "
+            f"backfilling distinct moments up to {MIN_CLIPS}",
+        )
         for m in moments:
-            if len(final_clips) >= 3:
+            if len(final_clips) >= MIN_CLIPS:
                 break
             # Skip intro filler in fallback for long videos
             if is_long_form and m.start < 45.0:
@@ -1288,7 +1266,19 @@ def _run_moment_pipeline(
                 "signal_type": m.signal_type,
                 "llm_provider": "fallback",
                 "verified": False,
+                "best_effort": True,
             })
+
+    # Final invariant: a source range is rendered at most once, even if a
+    # future selector or fallback accidentally emits it more than once.
+    from ..segmentation import deduplicate_preserving_order
+    selected_count = len(final_clips)
+    final_clips = deduplicate_preserving_order(final_clips)
+    if len(final_clips) != selected_count:
+        _bridge(
+            "filter",
+            f"Removed {selected_count - len(final_clips)} duplicate clip range(s) before render",
+        )
 
     # 3a. Validate format bounds & natural variable durations
     try:

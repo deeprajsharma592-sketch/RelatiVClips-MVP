@@ -36,6 +36,7 @@ from backend.segmentation import (
     apply_length_policy,
     compute_composite_score,
     calculate_overlap_ratio,
+    deduplicate_preserving_order,
     merge_near_adjacent_candidates,
     dedup_and_rank_candidates,
     run_clip_check_pass,
@@ -75,6 +76,23 @@ def _generate_synthetic_transcript(duration_s: float, sentence_interval_s: float
         sent_idx += 1
 
     return {"segments": segments}
+
+
+def test_final_clip_dedup_preserves_distinct_ranges_and_order():
+    clips = [
+        {"start": 35.8, "end": 47.0, "viral_title": "first"},
+        {"start": 35.8, "end": 47.0, "viral_title": "accidental duplicate"},
+        {"start": 180.0, "end": 240.0, "viral_title": "one minute story"},
+        {"start": 400.0, "end": 490.0, "viral_title": "ninety second story"},
+    ]
+
+    result = deduplicate_preserving_order(clips)
+
+    assert [clip["viral_title"] for clip in result] == [
+        "first",
+        "one minute story",
+        "ninety second story",
+    ]
 
 
 # ─── ACCEPTANCE TEST 1: All External Signals Disabled ─────────────────────────

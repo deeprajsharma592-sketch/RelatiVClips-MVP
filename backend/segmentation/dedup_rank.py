@@ -55,6 +55,30 @@ def calculate_overlap_ratio(cand_a: Dict[str, Any], cand_b: Dict[str, Any]) -> f
     return overlap_s / min_dur
 
 
+def deduplicate_preserving_order(
+    candidates: List[Dict[str, Any]],
+    max_overlap_ratio: float = 0.30,
+) -> List[Dict[str, Any]]:
+    """Drop duplicate/overlapping ranges without changing selection order.
+
+    This is the final safety net used after clip selection.  Unlike
+    ``dedup_and_rank_candidates`` it deliberately does not merge, rescore, or
+    reorder anything; it only guarantees that one source range cannot be
+    rendered more than once.
+    """
+    kept: List[Dict[str, Any]] = []
+    for candidate in candidates:
+        if float(candidate.get("end", 0)) <= float(candidate.get("start", 0)):
+            continue
+        if any(
+            calculate_overlap_ratio(candidate, existing) > max_overlap_ratio
+            for existing in kept
+        ):
+            continue
+        kept.append(candidate)
+    return kept
+
+
 def merge_near_adjacent_candidates(
     candidates: List[Dict[str, Any]],
     max_gap_s: float = 5.0,
