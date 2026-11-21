@@ -123,15 +123,18 @@ def _ytdlp_video_section_url(
 
     cmd = [
         YTDLP_PATH,
-        # Native 1080p and 720p HD streams (never allow low-resolution 360p / format 18)
+        # Native 1080p and 720p HD streams, with safe fallback to best available
         "-f", (
             "bv*[height>=1080]+ba/"
             "137+140/"
             "bv*[height>=720]+ba/"
             "136+140/"
             "bv*+ba/"
-            "bestvideo[height>=720]+bestaudio/"
-            "b[height>=720]"
+            "bestvideo+bestaudio/"
+            "b[height>=720]/"
+            "b/"
+            "best/"
+            "18"
         ),
         "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
@@ -205,7 +208,7 @@ def _download_one_segment(
                     cmd, capture_output=True, timeout=120
                 )
                 if not audio_path.exists():
-                    for ext in (".m4a", ".opus", ".webm", ".aac", ".mp3", ".ogg"):
+                    for ext in (".m4a", ".mp4", ".opus", ".webm", ".aac", ".mp3", ".ogg", ".wav"):
                         cand = audio_path.with_suffix(ext)
                         if cand.exists() and cand.stat().st_size > 0:
                             if ext != ".m4a":
@@ -458,7 +461,7 @@ def _download_one_video_segment(
                     cmd, capture_output=True, timeout=60
                 )
                 if not video_path.exists():
-                    for ext in (".mp4", ".mkv", ".webm"):
+                    for ext in (".mp4", ".mkv", ".webm", ".m4v", ".mov", ".ts"):
                         cand = video_path.with_suffix(ext)
                         if cand.exists() and cand.stat().st_size > 1024:
                             if ext != ".mp4":

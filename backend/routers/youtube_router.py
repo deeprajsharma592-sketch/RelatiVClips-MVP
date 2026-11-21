@@ -1500,12 +1500,21 @@ def _run_moment_pipeline(
             source_for_renderer = (
                 clip.get("video_path")
                 or clip.get("audio_path")
-                or url
+                or info.get("audio_path")
             )
+            if not source_for_renderer or not Path(str(source_for_renderer)).exists():
+                _bridge("render", f"  clip {i+1} failed: media file not found on disk for rendering")
+                return None
+
+            if not clip.get("video_path") and not clip.get("audio_path") and info.get("audio_path"):
+                _vsrc = 0.0
+                clip["video_source_start"] = 0.0
+                clip["video_source_end"] = float(info.get("duration_s", 999999))
+            else:
+                _vsrc = clip.get("video_source_start")
             # FIX 2026-06-16: use video_source_start (padded) not source_start (audio, unpadded).
             # video_source_start is set when video segment is attached to clip.
             # If not set (e.g. video downloaded inline below), compute it now.
-            _vsrc = clip.get("video_source_start")
             if _vsrc is None:
                 # Video was just downloaded inline — surgical uses padded boundaries.
                 _vsrc = max(0.0, float(clip.get("source_start", clip.get("start", 0))) - SURGICAL_BUFFER_SECONDS)
