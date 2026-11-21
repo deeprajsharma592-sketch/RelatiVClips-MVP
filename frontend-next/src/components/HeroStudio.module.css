@@ -4,13 +4,21 @@
   initial-value: 0deg;
 }
 
+@property --relativ-hero-entry-turn {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
 .wheel {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   container-type: size;
-  animation: orbit 58s linear infinite;
+  animation:
+    orbit 58s linear infinite,
+    entry-turn 1.04s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -22,8 +30,34 @@
   to { --relativ-hero-orbit: 360deg; }
 }
 
+@keyframes entry-turn {
+  from { --relativ-hero-entry-turn: -48deg; }
+  to { --relativ-hero-entry-turn: 0deg; }
+}
+
+@keyframes card-entry {
+  from { opacity: 0; scale: 0.4; }
+  54% { opacity: calc(0.64 + var(--depth) * 0.1); }
+  to { opacity: calc(0.84 + var(--depth) * 0.12); scale: 1; }
+}
+
+@keyframes content-entry {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.entryCopy {
+  animation: content-entry 0.58s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.entry form {
+  animation: content-entry 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) 0.16s both;
+}
+
 .photo {
-  --angle: calc(var(--start-angle) + var(--relativ-hero-orbit, 0deg));
+  --angle: calc(
+    var(--start-angle) + var(--relativ-hero-orbit, 0deg) + var(--relativ-hero-entry-turn, 0deg)
+  );
   --depth: sin(var(--angle));
   --side: cos(var(--angle));
   --photo-size: clamp(3.5rem, 12cqw, 10rem);
@@ -58,6 +92,7 @@
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: 0.75rem;
   opacity: calc(0.84 + var(--depth) * 0.12);
+  animation: card-entry 0.54s cubic-bezier(0.22, 0.75, 0.25, 1) var(--entry-delay) backwards;
   filter: blur(5px) brightness(0.62);
   transform: translate(-50%, -50%) perspective(36rem)
     rotateY(calc(var(--side) * -34deg)) rotateZ(calc(4deg + var(--depth) * 7deg))
@@ -65,5 +100,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wheel { animation: none; }
+  .wheel,
+  .photo,
+  .entryCopy,
+  .entry form { animation: none; }
 }

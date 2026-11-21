@@ -9,8 +9,8 @@ import ShatterPhrase from "./ShatterPhrase";
 import styles from "./HeroStudio.module.css";
 
 const WHEEL_PHOTOS = [
-  "thumb_l2", "thumb_r3", "thumb_l4", "thumb_r5",
-  "thumb_l3", "thumb_r1", "thumb_l5", "thumb_r4",
+  "tinted-glasses", "neon-profile", "gold-visor", "red-coat", "lime-blazer",
+  "orange-visor", "chunky-knit", "purple-hoodie", "platinum-blonde", "orange-ring",
 ];
 
 const HERO_PHRASES = ["personalized short clips", "more views in less time", "ready for every platform", "make every moment count"];
@@ -78,25 +78,29 @@ export default function HeroStudio() {
         id="homepage-hero"
         data-section-name="hero-message"
         aria-label="Hero message"
-        className="relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden bg-[#050507] px-5 py-20 text-white sm:px-8"
+        className={`${styles.entry} relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden bg-[#050507] px-5 py-20 text-white sm:px-8`}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(45,38,62,0.22),transparent_58%)]" />
         <div className={styles.wheel} aria-hidden="true">
           {WHEEL_PHOTOS.map((photo, index) => (
             <Image
               key={photo}
-              src={`/${photo}.webp`}
+              src={`/hero-wheel/${photo}-4x5.jpg`}
               alt=""
               width={160}
               height={200}
-              sizes="(max-width: 1333px) 12vw, 160px"
+              loading="eager"
+              unoptimized
               className={styles.photo}
-              style={{ "--start-angle": `${18 + index * 360 / WHEEL_PHOTOS.length}deg` } as CSSProperties}
+              style={{
+                "--start-angle": `${-112 + index * 360 / WHEEL_PHOTOS.length}deg`,
+                "--entry-delay": `${index * 62}ms`,
+              } as CSSProperties}
             />
           ))}
         </div>
         <div className="pointer-events-none relative z-[1] mx-auto flex w-full max-w-[1500px] flex-col items-center text-center">
-          <div className="pointer-events-auto flex max-w-full flex-col items-center">
+          <div className={`${styles.entryCopy} pointer-events-auto flex max-w-full flex-col items-center`}>
             <p className="mb-7 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500 sm:text-xs">RelatiV <span className="mx-2 text-zinc-700">/</span> Made to move</p>
             <h1 className="max-w-[1200px] text-[clamp(2.625rem,6.8vw,7rem)] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white">
               Turn any footage into
