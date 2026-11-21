@@ -40,7 +40,10 @@ _model_router = None
 # Update these if Anthropic changes pricing.
 _COST_PER_MTOK = {
     # Model: (input_usd_per_mtok, output_usd_per_mtok)
-    "claude-haiku-5-5": (1.0, 5.0),
+    "claude-haiku-5-5": (
+        float(os.getenv("HAIKU_INPUT_COST", "0.80")),
+        float(os.getenv("HAIKU_OUTPUT_COST", "4.00")),
+    ),
     "claude-haiku-4-5-20251001": (1.0, 5.0),
     "claude-3-haiku-20240307": (0.25, 1.25),
     "claude-haiku-3-5-20241022": (0.80, 4.0),
@@ -145,8 +148,8 @@ def estimate_cost_usd(
 # instead of the standard input rate. Set to None to disable caching.
 _CACHE_RATES = {
     "claude-haiku-5-5": {
-        "read": 0.10,    # 10x cheaper than fresh input
-        "write": 1.25,   # cache write slot
+        "read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.08")),
+        "write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "1.00")),
     },
     "claude-haiku-4-5-20251001": {
         "read": 0.10,    # 10x cheaper than fresh input
