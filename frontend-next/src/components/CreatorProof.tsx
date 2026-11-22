@@ -4,8 +4,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEve
 import { useInView, useReducedMotion } from "framer-motion";
 import styles from "./CreatorProof.module.css";
 
-const BEFORE = "M20 170 C35.5 169.5 82 167 113 167 S175 169 206 168 S269 163 300 161 S362 159 393 158 S455 154 486 153 S564 150.5 580 150";
-const AFTER = "M20 170 C35.5 166.7 82 157.3 113 150 S175 134.7 206 126 S269 107.3 300 98 S362 78.7 393 70 S455 53.3 486 46 S564 29.3 580 26";
+const AFTER = "M20 190 C55 155 88 121 120 92 C145 68 168 96 195 119 S245 141 272 126 C299 112 310 76 346 65 S396 63 424 66 S458 69 478 53 S540 19 580 8";
 const VIEW_BARS = [0.25, 0.32, 0.3, 0.45, 0.4, 0.55, 0.62, 0.58, 0.75, 0.82, 0.9, 1];
 
 function ResultsCard({
@@ -73,10 +72,7 @@ export default function CreatorProof() {
 
         <div className={styles.bento}>
           <ResultsCard className={styles.reach} label="Average reach increase" note="For long-form creators, first 12 weeks" value={266} prefix="+" suffix="%" indicator>
-            <div className={styles.legend} aria-hidden="true">
-              <span><i />Without RelatiV</span><span><i />With RelatiV</span>
-            </div>
-            <svg className={styles.chart} viewBox="0 0 600 230" role="img" aria-label="Illustrative comparison of reach over 12 weeks with and without RelatiV">
+            <svg className={styles.chart} viewBox="0 0 600 230" role="img" aria-label="Illustrative reach trend over 12 weeks">
               <defs>
                 <linearGradient id={gradient} x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop stopColor="#19e08f" stopOpacity=".35" />
@@ -87,7 +83,6 @@ export default function CreatorProof() {
                 {[40, 95, 150, 205].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} />)}
               </g>
               <path className={styles.area} d={`${AFTER} L580 205 L20 205 Z`} fill={`url(#${gradient})`} />
-              <path className={styles.line} d={BEFORE} pathLength="1" stroke="#4b4e5e" />
               <path className={`${styles.line} ${styles.growthLine}`} d={AFTER} pathLength="1" stroke="#19e08f" />
               <circle className={styles.pulse} cx="580" cy="26" r="5" fill="#19e08f" />
               <circle cx="580" cy="26" r="5" fill="#19e08f" />
