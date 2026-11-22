@@ -10,10 +10,6 @@
   initial-value: 0deg;
 }
 
-.entry {
-  background: var(--homepage-hero-surface, #050507);
-}
-
 .ambient {
   position: absolute;
   inset: 0;

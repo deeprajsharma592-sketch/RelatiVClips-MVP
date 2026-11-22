@@ -7,7 +7,7 @@ import { SOLUTIONS_COLUMNS } from "@/lib/solutionsData";
 
 export default function SolutionsSection() {
   return (
-    <section className="relative py-20 px-4 sm:px-6 bg-[#08080B] border-t border-white/[0.06] text-white">
+    <section className="relative py-20 px-4 sm:px-6 text-white">
       <div className="w-full max-w-[1600px] mx-auto">
         {/* Section Header */}
         <div className="max-w-2xl mb-12 sm:mb-16">

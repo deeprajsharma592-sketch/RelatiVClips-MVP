@@ -1,0 +1,10 @@
+.page {
+  --grid-size: clamp(44px, 6vw, 88px);
+  --grid-line: rgb(255 255 255 / 22%);
+  background-color: #000;
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  background-position: center top;
+}

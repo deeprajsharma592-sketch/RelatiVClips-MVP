@@ -9,8 +9,6 @@
   --acc: #19e08f;
   --lav: #b9a8ff;
   --green: #5eeaa8;
-  background:
-    linear-gradient(#000, transparent clamp(4rem, 12vw, 10rem)), #08060f;
 }
 .section::before {
   content: "";

@@ -86,7 +86,7 @@ export default function HeroStudio() {
         id="homepage-hero"
         data-section-name="hero-message"
         aria-label="Hero message"
-        className={`${styles.entry} relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden px-5 py-20 text-white sm:px-8`}
+        className={`relative flex min-h-[calc(100svh-4rem)] w-full items-center justify-center overflow-hidden px-5 py-20 text-white sm:px-8`}
       >
         <div className={styles.ambient} aria-hidden="true" />
         <div className={styles.wheel} aria-hidden="true">

@@ -8,8 +8,7 @@
   overflow-x: clip;
   background:
     radial-gradient(ellipse 28% 20% at 32% 46%, rgb(176 201 232 / 13%), transparent),
-    radial-gradient(ellipse 30% 22% at 70% 55%, rgb(137 167 200 / 10%), transparent),
-    linear-gradient(to bottom, var(--homepage-hero-surface, #050507), #07080b 25%, #07080b 60%, #000);
+    radial-gradient(ellipse 30% 22% at 70% 55%, rgb(137 167 200 / 10%), transparent);
 }
 
 .title {
