@@ -149,3 +149,9 @@
   .entryCopy,
   .entry form { animation: none; }
 }
+
+@media (min-width: 64rem) {
+  .photo {
+    --photo-size: clamp(4rem, 8.6cqw, 7.5rem);
+  }
+}
