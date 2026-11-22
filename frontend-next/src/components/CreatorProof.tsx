@@ -112,7 +112,7 @@ export default function CreatorProof() {
                   cx="50"
                   cy="50"
                   r="42"
-                  stroke="rgba(12,42,31,.22)"
+                  stroke="rgba(191,240,216,.22)"
                   strokeWidth="9"
                 />
                 <circle
