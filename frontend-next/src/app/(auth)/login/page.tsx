@@ -2,30 +2,13 @@
 
 import { useState, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, Shield, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { login, signInWithGoogle, type User } from "@/lib/auth";
+import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
+import { login, signInWithGoogle } from "@/lib/auth";
 import { authPageHref, safeAuthDestination } from "@/lib/auth-destination";
 
-/**
- * Routes user to their appropriate destination based on role or explicit `next` param.
- */
-function roleDestination(user: User): string {
-  switch (user.role) {
-    case "brand":
-      return "/brands/dashboard";
-    case "clipper":
-      return "/clippers/dashboard";
-    case "creator":
-      return "/dashboard";
-    default:
-      return "/account";
-  }
-}
-
 function LoginForm() {
-  const router = useRouter();
   const search = useSearchParams();
   const nextPath = safeAuthDestination(search.get("next"));
 
@@ -65,9 +48,10 @@ function LoginForm() {
       setSubmitting(true);
       setError(null);
       try {
-        const result = await login({ email: email.trim().toLowerCase(), password });
-        const dest = nextPath || roleDestination(result.user);
-        router.push(dest);
+        await login({ email: email.trim().toLowerCase(), password });
+        // A full navigation makes the freshly-created Supabase session
+        // immediately available to the dashboard's server/client guards.
+        window.location.assign(nextPath || "/dashboard");
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Invalid email or password.";
         if (msg.includes("502") || msg.includes("503") || msg.includes("504") || msg.toLowerCase().includes("fetch")) {
@@ -84,7 +68,7 @@ function LoginForm() {
         setSubmitting(false);
       }
     },
-    [email, password, emailValid, submitting, nextPath, router]
+    [email, password, emailValid, submitting, nextPath]
   );
 
   return (
