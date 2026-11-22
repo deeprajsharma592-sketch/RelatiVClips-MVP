@@ -595,15 +595,29 @@
   background: var(--acc);
   color: var(--ink);
 }
-.star {
-  width: 130px;
+.cassette {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(96px, 14vw, 154px);
+  aspect-ratio: 1;
   flex: none;
-  animation: spin 12s linear infinite;
 }
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.cassette > * {
+  grid-area: 1 / 1;
+}
+.cassette span {
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+}
+.cassette[data-ready="true"] span {
+  visibility: hidden;
+}
+.cassette canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 960px) {
@@ -647,8 +661,8 @@
     right: 4%;
     bottom: 9%;
   }
-  .star {
-    width: clamp(56px, 20vw, 100px);
+  .cassette {
+    width: clamp(76px, 24vw, 116px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

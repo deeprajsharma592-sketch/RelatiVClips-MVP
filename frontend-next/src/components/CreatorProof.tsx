@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import StatsCassette from "./StatsCassette";
 import styles from "./CreatorProof.module.css";
 
 const VIEW_BARS = [24, 36, 28, 49, 43, 62, 54, 76, 68, 91, 82, 100];
@@ -404,38 +405,7 @@ export default function CreatorProof() {
                 Get free clips ↗
               </a>
             </div>
-            <svg
-              aria-hidden="true"
-              className={styles.star}
-              viewBox="0 0 120 120"
-            >
-              <defs>
-                <linearGradient id="st" x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0" stopColor="#6d6d76" />
-                  <stop offset=".45" stopColor="#15151a" />
-                  <stop offset="1" stopColor="#3a3a42" />
-                </linearGradient>
-              </defs>
-              <g fill="url(#st)">
-                <rect x="50" y="4" width="20" height="112" rx="10" />
-                <rect
-                  x="50"
-                  y="4"
-                  width="20"
-                  height="112"
-                  rx="10"
-                  transform="rotate(60 60 60)"
-                />
-                <rect
-                  x="50"
-                  y="4"
-                  width="20"
-                  height="112"
-                  rx="10"
-                  transform="rotate(120 60 60)"
-                />
-              </g>
-            </svg>
+            <StatsCassette className={styles.cassette} />
           </div>
         </div>
       </div>
