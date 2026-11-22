@@ -515,19 +515,6 @@ body::after,
   content: none !important;
 }
 
-/* Site-wide dark texture from the creator's reference. */
-.dark body::before {
-  display: block !important;
-  content: "" !important;
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  opacity: 0.36;
-  background: url("/textures/page-texture.jpg") center / cover no-repeat;
-  mix-blend-mode: screen;
-}
-
 @keyframes backdrop-drift {
   0% { transform: translate(0, 0) rotate(0deg) scale(1); }
   33% { transform: translate(2%, -1%) rotate(1deg) scale(1.05); }

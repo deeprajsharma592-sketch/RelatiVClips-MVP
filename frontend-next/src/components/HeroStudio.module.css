@@ -10,14 +10,6 @@
   initial-value: 0deg;
 }
 
-.ambient {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 50% 42%, rgb(45 38 62 / 22%), transparent 58%);
-  mask-image: linear-gradient(#000 76%, transparent);
-}
-
 .wheel {
   position: absolute;
   inset: 0;

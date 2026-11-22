@@ -10,19 +10,7 @@
   --lav: #b9a8ff;
   --green: #5eeaa8;
 }
-.section::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse 70% 45% at 50% 40%,
-    rgba(150, 110, 255, 0.22),
-    transparent 70%
-  );
-  mask-image: linear-gradient(transparent, #000 12%);
-}
+
 .section h2 {
   text-align: center;
   font-size: clamp(2rem, 5vw, 3.3rem);
