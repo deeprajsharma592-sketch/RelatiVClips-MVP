@@ -24,6 +24,13 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.65fr) minmax(0, 1fr);
   grid-template-areas: "views showcase reach" "turnaround showcase accuracy";
 }
+.section[data-visible="true"] .card {
+  animation: stats-card-enter 720ms cubic-bezier(.2,.75,.25,1) both;
+}
+@keyframes stats-card-enter {
+  from { opacity: 0; transform: translate3d(0, 22px, 0) scale(.985); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
 .card {
   position: relative;
   min-width: 0;
@@ -51,12 +58,21 @@
 .views { grid-area: views; background: #c0edd7; color: #14291f; border-color: #e9fff290; }
 .views p:not(.metric) { color: #365346; }
 .bars { display: flex; height: 3rem; align-items: flex-end; gap: 5px; margin-top: 1rem; }
-.bars span { flex: 1; border-radius: 4px 4px 2px 2px; background: linear-gradient(#254d38, #50876b); }
+.bars span {
+  flex: 1;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(#254d38, #50876b);
+  transform-origin: bottom;
+}
+.section[data-visible="true"] .bars span { animation: stats-bar-grow 540ms cubic-bezier(.2,.75,.25,1) both; }
+@keyframes stats-bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
 .reach { grid-area: reach; background: linear-gradient(150deg, #1c2925, #121a18); }
 .reach .metric { color: var(--mint); }
 .trend { display: block; width: 100%; height: 3rem; margin-top: 1rem; overflow: visible; }
-.trend path { fill: none; stroke: #6beaab; stroke-width: 2; stroke-linecap: round; }
+.trend path { fill: none; stroke: #6beaab; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1; }
+.section[data-visible="true"] .trend path { animation: stats-line-draw 1250ms 260ms cubic-bezier(.2,.75,.25,1) both; }
+@keyframes stats-line-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .turnaround { grid-area: turnaround; background: linear-gradient(145deg, #1f1b30, #15141b); }
 .turnaround h3 svg { color: #ccbfff; }
 .accuracy { grid-area: accuracy; }
@@ -139,6 +155,17 @@
   color: var(--muted);
   font-size: .84rem;
 }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .footer p, .footer a { display: inline-flex; align-items: center; gap: .5rem; margin: 0; }
 .footer strong { color: #f7f5fb; }
 .footer a { color: var(--mint); font-weight: 650; }
@@ -156,4 +183,14 @@
   .showcase { min-height: 18rem; }
   .collage { min-height: 15rem; }
   .footer { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section[data-visible="true"] .card,
+  .section[data-visible="true"] .bars span,
+  .section[data-visible="true"] .trend path {
+    animation: none;
+  }
+  .bars span { transform: scaleY(1); }
+  .trend path { stroke-dashoffset: 0; }
 }
