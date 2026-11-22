@@ -7,12 +7,17 @@ import uuid
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from ..database.models import CreditTransactionModel, UserModel
+from ..database.session import get_session
+from ..services.entitlements import GO_MONTHLY_CREDITS
 from .auth_router import get_current_user
 
 router = APIRouter(prefix="/api", tags=["razorpay"])
 
 PLANS = {
-    "creator_go": {"amount": 49_900, "label": "RelatiV Go"},
+    "creator_go": {"amount": 49_900, "label": "RelatiV Go", "credits": GO_MONTHLY_CREDITS},
     "creator_pro": {"amount": 89_900, "label": "RelatiV Pro"},
     "creator_premium": {"amount": 199_900, "label": "RelatiV Premium"},
 }
@@ -86,7 +91,11 @@ async def create_order(request: Request, user=Depends(get_current_user)):
 
 
 @router.post("/verify-payment")
-async def verify_payment(request: Request, user=Depends(get_current_user)):
+async def verify_payment(
+    request: Request,
+    user: UserModel = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     data = await body(request)
     fields = ("razorpay_order_id", "razorpay_payment_id", "razorpay_signature")
     if any(not isinstance(data.get(k), str) or not data[k] for k in fields):
@@ -107,4 +116,33 @@ async def verify_payment(request: Request, user=Depends(get_current_user)):
         raise HTTPException(400, "Payment does not match the order")
     if payment.get("status") != "captured":
         return {"success": False, "status": payment.get("status", "pending"), "message": "Payment verified; awaiting capture. Do not pay again."}
-    return {"success": True, "status": "paid", "payment_id": payment_id, "order_id": order["id"]}
+    plan_key = order.get("notes", {}).get("relativ_plan")
+    plan = PLANS.get(plan_key)
+    credits_granted = int((plan or {}).get("credits", 0))
+    if credits_granted:
+        reference = f"razorpay:{payment_id}:plan-credit"
+        prior = await session.execute(
+            select(CreditTransactionModel).where(CreditTransactionModel.reference_id == reference)
+        )
+        if prior.scalar_one_or_none() is None:
+            locked_user = (await session.execute(
+                select(UserModel).where(UserModel.id == user.id).with_for_update()
+            )).scalar_one()
+            locked_user.credit_balance += credits_granted
+            locked_user.plan_tier = "go" if plan_key == "creator_go" else plan_key.replace("creator_", "")
+            session.add(CreditTransactionModel(
+                user_id=locked_user.id,
+                amount=credits_granted,
+                balance_after=locked_user.credit_balance,
+                kind="plan_credit_grant",
+                reference_id=reference,
+                details={"plan": plan_key, "payment_id": payment_id, "order_id": order_id},
+            ))
+            await session.commit()
+    return {
+        "success": True,
+        "status": "paid",
+        "payment_id": payment_id,
+        "order_id": order["id"],
+        "credits_granted": credits_granted,
+    }

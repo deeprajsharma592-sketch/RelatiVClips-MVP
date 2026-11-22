@@ -89,7 +89,7 @@ class ClaudeProvider(LLMProvider):
     cost_per_1k_tokens = 0.003  # input, sonnet; output is $0.015
 
     def __init__(self, model: Optional[str] = None):
-        self.model = model or _env("CLAUDE_MODEL") or "claude-haiku-5-5"
+        self.model = "claude-haiku-4-5-20251001"
         try:
             import anthropic  # type: ignore
             self._anthropic = anthropic
@@ -196,14 +196,40 @@ class DeepseekProvider(LLMProvider):
         return True
 
 
-# Calibration priority while MiMo is under evaluation.
-PROVIDER_PRIORITY = [MimoProvider, ClaudeProvider, DeepseekProvider, MiniMaxProvider]
+class OpenRouterHaikuProvider(LLMProvider):
+    name = "openrouter_haiku_5_5"
+    cost_per_1k_tokens = 0.00010
+    model = "anthropic/claude-haiku-4.5"
+
+    def generate(self, prompt: str, max_tokens: int = 1024) -> str:
+        from backend.llm.openrouter_client import generate_haiku
+        return generate_haiku(prompt, max_tokens=max_tokens)
+
+    def available(self) -> bool:
+        return bool(_env("OPENROUTER_API_KEY"))
+
+
+class OpenRouterDeepSeekProvider(LLMProvider):
+    name = "openrouter_deepseek_v4_1_flash_1017"
+    cost_per_1k_tokens = 0.000036
+    model = "deepseek/deepseek-v4.1-flash-1017"
+
+    def generate(self, prompt: str, max_tokens: int = 1024) -> str:
+        from backend.llm.openrouter_client import generate_deepseek
+        return generate_deepseek(prompt, max_tokens=max_tokens)
+
+    def available(self) -> bool:
+        return bool(_env("OPENROUTER_API_KEY"))
+
+
+# Immutable production order. Do not add auto routers or additional models.
+PROVIDER_PRIORITY = [ClaudeProvider, OpenRouterHaikuProvider, OpenRouterDeepSeekProvider]
 
 
 def select_provider() -> LLMProvider:
     """Pick the highest-priority available provider.
 
-    Falls back to MiniMaxProvider (always available) if no key is set.
+    Raises when none of the three approved transports is configured.
     """
     for cls in PROVIDER_PRIORITY:
         try:
@@ -212,4 +238,4 @@ def select_provider() -> LLMProvider:
                 return p
         except Exception as e:
             log.debug(f"provider {cls.__name__} init failed: {e}")
-    return MiniMaxProvider()
+    raise RuntimeError("No approved RelatiV calibration provider is configured")

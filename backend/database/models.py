@@ -37,6 +37,7 @@ class TaskModel(Base):
     __tablename__ = "tasks"
 
     task_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default=TaskStatus.QUEUED)
     position: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -100,9 +101,11 @@ class UserModel(Base):
     name: Mapped[str] = mapped_column(String(200), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    # One credit produces one clip. Every newly onboarded account starts with
-    # two credits, enough for the default two-clip first generation.
-    credit_balance: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    # New accounts receive two clips' worth of credits (2 * 200).
+    credit_balance: Mapped[int] = mapped_column(Integer, default=400, nullable=False)
+    credit_unit_version: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    plan_tier: Mapped[str] = mapped_column(String(20), default="free", nullable=False, index=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

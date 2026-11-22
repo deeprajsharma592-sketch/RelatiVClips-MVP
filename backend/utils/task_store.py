@@ -103,7 +103,7 @@ class TaskStore:
         self._lock = threading.Lock()
         self._max_concurrent = max_concurrent
 
-    def create_task(self, url: str) -> dict:
+    def create_task(self, url: str, user_id: str | None = None, *, persist: bool = True) -> dict:
         """Create a new task and assign it a slot or queue position."""
         task_id = str(uuid.uuid4())
 
@@ -131,20 +131,22 @@ class TaskStore:
                 "error": None,
                 "step_times": [],
                 "task_name": url,
+                "user_id": user_id,
             }
 
             self._tasks[task_id] = task
 
-        _run_async(self._db_create_task(task_id, url, status.value))
+        if persist:
+            _run_async(self._db_create_task(task_id, url, status.value, user_id))
 
         return task
 
-    async def _db_create_task(self, task_id: str, url: str, status: str):
+    async def _db_create_task(self, task_id: str, url: str, status: str, user_id: str | None = None):
         try:
             from ..database.session import async_session
             from ..database.repository import TaskRepository
             async with async_session() as session:
-                await TaskRepository.create(session, url, task_id)
+                await TaskRepository.create(session, url, task_id, user_id=user_id)
         except Exception as e:
             print(f"[DB] Failed to persist task {task_id}: {e}")
 

@@ -27,7 +27,7 @@ async def require_admin(
     user: UserModel = Depends(get_current_user),
 ) -> UserModel:
     """Require a live session, an allowlisted identity, and verified email."""
-    if user.email.lower() not in ADMIN_EMAILS:
+    if not user.is_admin and user.email.lower() not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="Admin access is not enabled for this account")
     if not user.is_verified or not user.email_verified_at:
         raise HTTPException(status_code=403, detail="Verify this email before using the admin workspace")

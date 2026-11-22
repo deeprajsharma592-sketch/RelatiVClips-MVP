@@ -3,12 +3,13 @@ LLM chain with circuit breaker and provider fallback.
 
 Goal: never let a single provider failure take down the pipeline.
 
-Selection logic (controlled by env LLM_PROVIDER):
-  - "mimo"     → use Xiaomi MiMo V2.6 Pro only
-  - "claude"   → use Claude only (elite tier)
-  - "deepseek" → use DeepSeek only (budget tier)
-  - "both"     → try Claude first, fall back to DeepSeek on failure
-  - "auto"     → highest-priority available (mimo > claude > deepseek > minimax)
+The production calibration order is fixed and cannot be configured:
+  1. Claude Haiku 4.5 via Anthropic
+  2. Claude Haiku 4.5 via OpenRouter
+  3. DeepSeek V4.1 Flash 1017 via OpenRouter
+
+No auto-router, latest alias, MiMo, Groq, MiniMax, or other model is allowed
+in this path.
 
 On every LLM call failure we update a per-provider circuit breaker. If a
 provider has failed N times in a row (default 3), we skip it for the
@@ -30,8 +31,7 @@ from ..utils.config import (
     LLM_CIRCUIT_BREAKER_THRESHOLD,
     LLM_CIRCUIT_BREAKER_RESET_S,
     ANTHROPIC_API_KEY,
-    DEEPSEEK_API_KEY,
-    MIMO_API_KEY,
+    OPENROUTER_API_KEY,
 )
 
 log = logging.getLogger(__name__)
@@ -151,17 +151,10 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         from . import cost_control, model_router
         import httpx
         max_out = cost_control.LLM_MAX_OUTPUT_TOKENS
-        # Use the router to pick the model (and enable prompt caching for Haiku)
-        model_name, tier, _ = model_router.pick_model()
-        # Claude and MiMo share the exact same stable calibration instructions.
+        # All approved providers share the exact stable calibration instructions.
         from ..taste.icl import RELATIVSAUCE_SYSTEM_PROMPT
         system_prompt = RELATIVSAUCE_SYSTEM_PROMPT
-        # Primary: Haiku 5.5, Fallback: Haiku 4.5 (strictly Haiku tier only)
-        primary_model = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
-        candidate_models = []
-        for m in [primary_model, "claude-haiku-5-5", "claude-haiku-4-5-20251001", "claude-3-5-haiku-20241022"]:
-            if m and m not in candidate_models:
-                candidate_models.append(m)
+        candidate_models = ["claude-haiku-4-5-20251001"]
 
         last_error = None
         for current_model in candidate_models:
@@ -224,101 +217,45 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
     return _call
 
 
-def _build_deepseek_callable() -> Optional[Callable[[str], str]]:
-    """Return a callable that calls DeepSeek, or None if not configured."""
-    if not DEEPSEEK_API_KEY:
+def _build_openrouter_haiku_callable() -> Optional[Callable[[str], str]]:
+    if not OPENROUTER_API_KEY:
         return None
-    from .deepseek_client import generate as _ds_generate
-    return _ds_generate
+    from .openrouter_client import generate_haiku
+    return generate_haiku
 
 
-def _build_mimo_callable() -> Optional[Callable[[str], str]]:
-    """Return the MiMo V2.6 Pro calibration callable when configured."""
-    if not MIMO_API_KEY:
+def _build_openrouter_deepseek_callable() -> Optional[Callable[[str], str]]:
+    if not OPENROUTER_API_KEY:
         return None
-    from .mimo_client import generate as _mimo_generate
-    return _mimo_generate
-
-
-def _build_groq_callable() -> Optional[Callable[[str], str]]:
-    """Return a callable that calls Groq, or None if not configured."""
-    if not os.getenv("GROQ_API_KEY", ""):
-        return None
-    from .groq_client import generate as _groq_generate
-    return _groq_generate
-
-
-def _build_minimax_callable() -> Optional[Callable[[str], str]]:
-    """Return a callable that calls MiniMax M3, or None if not configured.
-
-    MiniMax is the cheap-fallback tier — always-on safety net per user request
-    2026-06-15. OpenAI-compatible, so the same call pattern as Groq works.
-    """
-    if not os.getenv("MINIMAX_API_KEY", ""):
-        return None
-    from .minimax_client import generate as _minimax_generate
-    return _minimax_generate
+    from .openrouter_client import generate_deepseek
+    return generate_deepseek
 
 
 # --- The chain ---
 
 
-def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
-    """Return ordered list of (provider_name, callable) based on LLM_PROVIDER.
-
-    Empty list means no provider is configured — callers must fall back
-    to the energy-based heuristic.
-    """
-    groq = _build_groq_callable()
-    mimo = _build_mimo_callable()
+def _provider_chain(provider_override: Optional[str] = None) -> List[Tuple[str, Callable[[str], str]]]:
+    """Return the immutable approved chain; ``provider_override`` is ignored."""
     claude = _build_claude_callable()
-    deepseek = _build_deepseek_callable()
-    minimax = _build_minimax_callable()
-
-    if LLM_PROVIDER == "mimo":
-        return [("mimo", mimo)] if mimo else []
-    if LLM_PROVIDER == "claude":
-        return [("claude", claude)] if claude else []
-    if LLM_PROVIDER == "deepseek":
-        return [("deepseek", deepseek)] if deepseek else []
-    if LLM_PROVIDER == "groq":
-        return [("groq", groq)] if groq else []
-    if LLM_PROVIDER == "minimax":
-        return [("minimax", minimax)] if minimax else []
-    if LLM_PROVIDER == "both":
-        chain = []
-        if claude:
-            chain.append(("claude", claude))
-        if deepseek:
-            chain.append(("deepseek", deepseek))
-        if minimax:
-            chain.append(("minimax", minimax))
-        if groq:
-            chain.append(("groq", groq))
-        return chain
-    # "auto" / default during calibration: MiMo > Claude > DeepSeek > Groq > MiniMax.
-    # (MiniMax is the cheap-fallback safety net per user 2026-06-15)
-    chain = []
-    if mimo:
-        chain.append(("mimo", mimo))
+    openrouter_haiku = _build_openrouter_haiku_callable()
+    openrouter_deepseek = _build_openrouter_deepseek_callable()
+    chain: List[Tuple[str, Callable[[str], str]]] = []
     if claude:
-        chain.append(("claude", claude))
-    if deepseek:
-        chain.append(("deepseek", deepseek))
-    if groq:
-        chain.append(("groq", groq))
-    if minimax:
-        chain.append(("minimax", minimax))
+        chain.append(("anthropic_direct_haiku_4_5", claude))
+    if openrouter_haiku:
+        chain.append(("openrouter_haiku_4_5", openrouter_haiku))
+    if openrouter_deepseek:
+        chain.append(("openrouter_deepseek_v4_1_flash_1017", openrouter_deepseek))
     return chain
 
 
-def call_with_fallback(prompt: str) -> Tuple[Optional[str], Optional[str]]:
+def call_with_fallback(prompt: str, provider_override: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     """Try each provider in the chain until one succeeds.
 
     Returns (response_text, provider_name_used). Both are None on total
     failure — caller must then use the energy-based fallback.
     """
-    chain = _provider_chain()
+    chain = _provider_chain(provider_override)
     if not chain:
         log.info("LLM chain is empty (no provider configured)")
         return None, None
@@ -345,16 +282,10 @@ def call_with_fallback(prompt: str) -> Tuple[Optional[str], Optional[str]]:
 def available_providers() -> List[str]:
     """Return the names of providers that are configured (ignoring breakers)."""
     names = []
-    if MIMO_API_KEY:
-        names.append("mimo")
     if ANTHROPIC_API_KEY:
-        names.append("claude")
-    if DEEPSEEK_API_KEY:
-        names.append("deepseek")
-    if os.getenv("GROQ_API_KEY", ""):
-        names.append("groq")
-    if os.getenv("MINIMAX_API_KEY", ""):
-        names.append("minimax")
+        names.append("anthropic_direct_haiku_4_5")
+    if OPENROUTER_API_KEY:
+        names.extend(["openrouter_haiku_4_5", "openrouter_deepseek_v4_1_flash_1017"])
     return names
 
 

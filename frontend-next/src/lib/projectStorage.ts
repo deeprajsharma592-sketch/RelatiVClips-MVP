@@ -4,7 +4,7 @@ export interface StoredProject {
   id: string;
   title: string;
   createdAt: number;
-  expiresAt: number; // 4 days TTL
+  expiresAt: number; // 7-day TTL
   status: "processing" | "ready" | "failed";
   progress?: number;
   taskId?: string;
@@ -12,7 +12,7 @@ export interface StoredProject {
 }
 
 const STORAGE_KEY = "relativ_studio_projects_v2";
-const RETENTION_MS = 4 * 24 * 60 * 60 * 1000; // 4 days
+const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function getStoredProjects(): StoredProject[] {
   if (typeof window === "undefined") return [];

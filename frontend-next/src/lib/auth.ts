@@ -12,6 +12,8 @@ export interface User {
   can_access_creator_workspace?: boolean;
   is_verified: boolean;
   credit_balance: number;
+  plan_tier: string;
+  is_admin: boolean;
   created_at: string;
   last_login_at: string | null;
   profile: Record<string, unknown>;
@@ -34,7 +36,9 @@ function toAppUser(user: SupabaseUser): User {
     role: "creator",
     can_access_creator_workspace: true,
     is_verified: Boolean(user.email_confirmed_at),
-    credit_balance: 2,
+    credit_balance: 400,
+    plan_tier: "free",
+    is_admin: false,
     created_at: user.created_at,
     last_login_at: user.last_sign_in_at || null,
     profile: {},

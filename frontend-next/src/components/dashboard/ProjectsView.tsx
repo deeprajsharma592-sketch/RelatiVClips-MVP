@@ -43,7 +43,7 @@ export default function ProjectsView({ projects, onSelectProject, onRefresh, onN
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between"><h2 className="text-sm font-medium text-[#a9aaae]">Projects <span className="text-[#65666b]">{visible.length}</span></h2><span className="text-[11px] text-[#65666b]">48-hour media vault</span></div>
+        <div className="flex items-center justify-between"><h2 className="text-sm font-medium text-[#a9aaae]">Projects <span className="text-[#65666b]">{visible.length}</span></h2><span className="text-[11px] text-[#65666b]">7-day media vault</span></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <button onClick={onNewClip} className="grid min-h-52 place-items-center rounded-xl border border-dashed border-white/[0.13] bg-[#151618] text-[#85868b] hover:border-[#E7B84B]/45 hover:text-white">
             <span className="text-center"><Plus size={22} className="mx-auto mb-2" /><b className="block text-xs font-medium">Start a new project</b><small className="mt-1 block text-[10px] text-[#65666b]">YouTube link or local video</small></span>

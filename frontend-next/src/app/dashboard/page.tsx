@@ -293,7 +293,7 @@ function DashboardContent() {
                   <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8] sm:text-3xl">Turn the long take into the cut.</h1>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-[#8f9095]">Start with the source. RelatiV finds the moments, frames the subject, and finishes the captions.</p>
                 </div>
-                <span className="hidden text-xs text-[#696a6f] sm:block">1 credit per finished clip</span>
+                <span className="hidden text-xs text-[#696a6f] sm:block">200 credits per finished clip</span>
               </div>
               {/* Studio Central Hero Intake Station */}
               <StudioHero

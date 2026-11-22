@@ -45,13 +45,18 @@ def test_mimo_uses_shared_system_prompt_and_structured_output(monkeypatch):
     assert captured["payload"]["messages"][1]["content"] == "timestamped transcript"
 
 
-def test_forced_mimo_provider_routes_only_to_mimo(monkeypatch):
-    fn = lambda prompt: "{}"
-    monkeypatch.setattr(chain, "LLM_PROVIDER", "mimo")
-    monkeypatch.setattr(chain, "MIMO_API_KEY", "test-key")
-    monkeypatch.setattr(chain, "_build_mimo_callable", lambda: fn)
-    monkeypatch.setattr(chain, "_build_claude_callable", lambda: None)
-    monkeypatch.setattr(chain, "_build_deepseek_callable", lambda: None)
-    monkeypatch.setattr(chain, "_build_groq_callable", lambda: None)
-    monkeypatch.setattr(chain, "_build_minimax_callable", lambda: None)
-    assert chain._provider_chain() == [("mimo", fn)]
+def test_calibration_chain_is_strict_and_ordered(monkeypatch):
+    direct = lambda prompt: "direct"
+    or_haiku = lambda prompt: "or-haiku"
+    or_deepseek = lambda prompt: "or-deepseek"
+    monkeypatch.setattr(chain, "_build_claude_callable", lambda: direct)
+    monkeypatch.setattr(chain, "_build_openrouter_haiku_callable", lambda: or_haiku)
+    monkeypatch.setattr(chain, "_build_openrouter_deepseek_callable", lambda: or_deepseek)
+
+    expected = [
+        ("anthropic_direct_haiku_5_5", direct),
+        ("openrouter_haiku_5_5", or_haiku),
+        ("openrouter_deepseek_v4_1_flash_1017", or_deepseek),
+    ]
+    assert chain._provider_chain() == expected
+    assert chain._provider_chain("mimo") == expected

@@ -4,14 +4,14 @@ from backend.services.credits import calculate_credit_cost
 
 
 def test_generation_costs_one_credit_per_clip():
-    assert calculate_credit_cost(1) == 1
-    assert calculate_credit_cost(2) == 2
-    assert calculate_credit_cost(4) == 4
+    assert calculate_credit_cost(1) == 200
+    assert calculate_credit_cost(2) == 400
+    assert calculate_credit_cost(4) == 800
 
 
 def test_remake_adds_two_credit_fee():
-    assert calculate_credit_cost(1, is_remake=True) == 3
-    assert calculate_credit_cost(2, is_remake=True) == 4
+    assert calculate_credit_cost(1, is_remake=True) == 600
+    assert calculate_credit_cost(2, is_remake=True) == 800
 
 
 @pytest.mark.parametrize("count", [0, 5, -1])

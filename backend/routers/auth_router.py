@@ -96,6 +96,8 @@ class UserResponse(BaseModel):
     can_access_creator_workspace: bool = False
     is_verified: bool
     credit_balance: int
+    plan_tier: str = "free"
+    is_admin: bool = False
     created_at: str
     last_login_at: Optional[str] = None
     # Profile fields, role-dependent
@@ -130,6 +132,8 @@ def _user_to_response(user: UserModel, profile_row) -> UserResponse:
         ),
         is_verified=user.is_verified,
         credit_balance=user.credit_balance,
+        plan_tier=user.plan_tier,
+        is_admin=user.is_admin or is_admin_email(user.email),
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         profile=profile,

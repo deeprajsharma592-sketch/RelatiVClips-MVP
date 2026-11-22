@@ -418,10 +418,10 @@ export default function PreGenConfigModal({
                     <Zap size={16} className="text-amber-400 fill-amber-400" />
                     <div>
                       <p className="text-xs font-semibold text-white">Credits Required</p>
-                      <p className="text-[10px] text-zinc-400">1 credit per generated clip</p>
+                      <p className="text-[10px] text-zinc-400">200 credits per generated clip</p>
                     </div>
                   </div>
-                  <span className="text-sm font-bold text-white">2 Credits</span>
+                  <span className="text-sm font-bold text-white">400 Credits</span>
                 </div>
 
                 {/* Primary Action Button */}

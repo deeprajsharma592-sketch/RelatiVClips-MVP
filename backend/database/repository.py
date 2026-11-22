@@ -9,8 +9,14 @@ from .models import TaskModel, ClipModel, TaskStatus
 class TaskRepository:
 
     @staticmethod
-    async def create(session: AsyncSession, url: str, task_id: str) -> TaskModel:
-        task = TaskModel(task_id=task_id, url=url)
+    async def create(
+        session: AsyncSession,
+        url: str,
+        task_id: str,
+        user_id: str | None = None,
+        status: str = TaskStatus.QUEUED.value,
+    ) -> TaskModel:
+        task = TaskModel(task_id=task_id, url=url, user_id=user_id, status=status)
         session.add(task)
         await session.commit()
         await session.refresh(task)

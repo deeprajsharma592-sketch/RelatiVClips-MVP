@@ -29,8 +29,13 @@ VRAM_MODEL_LIMIT_GB = MAX_VRAM_GB - VRAM_BUFFER_GB
 MAX_CONCURRENT_TASKS = 1
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-# Default to Claude Haiku 5.5 — primary choice, with Haiku 4.5 as fallback.
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
+# Fixed by product policy. Model selection is intentionally not env-driven.
+CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+
+# Strict OpenRouter fallback transport. Model IDs are fixed in
+# backend.llm.openrouter_client and cannot be overridden by environment.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # --- DeepSeek API (cheaper alternative to Claude, ~30x cheaper) ---
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
@@ -42,17 +47,13 @@ MIMO_API_KEY = os.getenv("MIMO_API_KEY", "")
 MIMO_MODEL = os.getenv("MIMO_MODEL", "mimo-v2.6-pro")
 MIMO_BASE_URL = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
 
-# --- LLM Provider selection ---
-# LLM_PROVIDER = "mimo"     → force MiMo V2.6 Pro calibration
-# LLM_PROVIDER = "claude"   → force Claude (elite tier, $$$)
-# LLM_PROVIDER = "deepseek" → force DeepSeek (budget tier, ~30x cheaper)
-# LLM_PROVIDER = "both"     → try Claude first, fall back to DeepSeek on failure
-# LLM_PROVIDER = "auto"     → highest-priority available (mimo > claude > deepseek > minimax)
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower().strip()
-# Legacy alias; "LLM_PROVIDER_PRIORITY" still works for back-compat.
+# Calibration routing is fixed in backend.llm.chain. These legacy values remain
+# readable only so older modules can import them; they do not choose a model.
+LLM_PROVIDER = "strict"
 LLM_PROVIDER_PRIORITY = [
-    p.strip() for p in os.getenv("LLM_PROVIDER_PRIORITY", "mimo,claude,deepseek,groq,minimax").split(",")
-    if p.strip()
+    "anthropic_direct_haiku_4_5",
+    "openrouter_haiku_4_5",
+    "openrouter_deepseek_v4_1_flash_1017",
 ]
 
 # --- Circuit breaker for LLM calls ---

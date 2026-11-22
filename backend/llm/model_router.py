@@ -61,31 +61,36 @@ from ..utils.config import CLAUDE_MODEL
 # one of the other three at runtime. We omit it from TIER_CONFIG.
 TIER_CONFIG = {
     LLMTier.CALIBRATION: {
-        "primary": "claude-haiku-5-5",
-        "fallback": ["claude-haiku-4-5-20251001"],
-        "description": "High quality for story/hook calibration using Haiku 5.5 (fallback to Haiku 4.5).",
+        "primary": "claude-haiku-4-5-20251001",
+        "fallback": ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash-1017"],
+        "description": "Strict RelatiV calibration chain; no other models are permitted.",
         "use_cache": True,
     },
     LLMTier.BUDGET: {
-        # V4-Flash is the workhorse; V4-Pro kept as quality-bump option
-        "primary": "deepseek-v4-flash",
-        "fallback": ["deepseek-v4-flash", "deepseek-v4-pro"],
-        "description": "Steady-state after calibration. ~10x cheaper than Haiku. V4-Pro available as quality bump.",
+        "primary": "claude-haiku-4-5-20251001",
+        "fallback": ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash-1017"],
+        "description": "Strict RelatiV calibration chain; no other models are permitted.",
         "use_cache": True,
     },
     LLMTier.FALLBACK: {
-        # MiniMax M3 is cheap + always-available safety net (per user request 2026-06-15)
-        # Replaces the earlier Groq GPT OSS 20B slot
-        "primary": "minimax-m3",
-        "fallback": ["minimax-m3", "deepseek-v4-flash"],
-        "description": "Always-on cheap fallback (MiniMax M3). Used when main providers fail or hard cap hit.",
-        "use_cache": False,
+        "primary": "claude-haiku-4-5-20251001",
+        "fallback": ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash-1017"],
+        "description": "Strict RelatiV calibration chain; no other models are permitted.",
+        "use_cache": True,
     },
 }
 
 
 # ─── Cost constants (USD per million tokens) ────────────────────────────────
 COST_PER_MTOK = {
+    "anthropic/claude-haiku-4.5": {
+        "input": 1.0, "output": 5.0,
+        "cache_read": 0.10, "cache_write": 1.25,
+    },
+    "deepseek/deepseek-v4.1-flash-1017": {
+        "input": 0.036, "output": 0.50,
+        "cache_read": 0.01, "cache_write": None,
+    },
     "claude-3-haiku-20240307": {
         "input": 0.25, "output": 1.25,
         "cache_read": 0.03, "cache_write": 0.30,
@@ -93,12 +98,6 @@ COST_PER_MTOK = {
     "claude-3-5-haiku-20241022": {
         "input": 0.80, "output": 4.0,
         "cache_read": 0.08, "cache_write": 1.0,
-    },
-    "claude-haiku-5-5": {
-        "input": float(os.getenv("HAIKU_INPUT_COST", "0.10")),
-        "output": float(os.getenv("HAIKU_OUTPUT_COST", "0.50")),
-        "cache_read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.01")),
-        "cache_write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "0.125")),
     },
     "claude-haiku-4-5-20251001": {
         "input": 1.0, "output": 5.0,

@@ -40,10 +40,8 @@ _model_router = None
 # Update these if Anthropic changes pricing.
 _COST_PER_MTOK = {
     # Model: (input_usd_per_mtok, output_usd_per_mtok)
-    "claude-haiku-5-5": (
-        float(os.getenv("HAIKU_INPUT_COST", "0.10")),
-        float(os.getenv("HAIKU_OUTPUT_COST", "0.50")),
-    ),
+    "anthropic/claude-haiku-4.5": (1.0, 5.0),
+    "deepseek/deepseek-v4.1-flash-1017": (0.036, 0.50),
     "claude-haiku-4-5-20251001": (1.0, 5.0),
     "claude-3-haiku-20240307": (0.25, 1.25),
     "claude-haiku-3-5-20241022": (0.80, 4.0),
@@ -56,7 +54,7 @@ _COST_PER_MTOK = {
     "mixtral-8x7b-32768": (0.24, 0.24),       # Groq
 }
 
-_DEFAULT_COST = (1.0, 5.0)  # conservative default (Haiku 4.5)
+_DEFAULT_COST = (1.0, 5.0)  # approved primary: Haiku 4.5
 
 
 # ─── Configurable caps (env-driven) ────────────────────────────────────────
@@ -148,10 +146,8 @@ def estimate_cost_usd(
 # When a model reports cache_read_input_tokens, we bill those at this rate
 # instead of the standard input rate. Set to None to disable caching.
 _CACHE_RATES = {
-    "claude-haiku-5-5": {
-        "read": float(os.getenv("HAIKU_CACHE_READ_COST", "0.01")),
-        "write": float(os.getenv("HAIKU_CACHE_WRITE_COST", "0.125")),
-    },
+    "anthropic/claude-haiku-4.5": {"read": 0.10, "write": 1.25},
+    "deepseek/deepseek-v4.1-flash-1017": {"read": 0.01, "write": None},
     "claude-haiku-4-5-20251001": {
         "read": 0.10,    # 10x cheaper than fresh input
         "write": 1.25,   # slightly more than input (we pay for the cache slot)

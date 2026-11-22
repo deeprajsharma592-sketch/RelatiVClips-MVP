@@ -1,8 +1,8 @@
 """Atomic creator-credit accounting.
 
 Pricing:
-  * generation: 1 credit per requested/output clip
-  * remake: 2-credit fee + 1 credit per requested/output clip
+  * generation: 200 credits per requested/output clip
+  * remake: 400-credit fee + 200 credits per requested/output clip
 
 Jobs reserve the maximum charge before compute starts. Completion refunds any
 unused per-clip reservation; failure refunds the complete reservation.
@@ -17,11 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database.models import CreditTransactionModel, UserModel
+from .entitlements import CLIP_CREDIT_COST, ONBOARDING_CREDITS, REMAKE_BASE_CREDITS
 
 
-STARTER_CREDITS = 2
-CREDITS_PER_CLIP = 1
-REMAKE_FEE = 2
+STARTER_CREDITS = ONBOARDING_CREDITS
+CREDITS_PER_CLIP = CLIP_CREDIT_COST
+REMAKE_FEE = REMAKE_BASE_CREDITS
 
 
 def calculate_credit_cost(clip_count: int, *, is_remake: bool = False) -> int:
@@ -65,6 +66,8 @@ async def reserve_for_job(
     )).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User account not found")
+    if user.is_admin:
+        return CreditReservation(user.id, task_id, 0, clip_count, is_remake, user.credit_balance)
     if user.credit_balance < cost:
         raise HTTPException(
             status_code=402,

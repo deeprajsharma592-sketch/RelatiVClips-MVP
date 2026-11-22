@@ -54,20 +54,22 @@ interface Tier {
 
 const CREATOR_TIERS: Tier[] = [
   {
-    name: "Starter",
+    name: "Go",
     price: "$5.99",
     unit: "/month",
-    cta: "Get Starter",
+    cta: "Get Go",
     href: "/signup?plan=creator_starter",
     bestFor: "Solo creators dipping toes in",
-    clipsIncluded: 40,
+    clipsIncluded: 100,
     features: [
-      "40 viral clips / month",
+      "20,000 credits · up to 100 clips / month",
       "AI virality scoring & hook detection",
       "9:16 vertical dynamic face framing",
       "Karaoke word-by-word subtitles",
       "No RelatiV watermark",
       "Up to 30 min source video length",
+      "1 active processing task at a time",
+      "Exports available for 7 days",
       "Global card billing (Visa, Mastercard, Amex)",
     ],
     planKey: "creator_go",

@@ -102,9 +102,9 @@ export default function UpgradeModal({
             <div className="bg-white/[0.02] border border-white/10 hover:border-white/20 rounded-xl p-5 flex flex-col justify-between transition group">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold text-white">Starter</h3>
+                  <h3 className="text-base font-semibold text-white">Go</h3>
                   <span className="text-[11px] font-medium text-zinc-400 bg-white/5 px-2 py-0.5 rounded">
-                    40 clips/mo
+                    100 clips/mo
                   </span>
                 </div>
                 <div className="mb-4">
@@ -123,14 +123,14 @@ export default function UpgradeModal({
                   onClick={() => onSelectPlan?.("starter")}
                   className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5"
                 >
-                  Get Starter
+                  Get Go
                   <ArrowRight size={13} />
                 </button>
 
                 <div className="space-y-2.5 text-xs text-zinc-300">
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span><b>40 viral clips</b> / month</span>
+                    <span><b>20,000 credits</b> · up to 100 clips / month</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-cyan-400 shrink-0" />

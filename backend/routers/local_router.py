@@ -10,16 +10,26 @@ import traceback
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import ProcessResponse, TaskStatus
 from ..utils.task_store import task_store
 from ..utils.config import PIPELINE_VERSION
+from ..database.models import TaskModel, UserModel
+from ..database.session import get_session
+from ..database.repository import TaskRepository
+from ..services.credits import CreditReservation, reserve_for_job, settle_job
+from ..services.entitlements import MAX_ACTIVE_TASKS_PER_USER, source_limit_seconds
+from .auth_router import get_current_user
 
 progress_logs = {}
 _active_tasks = {}
+_active_user_tasks = {}
 
 
 class LocalProcessRequest(BaseModel):
@@ -76,8 +86,20 @@ async def run_local_orchestrator(task_id: str, file_path: str, callback):
     )
 
 
-async def run_local_pipeline(task_id: str, file_path: str):
+async def run_local_pipeline(
+    task_id: str,
+    file_path: str,
+    reservation: CreditReservation | None = None,
+    user_id: str | None = None,
+):
     callback = create_progress_callback(task_id)
+
+    async def settle(output_clips: int = 0, *, failed: bool = False):
+        if reservation is None:
+            return
+        from ..database.session import async_session
+        async with async_session() as credit_session:
+            await settle_job(credit_session, reservation, output_clips=output_clips, failed=failed)
 
     if PIPELINE_VERSION == 2:
         try:
@@ -93,13 +115,17 @@ async def run_local_pipeline(task_id: str, file_path: str):
                 current_step=f"Complete - {len(clips)} clips generated",
             )
             callback(f"SUCCESS: {len(clips)} clips generated!", step=9, progress=100)
+            await settle(len(clips))
         except Exception as e:
             task_store.update_task(
                 task_id, status=TaskStatus.FAILED, error=str(e),
             )
             callback(f"FAILED: {e}", step=9, progress=0)
+            await settle(failed=True)
         finally:
             _active_tasks.pop(task_id, None)
+            if user_id:
+                _active_user_tasks.pop(user_id, None)
             task_store.try_promote_queued()
         return
 
@@ -280,6 +306,8 @@ async def run_local_pipeline(task_id: str, file_path: str):
         )
     finally:
         _active_tasks.pop(task_id, None)
+        if user_id:
+            _active_user_tasks.pop(user_id, None)
         task_store.try_promote_queued()
 
 
@@ -301,18 +329,58 @@ async def download_ytdlp_server():
 
 
 @router.post("", response_model=ProcessResponse)
-async def process_local_video(request: LocalProcessRequest):
+async def process_local_video(
+    request: LocalProcessRequest,
+    user: UserModel = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     if not request.file_path or not Path(request.file_path).exists():
         raise HTTPException(status_code=400, detail="Invalid file path")
 
-    task = task_store.create_task(f"Local: {Path(request.file_path).name}")
+    from ..pipeline.ingestion import get_video_duration
+    duration_s = await asyncio.to_thread(get_video_duration, request.file_path)
+    limit_s = source_limit_seconds(user.plan_tier, is_admin=user.is_admin)
+    if limit_s and duration_s > limit_s:
+        raise HTTPException(413, f"This plan accepts source videos up to {limit_s // 60} minutes.")
+    active_count = (await session.execute(
+        select(func.count(TaskModel.task_id)).where(
+            TaskModel.user_id == user.id,
+            TaskModel.status.in_(["queued", "processing"]),
+        )
+    )).scalar() or 0
+    if user.id in _active_user_tasks or active_count >= MAX_ACTIVE_TASKS_PER_USER:
+        raise HTTPException(409, "Your plan allows 1 active processing task at a time.")
+
+    task = task_store.create_task(f"Local: {Path(request.file_path).name}", user_id=user.id, persist=False)
+    _active_user_tasks[user.id] = task["task_id"]
+    try:
+        await TaskRepository.create(
+            session,
+            task["url"],
+            task["task_id"],
+            user_id=user.id,
+            status=task["status"].value,
+        )
+        reservation = await reserve_for_job(
+            session, user_id=user.id, task_id=task["task_id"], clip_count=2,
+        )
+    except IntegrityError:
+        await session.rollback()
+        _active_user_tasks.pop(user.id, None)
+        raise HTTPException(409, "Your plan allows 1 active processing task at a time.") from None
+    except Exception:
+        _active_user_tasks.pop(user.id, None)
+        task_store.update_task(task["task_id"], status=TaskStatus.FAILED, error="Credit reservation failed")
+        raise
 
     loop = asyncio.get_event_loop()
     _active_tasks[task["task_id"]] = loop.create_task(
-        run_local_pipeline(task["task_id"], request.file_path)
+        run_local_pipeline(task["task_id"], request.file_path, reservation, user.id)
     )
 
     return ProcessResponse(
         task_id=task["task_id"],
-        status=task["status"]
+        status=task["status"],
+        credits_reserved=reservation.reserved,
+        credits_remaining=reservation.balance_after,
     )

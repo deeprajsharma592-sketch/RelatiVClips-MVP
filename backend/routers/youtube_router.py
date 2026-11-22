@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from pathlib import Path
@@ -26,13 +28,23 @@ from ..utils.config import (
     MAX_SURGICAL_SEGMENTS, COOKIES_PATH, MIN_CLIPS, PIPELINE_VERSION,
 )
 from ..pipeline.transcript_fetcher import _download_audio
-from ..database.models import UserModel
+from ..database.models import TaskModel, UserModel
 from ..database.session import get_session
+from ..database.repository import TaskRepository
 from .auth_router import get_current_user
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
+from ..services.entitlements import MAX_ACTIVE_TASKS_PER_USER, source_limit_seconds
 
 progress_logs = {}
 _active_tasks = {}
+_active_user_tasks = {}
+
+
+def _release_active_task(task_id: str) -> None:
+    _active_tasks.pop(task_id, None)
+    for user_id, active_task_id in list(_active_user_tasks.items()):
+        if active_task_id == task_id:
+            _active_user_tasks.pop(user_id, None)
 
 VIRAL_KEYWORDS = [
     'insane', 'huge', 'wow', 'literally', 'never', 'amazing', 'incredible',
@@ -521,6 +533,8 @@ async def run_youtube_orchestrator(
     caption_font: str = "studio",
     caption_style: Optional[dict] = None,
     requested_clip_count: Optional[int] = None,
+    max_source_duration_s: Optional[int] = None,
+    llm_provider_preference: Optional[str] = None,
 ):
     """New pipeline path (PIPELINE_VERSION=2) — transcript-first selection.
 
@@ -565,6 +579,13 @@ async def run_youtube_orchestrator(
 
     moments, info = await asyncio.to_thread(_detect_source_moments)
     callback("Source analyzed", step=1, sub_progress=1.0)
+
+    source_duration = float(info.get("duration_s") or 0)
+    if max_source_duration_s and source_duration > max_source_duration_s:
+        raise RuntimeError(
+            f"SOURCE_TOO_LONG: this plan accepts source videos up to "
+            f"{max_source_duration_s // 60} minutes; this video is {source_duration / 60:.1f} minutes."
+        )
 
     if not moments:
         # Check if this is a cookie/auth error by looking at info
@@ -943,11 +964,11 @@ def _run_moment_pipeline(
         pass
 
     try:
-        text, provider_used = call_with_fallback(prompt)
+        text, provider_used = call_with_fallback(prompt, provider_override=llm_provider_preference)
         if text:
             picks = parse_moment_response_with_retry(
                 text,
-                llm_callable=lambda p: call_with_fallback(p)[0],
+                llm_callable=lambda p: call_with_fallback(p, provider_override=llm_provider_preference)[0],
                 original_prompt=prompt,
                 transcript_segments=transcript_segs_for_prompt,
             )
@@ -1581,6 +1602,8 @@ async def run_youtube_pipeline_async(
     requested_clip_count: Optional[int] = None,
     credit_reservation: Optional[CreditReservation] = None,
     is_remake: bool = False,
+    max_source_duration_s: Optional[int] = None,
+    llm_provider_preference: Optional[str] = None,
 ):
     async def settle_credits(output_clips: int = 0, *, failed: bool = False):
         if credit_reservation is None:
@@ -1617,6 +1640,10 @@ async def run_youtube_pipeline_async(
             from ..segmentation import deduplicate_preserving_order
             from ..pipeline.clip_count import resolve_target_clip_count
             cached_duration = float(cached.get("duration_s") or cached.get("duration") or 0.0)
+            if max_source_duration_s and cached_duration > max_source_duration_s:
+                raise RuntimeError(
+                    f"SOURCE_TOO_LONG: this plan accepts source videos up to {max_source_duration_s // 60} minutes."
+                )
             cached_target = (
                 resolve_target_clip_count(cached_duration, requested_clip_count)
                 if requested_clip_count is not None or cached_duration > 0
@@ -1658,7 +1685,7 @@ async def run_youtube_pipeline_async(
                 cache_savings_usd=savings,
             )
             await settle_credits(len(clips))
-            _active_tasks.pop(task_id, None)
+            _release_active_task(task_id)
             task_store.try_promote_queued()
             return
     except Exception as e:
@@ -1676,6 +1703,8 @@ async def run_youtube_pipeline_async(
                 caption_font=caption_font,
                 caption_style=caption_style,
                 requested_clip_count=requested_clip_count,
+                max_source_duration_s=max_source_duration_s,
+                llm_provider_preference=llm_provider_preference,
             )
             clips = result.get("clips", [])
             cost_usd = result.get("llm_cost_usd", 0.0)
@@ -1732,7 +1761,7 @@ async def run_youtube_pipeline_async(
             )
             callback(f"FAILED: {e}", step=6, progress=0)
             await settle_credits(failed=True)
-        _active_tasks.pop(task_id, None)
+        _release_active_task(task_id)
         task_store.try_promote_queued()
         return
 
@@ -1763,7 +1792,7 @@ async def run_youtube_pipeline_async(
         )
         await settle_credits(failed=True)
 
-    _active_tasks.pop(task_id, None)
+    _release_active_task(task_id)
     task_store.try_promote_queued()
 
 
@@ -1810,9 +1839,37 @@ async def process_youtube_url(
         if requested_clip_count < 1 or requested_clip_count > 4:
             raise HTTPException(status_code=422, detail="clip_count must be between 1 and 4")
 
-    task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}")
+    if user.id in _active_user_tasks:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "ACTIVE_JOB_LIMIT",
+                "message": "You already have an active processing task. Wait for it to finish before starting another.",
+            },
+        )
+    active_count = (await session.execute(
+        select(func.count(TaskModel.task_id)).where(
+            TaskModel.user_id == user.id,
+            TaskModel.status.in_(["queued", "processing"]),
+        )
+    )).scalar() or 0
+    if active_count >= MAX_ACTIVE_TASKS_PER_USER:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "ACTIVE_JOB_LIMIT", "message": "Your plan allows 1 active processing task at a time."},
+        )
+
+    task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}", user_id=user.id, persist=False)
+    _active_user_tasks[user.id] = task["task_id"]
 
     try:
+        await TaskRepository.create(
+            session,
+            task["url"],
+            task["task_id"],
+            user_id=user.id,
+            status=task["status"].value,
+        )
         reservation = await reserve_for_job(
             session,
             user_id=user.id,
@@ -1820,7 +1877,12 @@ async def process_youtube_url(
             clip_count=requested_clip_count,
             is_remake=is_remake,
         )
+    except IntegrityError:
+        await session.rollback()
+        _active_user_tasks.pop(user.id, None)
+        raise HTTPException(409, "Your plan allows 1 active processing task at a time.") from None
     except Exception:
+        _active_user_tasks.pop(user.id, None)
         task_store.update_task(
             task["task_id"],
             status=TaskStatus.FAILED,
@@ -1840,6 +1902,8 @@ async def process_youtube_url(
             requested_clip_count=requested_clip_count,
             credit_reservation=reservation,
             is_remake=is_remake,
+            max_source_duration_s=source_limit_seconds(user.plan_tier, is_admin=user.is_admin),
+            llm_provider_preference="claude" if user.plan_tier in {"go", "creator_go"} else None,
         )
     )
 

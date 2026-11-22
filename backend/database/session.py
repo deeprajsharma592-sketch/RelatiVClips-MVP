@@ -70,7 +70,22 @@ async def init_db():
         # identities without replacing user IDs or marketplace foreign keys.
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_user_id VARCHAR(36)"))
         await conn.execute(text(
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_balance INTEGER NOT NULL DEFAULT 2"
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_balance INTEGER NOT NULL DEFAULT 400"
+        ))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_unit_version INTEGER NOT NULL DEFAULT 1"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) NOT NULL DEFAULT 'free'"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false"))
+        await conn.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"))
+        # One-time denomination migration: old credits represented clips; v2
+        # represents 1/200th of a clip. The version flag makes this idempotent.
+        await conn.execute(text("UPDATE users SET credit_balance = credit_balance * 200, credit_unit_version = 2 WHERE credit_unit_version = 1"))
+        await conn.execute(text("ALTER TABLE users ALTER COLUMN credit_balance SET DEFAULT 400"))
+        await conn.execute(text("ALTER TABLE users ALTER COLUMN credit_unit_version SET DEFAULT 2"))
+        await conn.execute(text("UPDATE users SET is_admin = true WHERE lower(email) = 'deeprajsharma592@gmail.com'"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id)"))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_one_active_per_user "
+            "ON tasks (user_id) WHERE user_id IS NOT NULL AND status IN ('queued', 'processing')"
         ))
         await conn.execute(text("ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL"))
         await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_words JSONB"))
@@ -121,11 +136,13 @@ async def init_db():
                             ELSE
                                 INSERT INTO public.users (
                                     id, auth_user_id, email, hashed_password, role, name,
-                                    is_active, is_verified, created_at, updated_at, email_verified_at
+                                    is_active, is_verified, credit_balance, credit_unit_version,
+                                    is_admin, created_at, updated_at, email_verified_at
                                 ) VALUES (
                                     NEW.id::text, NEW.id::text, lower(NEW.email), NULL, 'creator',
                                     COALESCE(NULLIF(NEW.raw_user_meta_data->>'name', ''), split_part(NEW.email, '@', 1)),
-                                    true, (NEW.email_confirmed_at IS NOT NULL),
+                                    true, (NEW.email_confirmed_at IS NOT NULL), 400, 2,
+                                    (lower(NEW.email) = 'deeprajsharma592@gmail.com'),
                                     COALESCE(NEW.created_at, now()), now(), NEW.email_confirmed_at
                                 )
                                 ON CONFLICT (auth_user_id) DO UPDATE SET
