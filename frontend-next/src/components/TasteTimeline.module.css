@@ -185,11 +185,6 @@
 .socialBubble[data-tone="mint"] { --reaction-color: #77ebc0; --reaction-glow: rgb(72 224 171 / 34%); }
 .scrollHint { position: absolute; z-index: 5; pointer-events: none; bottom: max(12%, 92px); inset-inline: 0; display: flex; justify-content: center; align-items: center; gap: 10px; color: #8a8a92; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; }
 
-@media (min-width: 641px) and (prefers-reduced-motion: no-preference) {
-  /* Trim space below the centered timeline after its scroll sequence. */
-  .section { margin-block-end: calc(-1 * clamp(0px, 50svh - 14rem, 9rem)); }
-}
-
 @media (max-width: 640px) {
   .headline { top: 40%; width: calc(100% - 32px); font-size: clamp(28px, 7.6vw, 42px); }
   .timeline { padding: 12px; }
