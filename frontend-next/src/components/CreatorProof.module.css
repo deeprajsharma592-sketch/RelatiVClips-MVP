@@ -85,7 +85,7 @@
 .reach {
   grid-area: s2;
 }
-.moments {
+.calendar {
   grid-area: team;
 }
 .showcase {
@@ -196,51 +196,98 @@
   text-align: right;
 }
 
-/* team card */
-.avatars {
+/* content calendar card */
+.calendarHeader {
   display: flex;
-  margin: 1rem 0 1.1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.1rem;
 }
-.avatars span {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  margin-left: -10px;
+.calendarMonth {
+  color: #f4f2ff;
+  font-size: 1.1rem;
+  font-weight: 750;
+  margin: 0.35rem 0 0;
+}
+.calendarArrows {
+  display: flex;
+  gap: 0.4rem;
+}
+.calendarArrows span {
   display: grid;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  font-size: 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  color: rgba(244, 242, 255, 0.76);
+  font-size: 1.3rem;
+  line-height: 1;
 }
-.avatars span:first-child {
-  margin-left: 0;
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem 0.1rem;
+  text-align: center;
 }
-.avatars .extra {
-  background: #777;
-  color: #fff;
+.calendarWeekday {
+  color: rgba(244, 242, 255, 0.48);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding-bottom: 0.35rem;
+}
+.calendarDate {
+  position: relative;
+  display: grid;
+  min-height: 29px;
+  place-items: center;
+  color: rgba(244, 242, 255, 0.82);
+  font-size: 0.78rem;
+  border-radius: 9px;
+}
+.calendarDate i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  bottom: 2px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.calendarSelected {
+  color: #07140f;
+  background: var(--green);
+  font-weight: 800;
+}
+.calendarSelected i {
+  background: #07140f;
+}
+.calendarEmpty {
+  visibility: hidden;
+}
+.calendarFooter {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--green);
   font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
-.coil {
-  position: absolute;
-  right: -26px;
-  bottom: 14px;
-  width: 118px;
-  animation: spinY 7s ease-in-out infinite;
-}
-@keyframes spinY {
-  50% {
-    transform: rotate(-8deg) translateY(-8px);
-  }
-}
-.dots {
-  display: flex;
-  gap: 5px;
-  margin-top: 0.5rem;
-}
-.dots i {
-  width: 9px;
-  height: 9px;
+.calendarTodayDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(94, 234, 168, 0.55);
+}
+.calendarTime {
+  margin-left: auto;
+  color: rgba(244, 242, 255, 0.54);
+  font-size: 0.66rem;
 }
 
 /* hero */
@@ -594,7 +641,7 @@
     margin-top: 60px;
   }
   .accuracy,
-  .moments,
+  .calendar,
   .clips,
   .turnaround,
   .reach,
@@ -645,20 +692,6 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.dots i {
-  animation: pick-hook 4.8s ease-in-out infinite;
-}
-@keyframes pick-hook {
-  0%,
-  100% {
-    background: rgba(255, 255, 255, 0.16);
-  }
-  8%,
-  70% {
-    background: var(--acc);
-  }
-}
-
 @keyframes brand-wave {
   50% {
     transform: scaleY(0.65);

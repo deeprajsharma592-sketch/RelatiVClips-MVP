@@ -165,54 +165,48 @@ export default function CreatorProof() {
             <div className={styles.detail}>First 12 weeks</div>
           </div>
 
-          <div className={`${styles.card} ${styles.dark} ${styles.moments}`}>
-            <p className={styles.label}>
-              Team of passionate clippers and creators
-            </p>
-            <div className={styles.avatars}>
-              <span style={{ background: "#ffd6a5" }}>🧑‍💻</span>
-              <span style={{ background: "#c7b8ff" }}>🎙️</span>
-              <span style={{ background: "#b8e6c9" }}>🎮</span>
-              <span style={{ background: "#ffb8c9" }}>🎬</span>
-              <span className={styles.extra}>+2</span>
+          <div
+            className={`${styles.card} ${styles.dark} ${styles.calendar}`}
+            aria-label="November 2026 content calendar"
+          >
+            <div className={styles.calendarHeader}>
+              <div>
+                <p className={styles.label}>Content calendar</p>
+                <p className={styles.calendarMonth}>November 2026</p>
+              </div>
+              <div className={styles.calendarArrows} aria-hidden="true">
+                <span>‹</span>
+                <span>›</span>
+              </div>
             </div>
-            <p className={styles.label}>Moments picked</p>
-            <div className={styles.metric} style={{ margin: ".2rem 0" }}>
-              <AnimatedMetric value={10} active={active} suffix=" of 47" />
-            </div>
-            <div className={styles.dots} aria-hidden="true">
-              {Array.from({ length: 10 }, (_, index) => (
-                <i key={index} style={{ animationDelay: `${index * 180}ms` }} />
+            <div className={styles.calendarGrid}>
+              {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+                <span className={styles.calendarWeekday} key={`${day}-${index}`}>
+                  {day}
+                </span>
               ))}
+              {Array.from({ length: 35 }, (_, index) => {
+                const date = index + 1;
+                const isDate = date <= 30;
+                const hasPost = [3, 6, 10, 13, 17, 20, 23, 26, 28].includes(date);
+                return (
+                  <span
+                    key={index}
+                    className={`${styles.calendarDate} ${
+                      isDate && date === 23 ? styles.calendarSelected : ""
+                    } ${!isDate ? styles.calendarEmpty : ""}`}
+                  >
+                    {isDate ? date : ""}
+                    {isDate && hasPost && <i aria-hidden="true" />}
+                  </span>
+                );
+              })}
             </div>
-            <div className={styles.accent} style={{ marginTop: ".5rem" }}>
-              Best hooks only
+            <div className={styles.calendarFooter}>
+              <span className={styles.calendarTodayDot} />
+              <span>3 clips scheduled today</span>
+              <span className={styles.calendarTime}>10:30 AM</span>
             </div>
-            <svg
-              aria-hidden="true"
-              className={styles.coil}
-              viewBox="0 0 120 150"
-            >
-              <defs>
-                <linearGradient id="ch" x1="0" x2="1">
-                  <stop offset="0" stopColor="#f4f4f6" />
-                  <stop offset=".5" stopColor="#6e6e78" />
-                  <stop offset="1" stopColor="#17171b" />
-                </linearGradient>
-              </defs>
-              <g
-                fill="none"
-                stroke="url(#ch)"
-                strokeWidth="9"
-                strokeLinecap="round"
-              >
-                <path d="M8,20 Q60,-4 112,34" />
-                <path d="M8,46 Q60,22 112,60" />
-                <path d="M8,72 Q60,48 112,86" />
-                <path d="M8,98 Q60,74 112,112" />
-                <path d="M8,124 Q60,100 112,138" />
-              </g>
-            </svg>
           </div>
 
           <div className={`${styles.card} ${styles.mint} ${styles.showcase}`}>
