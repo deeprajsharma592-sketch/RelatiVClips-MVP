@@ -3,11 +3,17 @@
   background-color: #000;
 }
 
-.page::before {
-  position: fixed;
+.backdrop {
+  position: absolute;
   inset: 0;
   z-index: -1;
+  clip-path: inset(0);
   pointer-events: none;
+}
+
+.backdrop::before {
+  position: fixed;
+  inset: 0;
   content: "";
   background: #000 url("/homepage-background.png") center top /
     auto clamp(760px, 110svh, 1200px) no-repeat;

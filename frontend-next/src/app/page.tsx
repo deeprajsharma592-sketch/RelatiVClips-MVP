@@ -38,6 +38,8 @@ const STEPS = [
 export default function HomePage() {
   return (
     <div className={`${styles.page} relative min-h-screen w-full overflow-x-clip text-white selection:bg-amber-400 selection:text-black`}>
+      <div className={styles.backdrop} aria-hidden="true" />
+
       {/* ── Unobtrusive Floating Bottom Conversion Dock ── */}
       <StickyInputBar />
 
