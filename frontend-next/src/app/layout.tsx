@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Geist, Geist_Mono, Inter, Fraunces } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import PageBackgroundInteraction from "@/components/PageBackgroundInteraction";
 import SmoothScroll from "@/components/SmoothScroll";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -172,6 +173,7 @@ export default function RootLayout({
         <ThemeProvider>
           <SmoothScroll>
             <AuthProvider>
+              <PageBackgroundInteraction />
               <Header />
               <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
               <Footer />
