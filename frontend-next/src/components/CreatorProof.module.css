@@ -2,7 +2,10 @@
   --mint: #baf4d2;
   --muted: #adaab8;
   --border: #ffffff19;
-  background: radial-gradient(ellipse at 50% 24%, #181322 0%, transparent 60%), #08080b;
+  background:
+    linear-gradient(to bottom, #000, transparent clamp(4rem, 12vw, 10rem)),
+    radial-gradient(ellipse at 50% 24%, #181322 0%, transparent 60%),
+    #08080b;
   color: #f7f5fb;
   padding: clamp(3.75rem, 8vw, 7rem) 1rem;
 }
