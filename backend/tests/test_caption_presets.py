@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from backend.pipeline.captions import CAPTION_PRESETS, generate_viral_ass_subtitles
+from backend.pipeline.captions import CAPTION_PRESETS, _sanitize_text, generate_viral_ass_subtitles
+
+
+def test_signal_tags_are_not_rendered_as_spoken_captions():
+    assert _sanitize_text("hello [PAUSE] [LOUD] world") == "HELLO WORLD"
 
 
 def test_all_caption_presets_generate_the_selected_font(tmp_path: Path):

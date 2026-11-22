@@ -212,6 +212,11 @@ class TaskStore:
                 if clips:
                     clip_data = []
                     for clip in clips:
+                        hashtags = clip.get("hashtags", "")
+                        if isinstance(hashtags, (list, tuple, set)):
+                            hashtags = " ".join(str(tag) for tag in hashtags if tag)
+                        elif hashtags is None:
+                            hashtags = ""
                         clip_data.append({
                             "clip_id": clip.get("clip_id", ""),
                             "task_id": task_id,
@@ -220,7 +225,7 @@ class TaskStore:
                             "duration_s": clip.get("duration_s", 0),
                             "caption": clip.get("caption", ""),
                             "viral_title": clip.get("viral_title", ""),
-                            "hashtags": clip.get("hashtags", ""),
+                            "hashtags": str(hashtags),
                             "file_path": clip.get("file_path", ""),
                             "file_size_mb": clip.get("file_size_mb", 0),
                         })

@@ -66,6 +66,14 @@ def _format_ass_timestamp(seconds: float) -> str:
 
 def _sanitize_text(text: str) -> str:
     """Clean text for ASS subtitle rendering."""
+    # Signal annotations guide clip selection but are not spoken dialogue.
+    # Never burn them into the exported video as literal caption words.
+    text = re.sub(
+        r"\[(?:PAUSE|SILENCE|MUSIC|LAUGH|APPLAUSE|CHAT_SPIKE|LOUD)\]",
+        "",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
     # Replace newlines, tabs, curly braces which are ASS control characters
     text = text.replace("{", "(").replace("}", ")")
     text = re.sub(r"\s+", " ", text).strip()
