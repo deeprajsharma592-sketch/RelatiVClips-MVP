@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import StatsCassette from "./StatsCassette";
+import StatsLightning from "./StatsLightning";
 import styles from "./CreatorProof.module.css";
 
 const VIEW_BARS = [24, 36, 28, 49, 43, 62, 54, 76, 68, 91, 82, 100];
@@ -142,14 +143,7 @@ export default function CreatorProof() {
           </div>
 
           <div className={`${styles.card} ${styles.dark} ${styles.turnaround}`}>
-            <Image
-              className={styles.lightning}
-              src="/stats/glass-lightning.webp"
-              alt=""
-              width={26}
-              height={40}
-              unoptimized
-            />
+            <StatsLightning className={styles.lightning} />
             <div className={styles.metric} style={{ marginTop: ".6rem" }}>
               <AnimatedMetric value={60} active={active} suffix="s" />
             </div>
