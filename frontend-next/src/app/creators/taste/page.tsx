@@ -302,7 +302,7 @@ export default function TastePage() {
 
         <div className="flex gap-3 justify-center">
           <a
-            href="/creators/dashboard"
+            href="/dashboard"
             className="px-5 py-2.5 text-[13px] font-semibold rounded-xl"
             style={{
               background: "rgba(255,255,255,0.08)",
@@ -662,7 +662,7 @@ export default function TastePage() {
       {/* Skip link */}
       <div className="text-center mt-4">
         <a
-          href="/creators/dashboard"
+          href="/dashboard"
           className="text-[11px]"
           style={{ color: "var(--color-text-muted)" }}
         >

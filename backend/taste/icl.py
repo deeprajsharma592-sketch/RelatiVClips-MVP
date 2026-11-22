@@ -21,9 +21,11 @@ Strict JSON only. No prose, no markdown, no explanation.
 """
 import re
 import json
+import hashlib
 from typing import List, Dict, Optional, Tuple, Any, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 
 
 @dataclass
@@ -403,63 +405,15 @@ def build_hybrid_narrative_prompt(
     return "\n".join(parts)
 
 
-RELATIVSAUCE_RUBRIC_TEXT = """# RelatiVSauce: Narrative-Aware Clip Selection Rubric
-
-Version: rubric_ver = "sauce-0.2". Return this string in every output so results can be compared across prompt versions.
-
-## Core Philosophy
-A clip is a complete micro-story: **hook → context/setup → payoff** (or claim → evidence → conclusion, question → answer, setup → punchline, tension → resolution). It must make sense to a cold viewer who has seen nothing before it.
-
-1. **Natural Variable Length**: Length is determined ONLY by how long the arc takes. Do NOT aim for any duration. Valid clips range from 12s to 120s. A 20s joke, a 56s explanation, and a 90s story are all correct if each is complete. Return the natural length. Never cut mid-sentence or mid-word.
-2. **Precise Landing**: Choose `start` where the viewer would first need to understand what is going on, not earlier and not later. Choose `end` immediately after the payoff lands (punchline, answer, conclusion, or reaction beat). Do not cut before the payoff. Do not trail on after it. Never end abruptly without reward.
-3. **Self-Containment**: If the moment cannot stand alone without more than 20s of context, REJECT it. If a payoff depends on an earlier setup elsewhere in the video, return `callbacks: [{"setup_start": 0.0, "setup_end": 0.0, "why": "..."}]` so we can prepend a short setup snippet.
-4. **No Intro Banter**: In videos longer than 3 minutes, NEVER select intro greetings, audio mic tests, sponsor reads, or generic welcome chat.
-5. **Interview & Q&A Complete Arc Rule (CRITICAL)**:
-   - When a speaker asks a question or sets up a topic (e.g. "How do you stop yourself from getting egoistic? How did you two manage it?"), NEVER end the clip at the end of the question or setup!
-   - The question is only the HOOK / TENSION. The clip's `end` MUST extend through the answer until the core insight, revelation, punchline, or takeaway concludes (typically 45s to 90s).
-   - Set `payoff_text` to the exact concluding line of the answer, and set `end` to where that line concludes. A clip containing only the question has ZERO payoff and will be rejected.
-
-## Hook Types
-Tag each candidate with the one that fits best:
-- contrarian: attacks a common belief or accepted advice.
-- bizarre: a strange, vivid or surreal image that makes people stop.
-- paradoxical: two ideas that sound incompatible but are both true.
-- revealing: an early confession, failure, or raw truth.
-- high_stakes: drops into a critical decision or deadline with no warm-up.
-- visceral: sensory, physical detail that lands in the body, not the head.
-- curiosity_gap: states a striking outcome but withholds how it happened.
-- identity_challenge: speaks to how the viewer sees themselves, their job or their habits.
-
-## Arc Types
-- story: narrative sequence of events with resolution.
-- joke: setup -> timing beat -> punchline/reaction.
-- explanation: non-obvious insight or breakdown that delivers tangible reward.
-- argument: controversial claim backed by compelling proof.
-- reaction: emotional or spontaneous breakthrough beat.
-- hot_take: sharp opinion challenging consensus.
-- tutorial_step: actionable method or breakthrough tip.
-
-## Output Schema
-Return ONLY a valid JSON object matching this schema:
-{
-  "rubric_ver": "sauce-0.2",
-  "candidates": [
-    {
-      "start": 0.0,
-      "end": 0.0,
-      "arc_type": "story|joke|explanation|argument|reaction|hot_take|tutorial_step",
-      "hook_text": "first line a viewer hears",
-      "payoff_text": "the line where it lands",
-      "standalone_score": 0,
-      "completeness_score": 0,
-      "hook_strength": 0,
-      "callbacks": [],
-      "reason": "one sentence"
-    }
-  ]
-}
-Note: standalone_score, completeness_score, and hook_strength are integers from 0 to 10.
-"""
+_RELATIVSAUCE_PATH = Path(__file__).with_name("RelatiVSauce.md")
+# V2 is the single source of truth for both Claude and MiMo. Keep this byte
+# stable: provider prompt caches key off the unchanged system-prefix content.
+RELATIVSAUCE_SYSTEM_PROMPT = _RELATIVSAUCE_PATH.read_text(encoding="utf-8").strip()
+RELATIVSAUCE_PROMPT_SHA256 = hashlib.sha256(
+    RELATIVSAUCE_SYSTEM_PROMPT.encode("utf-8")
+).hexdigest()
+# Backward-compatible alias for older imports. Do not append it to user prompts.
+RELATIVSAUCE_RUBRIC_TEXT = RELATIVSAUCE_SYSTEM_PROMPT
 
 
 def build_relativsauce_prompt(
@@ -473,31 +427,34 @@ def build_relativsauce_prompt(
     compressed_summary: Optional[str] = None,
 ) -> str:
     """
-    Build the RelatiVSauce rubric prompt (sauce-0.2).
-    Supports Stage A/B heatmap priors: focuses detailed transcript on hot regions
-    while retaining compressed summary of the remainder for callbacks.
+    Build only the request-specific V2 input. The complete master instructions
+    live in the cacheable system message, never in this per-video user message.
     """
     import json
-    parts: List[str] = [RELATIVSAUCE_RUBRIC_TEXT.strip()]
+    parts: List[str] = []
 
-    # Video metadata
+    # Headers defined by the V2 input contract.
     title = video_meta.get("title", "(no title)") or "(no title)"
     dur = float(video_meta.get("duration_s") or 0)
-    parts.append(f"\n## Video Context\nTitle: {title[:100]!r}\nDuration: {dur:.0f} seconds")
+    niche = str(video_meta.get("niche") or "general").strip().lower()
+    lang = str(video_meta.get("language") or "unknown").strip()
+    parts.extend([
+        f"NICHE: {niche}",
+        f"LANG: {lang}",
+        f"max_clips: {max_picks}",
+        f"TITLE: {title[:160]}",
+        f"DURATION_SECONDS: {dur:.2f}",
+    ])
 
     if creator_profile:
-        parts.append(f"\n## Creator Profile\n{json.dumps(creator_profile, indent=2)}")
+        parts.append(f"CREATOR_PROFILE: {json.dumps(creator_profile, separators=(',', ':'))}")
 
     if is_experiment:
-        parts.append(
-            "\n## Active Policy: 5% EXPLORATION RUN\n"
-            "This run is selected for experimental exploration! You MUST include one high-variance wildcard candidate "
-            "(bizarre, visceral, intense confession, or eccentric contrarian angle)."
-        )
+        parts.append("EXPLORATION_RUN: true")
 
     # If long video summary is provided, include it so setups/callbacks anywhere are discoverable
     if compressed_summary:
-        parts.append(f"\n## Video Overview & Context Outline (for callback discovery)\n{compressed_summary.strip()}")
+        parts.append(f"CONTEXT_OUTLINE: {compressed_summary.strip()}")
 
     # Formatted transcript lines
     transcript_lines = []
@@ -505,7 +462,7 @@ def build_relativsauce_prompt(
         {"start": m.start, "end": m.end, "text": m.snippet} for m in moments[:40]
     ]
 
-    for seg in segs[:800]:
+    for line_index, seg in enumerate(segs[:800]):
         s = float(seg.get("start", 0))
         e = float(seg.get("end", 0))
         txt = seg.get("text", "").strip()
@@ -528,32 +485,87 @@ def build_relativsauce_prompt(
                     markers.append("🤫 [DRAMATIC PAUSE]")
                 break
 
-        marker_str = f" {' '.join(markers[:2])}" if markers else ""
-        m_s, s_s = int(s // 60), int(s % 60)
-        m_e, s_e = int(e // 60), int(e % 60)
-        transcript_lines.append(f"[{m_s:02d}:{s_s:02d}-{m_e:02d}:{s_e:02d}] {txt}{marker_str}")
+        tags = []
+        if any("LOUD" in marker for marker in markers):
+            tags.append("[LOUD]")
+        if any("PAUSE" in marker for marker in markers):
+            tags.append("[SILENCE]")
+        speaker = str(seg.get("speaker") or seg.get("speaker_id") or "A")
+        marker_str = f" {' '.join(tags)}" if tags else ""
+        transcript_lines.append(
+            f"L{line_index:04d}|{s:.3f}|{speaker}|{txt}{marker_str}"
+        )
 
-    parts.append("\n## Transcript with Timing & Engagement Markers\n" + "\n".join(transcript_lines))
-    parts.append(
-        f"\nApply the RelatiVSauce rubric strictly. Return the best {max_picks} distinct candidates, ranked strongest first, as complete micro-stories in valid JSON with rubric_ver='sauce-0.2'. Never return more than {max_picks}.\n"
-        "REMINDER:\n"
-        "- A clip is a complete micro-story: hook → context/setup → payoff. It must make sense to a viewer who has seen nothing before it.\n"
-        "- Choose start where the viewer first needs to understand what is going on, not earlier and not later. Choose end immediately after the payoff lands (punchline, answer, reaction beat). Do not cut before the payoff. Do not trail on after it.\n"
-        "- Length is determined ONLY by how long the arc takes. Do NOT aim for any duration. Valid clips range from 12s to 120s. A 20s joke, a 56s explanation and a 90s story are all correct if each is complete. Return the natural length.\n"
-        "- If a payoff depends on an earlier setup elsewhere in the video, return callbacks: [{'setup_start': 0.0, 'setup_end': 0.0, 'why': '...'}] so we can prepend a short setup snippet.\n"
-        "- If the moment cannot stand alone without more than 20s of context, REJECT it.\n"
-        "- Output ONLY strict JSON matching the schema. No markdown code fences, no conversational preface."
-    )
+    parts.append("TRANSCRIPT:\n" + "\n".join(transcript_lines))
 
-    return "\n\n".join(parts)
+    return "\n".join(parts)
 
 
-def parse_moment_response(llm_output: str) -> List[Dict]:
+def _parse_v2_clips(clips: Any, transcript_segments: Optional[List[Dict]]) -> List[Dict]:
+    """Translate the V2 line-id schema into timestamped pipeline candidates."""
+    if not isinstance(clips, list) or transcript_segments is None:
+        return []
+
+    line_map: Dict[str, Dict] = {
+        f"L{index:04d}": segment
+        for index, segment in enumerate(transcript_segments[:800])
+        if str(segment.get("text") or "").strip()
+    }
+    confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
+    parsed: List[Dict] = []
+    for clip in clips:
+        if not isinstance(clip, dict):
+            continue
+        start_segment = line_map.get(str(clip.get("start_line") or ""))
+        end_segment = line_map.get(str(clip.get("end_line") or ""))
+        if not start_segment or not end_segment:
+            continue
+        start = float(start_segment.get("start") or 0)
+        end = float(end_segment.get("end") or end_segment.get("start") or 0)
+        if end <= start:
+            continue
+
+        scores = clip.get("scores") if isinstance(clip.get("scores"), dict) else {}
+        score_values = [
+            float(scores.get(name) or 0)
+            for name in ("hook", "arc", "payoff", "ending", "standalone", "integrity")
+        ]
+        average_score = sum(score_values) / len(score_values) if score_values else 0.0
+        payoff_segment = line_map.get(str(clip.get("payoff_line") or ""), {})
+        parsed.append({
+            "start": round(start, 3),
+            "end": round(end, 3),
+            "arc_type": str(clip.get("category") or "story"),
+            "hook_text": str(clip.get("hook_text") or ""),
+            "payoff_text": str(payoff_segment.get("text") or ""),
+            "standalone_score": int(scores.get("standalone") or 0),
+            "completeness_score": int(scores.get("arc") or 0),
+            "hook_strength": int(scores.get("hook") or 0),
+            "score": round(average_score * 10, 2),
+            "confidence": confidence_map.get(str(clip.get("confidence") or "").lower(), 0.5),
+            "verified": True,
+            "title": str(clip.get("title") or "")[:100],
+            "caption": str(clip.get("caption") or "")[:200],
+            "reason": str(clip.get("why_picked") or "")[:500],
+            "hook_type": str(clip.get("hook_type") or "none"),
+            "risk_flags": clip.get("risk_flags") if isinstance(clip.get("risk_flags"), list) else [],
+            "layout_hint": str(clip.get("layout_hint") or ""),
+            "callbacks": [],
+            "rubric_ver": "sauce-v2",
+        })
+    return parsed
+
+
+def parse_moment_response(
+    llm_output: str,
+    transcript_segments: Optional[List[Dict]] = None,
+) -> List[Dict]:
     """
     Parse the LLM's strict-JSON moment response into clip edits.
 
     Handles formats:
-      - RELATIVSAUCE: {"rubric_ver": "sauce-0.1", "candidates": [...]}
+      - MASTER V2:    {"status": "ok", "clips": [...]}
+      - LEGACY:       {"rubric_ver": "sauce-0.x", "candidates": [...]}
       - NEW:          {"picks": [{"moment_index": 1, "reason": "...", ...}]}
       - LEGACY:       [{"candidate_index": 1, "edit_reason": "...", ...}]
     """
@@ -569,7 +581,15 @@ def parse_moment_response(llm_output: str) -> List[Dict]:
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text).strip()
 
-    # ── Try RELATIVSAUCE format: {"rubric_ver": "sauce-0.1", "candidates": [...]} ──
+    # Master RelatiVSauce V2 format: {"status":"ok","clips":[...]}.
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict) and "clips" in data:
+            return _parse_v2_clips(data["clips"], transcript_segments)
+    except (json.JSONDecodeError, ValueError, KeyError, TypeError):
+        pass
+
+    # Backward compatibility for already-recorded pre-V2 responses.
     try:
         data = json.loads(text)
         if isinstance(data, dict) and "candidates" in data:
@@ -657,25 +677,24 @@ def parse_moment_response_with_retry(
     llm_output: str,
     llm_callable: Optional[Callable[[str], str]] = None,
     original_prompt: Optional[str] = None,
+    transcript_segments: Optional[List[Dict]] = None,
 ) -> List[Dict]:
     """
     Parses LLM response with 1 retry on malformed JSON or schema rejection.
     """
     try:
-        return parse_moment_response(llm_output)
+        return parse_moment_response(llm_output, transcript_segments=transcript_segments)
     except Exception as first_err:
         if not llm_callable:
             raise first_err
 
         corrective_prompt = (
             f"{original_prompt or ''}\n\n"
-            f"[CRITICAL ERROR ON PREVIOUS ATTEMPT]: Your previous response could not be parsed: {first_err}.\n"
-            "Return ONLY a valid JSON object matching the exact schema:\n"
-            '{"rubric_ver": "sauce-0.2", "candidates": [{"start": 0.0, "end": 0.0, "arc_type": "story", "hook_text": "...", "payoff_text": "...", "standalone_score": 8, "completeness_score": 8, "hook_strength": 8, "callbacks": [], "reason": "..."}]}\n'
-            "NO prose, NO markdown fences, ONLY pure JSON."
+            f"PREVIOUS_RESPONSE_ERROR: {first_err}\n"
+            "Return valid JSON only, using the exact output contract from the system prompt."
         )
         retry_output = llm_callable(corrective_prompt)
-        return parse_moment_response(retry_output)
+        return parse_moment_response(retry_output, transcript_segments=transcript_segments)
 
 
 def validate_candidate_schema(candidate: Dict) -> Tuple[bool, Optional[Dict], Optional[str]]:
@@ -742,7 +761,7 @@ def validate_candidate_schema(candidate: Dict) -> Tuple[bool, Optional[Dict], Op
 
 
 def _parse_relativsauce_candidates(candidates: list) -> Optional[List[Dict]]:
-    """Parse RelatiVSauce rubric candidates (sauce-0.2 and sauce-0.1 back-compat)."""
+    """Parse RelatiVSauce candidates (sauce-0.3 with older versions supported)."""
     if not isinstance(candidates, list):
         return None
 
@@ -817,7 +836,7 @@ def _parse_relativsauce_candidates(candidates: list) -> Optional[List[Dict]]:
             "broad_angle": broad_angle,
             "context_risk": str(c.get("context_risk", "low")),
             "needs_fact_check": bool(c.get("needs_fact_check", False)),
-            "rubric_ver": "sauce-0.2",
+            "rubric_ver": "sauce-0.3",
         })
 
     return valid if valid else None

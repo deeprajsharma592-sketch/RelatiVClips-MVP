@@ -535,7 +535,7 @@ function ClipperCampaignsPageInner() {
             <Link
               href={
                 user.role === "creator"
-                  ? "/creators/dashboard"
+                  ? "/dashboard"
                   : user.role === "brand"
                   ? "/brands/dashboard"
                   : "/account"

@@ -6,7 +6,7 @@ import os
 import pytest
 
 from backend.taste.providers import (
-    LLMProvider, MiniMaxProvider, ClaudeProvider, DeepseekProvider,
+    LLMProvider, MiniMaxProvider, MimoProvider, ClaudeProvider, DeepseekProvider,
     select_provider, PROVIDER_PRIORITY,
 )
 
@@ -40,6 +40,12 @@ class TestProviderContract:
         p = DeepseekProvider()
         assert p.available() is False
 
+    def test_mimo_requires_key(self, monkeypatch):
+        monkeypatch.delenv("MIMO_API_KEY", raising=False)
+        assert MimoProvider().available() is False
+        monkeypatch.setenv("MIMO_API_KEY", "test-key")
+        assert MimoProvider().available() is True
+
 
 class TestSelectProvider:
     def test_falls_back_to_minimax(self, monkeypatch):
@@ -50,10 +56,10 @@ class TestSelectProvider:
         assert p.name == "MiniMax"
 
     def test_priority_order(self):
-        # Sanity check: claude comes first (per user preference)
-        assert PROVIDER_PRIORITY[0] is ClaudeProvider
-        assert PROVIDER_PRIORITY[1] is DeepseekProvider
-        assert PROVIDER_PRIORITY[2] is MiniMaxProvider
+        assert PROVIDER_PRIORITY[0] is MimoProvider
+        assert PROVIDER_PRIORITY[1] is ClaudeProvider
+        assert PROVIDER_PRIORITY[2] is DeepseekProvider
+        assert PROVIDER_PRIORITY[3] is MiniMaxProvider
 
 
 class TestProviderABC:

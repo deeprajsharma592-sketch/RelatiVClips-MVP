@@ -143,6 +143,14 @@ export default function SickLoadingTransition({
         if (!isMounted) return;
         if (res.taskId) {
           setTaskId(res.taskId);
+          try {
+            window.localStorage.setItem(
+              "relativ:active-job",
+              JSON.stringify({ taskId: res.taskId, url, savedAt: Date.now() })
+            );
+          } catch {
+            // URL query handoff remains the fallback when storage is blocked.
+          }
         }
       })
       .catch((err) => {
@@ -200,10 +208,10 @@ export default function SickLoadingTransition({
               onComplete(taskId || undefined);
             }
             if (autoRedirect) {
-              const targetUrl = getDashDashboardUrl("", {
-                url,
-                taskId: taskId || undefined,
-              });
+              const targetUrl = getDashDashboardUrl(
+                "",
+                taskId ? { taskId } : { url }
+              );
               window.location.href = targetUrl;
             }
           }

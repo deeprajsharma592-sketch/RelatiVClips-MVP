@@ -30,6 +30,66 @@ from framing.layout_policy import batch_context_position
 _THUMB_CACHE: Dict[str, str] = {}
 
 
+def _thumbnail_cta_visual_filter(duration_s: float, escaped_font: str) -> str:
+    """Build the 9:16 outro composition without artwork/text collisions.
+
+    The source thumbnail is *contained* inside a fixed 840x472 landscape
+    frame. This handles 16:9, 4:3 and YouTube fallback artwork without ever
+    allowing the image to grow beyond the vertical canvas safe area.
+    """
+    # Final layout on a 1080x1920 canvas (all values scale with the configured
+    # render size, so the same composition also works at 720x1280):
+    #   360..550  headline and supporting text
+    #   720..1216 fixed thumbnail card
+    # The 170px breathing room makes overlap impossible even with font
+    # substitution, while keeping the visual group near the optical centre.
+    card_width = max(280, int(CROP_WIDTH * 0.778) // 2 * 2)
+    card_height = max(158, int(card_width * 9 / 16) // 2 * 2)
+    matte = max(8, round(CROP_WIDTH * 0.011))
+    outer_width = card_width + (matte * 2)
+    outer_height = card_height + (matte * 2)
+    card_y = round(CROP_HEIGHT * 0.375)
+    title_y = round(CROP_HEIGHT * 0.1875)
+    subtitle_y = round(CROP_HEIGHT * 0.255)
+    title_size = max(41, round(CROP_WIDTH * 0.0574))
+    subtitle_size = max(21, round(CROP_WIDTH * 0.0287))
+    entry_s = min(1.15, max(0.45, duration_s * 0.32))
+    slide_y = (
+        f"if(lt(t,{entry_s:.3f}),"
+        f"H+56-(H+56-{card_y})*(0.5-0.5*cos(PI*t/{entry_s:.3f})),"
+        f"{card_y})"
+    )
+    title_alpha = (
+        "if(lt(t,0.18),0,if(lt(t,0.78),(t-0.18)/0.60,1))"
+    )
+    subtitle_alpha = (
+        "if(lt(t,0.34),0,if(lt(t,0.94),(t-0.34)/0.60,0.88))"
+    )
+    fade_out_start = max(0.0, duration_s - 0.32)
+
+    return (
+        f"[0:v]split=2[bgsrc][cardsrc];"
+        f"[bgsrc]scale={CROP_WIDTH}:{CROP_HEIGHT}:force_original_aspect_ratio=increase,"
+        f"crop={CROP_WIDTH}:{CROP_HEIGHT},gblur=sigma=42,"
+        f"eq=brightness=-0.38:saturation=0.70[bg];"
+        # Fixed thumbnail viewport. `decrease` + pad means the full artwork is
+        # always visible; the outer 12px matte reads as a deliberate card.
+        f"[cardsrc]scale={card_width}:{card_height}:force_original_aspect_ratio=decrease:flags=lanczos,"
+        f"pad={card_width}:{card_height}:(ow-iw)/2:(oh-ih)/2:color=0x09090B,"
+        f"pad={outer_width}:{outer_height}:{matte}:{matte}:color=white[card];"
+        f"[bg][card]overlay=x=(W-w)/2:y='{slide_y}':eval=frame,"
+        f"drawtext=fontfile='{escaped_font}':text='WATCH THE FULL VIDEO':"
+        f"fontcolor=white:fontsize={title_size}:x=(w-text_w)/2:y={title_y}:"
+        f"borderw=3:bordercolor=black@0.48:alpha='{title_alpha}',"
+        f"drawtext=fontfile='{escaped_font}':text='Continue watching on YouTube':"
+        f"fontcolor=white:fontsize={subtitle_size}:x=(w-text_w)/2:y={subtitle_y}:"
+        f"alpha='{subtitle_alpha}',"
+        f"fade=t=in:st=0:d=0.34,"
+        f"fade=t=out:st={fade_out_start:.2f}:d=0.32,"
+        f"format=yuv420p[v]"
+    )
+
+
 def _media_profile(path: str | Path) -> Dict[str, float]:
     """Read the output cadence/audio rate so the CTA can concatenate cleanly."""
     profile = {"fps": 30.0, "audio_rate": 48000.0}
@@ -90,22 +150,7 @@ def _append_thumbnail_cta(
     font_path = CAPTION_FONT_DIR / "BarlowCondensed-ExtraBold.ttf"
     escaped_font = str(font_path.as_posix()).replace(":", "\\:").replace("'", "\\'")
 
-    # Ease the card from fully below frame to the vertical center in 0.85s.
-    slide_y = "if(lt(t,0.85),H-(H-(H-h)/2)*(1-cos(PI*t/0.85))/2,(H-h)/2)"
-    visual_filter = (
-        f"[0:v]split=2[bgsrc][cardsrc];"
-        f"[bgsrc]scale={CROP_WIDTH}:{CROP_HEIGHT}:force_original_aspect_ratio=increase,"
-        f"crop={CROP_WIDTH}:{CROP_HEIGHT},gblur=sigma=38,eq=brightness=-0.32:saturation=0.75[bg];"
-        f"[cardsrc]scale=900:-2:flags=lanczos,pad=iw+10:ih+10:5:5:color=white[card];"
-        f"[bg][card]overlay=x=(W-w)/2:y='{slide_y}':eval=frame,"
-        f"drawtext=fontfile='{escaped_font}':text='WATCH THE FULL VIDEO':"
-        f"fontcolor=white:fontsize=58:x=(w-text_w)/2:y=235:"
-        f"borderw=3:bordercolor=black@0.55,"
-        f"drawtext=fontfile='{escaped_font}':text='Continue watching on YouTube':"
-        f"fontcolor=white@0.88:fontsize=30:x=(w-text_w)/2:y=320,"
-        f"fade=t=in:st=0:d=0.28,fade=t=out:st={max(0.0, duration_s - 0.28):.2f}:d=0.28,"
-        f"format=yuv420p[v]"
-    )
+    visual_filter = _thumbnail_cta_visual_filter(duration_s, escaped_font)
     # Check whether source has an audio stream
     has_audio = True
     try:

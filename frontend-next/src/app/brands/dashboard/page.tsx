@@ -676,7 +676,7 @@ export default function BrandDashboard() {
               <Link
                 href={
                   user.role === "creator"
-                    ? "/creators/dashboard"
+                    ? "/dashboard"
                     : user.role === "clipper"
                     ? "/clippers/dashboard"
                     : "/account"

@@ -21,7 +21,7 @@ _config_path = Path(__file__).parent.parent.parent / "utils" / "config.py"
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 try:
-    from .config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT
+    from .config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT, RESIDENTIAL_DOWNLOAD_TOKEN
 except ImportError:
     # Fallback if config not loaded
     RESIDENTIAL_DOWNLOAD_URL = os.environ.get(
@@ -29,9 +29,17 @@ except ImportError:
         "https://overbid-unleaded-pencil.ngrok-free.dev"
     )
     RESIDENTIAL_DOWNLOAD_TIMEOUT = 300
+    RESIDENTIAL_DOWNLOAD_TOKEN = os.environ.get("RESIDENTIAL_DOWNLOAD_TOKEN", "")
 
 # Strip trailing slash
 BASE_URL = RESIDENTIAL_DOWNLOAD_URL.rstrip("/")
+
+
+def _headers() -> dict:
+    headers = {"User-Agent": "RelatiV/2.0"}
+    if RESIDENTIAL_DOWNLOAD_TOKEN:
+        headers["X-RelatiV-Proxy-Token"] = RESIDENTIAL_DOWNLOAD_TOKEN
+    return headers
 
 
 def is_configured() -> bool:
@@ -45,7 +53,7 @@ def is_reachable() -> bool:
         return False
     try:
         import requests
-        r = requests.get(f"{BASE_URL}/health", timeout=5, verify=True)
+        r = requests.get(f"{BASE_URL}/health", timeout=5, verify=True, headers=_headers())
         return r.status_code == 200
     except Exception:
         return False
@@ -82,7 +90,7 @@ def download_video(
             params=params,
             stream=True,
             timeout=RESIDENTIAL_DOWNLOAD_TIMEOUT,
-            headers={"User-Agent": "RelatiV/2.0"},
+            headers=_headers(),
         ) as r:
             if r.status_code != 200:
                 raise RuntimeError(

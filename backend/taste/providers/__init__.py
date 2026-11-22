@@ -129,6 +129,23 @@ class ClaudeProvider(LLMProvider):
         return True
 
 
+class MimoProvider(LLMProvider):
+    """Xiaomi MiMo V2.6 Pro provider for structured clip calibration."""
+
+    name = "mimo"
+    cost_per_1k_tokens = 0.000435
+
+    def __init__(self, model: Optional[str] = None):
+        self.model = model or _env("MIMO_MODEL") or "mimo-v2.6-pro"
+
+    def generate(self, prompt: str, max_tokens: int = 1024) -> str:
+        from backend.llm.mimo_client import generate
+        return generate(prompt, max_tokens=max_tokens)
+
+    def available(self) -> bool:
+        return bool(_env("MIMO_API_KEY"))
+
+
 class DeepseekProvider(LLMProvider):
     """Deepseek provider — open-source-class quality, low cost.
 
@@ -179,8 +196,8 @@ class DeepseekProvider(LLMProvider):
         return True
 
 
-# Priority order: claude > deepseek > MiniMax
-PROVIDER_PRIORITY = [ClaudeProvider, DeepseekProvider, MiniMaxProvider]
+# Calibration priority while MiMo is under evaluation.
+PROVIDER_PRIORITY = [MimoProvider, ClaudeProvider, DeepseekProvider, MiniMaxProvider]
 
 
 def select_provider() -> LLMProvider:

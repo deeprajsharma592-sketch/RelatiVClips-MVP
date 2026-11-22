@@ -16,6 +16,7 @@ CACHE_DIR = BASE_DIR / "cache"
 # Empty by default so local runs execute yt-dlp directly on the host machine.
 RESIDENTIAL_DOWNLOAD_URL = os.getenv("RESIDENTIAL_DOWNLOAD_URL", "")
 RESIDENTIAL_DOWNLOAD_TIMEOUT = int(os.getenv("RESIDENTIAL_DOWNLOAD_TIMEOUT", "30"))
+RESIDENTIAL_DOWNLOAD_TOKEN = os.getenv("RESIDENTIAL_DOWNLOAD_TOKEN", "").strip()
 
 OUTPUTS_DIR.mkdir(exist_ok=True)
 TEMP_DIR.mkdir(exist_ok=True)
@@ -36,15 +37,21 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")  # also "deepseek-reasoner"
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 
+# --- Xiaomi MiMo (OpenAI-compatible clip calibration provider) ---
+MIMO_API_KEY = os.getenv("MIMO_API_KEY", "")
+MIMO_MODEL = os.getenv("MIMO_MODEL", "mimo-v2.6-pro")
+MIMO_BASE_URL = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
+
 # --- LLM Provider selection ---
+# LLM_PROVIDER = "mimo"     → force MiMo V2.6 Pro calibration
 # LLM_PROVIDER = "claude"   → force Claude (elite tier, $$$)
 # LLM_PROVIDER = "deepseek" → force DeepSeek (budget tier, ~30x cheaper)
 # LLM_PROVIDER = "both"     → try Claude first, fall back to DeepSeek on failure
-# LLM_PROVIDER = "auto"     → highest-priority available (claude > deepseek > minimax)
+# LLM_PROVIDER = "auto"     → highest-priority available (mimo > claude > deepseek > minimax)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower().strip()
 # Legacy alias; "LLM_PROVIDER_PRIORITY" still works for back-compat.
 LLM_PROVIDER_PRIORITY = [
-    p.strip() for p in os.getenv("LLM_PROVIDER_PRIORITY", "groq,claude,deepseek,minimax").split(",")
+    p.strip() for p in os.getenv("LLM_PROVIDER_PRIORITY", "mimo,claude,deepseek,groq,minimax").split(",")
     if p.strip()
 ]
 
@@ -87,7 +94,7 @@ CLIP_DURATION_MIN = int(CLIP_DURATION_HARD_MIN)
 CLIP_DURATION_MAX = int(CLIP_DURATION_HARD_MAX)
 
 # Bump whenever cached rendered media must be regenerated for a new layout.
-RENDER_VERSION = os.getenv("RENDER_VERSION", "thumbnail-cta-v3")
+RENDER_VERSION = os.getenv("RENDER_VERSION", "thumbnail-cta-v4")
 CTA_OUTRO_ENABLED = os.getenv("CTA_OUTRO_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 CTA_OUTRO_SECONDS = max(0.0, float(os.getenv("CTA_OUTRO_SECONDS", "4.0")))
 NUM_CLIPS_LOCAL = 3

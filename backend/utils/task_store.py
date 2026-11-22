@@ -162,6 +162,7 @@ class TaskStore:
         final progress %.
         """
         db_snapshot = None
+        updated_task = None
         is_milestone = bool(
             {"status", "step_number", "step_name", "error", "clips"} & kwargs.keys()
         )
@@ -188,11 +189,11 @@ class TaskStore:
                         if k in task
                     }
 
-                return task
+                updated_task = task
 
         if db_snapshot is not None:
             _run_async(self._db_update_task(task_id, db_snapshot))
-        return None
+        return updated_task
 
     async def _db_update_task(self, task_id: str, data: dict):
         try:

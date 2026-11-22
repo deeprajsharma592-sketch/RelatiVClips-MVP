@@ -49,4 +49,6 @@ Write-Host "Starting RelatiV GPU Server on http://localhost:9000" -ForegroundCol
 Write-Host "=====================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 9000 --reload
+# Production-safe: never use --reload while clip jobs are running. Uvicorn's
+# reloader terminates the worker process and cancels every in-process job.
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 9000

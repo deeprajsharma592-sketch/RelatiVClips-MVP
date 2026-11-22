@@ -166,7 +166,7 @@ function Dashboard({ data, onRefresh, onLogout, refreshing, updatedAt, activeVie
       <div className={styles.sideSection}>PLATFORM DATA</div>
       <nav className={styles.sideNav} aria-label="Admin sections">{COLLECTIONS.map(({ id, label, icon: Icon }) => <button key={id} className={`${styles.navItem} ${activeView === id ? styles.navActive : ""}`} onClick={() => onView(id)}><Icon size={17} />{label}{id === "jobs" && data.jobs.active_now > 0 && <span className={styles.navCount}>{data.jobs.active_now}</span>}</button>)}</nav>
       <div className={styles.sidebarBottom}>
-        <Link className={styles.studioLink} href="/creators/dashboard"><Film size={15} />Open creator studio<ArrowUpRight size={13} /></Link>
+        <Link className={styles.studioLink} href="/dashboard"><Film size={15} />Open creator studio<ArrowUpRight size={13} /></Link>
         <div className={styles.protectedNote}><ShieldCheck size={16} /><span>Founder access<br /><b>Verified email required</b></span></div>
         <button className={styles.logoutButton} onClick={onLogout}><LogOut size={16} />Sign out</button>
       </div>

@@ -51,5 +51,6 @@ echo If you want relativclips.com to reach this LOQ, run start_tunnel_windows.ba
 echo =====================================================================
 echo.
 
-"%VENV_PYTHON%" -m uvicorn backend.main:app --host 0.0.0.0 --port 9000 --reload
+REM Production-safe: --reload kills active clip jobs whenever a watched file changes.
+"%VENV_PYTHON%" -m uvicorn backend.main:app --host 0.0.0.0 --port 9000
 if errorlevel 1 pause

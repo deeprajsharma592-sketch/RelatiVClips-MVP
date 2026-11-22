@@ -48,7 +48,7 @@ const ROLE_ACCENT: Record<UserRole, { color: string; bg: string; border: string;
 };
 
 const DASHBOARD_LINKS: Record<UserRole, { href: string; label: string }> = {
-  creator: { href: "/creators/dashboard", label: "Creator dashboard" },
+  creator: { href: "/dashboard", label: "Creator dashboard" },
   brand: { href: "/brands/dashboard", label: "Brand dashboard" },
   clipper: { href: "/clippers/dashboard", label: "Clipper dashboard" },
 };

@@ -338,10 +338,10 @@ export default function VideoIntake({
           onComplete={(taskId) => {
             setIsTransitioning(false);
             router.push(
-              getDashDashboardUrl("", {
-                url: youtubeUrl.trim(),
-                taskId: taskId || undefined,
-              })
+              getDashDashboardUrl(
+                "",
+                taskId ? { taskId } : { url: youtubeUrl.trim() }
+              )
             );
           }}
         />

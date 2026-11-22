@@ -14,25 +14,66 @@ function delay(ms: number) {
 }
 
 export async function submitYouTubeUrl(
-  url: string
+  url: string,
+  options?: { clipCount?: number; isRemake?: boolean }
 ): Promise<ProcessInitResponse> {
   const res = await fetch(apiPath("/api/v1/process/youtube"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({
+      url,
+      ...(options?.clipCount ? { clip_count: options.clipCount } : {}),
+      ...(options?.isRemake ? { is_remake: true } : {}),
+    }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || err.error || `Request failed with status ${res.status}`);
+    const detail = err.detail;
+    throw new Error(
+      (typeof detail === "string" ? detail : detail?.message) ||
+      err.error ||
+      `Request failed with status ${res.status}`
+    );
   }
 
   const data = await res.json();
-  return {
+  const result = {
     taskId: data.task_id,
     status: data.status,
     position: data.position,
+    creditsReserved: data.credits_reserved,
+    creditsRemaining: data.credits_remaining,
   };
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("relativ:credits-updated", {
+      detail: { balance: data.credits_remaining },
+    }));
+  }
+  return result;
+}
+
+export interface CreditSummary {
+  balance: number;
+  starter_credits: number;
+  credits_per_clip: number;
+  remake_fee: number;
+  transactions: Array<{
+    id: string;
+    amount: number;
+    balance_after: number;
+    kind: string;
+    created_at: string;
+  }>;
+}
+
+export async function fetchCredits(): Promise<CreditSummary> {
+  const res = await fetch(apiPath("/api/v1/credits"), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Could not load credits (HTTP ${res.status})`);
+  return res.json();
 }
 
 export async function uploadVideoFile(

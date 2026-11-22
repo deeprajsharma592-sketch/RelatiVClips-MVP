@@ -5,7 +5,7 @@ description: Taste rubric for picking and scoring short-form clips from long-for
 
 # RelatiVSauce: clip selection rubric
 
-Version: `rubric_ver = "sauce-0.1"`. Return this string in every output so results can be compared across prompt versions.
+Version: `rubric_ver = "sauce-0.3"`. Return this string in every output so results can be compared across prompt versions.
 
 These weights and heuristics are starting hypotheses drawn from practitioner experience, not proven facts. They are meant to be tuned against real retention and view data.
 
@@ -27,6 +27,16 @@ If a creator profile or past-performance examples are provided, they override th
 5. **Check self-containment.** A cold viewer must understand the moment without the rest of the video.
 6. **Check accuracy and risk.**
 7. **Score every candidate**, not just the winners, and return them all.
+
+## Calibration contract
+
+- Treat the transcript as the only source of truth. Never invent dialogue, timestamps, reactions, payoffs, or missing context.
+- Selection is not summarization. `hook_line` and the proposed ending must reflect words actually spoken in the source.
+- Candidates must be semantically distinct. Never return alternate start times or lengths for the same underlying moment.
+- Quality outranks quota. Return fewer chosen candidates when the source does not contain enough complete, strong arcs.
+- A question without its answer, setup without its punchline, or claim without its evidence is incomplete and cannot be chosen.
+- Open as close as possible to the strongest intelligible hook. End immediately after the actual payoff or necessary reaction beat.
+- Reject unexplained pronouns, names, callbacks, or jargon unless the clip resolves them quickly for a cold viewer.
 
 ## Hook types
 
@@ -85,7 +95,7 @@ Return only JSON, no preamble and no code fences. One object per candidate, orde
 
 ```
 {
-  "rubric_ver": "sauce-0.1",
+  "rubric_ver": "sauce-0.3",
   "candidates": [
     {
       "start_s": 0.0,
@@ -110,7 +120,7 @@ Return only JSON, no preamble and no code fences. One object per candidate, orde
 ```
 
 Rules for the output:
-- Set `chosen: true` for at most the top 3 per hour of source, and only for candidates scoring 65 or higher.
+- Set `chosen: true` for at most the requested maximum, and only for candidates scoring 65 or higher. Do not fill the quota with weak clips.
 - Keep `reason` to one sentence. Cost scales with output length.
 - Timestamps must come from the transcript. Never invent them.
 - Return rejected candidates too. They are training data for later.

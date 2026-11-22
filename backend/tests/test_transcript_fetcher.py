@@ -203,3 +203,22 @@ class TestYouTubeAudioFallback:
 
         assert result.returncode == 1
         assert len(calls) == 1
+
+    def test_rate_limit_stops_direct_retries(self, monkeypatch):
+        from backend.pipeline import transcript_fetcher as fetcher
+
+        calls = []
+
+        def rate_limited_run(*args, **kwargs):
+            calls.append(1)
+            return SimpleNamespace(
+                returncode=1,
+                stdout="",
+                stderr="ERROR: Unable to download subtitles: HTTP Error 429: Too Many Requests",
+            )
+
+        monkeypatch.setattr(fetcher.subprocess, "run", rate_limited_run)
+        result = fetcher._run_with_retry(["yt-dlp"], lambda _: None, max_attempts=4)
+
+        assert result.returncode == 1
+        assert len(calls) == 1

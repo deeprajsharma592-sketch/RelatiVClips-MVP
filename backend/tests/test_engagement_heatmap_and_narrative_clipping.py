@@ -12,6 +12,7 @@ Acceptance Criteria Verified:
 5. Every clip passes standalone check (first sentence has no unresolved references).
 6. A video with known setup -> payoff 3 minutes apart produces a clip with callbacks snippet.
 """
+import json
 import pytest
 import numpy as np
 import time
@@ -46,6 +47,58 @@ from backend.taste.icl import (
     parse_moment_response,
     build_relativsauce_prompt,
 )
+
+
+def test_v2_prompt_contains_only_dynamic_headers_and_line_transcript():
+    segments = [
+        {"start": 12.5, "end": 15.0, "speaker": "A", "text": "This is the hook."},
+        {"start": 15.0, "end": 19.5, "speaker": "B", "text": "And this is the payoff."},
+    ]
+    prompt = build_relativsauce_prompt(
+        transcript_segments=segments,
+        moments=[],
+        video_meta={"title": "Test", "duration_s": 20, "niche": "podcast", "language": "en"},
+        max_picks=2,
+    )
+
+    assert "RELATIV MASTER CLIP INTELLIGENCE" not in prompt
+    assert "NICHE: podcast" in prompt
+    assert "max_clips: 2" in prompt
+    assert "L0000|12.500|A|This is the hook." in prompt
+    assert "L0001|15.000|B|And this is the payoff." in prompt
+
+
+def test_v2_line_ids_are_resolved_to_timestamps():
+    segments = [
+        {"start": 12.5, "end": 15.0, "speaker": "A", "text": "This is the hook."},
+        {"start": 15.0, "end": 19.5, "speaker": "B", "text": "And this is the payoff."},
+    ]
+    response = json.dumps({
+        "status": "ok",
+        "clips": [{
+            "start_line": "L0000",
+            "hook_line": "L0000",
+            "hook_text": "This is the hook.",
+            "peak_line": "L0001",
+            "payoff_line": "L0001",
+            "closer_line": "L0001",
+            "end_line": "L0001",
+            "category": "insight",
+            "hook_type": "claim",
+            "scores": {"hook": 9, "arc": 8, "payoff": 8, "ending": 9, "standalone": 9, "integrity": 10},
+            "confidence": "high",
+            "title": "THE TEST",
+            "caption": "A complete test.",
+            "why_picked": "The hook lands and the payoff resolves it.",
+        }],
+        "near_misses": [],
+    })
+
+    picks = parse_moment_response(response, transcript_segments=segments)
+    assert len(picks) == 1
+    assert picks[0]["start"] == 12.5
+    assert picks[0]["end"] == 19.5
+    assert picks[0]["rubric_ver"] == "sauce-v2"
 
 
 def _generate_synthetic_transcript(duration_s: float, sentence_interval_s: float = 6.0):

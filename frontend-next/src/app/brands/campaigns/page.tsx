@@ -303,7 +303,7 @@ export default function BrandsCampaignsPage() {
             <Link
               href={
                 user.role === "creator"
-                  ? "/creators/dashboard"
+                  ? "/dashboard"
                   : user.role === "clipper"
                   ? "/clippers/dashboard"
                   : "/account"

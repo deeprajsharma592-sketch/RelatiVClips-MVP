@@ -29,6 +29,8 @@ export interface ProcessInitResponse {
   taskId: string;
   status: TaskStatus;
   position?: number | null;
+  creditsReserved?: number | null;
+  creditsRemaining?: number | null;
 }
 
 export interface StatusResponse {

@@ -11,6 +11,7 @@ export interface User {
   role: UserRole;
   can_access_creator_workspace?: boolean;
   is_verified: boolean;
+  credit_balance: number;
   created_at: string;
   last_login_at: string | null;
   profile: Record<string, unknown>;
@@ -33,6 +34,7 @@ function toAppUser(user: SupabaseUser): User {
     role: "creator",
     can_access_creator_workspace: true,
     is_verified: Boolean(user.email_confirmed_at),
+    credit_balance: 2,
     created_at: user.created_at,
     last_login_at: user.last_sign_in_at || null,
     profile: {},
@@ -92,7 +94,7 @@ export async function signup(payload: {
 }): Promise<AuthResponse> {
   if (!payload.accept_tos) throw new Error("Please accept the Terms of Service to continue.");
   const origin = typeof window === "undefined" ? "https://relativclips.com" : window.location.origin;
-  const next = payload.redirectTo?.startsWith("/") ? payload.redirectTo : "/creators/dashboard";
+  const next = payload.redirectTo?.startsWith("/") ? payload.redirectTo : "/dashboard";
   const { data, error } = await getSupabaseBrowserClient().auth.signUp({
     email: payload.email.trim().toLowerCase(),
     password: payload.password,
@@ -106,9 +108,9 @@ export async function signup(payload: {
   return { user: toAppUser(data.user), needsEmailVerification: !data.session };
 }
 
-export async function signInWithGoogle(redirectTo = "/creators/dashboard") {
+export async function signInWithGoogle(redirectTo = "/dashboard") {
   const origin = typeof window === "undefined" ? "https://relativclips.com" : window.location.origin;
-  const next = redirectTo.startsWith("/") ? redirectTo : "/creators/dashboard";
+  const next = redirectTo.startsWith("/") ? redirectTo : "/dashboard";
   const { data, error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },
@@ -135,7 +137,7 @@ export async function resendSignupVerification(email: string) {
   const { error } = await getSupabaseBrowserClient().auth.resend({
     type: "signup",
     email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${origin}/auth/callback?next=/creators/dashboard` },
+    options: { emailRedirectTo: `${origin}/auth/callback?next=/dashboard` },
   });
   if (error) throw new Error(error.message);
 }

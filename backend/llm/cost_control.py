@@ -50,6 +50,7 @@ _COST_PER_MTOK = {
     "claude-3-5-sonnet-20241022": (3.0, 15.0),
     "deepseek-chat": (0.14, 0.28),
     "deepseek-reasoner": (0.55, 2.19),
+    "mimo-v2.6-pro": (0.435, 0.87),
     "llama-3.3-70b-versatile": (0.59, 0.79),  # Groq
     "llama-3.1-8b-instant": (0.05, 0.08),     # Groq
     "mixtral-8x7b-32768": (0.24, 0.24),       # Groq

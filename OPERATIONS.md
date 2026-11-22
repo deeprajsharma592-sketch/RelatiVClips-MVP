@@ -18,12 +18,16 @@ bash scripts/quality-gate.sh
 backend/.venv/bin/python -m pytest backend/tests/ -q
 # → 99 passed (or 95 if no network/Claude key)
 
-# 4. Run it
-cd backend && ../backend/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 9000 --reload
+# 4. Run it (production-safe; active jobs survive browser navigation)
+cd /app/RelatiV && backend/.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 9000
 # In another terminal:
 cd frontend-next && npm run dev
 # → localhost:3000
 ```
+
+Never use Uvicorn `--reload` on the production worker. The reload supervisor
+terminates the process when source files change, cancelling active GPU jobs.
+Use it only for local development when no job is running.
 
 ## The `.env` file (the only config you need)
 

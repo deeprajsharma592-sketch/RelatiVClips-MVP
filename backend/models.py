@@ -97,6 +97,8 @@ class ProcessResponse(BaseModel):
     task_id: str
     status: TaskStatus
     position: Optional[int] = None
+    credits_reserved: Optional[int] = None
+    credits_remaining: Optional[int] = None
 
 
 class StatusResponse(BaseModel):

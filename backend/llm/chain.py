@@ -4,10 +4,11 @@ LLM chain with circuit breaker and provider fallback.
 Goal: never let a single provider failure take down the pipeline.
 
 Selection logic (controlled by env LLM_PROVIDER):
+  - "mimo"     → use Xiaomi MiMo V2.6 Pro only
   - "claude"   → use Claude only (elite tier)
   - "deepseek" → use DeepSeek only (budget tier)
   - "both"     → try Claude first, fall back to DeepSeek on failure
-  - "auto"     → highest-priority available (claude > deepseek > minimax)
+  - "auto"     → highest-priority available (mimo > claude > deepseek > minimax)
 
 On every LLM call failure we update a per-provider circuit breaker. If a
 provider has failed N times in a row (default 3), we skip it for the
@@ -30,6 +31,7 @@ from ..utils.config import (
     LLM_CIRCUIT_BREAKER_RESET_S,
     ANTHROPIC_API_KEY,
     DEEPSEEK_API_KEY,
+    MIMO_API_KEY,
 )
 
 log = logging.getLogger(__name__)
@@ -151,26 +153,9 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         max_out = cost_control.LLM_MAX_OUTPUT_TOKENS
         # Use the router to pick the model (and enable prompt caching for Haiku)
         model_name, tier, _ = model_router.pick_model()
-        # System prompt (user-defined 2026-06-15). Cached after first call so
-        # subsequent calls only pay $0.10/MTok for this ~50-token block.
-        system_prompt = (
-            "You are a short-form video editor. You receive pre-scored candidate "
-            "moments (with 8 retention features) and the video's archetype. For each "
-            "pick, write a HOOK (first 3 seconds) and a RETENTION BRIDGE (the "
-            "reason to keep watching). Be specific, not generic. Return JSON only."
-        )
-        # Prompt caching: split into stable (cacheable) + variable parts.
-        # Our ICL prompt is ~800 stable tokens, followed by per-request context.
-        # Splitting at the last "---" line — the ICL ends with examples, the
-        # variable context is the new moment data after that.
-        # Strategy: mark the first ~80% of the prompt as cacheable.
-        split_point = int(len(prompt) * 0.80)
-        # Find the last newline before split_point so we don't cut mid-line
-        last_nl = prompt.rfind("\n", 0, split_point)
-        if last_nl > 0:
-            split_point = last_nl
-        cacheable = prompt[:split_point]
-        variable = prompt[split_point:]
+        # Claude and MiMo share the exact same stable calibration instructions.
+        from ..taste.icl import RELATIVSAUCE_SYSTEM_PROMPT
+        system_prompt = RELATIVSAUCE_SYSTEM_PROMPT
         # Primary: Haiku 5.5, Fallback: Haiku 4.5 (strictly Haiku tier only)
         primary_model = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
         candidate_models = []
@@ -186,7 +171,14 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                     payload = {
                         "model": current_model,
                         "max_tokens": max_out,
-                        "system": system_prompt,
+                        # The master V2 prompt is identical across videos. Mark
+                        # only this stable system block cacheable; the transcript
+                        # remains a normal request-specific user message.
+                        "system": [{
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }],
                         "messages": [{"role": "user", "content": prompt}],
                     }
                     r = client.post(
@@ -194,6 +186,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
                         headers={
                             "x-api-key": ANTHROPIC_API_KEY,
                             "anthropic-version": "2023-06-01",
+                            "anthropic-beta": "prompt-caching-2024-07-31",
                             "content-type": "application/json",
                         },
                         json=payload,
@@ -239,6 +232,14 @@ def _build_deepseek_callable() -> Optional[Callable[[str], str]]:
     return _ds_generate
 
 
+def _build_mimo_callable() -> Optional[Callable[[str], str]]:
+    """Return the MiMo V2.6 Pro calibration callable when configured."""
+    if not MIMO_API_KEY:
+        return None
+    from .mimo_client import generate as _mimo_generate
+    return _mimo_generate
+
+
 def _build_groq_callable() -> Optional[Callable[[str], str]]:
     """Return a callable that calls Groq, or None if not configured."""
     if not os.getenv("GROQ_API_KEY", ""):
@@ -269,10 +270,13 @@ def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
     to the energy-based heuristic.
     """
     groq = _build_groq_callable()
+    mimo = _build_mimo_callable()
     claude = _build_claude_callable()
     deepseek = _build_deepseek_callable()
     minimax = _build_minimax_callable()
 
+    if LLM_PROVIDER == "mimo":
+        return [("mimo", mimo)] if mimo else []
     if LLM_PROVIDER == "claude":
         return [("claude", claude)] if claude else []
     if LLM_PROVIDER == "deepseek":
@@ -292,9 +296,11 @@ def _provider_chain() -> List[Tuple[str, Callable[[str], str]]]:
         if groq:
             chain.append(("groq", groq))
         return chain
-    # "auto" / default: claude > deepseek > groq > minimax
+    # "auto" / default during calibration: MiMo > Claude > DeepSeek > Groq > MiniMax.
     # (MiniMax is the cheap-fallback safety net per user 2026-06-15)
     chain = []
+    if mimo:
+        chain.append(("mimo", mimo))
     if claude:
         chain.append(("claude", claude))
     if deepseek:
@@ -339,6 +345,8 @@ def call_with_fallback(prompt: str) -> Tuple[Optional[str], Optional[str]]:
 def available_providers() -> List[str]:
     """Return the names of providers that are configured (ignoring breakers)."""
     names = []
+    if MIMO_API_KEY:
+        names.append("mimo")
     if ANTHROPIC_API_KEY:
         names.append("claude")
     if DEEPSEEK_API_KEY:

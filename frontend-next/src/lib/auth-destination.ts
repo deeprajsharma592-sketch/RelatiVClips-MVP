@@ -1,5 +1,9 @@
 export function safeAuthDestination(value: string | null | undefined): string | null {
   if (!value?.startsWith("/") || value.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(value)) return null;
+  if (value === "/creators/dashboard") return "/dashboard";
+  if (value.startsWith("/creators/dashboard?")) {
+    return `/dashboard?${value.slice("/creators/dashboard?".length)}`;
+  }
   return value;
 }
 

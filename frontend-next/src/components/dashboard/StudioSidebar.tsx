@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BrandLogo from "@/components/BrandLogo";
+import { useEffect, useState } from "react";
 
 export type StudioTab = "home" | "projects" | "brand-kit" | "assets" | "analyse" | "socials" | "calendar";
 
@@ -34,6 +35,17 @@ export default function StudioSidebar({
   const { user } = useAuth();
   const userName = user?.name || "Creator";
   const userInitial = userName.charAt(0).toUpperCase() || "C";
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const displayedCreditBalance = creditBalance ?? user?.credit_balance ?? 0;
+
+  useEffect(() => {
+    const onUpdate = (event: Event) => {
+      const balance = (event as CustomEvent<{ balance?: number }>).detail?.balance;
+      if (typeof balance === "number") setCreditBalance(balance);
+    };
+    window.addEventListener("relativ:credits-updated", onUpdate);
+    return () => window.removeEventListener("relativ:credits-updated", onUpdate);
+  }, []);
 
   return (
     <aside className="w-60 bg-[#0E0E10] border-r border-white/[0.08] flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-30 font-sans">
@@ -200,7 +212,7 @@ export default function StudioSidebar({
         <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 text-zinc-300">
             <Zap size={13} className="text-amber-400 fill-amber-400" />
-            <span className="font-semibold text-white">2</span>
+            <span className="font-semibold text-white">{displayedCreditBalance}</span>
             <span className="text-[11px] text-zinc-400">credits left</span>
           </div>
           <button

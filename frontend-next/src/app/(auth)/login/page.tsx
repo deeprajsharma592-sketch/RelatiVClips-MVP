@@ -18,7 +18,7 @@ function roleDestination(user: User): string {
     case "clipper":
       return "/clippers/dashboard";
     case "creator":
-      return "/creators/dashboard";
+      return "/dashboard";
     default:
       return "/account";
   }
@@ -43,7 +43,7 @@ function LoginForm() {
     setError(null);
 
     try {
-      await signInWithGoogle(nextPath || "/creators/dashboard");
+      await signInWithGoogle(nextPath || "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in is unavailable right now.");
       setSocialLoading(null);

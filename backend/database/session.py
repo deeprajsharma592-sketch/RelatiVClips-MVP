@@ -69,6 +69,9 @@ async def init_db():
         # Additive bridge columns let existing app records link to Supabase
         # identities without replacing user IDs or marketplace foreign keys.
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_user_id VARCHAR(36)"))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_balance INTEGER NOT NULL DEFAULT 2"
+        ))
         await conn.execute(text("ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL"))
         await conn.execute(text(
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_auth_user_id "

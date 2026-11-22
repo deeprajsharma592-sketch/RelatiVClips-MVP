@@ -116,6 +116,17 @@ function DashboardContent() {
     let pollInterval: NodeJS.Timeout | null = null;
 
     const startPolling = (tid: string) => {
+      try {
+        window.localStorage.setItem(
+          "relativ:active-job",
+          JSON.stringify({ taskId: tid, url: urlParam || null, savedAt: Date.now() })
+        );
+      } catch {
+        // Query-string taskId remains sufficient when storage is unavailable.
+      }
+      if (taskIdParam !== tid) {
+        router.replace(`/dashboard?taskId=${encodeURIComponent(tid)}`);
+      }
       let consecutiveErrors = 0;
       pollInterval = setInterval(async () => {
         try {
@@ -129,12 +140,14 @@ function DashboardContent() {
             setGenerationProgress(100);
             updateProjectStatus(newProj.id, "ready", status.clips, 100);
             setProjects(getStoredProjects());
+            window.localStorage.removeItem("relativ:active-job");
           } else if (status.status === "failed") {
             if (pollInterval) clearInterval(pollInterval);
             setIsGenerating(false);
             setGenerationError(status.error || "Generation could not be completed.");
             updateProjectStatus(newProj.id, "failed", [], 0);
             setProjects(getStoredProjects());
+            window.localStorage.removeItem("relativ:active-job");
           } else {
             const raw =
               typeof status.progress === "number"
@@ -166,6 +179,21 @@ function DashboardContent() {
     if (taskIdParam) {
       startPolling(taskIdParam);
     } else if (urlParam) {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem("relativ:active-job") || "null") as
+          | { taskId?: string; url?: string; savedAt?: number }
+          | null;
+        const fresh = saved?.savedAt && Date.now() - saved.savedAt < 24 * 60 * 60 * 1000;
+        if (saved?.taskId && saved.url === urlParam && fresh) {
+          startPolling(saved.taskId);
+          return () => {
+            isMounted = false;
+            if (pollInterval) clearInterval(pollInterval);
+          };
+        }
+      } catch {
+        // Invalid storage should never block a legitimate new submission.
+      }
       submitYouTubeUrl(urlParam)
         .then((init) => {
           if (!isMounted) return;
@@ -194,7 +222,7 @@ function DashboardContent() {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [taskIdParam, urlParam]);
+  }, [router, taskIdParam, urlParam]);
 
   // Elapsed timer when generation is active
   useEffect(() => {

@@ -326,7 +326,7 @@ export default function NewCampaignPage() {
             <Link
               href={
                 user.role === "creator"
-                  ? "/creators/dashboard"
+                  ? "/dashboard"
                   : user.role === "clipper"
                   ? "/clippers/dashboard"
                   : "/account"

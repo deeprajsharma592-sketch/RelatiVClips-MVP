@@ -24,6 +24,16 @@ def _is_youtube_auth_error(message: str) -> bool:
     return any(marker in normalized for marker in _YOUTUBE_AUTH_MARKERS)
 
 
+def _is_non_retryable_youtube_error(message: str) -> bool:
+    """Challenges and rate limits do not recover during a short retry loop."""
+    normalized = (message or "").lower()
+    return _is_youtube_auth_error(normalized) or any(marker in normalized for marker in (
+        "http error 429",
+        "too many requests",
+        "rate limit",
+    ))
+
+
 def _extract_video_id(url: str) -> str:
     if "watch?v=" in url:
         return url.split("watch?v=")[-1].split("&")[0]
@@ -155,7 +165,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     Returns segments dict or None if unavailable.
     """
     import requests as _requests
-    from ..utils.config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT
+    from ..utils.config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT, RESIDENTIAL_DOWNLOAD_TOKEN
 
     # --- Step 1: Try laptop proxy only if configured and valid ---
     if RESIDENTIAL_DOWNLOAD_URL and "overbid-unleaded-pencil" not in RESIDENTIAL_DOWNLOAD_URL:
@@ -165,6 +175,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
             resp = _requests.get(
                 laptop_url,
                 params={"url": url, "lang": "en"},
+                headers={"X-RelatiV-Proxy-Token": RESIDENTIAL_DOWNLOAD_TOKEN} if RESIDENTIAL_DOWNLOAD_TOKEN else None,
                 timeout=min(15, RESIDENTIAL_DOWNLOAD_TIMEOUT),
             )
             if resp.status_code == 200:
@@ -242,8 +253,8 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
                 break
             err_snippet = last_stderr[:150].replace("\n", " ")
             log(f"  [subtitle direct] attempt {attempt}/{max_attempts} failed (rc={result.returncode}): {err_snippet}")
-            if _is_youtube_auth_error(last_stderr):
-                log("  YouTube challenged the server IP; skipping identical subtitle retries")
+            if _is_non_retryable_youtube_error(last_stderr):
+                log("  YouTube auth/rate-limit response is non-transient; skipping identical subtitle retries")
                 break
         except subprocess.TimeoutExpired:
             log(f"  [subtitle direct] attempt {attempt}/{max_attempts} timed out after {timeout}s")
@@ -538,9 +549,9 @@ def _run_with_retry(cmd, log_fn, label: str = "yt-dlp", max_attempts: int = 4, t
             err_snippet = (result.stderr or "")[:150].replace("\n", " ")
             if log_fn:
                 log_fn(f"  [{label}] attempt {attempt}/{max_attempts} failed (rc={result.returncode}): {err_snippet}")
-            if _is_youtube_auth_error(result.stderr or ""):
+            if _is_non_retryable_youtube_error(result.stderr or ""):
                 if log_fn:
-                    log_fn(f"  [{label}] YouTube auth challenge is not transient; stopping retries")
+                    log_fn(f"  [{label}] YouTube auth/rate-limit response is not transient; stopping retries")
                 return result
         except subprocess.TimeoutExpired:
             if log_fn:

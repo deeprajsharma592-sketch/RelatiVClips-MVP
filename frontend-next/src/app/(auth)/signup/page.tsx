@@ -20,7 +20,7 @@ function SignupForm() {
   const router = useRouter();
   const search = useSearchParams();
   const nextPath = safeAuthDestination(search.get("next"));
-  const destination = nextPath || "/creators/dashboard";
+  const destination = nextPath || "/dashboard";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

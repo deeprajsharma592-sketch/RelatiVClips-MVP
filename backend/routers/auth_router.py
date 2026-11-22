@@ -45,6 +45,7 @@ from ..database.models import (
     BrandProfileModel,
     ClipperProfileModel,
     CreatorProfileModel,
+    CreditTransactionModel,
     SessionModel,
     UserModel,
     UserRole,
@@ -94,6 +95,7 @@ class UserResponse(BaseModel):
     role: str
     can_access_creator_workspace: bool = False
     is_verified: bool
+    credit_balance: int
     created_at: str
     last_login_at: Optional[str] = None
     # Profile fields, role-dependent
@@ -127,6 +129,7 @@ def _user_to_response(user: UserModel, profile_row) -> UserResponse:
             user.role == UserRole.CREATOR.value or is_admin_email(user.email)
         ),
         is_verified=user.is_verified,
+        credit_balance=user.credit_balance,
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         profile=profile,
@@ -189,6 +192,14 @@ async def get_current_user(
             session.add(user)
             await session.flush()
             session.add(CreatorProfileModel(user_id=user.id))
+            session.add(CreditTransactionModel(
+                user_id=user.id,
+                amount=2,
+                balance_after=2,
+                kind="starter_grant",
+                reference_id=f"user:{user.id}:starter",
+                details={"reason": "onboarding"},
+            ))
         else:
             if user.auth_user_id and user.auth_user_id != auth_user_id:
                 raise HTTPException(status_code=409, detail="This account is linked to a different sign-in identity")
@@ -296,6 +307,14 @@ async def signup(
         created_at=datetime.utcnow(),
     )
     session.add(user)
+    session.add(CreditTransactionModel(
+        user_id=user.id,
+        amount=2,
+        balance_after=2,
+        kind="starter_grant",
+        reference_id=f"user:{user.id}:starter",
+        details={"reason": "onboarding"},
+    ))
     await session.flush()  # populate user.id
 
     # Create role-specific profile

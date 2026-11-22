@@ -395,7 +395,7 @@ export default function PreGenConfigModal({
                   </div>
                   <div className="flex items-center justify-between text-zinc-400">
                     <span>Expected Clips</span>
-                    <span className="text-white font-medium">3 Curated Cuts</span>
+                    <span className="text-white font-medium">2 Curated Cuts</span>
                   </div>
                   <div className="flex items-center justify-between text-zinc-400">
                     <span>AI Model</span>
@@ -413,10 +413,10 @@ export default function PreGenConfigModal({
                     <Zap size={16} className="text-amber-400 fill-amber-400" />
                     <div>
                       <p className="text-xs font-semibold text-white">Credits Required</p>
-                      <p className="text-[10px] text-zinc-400">1 credit per source video</p>
+                      <p className="text-[10px] text-zinc-400">1 credit per generated clip</p>
                     </div>
                   </div>
-                  <span className="text-sm font-bold text-white">1 Credit</span>
+                  <span className="text-sm font-bold text-white">2 Credits</span>
                 </div>
 
                 {/* Primary Action Button */}

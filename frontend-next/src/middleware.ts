@@ -14,7 +14,7 @@
  *   /brands/dashboard  — brand role only
  *   /brands/campaigns  — brand role only
  *   /clippers/*        — clipper role only (workspace only)
- *   /creators/dashboard — creator role only
+ *   /dashboard          — creator studio
  *   /onboarding/*      — every logged-in user
  *
  * Why cookie-presence, not role-aware? The role lives inside the encrypted

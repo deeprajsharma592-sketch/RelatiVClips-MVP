@@ -29,5 +29,5 @@ export async function GET(request: NextRequest) {
     return loginError("configuration");
   }
 
-  return NextResponse.redirect(new URL(next || "/creators/dashboard", request.url));
+  return NextResponse.redirect(new URL(next || "/dashboard", request.url));
 }

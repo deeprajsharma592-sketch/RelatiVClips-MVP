@@ -12,7 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from pathlib import Path
@@ -25,6 +26,10 @@ from ..utils.config import (
     MAX_SURGICAL_SEGMENTS, COOKIES_PATH, MIN_CLIPS, PIPELINE_VERSION,
 )
 from ..pipeline.transcript_fetcher import _download_audio
+from ..database.models import UserModel
+from ..database.session import get_session
+from .auth_router import get_current_user
+from ..services.credits import CreditReservation, reserve_for_job, settle_job
 
 progress_logs = {}
 _active_tasks = {}
@@ -659,7 +664,12 @@ async def run_youtube_orchestrator(
         if is_experiment_run:
             _bridge("taste", "🎲 RelatiVSauce: 5% exploration active — testing high-variance wildcard hook")
         else:
-            _bridge("taste", "🎯 RelatiVSauce: enforcing sauce-0.1 rubric (hook, wide-funnel, self-containment)")
+            from ..taste.icl import RELATIVSAUCE_PROMPT_SHA256
+            _bridge(
+                "taste",
+                "🎯 RelatiVSauce V2 loaded from backend/taste/RelatiVSauce.md "
+                f"(sha256={RELATIVSAUCE_PROMPT_SHA256[:12]})",
+            )
 
         prompt = build_relativsauce_prompt(
             transcript_segments=orig_transcript_segs or [],
@@ -936,6 +946,7 @@ def _run_moment_pipeline(
                 text,
                 llm_callable=lambda p: call_with_fallback(p)[0],
                 original_prompt=prompt,
+                transcript_segments=transcript_segs_for_prompt,
             )
             _bridge("taste", f"LLM ({provider_used}) suggested {len(picks)} candidate story arcs",
                     step=4, sub_progress=0.92)
@@ -1097,7 +1108,7 @@ def _run_moment_pipeline(
                 "payoff_text": p.get("payoff_text", ""),
                 "callbacks": p.get("callbacks", []),
                 "heat_score": p.get("heat_score", 0.5),
-                "rubric_ver": p.get("rubric_ver", "sauce-0.2"),
+                "rubric_ver": p.get("rubric_ver", "sauce-v2"),
             })
     if picks_sorted and unverified_count:
         _bridge(
@@ -1560,14 +1571,33 @@ async def run_youtube_pipeline_async(
     platform: str = "tiktok",
     caption_font: str = "studio",
     requested_clip_count: Optional[int] = None,
+    credit_reservation: Optional[CreditReservation] = None,
+    is_remake: bool = False,
 ):
+    async def settle_credits(output_clips: int = 0, *, failed: bool = False):
+        if credit_reservation is None:
+            return
+        try:
+            from ..database.session import async_session
+            async with async_session() as credit_session:
+                await settle_job(
+                    credit_session,
+                    credit_reservation,
+                    output_clips=output_clips,
+                    failed=failed,
+                )
+        except Exception as credit_error:
+            # Accounting failures must be visible, but must not replace the
+            # pipeline's original result or make a successful clip disappear.
+            print(f"[CREDITS] Settlement failed for {task_id}: {credit_error}")
+
     # Unified Database Cache Check (Supabase / PostgreSQL with local file fallback)
     # Checks by canonical 11-char video ID so all URL variants share the same entry.
     try:
         from ..caching.service import get_cached_video
         from ..database.session import async_session, _DB_AVAILABLE
         cached = None
-        if caption_font != "studio":
+        if is_remake or caption_font != "studio":
             cached = None
         elif _DB_AVAILABLE:
             async with async_session() as session:
@@ -1619,6 +1649,7 @@ async def run_youtube_pipeline_async(
                 cache_age_hours=age_h,
                 cache_savings_usd=savings,
             )
+            await settle_credits(len(clips))
             _active_tasks.pop(task_id, None)
             task_store.try_promote_queued()
             return
@@ -1682,6 +1713,7 @@ async def run_youtube_pipeline_async(
                         await save_cached_video(None, url, result)
                 except Exception as e:
                     print(f"[CACHE] Database cache save failed (continuing): {e}")
+            await settle_credits(len(clips))
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
@@ -1690,6 +1722,7 @@ async def run_youtube_pipeline_async(
                 task_id, status=TaskStatus.FAILED, error=f"{e} | {tb.splitlines()[-2] if len(tb.splitlines()) > 1 else ''}",
             )
             callback(f"FAILED: {e}", step=6, progress=0)
+            await settle_credits(failed=True)
         _active_tasks.pop(task_id, None)
         task_store.try_promote_queued()
         return
@@ -1712,12 +1745,14 @@ async def run_youtube_pipeline_async(
             current_step=f"Complete - {len(clips)} clips generated"
         )
         callback(f"SUCCESS: {len(clips)} clips generated!", step=6, progress=100)
+        await settle_credits(len(clips))
     else:
         task_store.update_task(
             task_id,
             status=TaskStatus.FAILED,
             error=result.get("error", "Unknown error")
         )
+        await settle_credits(failed=True)
 
     _active_tasks.pop(task_id, None)
     task_store.try_promote_queued()
@@ -1734,7 +1769,11 @@ router = APIRouter(prefix="/process/youtube", tags=["YouTube"])
 
 
 @router.post("", response_model=ProcessResponse)
-async def process_youtube_url(request: dict):
+async def process_youtube_url(
+    request: dict,
+    user: UserModel = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     url = (request.get("url") or "").strip()
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
@@ -1747,8 +1786,11 @@ async def process_youtube_url(request: dict):
     platform = (request.get("platform") or "universal").lower().strip() or "universal"
     from ..pipeline.captions import normalize_caption_preset
     caption_font = normalize_caption_preset(request.get("caption_font"))
+    is_remake = bool(request.get("is_remake", False))
     raw_clip_count = request.get("clip_count")
-    requested_clip_count = None
+    # Two clips is the default first run and exactly matches the two starter
+    # credits granted during onboarding. Users may explicitly request 1..4.
+    requested_clip_count = 1 if is_remake else 2
     if raw_clip_count not in (None, "", "auto"):
         try:
             requested_clip_count = int(raw_clip_count)
@@ -1759,6 +1801,22 @@ async def process_youtube_url(request: dict):
 
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}")
 
+    try:
+        reservation = await reserve_for_job(
+            session,
+            user_id=user.id,
+            task_id=task["task_id"],
+            clip_count=requested_clip_count,
+            is_remake=is_remake,
+        )
+    except Exception:
+        task_store.update_task(
+            task["task_id"],
+            status=TaskStatus.FAILED,
+            error="Credit reservation failed",
+        )
+        raise
+
     loop = asyncio.get_event_loop()
     _active_tasks[task["task_id"]] = loop.create_task(
         run_youtube_pipeline_async(
@@ -1768,10 +1826,14 @@ async def process_youtube_url(request: dict):
             platform=platform,
             caption_font=caption_font,
             requested_clip_count=requested_clip_count,
+            credit_reservation=reservation,
+            is_remake=is_remake,
         )
     )
 
     return ProcessResponse(
         task_id=task["task_id"],
-        status=task["status"]
+        status=task["status"],
+        credits_reserved=reservation.reserved,
+        credits_remaining=reservation.balance_after,
     )

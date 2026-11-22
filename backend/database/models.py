@@ -96,6 +96,9 @@ class UserModel(Base):
     name: Mapped[str] = mapped_column(String(200), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # One credit produces one clip. Every newly onboarded account starts with
+    # two credits, enough for the default two-clip first generation.
+    credit_balance: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -119,6 +122,24 @@ class UserModel(Base):
     campaigns_as_brand = relationship("CampaignModel", back_populates="brand", cascade="all, delete-orphan", foreign_keys="CampaignModel.brand_user_id")
     claims_as_clipper = relationship("CampaignClaimModel", back_populates="clipper", cascade="all, delete-orphan", foreign_keys="CampaignClaimModel.clipper_user_id")
     clips_as_clipper = relationship("CampaignClipModel", back_populates="clipper", cascade="all, delete-orphan", foreign_keys="CampaignClipModel.clipper_user_id")
+
+
+class CreditTransactionModel(Base):
+    """Immutable credit ledger. ``amount`` is signed: charges are negative,
+    grants/refunds are positive. ``reference_id`` makes every mutation
+    idempotent across retries and process restarts.
+    """
+
+    __tablename__ = "credit_transactions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    balance_after: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    reference_id: Mapped[str] = mapped_column(String(160), unique=True, nullable=False, index=True)
+    details: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
 
 
 class CreatorProfileModel(Base):
