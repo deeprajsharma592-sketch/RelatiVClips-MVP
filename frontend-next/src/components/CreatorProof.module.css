@@ -4,8 +4,6 @@
   padding: 4rem 1.25rem 6rem;
   color: #fff;
   --mint: #bff0d8;
-  --card: rgb(109 88 163 / 16%);
-  --ink: #0c2a1f;
   --acc: #19e08f;
   --lav: #b9a8ff;
   --green: #5eeaa8;
@@ -45,17 +43,13 @@
   position: relative;
   border-radius: 28px;
   padding: 1.5rem;
-  border: 1px solid rgb(190 170 255 / 16%);
   overflow: hidden;
 }
 .mint {
-  background: rgb(110 220 174 / 12%);
-  border-color: rgb(191 240 216 / 22%);
   color: var(--mint);
   --mute: #a8c0b5;
 }
 .dark {
-  background: var(--card);
   color: #f4f2ff;
   --mute: #9d98b8;
 }
@@ -174,7 +168,6 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  border: 3px solid var(--card);
   margin-left: -10px;
   display: grid;
   place-items: center;
@@ -218,27 +211,12 @@
   overflow: visible;
   padding: 0;
   z-index: 3;
-  border-color: rgb(190 170 255 / 16%);
-  background: linear-gradient(160deg, rgb(105 80 193 / 22%), rgb(71 49 139 / 13%));
 }
 .stage {
   position: absolute;
   inset: 0;
   border-radius: 28px;
   clip-path: inset(-60% 0 0 0 round 0 0 28px 28px);
-}
-.disc {
-  position: absolute;
-  width: 74%;
-  aspect-ratio: 1;
-  left: 50%;
-  bottom: -30%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: rgb(185 168 255 / 10%);
-  box-shadow:
-    0 0 0 18px rgb(185 168 255 / 7%),
-    0 0 0 40px rgb(185 168 255 / 4%);
 }
 .viewer {
   position: absolute;
@@ -260,14 +238,10 @@
 }
 .widget {
   position: absolute;
-  background: rgb(24 18 48 / 72%);
   color: #f4f2ff;
-  border: 1px solid rgba(190, 170, 255, 0.18);
-  backdrop-filter: blur(8px);
   --green: #5eeaa8;
   border-radius: 14px;
   padding: 9px 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
   animation: float 5s ease-in-out infinite;
   z-index: 2;
 }
@@ -408,12 +382,7 @@
   letter-spacing: -0.01em;
 }
 .clipHeadline span {
-  background: var(--acc);
-  color: #0c2a1f;
-  padding: 3px 11px;
-  border-radius: 10px;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  color: var(--green);
 }
 .pills {
   position: relative;
@@ -542,21 +511,14 @@
 .button {
   display: inline-block;
   margin-top: 0.9rem;
-  background: #111;
-  color: #fff;
-  border: 0;
-  border-radius: 99px;
-  padding: 0.7rem 1.2rem;
+  padding-block: 0.4rem;
+  color: var(--mint);
   font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 0.2s,
-    background 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 .button:hover {
-  transform: scale(1.06);
-  background: var(--acc);
-  color: var(--ink);
+  color: #fff;
 }
 .cassette {
   position: relative;

@@ -216,7 +216,6 @@ export default function CreatorProof() {
 
           <div className={`${styles.card} ${styles.mint} ${styles.showcase}`}>
             <div className={styles.stage}>
-              <div className={styles.disc}></div>
               <div
                 className={styles.triangle}
                 style={{ left: "46%", top: "56%" }}
