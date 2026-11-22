@@ -1,10 +1,8 @@
 .page {
-  --grid-size: clamp(44px, 6vw, 88px);
-  --grid-line: rgb(255 255 255 / 22%);
   background-color: #000;
   background-image:
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: var(--grid-size) var(--grid-size);
+    linear-gradient(rgb(0 0 0 / 46%), rgb(0 0 0 / 46%)),
+    url("/crumpled-grid.webp");
+  background-size: auto, max(780px, 100vw) auto;
   background-position: center top;
 }
