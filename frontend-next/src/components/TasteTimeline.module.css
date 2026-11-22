@@ -25,7 +25,18 @@
   letter-spacing: -0.045em;
   text-align: center;
   text-wrap: balance;
-  color: #f8eff9;
+  color: var(--taste-glass-base);
+}
+
+@supports (background-clip: text) {
+  .glassText {
+    background: var(--taste-glass-reflection),
+      linear-gradient(var(--taste-glass-base), var(--taste-glass-base));
+    background-clip: text;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    color: transparent;
+  }
 }
 
 .inlineThumbnail {

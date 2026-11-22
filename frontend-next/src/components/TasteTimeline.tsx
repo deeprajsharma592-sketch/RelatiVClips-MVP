@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { ArrowDown, ArrowRight, Heart, MessageCircle, Pause, Play, ThumbsDown, ThumbsUp } from "lucide-react";
 import styles from "./TasteTimeline.module.css";
+import glass from "./TasteGlass.module.css";
 
 const MESSAGE = "RelatiV continuously learns your content taste and becomes better at making your clips go viral";
 const BEATS = ["RelatiV", "continuously learns your content taste", "and becomes better", "at making your clips", "go viral"];
@@ -167,12 +168,12 @@ export default function TasteTimeline() {
   return (
     <section ref={sectionRef} className={styles.section} aria-labelledby="taste-timeline-title">
       <div ref={stageRef} className={styles.stage} data-taste-redesign>
-        <motion.h2 ref={headingRef} id="taste-timeline-title" className={styles.headline} style={reduceMotion ? undefined : { opacity: textOpacity }}>
+        <motion.h2 ref={headingRef} id="taste-timeline-title" className={`${styles.headline} ${glass.palette}`} style={reduceMotion ? undefined : { opacity: textOpacity }}>
           <span className="sr-only">{MESSAGE}</span>
           <span aria-hidden="true">
             {BEATS.map((text, index) => (
               <span key={text}>
-                {index > 0 && " "}{text}{" "}
+                {index > 0 && " "}<span className={styles.glassText}>{text}</span>{" "}
                 <span ref={(node) => { inlineRefs.current[index] = node; }} className={styles.inlineThumbnail}>
                   <span className={styles.inlineImage} style={{ opacity: ready && !reduceMotion ? 0 : 1 }}>
                     <Thumbnail src={VIDEO_THUMBNAILS[index]} />

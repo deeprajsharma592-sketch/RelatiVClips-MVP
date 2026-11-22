@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import styles from "./OwnYourTaste.module.css";
+import glass from "./TasteGlass.module.css";
 
 const DURATION = 1100;
 const IMPACT = 0.55;
@@ -93,7 +94,7 @@ export default function OwnYourTaste() {
   }, []);
 
   return (
-    <section ref={sectionRef} className={styles.stage} aria-labelledby="own-your-taste-title">
+    <section ref={sectionRef} className={`${styles.stage} ${glass.palette}`} aria-labelledby="own-your-taste-title">
       <h2 ref={titleRef} id="own-your-taste-title" className={styles.title}>
         <span className={styles.word} data-word="left" data-text="Own">Own</span>{" "}
         <span className={styles.word} data-word="middle" data-text="Your">Your</span>{" "}

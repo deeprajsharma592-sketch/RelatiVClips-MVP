@@ -1,0 +1,7 @@
+.palette {
+  --taste-glass-base: rgb(222 234 245 / 58%);
+  --taste-glass-reflection:
+    radial-gradient(ellipse 80% 21% at 23% 27%, rgb(247 252 255 / 68%), transparent 75%),
+    radial-gradient(ellipse 64% 21% at 76% 68%, rgb(181 224 255 / 47%), transparent 82%),
+    linear-gradient(165deg, rgb(245 251 255 / 19%), transparent 45% 62%, rgb(207 229 248 / 19%) 79%, transparent);
+}
