@@ -19,7 +19,6 @@ import {
   Share2,
   Sparkles,
   Crown,
-  Calendar as CalendarIcon,
   Palette,
   FolderOpen,
   RefreshCw,
@@ -31,6 +30,7 @@ import UpgradeModal from "@/components/dashboard/UpgradeModal";
 import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
+import CalendarView from "@/components/dashboard/CalendarView";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
 import { authPageHref } from "@/lib/auth-destination";
@@ -53,6 +53,7 @@ function DashboardContent() {
 
   const taskIdParam = searchParams.get("taskId");
   const urlParam = searchParams.get("url");
+  const captionStyleParam = searchParams.get("captionStyle");
   const tabParam = searchParams.get("tab") as StudioTab | null;
 
   // Active Navigation Tab
@@ -194,7 +195,9 @@ function DashboardContent() {
       } catch {
         // Invalid storage should never block a legitimate new submission.
       }
-      submitYouTubeUrl(urlParam)
+      let captionStyle: Record<string, unknown> | undefined;
+      try { captionStyle = captionStyleParam ? JSON.parse(captionStyleParam) : undefined; } catch { captionStyle = undefined; }
+      submitYouTubeUrl(urlParam, { captionStyle })
         .then((init) => {
           if (!isMounted) return;
           if (init.taskId) {
@@ -222,7 +225,7 @@ function DashboardContent() {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [router, taskIdParam, urlParam]);
+  }, [router, taskIdParam, urlParam, captionStyleParam]);
 
   // Elapsed timer when generation is active
   useEffect(() => {
@@ -267,7 +270,7 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#09090C] text-white selection:bg-white selection:text-black font-sans">
+    <div className="flex min-h-screen bg-[#111214] text-white selection:bg-[#E7B84B] selection:text-black font-sans">
       {/* ── Studio Sidebar (Flush to top, sharp edges) ── */}
       <StudioSidebar
         activeTab={activeTab}
@@ -281,17 +284,25 @@ function DashboardContent() {
         <StudioHeader onOpenUpgrade={() => setIsUpgradeModalOpen(true)} />
 
         {/* Content Pane */}
-        <main className="flex-1 w-full min-w-0 max-w-[1800px] mx-auto p-5 sm:p-8 xl:p-10 space-y-8">
+        <main className="flex-1 w-full min-w-0 max-w-[1480px] mx-auto p-5 pb-24 sm:p-8 sm:pb-24 lg:pb-10 xl:px-12 xl:py-10 space-y-8">
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
             <div className="space-y-8">
+              <div className="mx-auto flex max-w-5xl items-end justify-between gap-5">
+                <div>
+                  <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8] sm:text-3xl">Turn the long take into the cut.</h1>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#8f9095]">Start with the source. RelatiV finds the moments, frames the subject, and finishes the captions.</p>
+                </div>
+                <span className="hidden text-xs text-[#696a6f] sm:block">1 credit per finished clip</span>
+              </div>
               {/* Studio Central Hero Intake Station */}
               <StudioHero
                 onStartProcess={(tid) => {
                   router.push(`/dashboard?taskId=${tid}`);
                 }}
-                onSubmitUrl={(u) => {
-                  router.push(`/dashboard?url=${encodeURIComponent(u)}`);
+                onSubmitUrl={(u, _template, captionStyle) => {
+                  const styleQuery = captionStyle ? `&captionStyle=${encodeURIComponent(JSON.stringify(captionStyle))}` : "";
+                  router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
               />
@@ -484,24 +495,7 @@ function DashboardContent() {
 
           {/* TAB 7: CALENDAR */}
           {activeTab === "calendar" && (
-            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
-                <CalendarIcon className="w-5 h-5" />
-              </div>
-              <div className="max-w-sm mx-auto space-y-1.5">
-                <h2 className="text-base font-bold text-white">Publishing Calendar</h2>
-                <p className="text-xs text-zinc-400">
-                  Plan and queue your upcoming drops across YouTube Shorts, TikTok, and Instagram Reels.
-                </p>
-              </div>
-              <button
-                onClick={() => setActiveTab("socials")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>Go to Socials Scheduler</span>
-              </button>
-            </div>
+            <CalendarView onSchedule={() => setActiveTab("socials")} />
           )}
         </main>
       </div>

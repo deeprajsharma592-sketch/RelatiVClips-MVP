@@ -1,53 +1,26 @@
 "use client";
 
-import { Crown, Bell, Zap, Plus } from "lucide-react";
+import { Bell, Zap } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
+import { useAuth } from "@/lib/AuthContext";
 
-interface StudioHeaderProps {
-  onOpenUpgrade: () => void;
-}
+interface StudioHeaderProps { onOpenUpgrade: () => void }
 
 export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
+  const { user } = useAuth();
   return (
-    <header className="sticky top-0 z-20 w-full bg-[#0E0E10] border-b border-white/[0.08] flex flex-col font-sans">
-      {/* Top Banner (Exact match to OpusClip picture) */}
-      <div className="w-full bg-[#121216] border-b border-white/[0.06] px-4 py-2 flex items-center justify-center gap-3 text-xs">
-        <div className="flex items-center gap-1.5 text-zinc-300">
-          <span className="text-amber-400 text-xs">👑</span>
-          <span>Unlock watermark-free exports and make your content look pro.</span>
+    <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#111214]/95 backdrop-blur-xl">
+      <div className="flex h-14 items-center px-4 lg:px-7">
+        <div className="flex items-center gap-3 lg:hidden"><BrandLogo iconWidth={28} wordmarkClassName="text-sm font-semibold text-white" /></div>
+        <button onClick={onOpenUpgrade} className="mx-auto hidden items-center gap-3 rounded-md border border-white/[0.07] bg-[#17181a] py-1 pl-3 text-[11px] text-[#c6c6ca] sm:flex">
+          <span className="text-[#E7B84B]">◆</span><span>Export without watermarks and keep every clip on-brand.</span>
+          <span className="rounded-r-md bg-[#25262a] px-3 py-1.5 text-white">View plans</span>
+        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button aria-label="Notifications" className="grid h-8 w-8 place-items-center rounded-md text-[#a1a2a7] hover:bg-white/[0.05] hover:text-white"><Bell size={15} /></button>
+          <span className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-white"><Zap size={13} className="fill-[#E7B84B] text-[#E7B84B]" />{user?.credit_balance ?? 0}</span>
+          <button onClick={onOpenUpgrade} className="h-8 rounded-md border border-white/[0.08] bg-[#242529] px-3 text-xs font-medium text-white hover:bg-[#2d2e32]">Add credits</button>
         </div>
-
-        <button
-          onClick={onOpenUpgrade}
-          className="px-2.5 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-200 text-xs font-medium transition cursor-pointer"
-        >
-          Upgrade plan
-        </button>
-      </div>
-
-      {/* Main Header Row */}
-      <div className="h-12 px-6 flex items-center justify-end gap-3">
-        {/* Notifications */}
-        <button
-          type="button"
-          className="w-8 h-8 rounded-md bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] flex items-center justify-center text-zinc-400 hover:text-white transition cursor-pointer"
-          aria-label="Notifications"
-        >
-          <Bell size={14} />
-        </button>
-
-        {/* Credits Counter */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.06] text-xs font-medium text-white">
-          <Zap size={12} className="text-amber-400 fill-amber-400" />
-          <span>2</span>
-        </div>
-
-        {/* Add Credits Button (Crisp rectangular button with subtle edges) */}
-        <button
-          onClick={onOpenUpgrade}
-          className="px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-medium transition border border-white/10 cursor-pointer"
-        >
-          Add credits
-        </button>
       </div>
     </header>
   );

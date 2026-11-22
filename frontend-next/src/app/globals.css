@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@font-face { font-family: "Montserrat ExtraBold"; src: url("/fonts/Montserrat-ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Montserrat Black"; src: url("/fonts/Montserrat-Black.woff2") format("woff2"); font-weight: 900; font-display: swap; }
+@font-face { font-family: "Inter Bold"; src: url("/fonts/Inter-Bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Inter ExtraBold"; src: url("/fonts/Inter-ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Anton"; src: url("/fonts/Anton-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Bebas Neue"; src: url("/fonts/BebasNeue-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Poppins ExtraBold"; src: url("/fonts/Poppins-ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Noto Sans Devanagari Bold"; src: url("/fonts/NotoSansDevanagari-Bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ════════════════════════════════════════════════════════════════════════════

@@ -15,7 +15,7 @@ function delay(ms: number) {
 
 export async function submitYouTubeUrl(
   url: string,
-  options?: { clipCount?: number; isRemake?: boolean }
+  options?: { clipCount?: number; isRemake?: boolean; captionStyle?: Record<string, unknown> }
 ): Promise<ProcessInitResponse> {
   const res = await fetch(apiPath("/api/v1/process/youtube"), {
     method: "POST",
@@ -24,6 +24,7 @@ export async function submitYouTubeUrl(
       url,
       ...(options?.clipCount ? { clip_count: options.clipCount } : {}),
       ...(options?.isRemake ? { is_remake: true } : {}),
+      ...(options?.captionStyle ? { caption_style: options.captionStyle, caption_font: options.captionStyle.preset } : {}),
     }),
   });
 

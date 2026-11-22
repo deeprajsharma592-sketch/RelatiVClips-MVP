@@ -228,6 +228,10 @@ class TaskStore:
                             "hashtags": str(hashtags),
                             "file_path": clip.get("file_path", ""),
                             "file_size_mb": clip.get("file_size_mb", 0),
+                            "caption_words": clip.get("caption_words"),
+                            "caption_style": clip.get("caption_style"),
+                            "caption_layout": clip.get("caption_layout"),
+                            "subject_track": clip.get("subject_track"),
                         })
                     if clip_data:
                         await ClipRepository.bulk_create(session, clip_data)

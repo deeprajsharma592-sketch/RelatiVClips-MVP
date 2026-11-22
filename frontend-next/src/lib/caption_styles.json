@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "canvas": { "width": 1080, "height": 1920, "safe_top": 0.10, "safe_bottom": 0.78 },
+  "fonts": [
+    { "id": "montserrat-800", "family": "Montserrat ExtraBold", "weight": 800, "file": "Montserrat-ExtraBold.ttf" },
+    { "id": "montserrat-900", "family": "Montserrat Black", "weight": 900, "file": "Montserrat-Black.ttf" },
+    { "id": "inter-700", "family": "Inter Bold", "weight": 700, "file": "Inter-Bold.ttf" },
+    { "id": "inter-800", "family": "Inter ExtraBold", "weight": 800, "file": "Inter-ExtraBold.ttf" },
+    { "id": "anton-400", "family": "Anton", "weight": 400, "file": "Anton-Regular.ttf" },
+    { "id": "bebas-400", "family": "Bebas Neue", "weight": 400, "file": "BebasNeue-Regular.ttf" },
+    { "id": "poppins-800", "family": "Poppins ExtraBold", "weight": 800, "file": "Poppins-ExtraBold.ttf" },
+    { "id": "noto-deva-700", "family": "Noto Sans Devanagari Bold", "weight": 700, "file": "NotoSansDevanagari-Bold.ttf" }
+  ],
+  "presets": {
+    "impact": {
+      "id": "impact", "label": "Impact", "font": { "family": "Montserrat ExtraBold", "weight": 800, "fallback": "Noto Sans Devanagari Bold", "file": "Montserrat-ExtraBold.ttf" },
+      "sizes": { "small": 70, "normal": 96, "big": 126 }, "case": "upper",
+      "colors": { "primary": "#FFFFFF", "accent": "#FFD60A", "accent2": "#39FF14", "outline": "#000000", "shadow": "#000000" },
+      "colorways": { "yellow": "#FFD60A", "white": "#FFFFFF", "green": "#39FF14", "red": "#E8202A" },
+      "outline_px": 9, "shadow_px": 2, "blur": 0, "letter_spacing": 0,
+      "position": { "x": 540, "y_percent": 0.62 }, "max_words_per_group": 3, "max_chars_per_line": 20,
+      "animation": { "type": "pop", "in_ms": 90, "out_ms": 150 }, "lines_max": 2
+    },
+    "stack": {
+      "id": "stack", "label": "Stack", "font": { "family": "Inter ExtraBold", "weight": 800, "fallback": "Noto Sans Devanagari Bold", "file": "Inter-ExtraBold.ttf" },
+      "sizes": { "small": 45, "normal": 78, "big": 132 }, "case": "as_is",
+      "colors": { "primary": "#FFFFFF", "accent": "#FFD60A", "accent2": "#39FF14", "outline": "#000000", "shadow": "#000000" },
+      "colorways": { "yellow": "#FFD60A", "white": "#FFFFFF", "green": "#39FF14", "red": "#E8202A" },
+      "outline_px": 0, "shadow_px": 4, "blur": 1, "letter_spacing": -3,
+      "position": { "x": 540, "y_percent": 0.62 }, "max_words_per_group": 4, "max_chars_per_line": 22,
+      "animation": { "type": "fade", "in_ms": 80, "out_ms": 100 }, "lines_max": 3
+    },
+    "hookcard": {
+      "id": "hookcard", "label": "Hook Card", "font": { "family": "Anton", "weight": 400, "fallback": "Noto Sans Devanagari Bold", "file": "Anton-Regular.ttf" },
+      "sizes": { "small": 54, "normal": 100, "big": 150 }, "case": "upper",
+      "colors": { "primary": "#FFFFFF", "accent": "#FFD60A", "accent2": "#E8202A", "outline": "#000000", "shadow": "#000000" },
+      "colorways": { "yellow": "#FFD60A", "white": "#FFFFFF", "green": "#39FF14", "red": "#E8202A" },
+      "outline_px": 0, "shadow_px": 3, "blur": 1, "letter_spacing": 1,
+      "position": { "x": 540, "y_percent": 0.28 }, "max_words_per_group": 7, "max_chars_per_line": 18,
+      "animation": { "type": "fade", "in_ms": 120, "out_ms": 150 }, "lines_max": 3, "hook_duration_s": 3.0, "fallback_preset": "impact"
+    }
+  }
+}

@@ -73,6 +73,10 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_balance INTEGER NOT NULL DEFAULT 2"
         ))
         await conn.execute(text("ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL"))
+        await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_words JSONB"))
+        await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_style JSONB"))
+        await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_layout JSONB"))
+        await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS subject_track JSONB"))
         await conn.execute(text(
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_auth_user_id "
             "ON users (auth_user_id)"

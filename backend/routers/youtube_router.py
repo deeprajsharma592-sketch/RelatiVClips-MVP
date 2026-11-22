@@ -519,6 +519,7 @@ async def run_youtube_orchestrator(
     callback,
     platform: str = "tiktok",
     caption_font: str = "studio",
+    caption_style: Optional[dict] = None,
     requested_clip_count: Optional[int] = None,
 ):
     """New pipeline path (PIPELINE_VERSION=2) — transcript-first selection.
@@ -701,6 +702,7 @@ async def run_youtube_orchestrator(
             info=info,
             platform=platform,
             caption_font=caption_font,
+            caption_style=caption_style,
             target_clip_count=target_clip_count,
         ),
     )
@@ -719,6 +721,7 @@ def _run_moment_pipeline(
     info: dict,
     platform: str = "tiktok",
     caption_font: str = "studio",
+    caption_style: Optional[dict] = None,
     target_clip_count: int = 2,
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
@@ -1468,6 +1471,7 @@ def _run_moment_pipeline(
             # Only set video_source_start so render_clip knows where the file actually starts.
             render_clip = dict(clip)
             render_clip["caption_font"] = caption_font
+            render_clip["style"] = caption_style or {"preset": caption_font, "overrides": {}}
             render_clip["video_path"] = str(source_for_renderer)
             render_clip["video_source_start"] = _vsrc
             render_clip["video_source_end"] = clip.get("video_source_end", float(clip.get("source_end", clip.get("end", 0))) + SURGICAL_BUFFER_SECONDS)
@@ -1483,6 +1487,9 @@ def _run_moment_pipeline(
                 progress_callback=lambda m: _bridge("render", m),
             )
             if out:
+                for caption_key in ("caption_words", "caption_style", "caption_layout", "subject_track"):
+                    if render_clip.get(caption_key) is not None:
+                        out[caption_key] = render_clip[caption_key]
                 out["start"] = clip.get("start")
                 out["end"] = clip.get("end")
                 out["source_start"] = clip.get("source_start")
@@ -1570,6 +1577,7 @@ async def run_youtube_pipeline_async(
     callback,
     platform: str = "tiktok",
     caption_font: str = "studio",
+    caption_style: Optional[dict] = None,
     requested_clip_count: Optional[int] = None,
     credit_reservation: Optional[CreditReservation] = None,
     is_remake: bool = False,
@@ -1666,6 +1674,7 @@ async def run_youtube_pipeline_async(
                 callback,
                 platform=platform,
                 caption_font=caption_font,
+                caption_style=caption_style,
                 requested_clip_count=requested_clip_count,
             )
             clips = result.get("clips", [])
@@ -1786,6 +1795,8 @@ async def process_youtube_url(
     platform = (request.get("platform") or "universal").lower().strip() or "universal"
     from ..pipeline.captions import normalize_caption_preset
     caption_font = normalize_caption_preset(request.get("caption_font"))
+    raw_caption_style = request.get("caption_style") if isinstance(request.get("caption_style"), dict) else None
+    caption_style = raw_caption_style or {"preset": caption_font, "overrides": {}}
     is_remake = bool(request.get("is_remake", False))
     raw_clip_count = request.get("clip_count")
     # Two clips is the default first run and exactly matches the two starter
@@ -1825,6 +1836,7 @@ async def process_youtube_url(
             create_progress_callback(task["task_id"]),
             platform=platform,
             caption_font=caption_font,
+            caption_style=caption_style,
             requested_clip_count=requested_clip_count,
             credit_reservation=reservation,
             is_remake=is_remake,

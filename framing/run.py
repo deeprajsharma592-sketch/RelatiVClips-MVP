@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import sys
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
@@ -32,6 +33,75 @@ from .s8_zoom import (
 )
 from .s9_render import context_scene_panel_height, render_video
 from .s10_qa import generate_qa_report
+
+
+def _face_to_output(face, crop, out_w, out_h, y_offset=0):
+    """Map a source [x,y,w,h] face through the exact final crop."""
+    if not face or not crop or len(face) < 4 or len(crop) < 4:
+        return None
+    fx, fy, fw, fh = map(float, face[:4])
+    cx, cy, cw, ch = map(float, crop[:4])
+    pad_x, pad_y = fw * 0.12, fh * 0.12
+    x1 = (fx - pad_x - cx) * out_w / max(1, cw)
+    y1 = (fy - pad_y - cy) * out_h / max(1, ch) + y_offset
+    x2 = (fx + fw + pad_x - cx) * out_w / max(1, cw)
+    y2 = (fy + fh + pad_y - cy) * out_h / max(1, ch) + y_offset
+    return [round(max(0, x1), 1), round(max(y_offset, y1), 1), round(min(out_w, x2), 1), round(min(y_offset + out_h, y2), 1)]
+
+
+def _build_subject_track(plan_frames, fps, out_w, out_h, scene_h):
+    """Extract a cached 5fps face track in final 1080x1920 coordinates."""
+    step = max(1, int(round(fps / 5.0)))
+    track = []
+    for item in plan_frames[::step]:
+        faces = item.get("faces") or []
+        box = None
+        if faces:
+            if item.get("state") == "CONTEXT_STACK":
+                tracked_h = out_h - scene_h
+                offset = scene_h if item.get("context_position") == "top" else 0
+                box = _face_to_output(faces[0], item.get("crop"), out_w, tracked_h, offset)
+            elif item.get("state") == "SINGLE":
+                box = _face_to_output(faces[0], item.get("crop"), out_w, out_h)
+            elif item.get("state") == "STACK" and item.get("panels"):
+                panel = item["panels"][0]
+                box = _face_to_output(panel.get("face_box"), panel.get("crop"), out_w, out_h / 2, 0)
+        if box:
+            track.append({"t": round(float(item.get("t", 0)), 3), "face_box": box, "person_box": None})
+    return track
+
+
+def _subject_safe_subtitle(subtitle_path, workdir, subject_track):
+    if not subtitle_path or not Path(subtitle_path).exists() or not subject_track:
+        return subtitle_path, []
+    source = Path(subtitle_path)
+    lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
+    indexed, groups, current, visible = [], [], [], None
+    def seconds(value):
+        h, m, rest = value.split(":"); s, cs = rest.split(".")
+        return int(h) * 3600 + int(m) * 60 + int(s) + int(cs) / 100
+    for index, line in enumerate(lines):
+        if not line.startswith("Dialogue:"):
+            continue
+        fields = line.split(",", 9)
+        if len(fields) != 10:
+            continue
+        plain = re.sub(r"\{[^}]*\}", "", fields[9]).replace(r"\N", " ").strip()
+        if current and plain != visible:
+            groups.append(current); current = []
+        visible = plain; current.append((index, fields, seconds(fields[1]), seconds(fields[2])))
+    if current: groups.append(current)
+    placement_groups = [{"start": g[0][2], "end": g[-1][3], "block_size": (860, 230)} for g in groups]
+    from backend.captioning.placement import choose_layout
+    layout = choose_layout(placement_groups, subject_track, "impact")
+    for group, position in zip(groups, layout):
+        for index, fields, _, _ in group:
+            fields[9] = re.sub(r"\\pos\([^)]*\)", rf"\\pos({int(position['x'])},{int(position['y'])})", fields[9])
+            lines[index] = ",".join(fields)
+    adjusted = workdir / "captions_subject_safe.ass"
+    adjusted.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (workdir / "subject_track.json").write_text(json.dumps(subject_track, indent=2), encoding="utf-8")
+    return adjusted, layout
 
 
 def _caption_safe_subtitle(
@@ -326,9 +396,11 @@ def run_pipeline(
     output_w = int(output_cfg.get("width", 1080))
     output_h = int(output_cfg.get("height", 1920))
     scene_h = context_scene_panel_height(src_w, src_h, output_w, output_h)
+    subject_track = _build_subject_track(plan_frames, fps, output_w, output_h, scene_h)
+    subject_safe_subtitles, caption_layout = _subject_safe_subtitle(subtitles_path, workdir, subject_track)
     seam_y = scene_h if layout_decision.context_position == "top" else output_h - scene_h
     render_subtitles = _caption_safe_subtitle(
-        subtitles_path,
+        subject_safe_subtitles,
         workdir,
         layout_decision.mode,
         layout_decision.context_position,
@@ -359,6 +431,8 @@ def run_pipeline(
     )
 
     qa_artifact["layout_decision"] = asdict(layout_decision)
+    qa_artifact["subject_track"] = subject_track
+    qa_artifact["caption_layout"] = caption_layout
     with open(workdir / "qa.json", "w", encoding="utf-8") as f:
         json.dump(qa_artifact, f, indent=2)
 

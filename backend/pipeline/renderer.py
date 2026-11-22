@@ -599,6 +599,10 @@ def render_clip(
                     content_hint=content_hint,
                 )
                 decision = framing_result.get("layout_decision", {}) if framing_result else {}
+                if framing_result and framing_result.get("subject_track"):
+                    clip["subject_track"] = framing_result["subject_track"]
+                if framing_result and framing_result.get("caption_layout"):
+                    clip["caption_layout"] = framing_result["caption_layout"]
                 resolved_layout_mode = str(decision.get("mode") or layout_mode)
                 context_position = str(decision.get("context_position") or context_position)
                 if output_path.exists() and output_path.stat().st_size > 1024:

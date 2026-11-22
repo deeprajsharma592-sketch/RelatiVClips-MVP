@@ -3,15 +3,11 @@
 import { useState, useRef } from "react";
 import {
   Upload,
-  Sparkles,
   Link2,
   FolderOpen,
-  ArrowRight,
   Film,
   Scissors,
   Wand2,
-  Tv,
-  Check,
 } from "lucide-react";
 import PreGenConfigModal, { RecipeConfig } from "./PreGenConfigModal";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
@@ -35,29 +31,9 @@ function normalizeYouTubeUrl(value: string) {
 
 interface StudioHeroProps {
   onStartProcess?: (taskId: string, template?: string) => void;
-  onSubmitUrl?: (url: string, template?: string) => void;
+  onSubmitUrl?: (url: string, template?: string, captionStyle?: RecipeConfig["captionStyle"]) => void;
   onOpenUpgrade?: () => void;
 }
-
-interface RecipePill {
-  id: string;
-  label: string;
-  isHot?: boolean;
-}
-
-const RECIPE_PILLS: RecipePill[] = [
-  { id: "podcast", label: "Clip podcast interviews" },
-  { id: "gaming", label: "Clip gaming streams", isHot: true },
-  { id: "gameplay", label: "Edit gameplay clips", isHot: true },
-  { id: "educational", label: "Auto-edit talking videos" },
-  { id: "captions", label: "Captions" },
-  { id: "reframe", label: "Reframe" },
-  { id: "upscale", label: "Upscale" },
-  { id: "social", label: "Social edits", isHot: true },
-  { id: "broll", label: "AI B-roll" },
-  { id: "cleanup", label: "Clean up recording", isHot: true },
-  { id: "translate", label: "Translate & dub" },
-];
 
 export default function StudioHero({
   onStartProcess,
@@ -66,7 +42,6 @@ export default function StudioHero({
 }: StudioHeroProps) {
   const [activeTab, setActiveTab] = useState<"clip" | "auto-edit">("clip");
   const [inputText, setInputText] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("podcast");
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -107,16 +82,6 @@ export default function StudioHero({
     }
   };
 
-  const handlePillClick = (pillId: string) => {
-    setSelectedTemplate(pillId);
-    if (normalizeYouTubeUrl(inputText)) {
-      setIsConfigModalOpen(true);
-    } else {
-      setInputText("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-      setIsConfigModalOpen(true);
-    }
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -134,7 +99,7 @@ export default function StudioHero({
       setUploadStatus("Starting AI virality pipeline...");
       const init = await submitLocalVideo(filePath);
       if (onStartProcess) {
-        onStartProcess(init.taskId, selectedTemplate);
+        onStartProcess(init.taskId, "podcast");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload video.");
@@ -144,21 +109,20 @@ export default function StudioHero({
   };
 
   return (
-    <div className="w-full min-w-0 space-y-10 font-sans">
-      {/* ── CENTRAL INTAKE CARD (Exact match to OpusClip picture) ── */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-5 sm:p-6 space-y-5 shadow-2xl">
+    <div className="w-full min-w-0 font-sans">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#1a1b1d] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
         {/* Tabs Bar */}
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+        <div className="flex h-14 items-end justify-between border-b border-white/[0.06] px-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab("clip")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeTab === "clip"
-                  ? "bg-white/10 text-white"
+                  ? "bg-[#252629] text-white"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <Film size={14} className="text-[#A8FF4F]" />
               <span>Clip long video</span>
             </button>
 
@@ -166,7 +130,7 @@ export default function StudioHero({
               onClick={() => setActiveTab("auto-edit")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeTab === "auto-edit"
-                  ? "bg-white/10 text-white"
+                  ? "bg-[#252629] text-white"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
@@ -185,8 +149,8 @@ export default function StudioHero({
         </div>
 
         {/* Input Bar */}
-        <form onSubmit={handleUrlSubmit} className="space-y-3">
-          <div className="relative flex flex-col gap-2 rounded-lg border border-white/10 bg-[#0A0A0C] p-2 focus-within:border-white/30 transition sm:flex-row sm:items-center">
+        <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4">
+          <div className="relative flex flex-col gap-2 rounded-xl border border-white/10 bg-[#121315] p-2 focus-within:border-[#E7B84B]/55 transition sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center px-1.5">
               <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
               <input
@@ -211,8 +175,8 @@ export default function StudioHero({
                   setInputText(e.target.value);
                   if (error) setError(null);
                 }}
-                placeholder="Paste the full YouTube URL here"
-                className="min-w-0 w-full bg-transparent text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none py-2"
+                placeholder="Paste a YouTube link"
+                className="min-w-0 w-full bg-transparent text-sm text-white placeholder-[#77787d] focus:outline-none py-2.5"
               />
               <button
                 type="button"
@@ -225,7 +189,7 @@ export default function StudioHero({
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="w-full px-4 py-2.5 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-bold transition shrink-0 cursor-pointer shadow-sm sm:w-auto"
+              className="w-full px-5 py-3 rounded-lg bg-[#F4F1E8] text-[#151515] hover:bg-white disabled:opacity-35 text-xs font-semibold transition shrink-0 cursor-pointer sm:w-auto"
             >
               Get clips in 1 click
             </button>
@@ -235,7 +199,7 @@ export default function StudioHero({
         </form>
 
         {/* Secondary Upload Actions Row */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-400 pt-1">
+        <div className="flex flex-wrap items-center gap-5 px-5 pb-4 pt-3 text-xs text-[#a1a2a7]">
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
@@ -259,45 +223,12 @@ export default function StudioHero({
             <span>Google Drive</span>
           </button>
 
-          <button
-            onClick={() => {
-              setInputText("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-              setIsConfigModalOpen(true);
-            }}
-            className="text-zinc-400 hover:text-white transition underline underline-offset-2 cursor-pointer ml-auto"
-          >
-            Try a sample project
-          </button>
+          <button onClick={() => setIsConfigModalOpen(true)} className="ml-auto text-[#d0d0d3] transition hover:text-white">Tune captions & framing</button>
         </div>
 
         {uploadStatus && (
-          <p className="text-xs text-zinc-300 font-mono animate-pulse">{uploadStatus}</p>
+          <p className="px-5 pb-4 text-xs text-zinc-300 animate-pulse">{uploadStatus}</p>
         )}
-      </div>
-
-      {/* ── RECIPE CHIPS ROW (Exact match to OpusClip picture) ── */}
-      <div className="space-y-2.5">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {RECIPE_PILLS.map((pill) => (
-            <button
-              key={pill.id}
-              onClick={() => handlePillClick(pill.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-[#121215] hover:bg-white/[0.06] text-xs text-zinc-300 transition cursor-pointer"
-            >
-              <span>{pill.label}</span>
-              {pill.isHot && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
-            </button>
-          ))}
-        </div>
-
-        <div className="text-center">
-          <button
-            onClick={() => setIsConfigModalOpen(true)}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition"
-          >
-            See all Recipes &gt;
-          </button>
-        </div>
       </div>
 
       {/* Pre-generation Recipe Configuration Modal */}
@@ -308,7 +239,7 @@ export default function StudioHero({
         onConfirm={(config: RecipeConfig) => {
           setIsConfigModalOpen(false);
           if (onSubmitUrl) {
-            onSubmitUrl(inputText, config.template);
+            onSubmitUrl(inputText, config.template, config.captionStyle);
           }
         }}
         onOpenUpgrade={onOpenUpgrade}

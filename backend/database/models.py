@@ -67,6 +67,10 @@ class ClipModel(Base):
     file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     file_size_mb: Mapped[float] = mapped_column(Float, default=0)
     story_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    caption_words: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    caption_style: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    caption_layout: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    subject_track: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     task = relationship("TaskModel", back_populates="clips")
