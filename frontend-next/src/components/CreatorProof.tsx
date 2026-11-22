@@ -1,13 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowDownToLine, ArrowUpRight, Captions, Clock3, Heart, Play, Scissors } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import styles from "./CreatorProof.module.css";
 
 const VIEW_BARS = [24, 36, 28, 49, 43, 62, 54, 76, 68, 91, 82, 100];
 
-function AnimatedMetric({ value, suffix = "", prefix = "", decimals = 0, active }: {
+function AnimatedMetric({
+  value,
+  suffix = "",
+  prefix = "",
+  decimals = 0,
+  active,
+}: {
   value: number;
   suffix?: string;
   prefix?: string;
@@ -19,7 +24,9 @@ function AnimatedMetric({ value, suffix = "", prefix = "", decimals = 0, active 
   useEffect(() => {
     if (!active) return;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     if (reduceMotion) {
       setCount(value);
       return;
@@ -43,8 +50,16 @@ function AnimatedMetric({ value, suffix = "", prefix = "", decimals = 0, active 
 
   return (
     <>
-      <span aria-hidden="true">{prefix}{count.toFixed(decimals)}{suffix}</span>
-      <span className={styles.srOnly}>{prefix}{value.toFixed(decimals)}{suffix}</span>
+      <span aria-hidden="true">
+        {prefix}
+        {count.toFixed(decimals)}
+        {suffix}
+      </span>
+      <span className={styles.srOnly}>
+        {prefix}
+        {value.toFixed(decimals)}
+        {suffix}
+      </span>
     </>
   );
 }
@@ -57,79 +72,371 @@ export default function CreatorProof() {
     const section = sectionRef.current;
     if (!section || active) return;
 
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setActive(true);
-        observer.disconnect();
-      }
-    }, { threshold: 0.12 });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setActive(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0 },
+    );
 
     observer.observe(section);
     return () => observer.disconnect();
   }, [active]);
 
   return (
-    <section ref={sectionRef} className={styles.section} aria-labelledby="creator-results-title" data-creator-results data-visible={active}>
+    <section
+      ref={sectionRef}
+      className={styles.section}
+      aria-labelledby="creator-results-title"
+      data-creator-results
+      data-visible={active}
+    >
       <div className={styles.content}>
-        <header className={styles.header}>
-          <h2 id="creator-results-title">Built for creators who want to <em>grow faster.</em></h2>
-          <p>Turn long videos into short clips made for the feed.</p>
-        </header>
+        <h2 id="creator-results-title">
+          Built for creators who want to <em>grow faster.</em>
+        </h2>
+        <p className={styles.sub}>
+          See how top short-form clippers use RelatiV to dominate the feed.
+        </p>
 
-        <div className={styles.grid} data-clip-first-stats>
-          <article className={`${styles.card} ${styles.views}`} style={{ animationDelay: "0ms" }}>
-            <h3><Play size={16} aria-hidden="true" /> Short-form views</h3>
-            <p className={styles.metric}><AnimatedMetric value={150} suffix="K+" active={active} /></p>
-            <p>Across TikTok, Reels &amp; Shorts</p>
-            <div className={styles.bars} aria-hidden="true">
-              {VIEW_BARS.map((height, index) => <span key={index} style={{ height: `${height}%`, animationDelay: `${620 + index * 45}ms` }} />)}
+        <div className={styles.grid}>
+          <div className={`${styles.card} ${styles.mint} ${styles.accuracy}`}>
+            <p className={styles.label}>Caption accuracy</p>
+            <div className={styles.ring}>
+              <svg aria-hidden="true" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="rgba(12,42,31,.22)"
+                  strokeWidth="9"
+                />
+                <circle
+                  className={styles.ringProgress}
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  pathLength="100"
+                  transform="rotate(-90 50 50)"
+                />
+              </svg>
+              <b>
+                <AnimatedMetric
+                  value={98.4}
+                  active={active}
+                  suffix="%"
+                  decimals={1}
+                />
+              </b>
             </div>
-          </article>
-
-          <figure className={`${styles.card} ${styles.showcase}`} style={{ animationDelay: "90ms" }}>
-            <div className={styles.collage} aria-hidden="true">
-              <div className={`${styles.frame} ${styles.frameLeft}`}>
-                <Image src="/thumb_r3.webp" alt="" fill sizes="(max-width: 600px) 24vw, 150px" />
-              </div>
-              <div className={`${styles.frame} ${styles.frameRight}`}>
-                <Image src="/thumb_l3.webp" alt="" fill sizes="(max-width: 600px) 24vw, 150px" />
-              </div>
-              <div className={`${styles.frame} ${styles.frameFront}`}>
-                <Image src="/thumb_l4.webp" alt="" fill sizes="(max-width: 600px) 30vw, 180px" />
-              </div>
-              <span className={styles.reaction}><Heart size={20} fill="currentColor" /></span>
-              <span className={styles.clipFormat}>9:16</span>
+            <div className={styles.metric}>
+              <AnimatedMetric value={150} active={active} suffix="K+" />
             </div>
-            <figcaption>Made for the feed</figcaption>
-          </figure>
+            <div className={styles.detail}>
+              Short-form views generated across TikTok, Reels &amp; Shorts
+            </div>
+          </div>
 
-          <article className={`${styles.card} ${styles.reach}`} style={{ animationDelay: "180ms" }}>
-            <h3><ArrowUpRight size={17} aria-hidden="true" /> Average reach increase</h3>
-            <p className={styles.metric}><AnimatedMetric value={266} prefix="+" suffix="%" active={active} /></p>
-            <p>For long-form creators, first 12 weeks</p>
-            <svg className={styles.trend} viewBox="0 0 240 56" aria-hidden="true">
-              <path pathLength="1" d="M2 50 C27 51 29 30 54 32 S82 43 104 32 S129 14 154 19 S182 25 201 13 S222 9 238 3" />
+          <div className={`${styles.card} ${styles.dark} ${styles.turnaround}`}>
+            <span className={styles.lightning}>⚡</span>
+            <div className={styles.metric} style={{ marginTop: ".6rem" }}>
+              <AnimatedMetric value={60} active={active} suffix="s" />
+            </div>
+            <p className={styles.label}>Average turnaround</p>
+            <div className={styles.detail}>From YouTube link to 10 clips</div>
+          </div>
+
+          <div className={`${styles.card} ${styles.dark} ${styles.reach}`}>
+            <p className={styles.label}>Average reach increase</p>
+            <div className={styles.metric}>
+              <AnimatedMetric
+                value={266}
+                active={active}
+                prefix="+"
+                suffix="%"
+              />
+            </div>
+            <div className={styles.accent}>For long-form creators</div>
+            <div className={styles.detail}>First 12 weeks</div>
+          </div>
+
+          <div className={`${styles.card} ${styles.dark} ${styles.moments}`}>
+            <p className={styles.label}>
+              Team of passionate clippers and creators
+            </p>
+            <div className={styles.avatars}>
+              <span style={{ background: "#ffd6a5" }}>🧑‍💻</span>
+              <span style={{ background: "#c7b8ff" }}>🎙️</span>
+              <span style={{ background: "#b8e6c9" }}>🎮</span>
+              <span style={{ background: "#ffb8c9" }}>🎬</span>
+              <span className={styles.extra}>+2</span>
+            </div>
+            <p className={styles.label}>Moments picked</p>
+            <div className={styles.metric} style={{ margin: ".2rem 0" }}>
+              <AnimatedMetric value={10} active={active} suffix=" of 47" />
+            </div>
+            <div className={styles.dots} aria-hidden="true">
+              {Array.from({ length: 10 }, (_, index) => (
+                <i key={index} style={{ animationDelay: `${index * 180}ms` }} />
+              ))}
+            </div>
+            <div className={styles.accent} style={{ marginTop: ".5rem" }}>
+              Best hooks only
+            </div>
+            <svg
+              aria-hidden="true"
+              className={styles.coil}
+              viewBox="0 0 120 150"
+            >
+              <defs>
+                <linearGradient id="ch" x1="0" x2="1">
+                  <stop offset="0" stopColor="#f4f4f6" />
+                  <stop offset=".5" stopColor="#6e6e78" />
+                  <stop offset="1" stopColor="#17171b" />
+                </linearGradient>
+              </defs>
+              <g
+                fill="none"
+                stroke="url(#ch)"
+                strokeWidth="9"
+                strokeLinecap="round"
+              >
+                <path d="M8,20 Q60,-4 112,34" />
+                <path d="M8,46 Q60,22 112,60" />
+                <path d="M8,72 Q60,48 112,86" />
+                <path d="M8,98 Q60,74 112,112" />
+                <path d="M8,124 Q60,100 112,138" />
+              </g>
             </svg>
-          </article>
+          </div>
 
-          <article className={`${styles.card} ${styles.turnaround}`} style={{ animationDelay: "270ms" }}>
-            <h3><Clock3 size={16} aria-hidden="true" /> Average turnaround</h3>
-            <p className={styles.metric}><AnimatedMetric value={60} suffix="s" active={active} /></p>
-            <p>From YouTube link to 10 clips</p>
-          </article>
+          <div className={`${styles.card} ${styles.mint} ${styles.showcase}`}>
+            <div className={styles.stage}>
+              <div className={styles.disc}></div>
+              <div
+                className={styles.triangle}
+                style={{ left: "46%", top: "56%" }}
+              ></div>
+              <div
+                className={styles.triangle}
+                style={{ left: "42%", bottom: "12%", transform: "scale(.7)" }}
+              ></div>
+              <div className={styles.orbit}></div>
+              <div
+                className={`${styles.widget} ${styles.chartWidget}`}
+                aria-hidden="true"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 100 50"
+                  style={{ width: "100%" }}
+                >
+                  <path
+                    d="M4,42 C24,40 32,24 52,26 C72,28 80,12 96,6"
+                    fill="none"
+                    stroke="#5eeaa8"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className={styles.widgetLabel}>RETENTION</div>
+              </div>
+              <div
+                className={`${styles.widget} ${styles.barsWidget}`}
+                aria-hidden="true"
+              >
+                <div className={styles.widgetLabel}>AUDIENCE AGE</div>
+                <div className={styles.equalizer}>
+                  <b style={{ "--i": 0 } as CSSProperties}></b>
+                  <b style={{ "--i": 1 } as CSSProperties}></b>
+                  <b style={{ "--i": 2 } as CSSProperties}></b>
+                  <b style={{ "--i": 3 } as CSSProperties}></b>
+                  <b style={{ "--i": 4 } as CSSProperties}></b>
+                </div>
+              </div>
+              <Image
+                className={styles.viewer}
+                alt="Excited viewer pointing at her phone while watching reels"
+                draggable={false}
+                width={1284}
+                height={1324}
+                src="/stats/viewer.webp"
+                loading="lazy"
+              />
+              <div
+                className={`${styles.widget} ${styles.playWidget}`}
+                aria-hidden="true"
+              >
+                <b>▶</b>
+                <div>
+                  <div className={styles.widgetValue}>26,807</div>
+                  <i></i>
+                </div>
+              </div>
+              <div
+                className={`${styles.widget} ${styles.engagementWidget}`}
+                aria-hidden="true"
+              >
+                <div style={{ color: "#ff4d5e" }}>❤</div>
+                <div className={styles.widgetValue}>19.46%</div>
+                <div className={styles.widgetLabel}>Engagement rate</div>
+                <div
+                  className={styles.widgetLabel}
+                  style={{ color: "var(--green)" }}
+                >
+                  ▲ 102.48%
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <article className={`${styles.card} ${styles.accuracy}`} style={{ animationDelay: "360ms" }}>
-            <h3><Captions size={17} aria-hidden="true" /> Caption accuracy</h3>
-            <p className={styles.metric}><AnimatedMetric value={98.4} suffix="%" decimals={1} active={active} /></p>
-            <div className={styles.captionSample} aria-hidden="true">Make every <strong>word</strong> count.</div>
-            <p>Powered by Whisper AI</p>
-          </article>
-        </div>
+          <div className={`${styles.card} ${styles.dark} ${styles.clips}`}>
+            <p className={styles.clipHeadline}>
+              <span>Turn Long</span>
+              <br />
+              <span>Videos Into</span>
+              <br />
+              <span>Viral Clips</span>
+            </p>
+            <div className={styles.pills}>
+              <div className={`${styles.pill} ${styles.leftClip}`}>
+                <Image
+                  alt="Clip thumbnail: man pushing a luggage cart with a backpack of cash"
+                  src="/stats/luggage.webp"
+                  fill
+                  sizes="120px"
+                />
+                <em>0:34</em>
+                <b>▶</b>
+              </div>
+              <div className={`${styles.pill} ${styles.rightClip}`}>
+                <Image
+                  alt="Clip thumbnail: a baked calzone being cut with scissors"
+                  src="/stats/calzone.webp"
+                  fill
+                  sizes="120px"
+                />
+                <em>0:28</em>
+                <b>▶</b>
+              </div>
+            </div>
+          </div>
 
-        <div className={styles.footer}>
-          <p><Scissors size={17} aria-hidden="true" /><span><strong>10 of 47</strong> moments picked</span></p>
-          <p><ArrowDownToLine size={17} aria-hidden="true" /><span><strong>9:16</strong> H.264 export</span></p>
-          <a href="#homepage-hero">Start with 60 minutes free <ArrowUpRight size={17} aria-hidden="true" /></a>
+          <div className={`${styles.card} ${styles.dark} ${styles.brand}`}>
+            <div>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 64 34"
+                className={styles.bar}
+              >
+                <defs>
+                  <linearGradient id="lg" x1="0" x2="1">
+                    <stop offset="0" stopColor="#ffa94d" />
+                    <stop offset="1" stopColor="#ff3d8b" />
+                  </linearGradient>
+                </defs>
+                <g fill="url(#lg)">
+                  <rect
+                    style={{ "--i": 0 } as CSSProperties}
+                    x="2"
+                    y="12"
+                    width="5"
+                    height="10"
+                    rx="2.5"
+                  />
+                  <rect
+                    style={{ "--i": 1 } as CSSProperties}
+                    x="11"
+                    y="5"
+                    width="5"
+                    height="24"
+                    rx="2.5"
+                  />
+                  <rect
+                    style={{ "--i": 2 } as CSSProperties}
+                    x="20"
+                    y="9"
+                    width="5"
+                    height="16"
+                    rx="2.5"
+                  />
+                  <rect
+                    style={{ "--i": 3 } as CSSProperties}
+                    x="29"
+                    y="3"
+                    width="5"
+                    height="28"
+                    rx="2.5"
+                  />
+                </g>
+                <path d="M42,3 L62,17 L42,31Z" fill="#ff3d8b" />
+              </svg>
+              <div className={styles.brandName}>
+                Relati<i>V</i>
+              </div>
+            </div>
+          </div>
+
+          <div className={`${styles.card} ${styles.dark} ${styles.exportCard}`}>
+            <p className={styles.label}>Export</p>
+            <div className={styles.big2}>9:16 H.264</div>
+            <div className={styles.detail}>
+              Ready for TikTok, Reels &amp; Shorts
+            </div>
+            <div className={styles.swatches}>
+              <i style={{ background: "#555" }}></i>
+              <i style={{ background: "#c9c9cf" }}></i>
+              <i style={{ background: "var(--acc)" }}></i>
+              <i style={{ background: "var(--lav)" }}></i>
+            </div>
+          </div>
+
+          <div className={`${styles.card} ${styles.mint} ${styles.offer}`}>
+            <div>
+              <h3>Start with 60 minutes free</h3>
+              <div className={styles.detail}>
+                Paste a link. Get 10 viral clips.
+              </div>
+              <a className={styles.button} href="#homepage-hero">
+                Get free clips ↗
+              </a>
+            </div>
+            <svg
+              aria-hidden="true"
+              className={styles.star}
+              viewBox="0 0 120 120"
+            >
+              <defs>
+                <linearGradient id="st" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0" stopColor="#6d6d76" />
+                  <stop offset=".45" stopColor="#15151a" />
+                  <stop offset="1" stopColor="#3a3a42" />
+                </linearGradient>
+              </defs>
+              <g fill="url(#st)">
+                <rect x="50" y="4" width="20" height="112" rx="10" />
+                <rect
+                  x="50"
+                  y="4"
+                  width="20"
+                  height="112"
+                  rx="10"
+                  transform="rotate(60 60 60)"
+                />
+                <rect
+                  x="50"
+                  y="4"
+                  width="20"
+                  height="112"
+                  rx="10"
+                  transform="rotate(120 60 60)"
+                />
+              </g>
+            </svg>
+          </div>
         </div>
       </div>
     </section>
