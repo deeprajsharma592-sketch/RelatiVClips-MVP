@@ -1,6 +1,7 @@
 .page {
   background-color: #000;
-  background-image: url("/homepage-stardust.webp");
-  background-size: 1180px auto;
+  background-image: url("/homepage-background.png");
+  background-size: auto clamp(760px, 110svh, 1200px);
+  background-repeat: repeat-y;
   background-position: center top;
 }
