@@ -142,7 +142,14 @@ export default function CreatorProof() {
           </div>
 
           <div className={`${styles.card} ${styles.dark} ${styles.turnaround}`}>
-            <span className={styles.lightning}>⚡</span>
+            <Image
+              className={styles.lightning}
+              src="/stats/glass-lightning.webp"
+              alt=""
+              width={26}
+              height={40}
+              unoptimized
+            />
             <div className={styles.metric} style={{ marginTop: ".6rem" }}>
               <AnimatedMetric value={60} active={active} suffix="s" />
             </div>
