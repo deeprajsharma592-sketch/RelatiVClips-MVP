@@ -1,7 +1,14 @@
 .page {
+  isolation: isolate;
   background-color: #000;
-  background-image: url("/homepage-background.png");
-  background-size: auto clamp(760px, 110svh, 1200px);
-  background-repeat: repeat-y;
-  background-position: center top;
+}
+
+.page::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background: #000 url("/homepage-background.png") center top /
+    auto clamp(760px, 110svh, 1200px) no-repeat;
 }
