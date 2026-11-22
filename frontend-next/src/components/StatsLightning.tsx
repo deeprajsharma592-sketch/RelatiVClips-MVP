@@ -4,12 +4,14 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 export default function StatsLightning({ className }: { className: string }) {
+  const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const image = imageRef.current;
+    if (!canvas || !image) return;
 
     let disposed = false;
     let stop: (() => void) | undefined;
@@ -17,9 +19,10 @@ export default function StatsLightning({ className }: { className: string }) {
       if (!entry.isIntersecting) return;
       observer.disconnect();
       void import("./statsLightningScene")
-        .then(({ mountLightning }) => {
+        .then(async ({ mountLightning }) => {
+          await image.decode();
           if (disposed) return;
-          stop = mountLightning(canvas);
+          stop = mountLightning(canvas, image);
           setReady(Boolean(stop));
         })
         .catch(() => {
@@ -38,6 +41,7 @@ export default function StatsLightning({ className }: { className: string }) {
   return (
     <span className={className} data-ready={ready} aria-hidden="true">
       <Image
+        ref={imageRef}
         src="/stats/glass-lightning.webp"
         alt=""
         width={26}

@@ -1,25 +1,47 @@
 import * as THREE from "three";
 
-function boltGeometry(depth: number, bevel: number) {
-  const outline = new THREE.Shape();
-  outline.moveTo(-0.34, 0.91);
-  outline.lineTo(0.58, 1.08);
-  outline.lineTo(0.16, 0.23);
-  outline.lineTo(0.68, 0.34);
-  outline.lineTo(-0.42, -1.08);
-  outline.lineTo(-0.16, -0.18);
-  outline.lineTo(-0.66, -0.26);
-  outline.closePath();
+// Trace the main silhouette in image coordinates, starting at the upper-left bevel.
+const outlinePoints = [
+  [0.26, 0.10],
+  [0.78, 0.02],
+  [0.87, 0.085],
+  [0.66, 0.365],
+  [0.88, 0.345],
+  [0.96, 0.394],
+  [0.16, 0.986],
+  [0.285, 0.585],
+  [0.025, 0.572],
+] as const;
 
-  return new THREE.ExtrudeGeometry(outline, {
+const faceHeight = 2.18;
+
+function boltGeometry(faceWidth: number) {
+  const shape = new THREE.Shape(
+    outlinePoints.map(([u, v]) =>
+      new THREE.Vector2((u - 0.5) * faceWidth, (0.5 - v) * faceHeight),
+    ),
+  );
+  const depth = 0.24;
+  const geometry = new THREE.ExtrudeGeometry(shape, {
     depth,
-    bevelThickness: bevel,
-    bevelSize: bevel,
+    bevelThickness: 0.06,
+    bevelSize: 0.025,
     bevelSegments: 2,
-  }).translate(0, 0, -depth / 2);
+  });
+  // The cap UVs follow the original silhouette. The sides use a lit material.
+  const positions = geometry.getAttribute("position");
+  const uv = geometry.getAttribute("uv");
+  for (const { start, count, materialIndex } of geometry.groups) {
+    if (materialIndex !== 0) continue;
+    for (let index = start; index < start + count; index++) {
+      uv.setXY(index, positions.getX(index) / faceWidth + 0.5,
+        positions.getY(index) / faceHeight + 0.5);
+    }
+  }
+  return geometry.translate(0, 0, -depth / 2);
 }
 
-export function mountLightning(canvas: HTMLCanvasElement) {
+export function mountLightning(canvas: HTMLCanvasElement, image: HTMLImageElement) {
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
@@ -32,28 +54,24 @@ export function mountLightning(canvas: HTMLCanvasElement) {
   const camera = new THREE.OrthographicCamera(-0.99, 0.99, 1.36, -1.36, 0.1, 20);
   camera.position.z = 5;
 
-  const glassGeometry = boltGeometry(0.25, 0.077);
-  const coreGeometry = boltGeometry(0.31, 0.035);
-  const glass = new THREE.MeshPhysicalMaterial({
-    color: "#ffc09a",
-    roughness: 0.18,
-    metalness: 0.22,
+  const texture = new THREE.Texture(image);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  const geometry = boltGeometry(faceHeight * image.naturalWidth / image.naturalHeight);
+  const face = new THREE.MeshBasicMaterial({
+    map: texture,
+    alphaTest: 0.35,
+    toneMapped: false,
+  });
+  const edges = new THREE.MeshPhysicalMaterial({
+    color: "#f5b18b",
+    roughness: 0.23,
+    metalness: 0.48,
     clearcoat: 1,
-    transparent: true,
-    opacity: 0.68,
-    depthWrite: false,
+    emissive: "#8e3010",
+    emissiveIntensity: 0.22,
   });
-  const orange = new THREE.MeshStandardMaterial({
-    color: "#ff7c22",
-    emissive: "#ff4900",
-    emissiveIntensity: 0.55,
-    roughness: 0.28,
-  });
-  const bolt = new THREE.Group();
-  const shell = new THREE.Mesh(glassGeometry, glass);
-  const core = new THREE.Mesh(coreGeometry, orange);
-  core.scale.set(0.72, 0.79, 1);
-  bolt.add(core, shell);
+  const bolt = new THREE.Mesh(geometry, [face, edges]);
   bolt.rotation.set(0.14, -0.38, 0.08);
   scene.add(bolt, new THREE.HemisphereLight(0xfff1e2, 0xff7029, 2));
 
@@ -96,10 +114,10 @@ export function mountLightning(canvas: HTMLCanvasElement) {
     resize.disconnect();
     motion.removeEventListener("change", updateMotion);
     renderer.setAnimationLoop(null);
-    glassGeometry.dispose();
-    coreGeometry.dispose();
-    glass.dispose();
-    orange.dispose();
+    geometry.dispose();
+    texture.dispose();
+    face.dispose();
+    edges.dispose();
     renderer.dispose();
   };
 }
