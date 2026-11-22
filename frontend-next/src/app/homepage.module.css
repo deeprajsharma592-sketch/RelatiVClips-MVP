@@ -1,8 +1,6 @@
 .page {
   background-color: #000;
-  background-image:
-    linear-gradient(rgb(0 0 0 / 46%), rgb(0 0 0 / 46%)),
-    url("/crumpled-grid.webp");
-  background-size: auto, max(780px, 100vw) auto;
+  background-image: url("/homepage-starfield.webp");
+  background-size: 1180px auto;
   background-position: center top;
 }
