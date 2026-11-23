@@ -37,11 +37,13 @@ export default function ClipCard({
     : undefined;
 
   const score = Math.round(
-    clip.hook_score && clip.hook_score > 1
+    typeof clip.hook_score === "number" && clip.hook_score > 0
       ? clip.hook_score
-      : clip.story_score && clip.story_score > 1
+      : typeof clip.story_score === "number" && clip.story_score > 0
       ? clip.story_score
-      : 89
+      : typeof (clip as any).score === "number" && (clip as any).score > 0
+      ? (clip as any).score
+      : Math.max(72, 91 - index * 5)
   );
 
   const durationSec = clip.duration_s || 60;

@@ -1110,6 +1110,10 @@ def _run_moment_pipeline(
                 s for s in all_orig_segs
                 if float(s.get("end", 0)) >= clip_start and float(s.get("start", 0)) <= clip_end
             ]
+            raw_score = p.get("final_score") or p.get("score") or conf
+            computed_score = int(round(raw_score * 100)) if raw_score <= 1.0 else int(round(raw_score))
+            computed_score = min(98, max(70, computed_score))
+
             final_clips.append({
                 "start": round(clip_start, 2),
                 "end": round(clip_end, 2),
@@ -1127,7 +1131,9 @@ def _run_moment_pipeline(
                 "signal_type": m.signal_type if m else "narrative_arc",
                 "llm_provider": provider_used or "claude",
                 "confidence": round(conf, 3),
-                "score": p.get("final_score", p.get("score")),
+                "score": computed_score,
+                "hook_score": computed_score,
+                "story_score": int(p.get("story_score") or computed_score),
                 "verified": bool(p.get("verified", True)),
                 "is_experiment": bool(p.get("is_experiment", False)),
                 "hook_type": p.get("hook_type", "none"),
@@ -1237,6 +1243,12 @@ def _run_moment_pipeline(
                     "density": "Core Takeaway",
                     "silence": "Watch Carefully",
                 }.get((m.signal_type or "").split("+")[-1] if m.signal_type else "", "Key Highlight")
+            # Compute dynamic differentiated score for each fallback moment
+            m_score = getattr(m, "score", 0.85)
+            base_score = int(round(m_score * 100)) if m_score <= 1.0 else int(round(m_score))
+            rank_offset = max(0, len(final_clips) * 4)
+            computed_hook = min(94, max(72, base_score - rank_offset))
+
             final_clips.append({
                 "start": round(m.start, 2),
                 "end": round(m.end, 2),
@@ -1248,6 +1260,9 @@ def _run_moment_pipeline(
                 "hashtags": "#shorts #viral",
                 "reason": f"signal={m.signal_type} score={m.score:.2f}",
                 "signal_type": m.signal_type,
+                "score": computed_hook,
+                "hook_score": computed_hook,
+                "story_score": computed_hook,
                 "llm_provider": "fallback",
                 "verified": False,
                 "best_effort": True,
@@ -1267,10 +1282,22 @@ def _run_moment_pipeline(
 
     # 3a. Validate format bounds & natural variable durations
     try:
+        all_orig_segs = info.get("transcript", {}).get("segments", []) if info.get("transcript") else []
         adjusted = []
         for clip in final_clips:
             c_start = float(clip.get("start", 0))
             c_end = float(clip.get("end", 0))
+
+            # If clip is short, naturally extend to next complete sentence ending after 30s
+            if (c_end - c_start) < 30.0 and all_orig_segs:
+                for seg in all_orig_segs:
+                    s_end = float(seg.get("end", 0))
+                    text = (seg.get("text") or "").strip()
+                    if s_end >= c_start + 30.0:
+                        c_end = s_end
+                        if any(text.endswith(p) for p in (".", "!", "?")):
+                            break
+
             new_start, new_end, reason = adjust_clip_for_platform(
                 c_start,
                 c_end,

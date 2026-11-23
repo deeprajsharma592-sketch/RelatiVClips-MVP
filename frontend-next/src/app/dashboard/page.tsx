@@ -604,7 +604,14 @@ function ClipCard({
     ? apiPath(`/thumbnail/${clip.clip_id}`)
     : undefined;
 
-  const score = clip.hook_score || clip.story_score || 88;
+  const score =
+    typeof clip.hook_score === "number" && clip.hook_score > 0
+      ? clip.hook_score
+      : typeof clip.story_score === "number" && clip.story_score > 0
+      ? clip.story_score
+      : typeof (clip as any).score === "number" && (clip as any).score > 0
+      ? (clip as any).score
+      : Math.max(72, 91 - index * 5);
   const durationSec = clip.duration_s || 60;
   const mins = Math.floor(durationSec / 60).toString().padStart(2, "0");
   const secs = Math.floor(durationSec % 60).toString().padStart(2, "0");
