@@ -27,7 +27,7 @@ export default function StudioTower() {
 
   return (
     <section aria-label="Interactive studio tower" className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 sm:py-20">
-      <div ref={root} className="group relative h-[clamp(440px,77svh,840px)]">
+      <div ref={root} className="group relative h-[clamp(440px,77svh,840px)] lg:h-[clamp(485px,85svh,925px)]">
         <Image
           src="/studio-tower/hover-transparent.png"
           alt="Metallic studio tower hovering above a blue exhaust plume"
