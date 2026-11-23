@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database.models import CreditTransactionModel, UserModel
+from ..utils.admin_access import is_admin_email
 from .entitlements import CLIP_CREDIT_COST, ONBOARDING_CREDITS, REMAKE_BASE_CREDITS
 
 
@@ -66,7 +67,9 @@ async def reserve_for_job(
     )).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User account not found")
-    if user.is_admin:
+    # Founder access must not depend on a migration having already populated
+    # ``users.is_admin``. The server-owned allowlist is authoritative too.
+    if user.is_admin or is_admin_email(user.email):
         return CreditReservation(user.id, task_id, 0, clip_count, is_remake, user.credit_balance)
     if user.credit_balance < cost:
         raise HTTPException(

@@ -34,6 +34,7 @@ from ..database.repository import TaskRepository
 from .auth_router import get_current_user
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
 from ..services.entitlements import MAX_ACTIVE_TASKS_PER_USER, source_limit_seconds
+from ..utils.admin_access import is_admin_email
 
 progress_logs = {}
 _active_tasks = {}
@@ -1902,7 +1903,10 @@ async def process_youtube_url(
             requested_clip_count=requested_clip_count,
             credit_reservation=reservation,
             is_remake=is_remake,
-            max_source_duration_s=source_limit_seconds(user.plan_tier, is_admin=user.is_admin),
+            max_source_duration_s=source_limit_seconds(
+                user.plan_tier,
+                is_admin=user.is_admin or is_admin_email(user.email),
+            ),
             llm_provider_preference="claude" if user.plan_tier in {"go", "creator_go"} else None,
         )
     )

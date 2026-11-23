@@ -25,6 +25,7 @@ from ..database.session import get_session
 from ..database.repository import TaskRepository
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
 from ..services.entitlements import MAX_ACTIVE_TASKS_PER_USER, source_limit_seconds
+from ..utils.admin_access import is_admin_email
 from .auth_router import get_current_user
 
 progress_logs = {}
@@ -339,7 +340,10 @@ async def process_local_video(
 
     from ..pipeline.ingestion import get_video_duration
     duration_s = await asyncio.to_thread(get_video_duration, request.file_path)
-    limit_s = source_limit_seconds(user.plan_tier, is_admin=user.is_admin)
+    limit_s = source_limit_seconds(
+        user.plan_tier,
+        is_admin=user.is_admin or is_admin_email(user.email),
+    )
     if limit_s and duration_s > limit_s:
         raise HTTPException(413, f"This plan accepts source videos up to {limit_s // 60} minutes.")
     active_count = (await session.execute(
