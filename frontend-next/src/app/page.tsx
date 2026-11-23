@@ -8,6 +8,7 @@ import OwnYourTaste from "@/components/OwnYourTaste";
 import TasteTimeline from "@/components/TasteTimeline";
 import StickyInputBar from "@/components/StickyInputBar";
 import SolutionsSection from "@/components/SolutionsSection";
+import StudioTower from "@/components/StudioTower";
 import styles from "./homepage.module.css";
 
 const STEPS = [
@@ -50,14 +51,7 @@ export default function HomePage() {
 
       <TasteTimeline />
 
-      <section aria-label="Interactive studio tower" className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 sm:py-20">
-        <iframe
-          src="/studio-tower.html"
-          title="Interactive 3D studio tower"
-          loading="lazy"
-          className="block h-[clamp(420px,70svh,760px)] w-full rounded-3xl bg-[#08080a]"
-        />
-      </section>
+      <StudioTower />
 
       {/* ── SECTION: SOLUTIONS FOR EVERY CREATOR & TEAM ── */}
       <SolutionsSection />
