@@ -41,7 +41,7 @@ export default function SolutionsSection() {
   }, []);
 
   return (
-    <section className="relative h-[200svh] bg-transparent" aria-label="RelatiV audience network">
+    <section className="relative h-[150svh] bg-transparent" aria-label="RelatiV audience network">
       <div className="sticky top-16 h-[calc(100svh-8rem)] overflow-hidden bg-transparent">
         <h2 className="absolute inset-x-4 top-[6%] z-10 text-center text-2xl font-bold tracking-[-0.045em] text-white sm:text-3xl md:text-4xl lg:text-5xl">
           Built for every creator, brand, and team.

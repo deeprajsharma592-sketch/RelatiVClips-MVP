@@ -57,7 +57,7 @@ export default function HomePage() {
       <SolutionsSection />
 
       {/* ── HOW IT WORKS ── */}
-      <section className="relative isolate overflow-hidden px-4 py-20 sm:px-6 sm:py-28">
+      <section className="relative isolate overflow-hidden px-4 py-14 sm:px-6 sm:py-20">
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[34rem] max-w-6xl bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.11),transparent_68%)]" />
         <div className="mx-auto w-full max-w-[1440px]">
           <motion.div

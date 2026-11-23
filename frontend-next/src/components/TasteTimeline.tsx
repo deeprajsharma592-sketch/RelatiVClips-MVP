@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
-import { ArrowDown, ArrowRight, Heart, MessageCircle, Pause, Play, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowRight, Heart, MessageCircle, Pause, Play, ThumbsDown, ThumbsUp } from "lucide-react";
 import styles from "./TasteTimeline.module.css";
 import glass from "./TasteGlass.module.css";
 
@@ -250,7 +250,6 @@ export default function TasteTimeline() {
         <div className={styles.flyingLayer} aria-hidden="true">
           {!reduceMotion && journeys.map((journey, index) => <FlyingThumbnail key={BEATS[index]} index={index} journey={journey} progress={progress} />)}
         </div>
-        <div className={styles.scrollHint}>Scroll <ArrowDown size={13} aria-hidden="true" /></div>
       </div>
     </section>
   );
