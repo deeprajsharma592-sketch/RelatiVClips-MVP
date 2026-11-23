@@ -48,15 +48,14 @@ export function mountAudienceWeb(canvas, reducedMotion) {
     const dx=card.x-cx,dy=card.y-cy,length=Math.hypot(dx,dy);
     card.ux=dx/length;
     card.uy=dy/length;
-    card.from=0;
     card.target=length;
     card.inset=Math.min(card.w*.5/Math.max(.0001,Math.abs(card.ux)),halfH/Math.max(.0001,Math.abs(card.uy)));
     card.off=Math.min((480+card.w*.55+46)/Math.max(.0001,Math.abs(card.ux)),
                       (270+halfH+42)/Math.max(.0001,Math.abs(card.uy)));
   }
 
-  function tile(card,dist) {
-    const x=cx+dist*card.ux,y=cy+dist*card.uy;
+  function tile(card,dist,driftX,driftY) {
+    const x=cx+dist*card.ux+driftX,y=cy+dist*card.uy+driftY;
     ctx.fillStyle='#111217';
     ctx.strokeStyle='#e6e1df';
     ctx.lineWidth=1.35;
@@ -78,53 +77,73 @@ export function mountAudienceWeb(canvas, reducedMotion) {
     ctx.fillText(card.label,x-card.w/2+46,y+.5);
   }
 
-  function web(card,end,spread,energy,t,grip) {
-    const length=Math.max(0,end-card.from);
-    if(length < 2) return;
-    const scale=Math.min(30,4+length*.054)*spread;
-    const shimmer=energy*Math.sin(t*20+card.ux*2);
+  function web(card,end,spread,energy,t,grip,driftX,driftY,floatTime) {
+    if(end < 2) return;
+    const scale=Math.min(30,4+end*.054)*spread;
+    const driftBend=Math.hypot(driftX,driftY)*.42;
+    const roll=.34+Math.sin(floatTime+card.ux*2)*.16;
     const onSide=card.w*.5*Math.abs(card.uy)<halfH*Math.abs(card.ux);
     const tangentX=onSide?0:1, tangentY=onSide?1:0;
     const inwardX=onSide?Math.sign(card.ux):0, inwardY=onSide?0:Math.sign(card.uy);
-    for(const [index,{color,points}] of strands.entries()) {
+    const widths=[.24,.39,.57,.81,1.12,1.48,1.95,2.55,3.25];
+    const layers=new Map();
+
+    for(let index=0;index<strands.length;index++) {
+      const {color,points}=strands[index];
       const anchored=index<17;
       const tip=points[points.length-1];
       const offset=((index*7)%17-8)*1.05;
-      ctx.strokeStyle=color;
-      let previous;
+      let paths=layers.get(color);
+      if(!paths) {
+        paths=widths.map(()=>new Path2D());
+        layers.set(color,paths);
+      }
+      let previousX, previousY, previousRadius, previousBand=-1;
       for(const [along,y,z,r] of points) {
-        const axis=card.from+along*length+z*(4+energy*5);
-        const curve=Math.sin(along*Math.PI)*(energy*8*Math.sin(t*14+card.uy*4+along*5));
-        const cross=(y*scale+z*(scale*.45+shimmer*2))+curve;
-        let x=cx+axis*card.ux-cross*card.uy;
-        let py=cy+axis*card.uy+cross*card.ux;
+        const axis=along*end+z*(4+energy*5);
+        const curve=Math.sin(along*Math.PI)*(energy*8*Math.sin(t*14+card.uy*4+along*5)
+          + driftBend*Math.sin(floatTime+along*4));
+        const cross=(y+z*roll)*scale+curve;
+        let x=cx+axis*card.ux-cross*card.uy+driftX*along;
+        let py=cy+axis*card.uy+cross*card.ux+driftY*along;
         let radius=r;
         if(anchored && grip>0) {
           const progress=clamp((along/tip[0]-.58)/.42);
           const blend=grip*progress*progress*(3-2*progress);
-          const tail=(1-along/tip[0])*length*.93;
+          const tail=(1-along/tip[0])*end*.93;
           const contact=end-2-tail;
-          x+=(cx+contact*card.ux+offset*tangentX+inwardX*2-x)*blend;
-          py+=(cy+contact*card.uy+offset*tangentY+inwardY*2-py)*blend;
-          radius+=(Math.max(r,.0065+(index%4)*.001)-r)*blend;
+          x+=(cx+contact*card.ux+offset*tangentX+inwardX*2+driftX-x)*blend;
+          py+=(cy+contact*card.uy+offset*tangentY+inwardY*2+driftY-py)*blend;
+          radius+=(Math.max(r,.008+(index%4)*.001)-r)*blend;
         }
-        const point=[x,py,radius];
-        if(previous) {
-          const width=(previous[2]+r)*(18+spread*22);
-          ctx.globalAlpha=Math.min(.84,.12+width*.5);
-          ctx.lineWidth=Math.max(.2,width);
-          ctx.beginPath();
-          ctx.moveTo(previous[0],previous[1]);
-          ctx.lineTo(point[0],point[1]);
-          ctx.stroke();
+        if(previousRadius!==undefined) {
+          const width=(previousRadius+radius)*(27+spread*19);
+          let band=0;
+          while(band<widths.length-1 && width>widths[band]) band++;
+          const path=paths[band];
+          if(band!==previousBand) path.moveTo(previousX,previousY);
+          path.lineTo(x,py);
+          previousBand=band;
         }
-        previous=point;
+        previousX=x;
+        previousY=py;
+        previousRadius=radius;
+      }
+    }
+
+    for(let band=widths.length-1;band>=0;band--) {
+      const width=widths[band];
+      ctx.globalAlpha=Math.min(.8,.16+width*.36);
+      ctx.lineWidth=width;
+      for(const [color,paths] of layers) {
+        ctx.strokeStyle=color;
+        ctx.stroke(paths[band]);
       }
     }
     ctx.globalAlpha=1;
   }
 
-  function draw(seconds) {
+  function draw(seconds, floating = true) {
     ctx.setTransform(1.5,0,0,1.5,0,0);
     ctx.clearRect(0,0,960,540);
     ctx.lineCap='round';
@@ -136,32 +155,78 @@ export function mountAudienceWeb(canvas, reducedMotion) {
       const pull=ease((t-.71)/1.35);
       const settled=clamp((t-.71)/1.65);
       const dist=card.off+(card.target-card.off)*pull;
-      const reach=card.from+(card.off-card.inset-card.from)*shot;
+      const reach=(card.off-card.inset)*shot;
       const end=t<.71?reach:dist-card.inset+3;
-      web(card,end,.18+.84*(1-settled),1-settled,t,ease((t-.71)/.42));
-      if(t>=.71) tile(card,dist);
+      const floatTime=Math.max(0,t-1.75);
+      const drift=floating ? ease(floatTime/1.5) : 0;
+      const driftX=drift*5.5*Math.sin(floatTime*.86+index*1.71);
+      const driftY=drift*6.5*Math.sin(floatTime*1.08+index*2.13);
+      const spread=.67+.35*(1-settled);
+      web(card,end,spread,1-settled,t,ease((t-.71)/.42),driftX,driftY,floating?floatTime:0);
+      if(t>=.71) tile(card,dist,driftX,driftY);
     }
   }
+
   let frame = 0;
-  let startedAt = 0;
+  let lastDraw = null;
+  let seconds = 0;
+  let playing = false;
+  let visible = false;
 
   function animate(now) {
-    const seconds = (now - startedAt) / 1000;
-    draw(Math.min(seconds, 2.65));
-    frame = seconds < 2.65 ? requestAnimationFrame(animate) : 0;
-  }
-
-  function play() {
-    cancelAnimationFrame(frame);
     if (reducedMotion.matches) {
-      draw(2.65);
+      frame = 0;
+      draw(2.65, false);
       return;
     }
-    startedAt = performance.now();
-    draw(0);
+    const elapsed = lastDraw === null ? 1000 / 30 : now - lastDraw;
+    if (elapsed >= 31) {
+      seconds += elapsed / 1000;
+      lastDraw = now;
+      draw(seconds);
+    }
     frame = requestAnimationFrame(animate);
   }
 
-  draw(reducedMotion.matches ? 2.65 : 0);
-  return { play, dispose: () => cancelAnimationFrame(frame) };
+  function setVisible(nextVisible) {
+    visible = nextVisible;
+    if (!visible) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      lastDraw = null;
+    } else if (playing && !frame && !reducedMotion.matches) {
+      frame = requestAnimationFrame(animate);
+    }
+  }
+
+  function play() {
+    playing = true;
+    seconds = 0;
+    lastDraw = null;
+    if (reducedMotion.matches) {
+      draw(2.65, false);
+      return;
+    }
+    draw(0);
+    setVisible(visible);
+  }
+
+  const onMotionChange = () => {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    if (reducedMotion.matches) draw(2.65, false);
+    else if (playing) play();
+    else draw(0);
+  };
+  reducedMotion.addEventListener("change", onMotionChange);
+  draw(reducedMotion.matches ? 2.65 : 0, false);
+
+  return {
+    play,
+    setVisible,
+    dispose() {
+      setVisible(false);
+      reducedMotion.removeEventListener("change", onMotionChange);
+    },
+  };
 }

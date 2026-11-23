@@ -16,14 +16,16 @@ export default function SolutionsSection() {
     const scene = mountAudienceWeb(canvas, window.matchMedia("(prefers-reduced-motion: reduce)"));
     if (!scene) return;
 
+    let hasPlayed = false;
     const play = () => {
-      observer.disconnect();
+      hasPlayed = true;
       scene.play();
     };
     const threshold = 0.35;
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.intersectionRatio >= threshold) play();
-    }, { threshold });
+      scene.setVisible(entry.isIntersecting);
+      if (!hasPlayed && entry.intersectionRatio >= threshold) play();
+    }, { threshold: [0, threshold] });
 
     button.addEventListener("click", play);
     observer.observe(canvas);
