@@ -33,12 +33,16 @@ interface StudioHeroProps {
   onStartProcess?: (taskId: string, template?: string) => void;
   onSubmitUrl?: (url: string, config: RecipeConfig) => void;
   onOpenUpgrade?: () => void;
+  onOpenEditor?: () => void;
+  hasEditableClip?: boolean;
 }
 
 export default function StudioHero({
   onStartProcess,
   onSubmitUrl,
   onOpenUpgrade,
+  onOpenEditor,
+  hasEditableClip = false,
 }: StudioHeroProps) {
   const [activeTab, setActiveTab] = useState<"clip" | "auto-edit">("clip");
   const [inputText, setInputText] = useState("");
@@ -140,11 +144,14 @@ export default function StudioHero({
           </div>
 
           <button
-            onClick={() => alert("Open editor mode")}
-            className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300 cursor-pointer"
+            type="button"
+            onClick={onOpenEditor}
+            disabled={!hasEditableClip || !onOpenEditor}
+            title={hasEditableClip ? "Open the newest generated clip in Studio" : "Generate a clip before opening Studio"}
+            className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-2 text-xs transition enabled:border-[#4FD1C5]/25 enabled:bg-[#4FD1C5]/[0.07] enabled:text-[#9CEAE2] enabled:hover:border-[#4FD1C5]/55 enabled:hover:bg-[#4FD1C5]/[0.12] disabled:cursor-not-allowed disabled:text-zinc-600"
           >
             <Scissors size={13} />
-            <span>Open editor</span>
+            <span>{hasEditableClip ? "Edit newest clip" : "Open editor"}</span>
           </button>
         </div>
 

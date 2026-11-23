@@ -342,6 +342,11 @@ function DashboardContent() {
                   router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}${finishQuery}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+                hasEditableClip={Boolean(activeProject?.clips?.length)}
+                onOpenEditor={() => {
+                  const clip = activeProject?.clips?.[0];
+                  if (clip) setSelectedEditClip({ clip, index: 0 });
+                }}
               />
 
               {/* ── ACTIVE GENERATION / WAITING STATE (Thinking AI Blob + Green Filling Thumbnail) ── */}
