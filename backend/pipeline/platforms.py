@@ -1,9 +1,9 @@
 """
 Universal short-form clip format.
 
-SIMPLIFIED 2026-06-15: TikTok, Reels, and Shorts all want the same thing:
+SIMPLIFIED 2026-06-15: TikTok, Reels, and Shorts all use the same output:
   - 9:16 vertical
-  - 22-30s duration
+  - 30-90s narrative-complete duration
   - ALL CAPS hooks
   - 5-8 hashtags
 
@@ -17,7 +17,7 @@ The `platform` field is now kept ONLY for analytics (so we can track which
 destination the user intended), not for output differentiation.
 
 The single universal format is:
-  - 22-30s (sweet spot: 26s)
+  - 30-90s, chosen by the natural story arc
   - 9:16 vertical
   - ALL CAPS hooks (best performer across all 3 platforms)
   - 5-8 hashtags (algorithmic sweet spot)
@@ -66,7 +66,7 @@ def get_format() -> ClipFormat:
 
 def adjust_clip_to_format(start: float, end: float, video_duration: float = 0.0) -> tuple:
     """
-    Validates [start, end] against hard bounds (10s - 150s).
+    Validates [start, end] against hard bounds (30s - 90s).
     Does NOT normalize, round, pad, or trim clips toward a common length.
     Preserves the natural micro-story arc.
     """
@@ -85,6 +85,24 @@ def adjust_clip_to_format(start: float, end: float, video_duration: float = 0.0)
         return start, new_end, f"capped_at_hard_max_{FORMAT.max_duration_s:.0f}s"
 
     return start, end, "in_range"
+
+
+def apply_finishing_window(
+    start: float,
+    narrative_end: float,
+    video_duration: float = 0.0,
+    tail_buffer_s: float = 3.0,
+) -> tuple[float, float]:
+    """Append user-selected natural context after the calibrated narrative.
+
+    The 30–90 second constraint applies to the selected story. The natural
+    tail is deliberately metadata-separated so it is never mistaken for an
+    LLM-selected boundary. The thumbnail outro is added later by the renderer.
+    """
+    requested = min(3.0, max(0.0, float(tail_buffer_s or 0.0)))
+    ceiling = float(video_duration) if float(video_duration or 0.0) > 0 else narrative_end + requested
+    finished_end = min(ceiling, float(narrative_end) + requested)
+    return finished_end, max(0.0, finished_end - float(narrative_end))
 
 
 def limit_hashtags(hashtags: List[str]) -> List[str]:

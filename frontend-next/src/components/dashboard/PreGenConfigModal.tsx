@@ -43,6 +43,8 @@ export interface RecipeConfig {
   enableSpeechCleanup: boolean;
   enableAudioEnhance: boolean;
   enableAutoSfx: boolean;
+  includeNaturalTail: boolean;
+  includeThumbnailOutro: boolean;
   captionStyle: CaptionStyleValue;
 }
 
@@ -111,6 +113,8 @@ export default function PreGenConfigModal({
   const [enableSpeechCleanup, setEnableSpeechCleanup] = useState(true);
   const [enableAudioEnhance, setEnableAudioEnhance] = useState(true);
   const [enableAutoSfx, setEnableAutoSfx] = useState(false);
+  const [includeNaturalTail, setIncludeNaturalTail] = useState(true);
+  const [includeThumbnailOutro, setIncludeThumbnailOutro] = useState(true);
   const [captionStyle, setCaptionStyle] = useState<CaptionStyleValue>({ preset: "impact", overrides: { colorway: "yellow", position_mode: "auto" } });
 
   if (!isOpen) return null;
@@ -125,6 +129,8 @@ export default function PreGenConfigModal({
       enableSpeechCleanup,
       enableAudioEnhance,
       enableAutoSfx,
+      includeNaturalTail,
+      includeThumbnailOutro,
       captionStyle,
     });
   };
@@ -375,6 +381,32 @@ export default function PreGenConfigModal({
                         enableAudioEnhance ? "translate-x-5" : "translate-x-0"
                       }`}
                     />
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. FINISHING */}
+              <div className="bg-white/[0.02] border border-white/10 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Play size={15} className="text-amber-400" />
+                  Clip ending
+                </h3>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-white">Natural +3 second tail</p>
+                    <p className="text-[11px] text-zinc-400">Continue the original scene after the calibrated story ending.</p>
+                  </div>
+                  <button type="button" aria-pressed={includeNaturalTail} onClick={() => setIncludeNaturalTail(!includeNaturalTail)} className={`w-11 h-6 rounded-full transition relative p-0.5 ${includeNaturalTail ? "bg-cyan-500" : "bg-white/10"}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition transform ${includeNaturalTail ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                  <div>
+                    <p className="text-xs font-medium text-white">4 second “Watch full video” card</p>
+                    <p className="text-[11px] text-zinc-400">Finish with the source thumbnail and continued audio.</p>
+                  </div>
+                  <button type="button" aria-pressed={includeThumbnailOutro} onClick={() => setIncludeThumbnailOutro(!includeThumbnailOutro)} className={`w-11 h-6 rounded-full transition relative p-0.5 ${includeThumbnailOutro ? "bg-cyan-500" : "bg-white/10"}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition transform ${includeThumbnailOutro ? "translate-x-5" : "translate-x-0"}`} />
                   </button>
                 </div>
               </div>

@@ -38,11 +38,11 @@ const CREATOR_FAQS = [
   },
   {
     q: "How does the pricing per clip work?",
-    a: "We sized the tiers so the cost per clip drops as you scale: ~$0.15/clip on Starter and ~$0.13/clip on Pro Studio. Each tier includes full AI hook detection, automated karaoke captions, and 9:16 vertical framing.",
+    a: "Every finished clip costs 200 credits. Go includes 20,000 credits, Pro Studio 60,000, and Max 200,000. Each tier includes 30–90 second narrative selection, automated captions, and 9:16 vertical framing.",
   },
   {
     q: "Can I connect multiple YouTube channels?",
-    a: "Yes. Starter connects up to 3 channels, Pro Studio connects up to 10 channels plus direct local file uploads, and Agency supports unlimited team accounts.",
+    a: "Channel and team features depend on your plan. Go is designed for solo creators, Pro Studio for active publishing workflows, and Max for studios and agencies.",
   },
   {
     q: "What payment methods are supported worldwide?",
@@ -90,7 +90,7 @@ export default function PlansPage() {
             SECTION 02: 3 INTERACTIVE CREATOR PRICING CARDS
             ══════════════════════════════════════════════════════════ */}
         <section className="mb-14">
-          <InteractiveTierCards />
+          <InteractiveTierCards defaultBillingCycle="monthly" showBillingToggle={false} />
         </section>
 
           {/* ══════════════════════════════════════════════════════════

@@ -15,7 +15,13 @@ function delay(ms: number) {
 
 export async function submitYouTubeUrl(
   url: string,
-  options?: { clipCount?: number; isRemake?: boolean; captionStyle?: Record<string, unknown> }
+  options?: {
+    clipCount?: number;
+    isRemake?: boolean;
+    captionStyle?: Record<string, unknown>;
+    tailBufferSeconds?: number;
+    thumbnailOutroSeconds?: number;
+  }
 ): Promise<ProcessInitResponse> {
   const res = await fetch(apiPath("/api/v1/process/youtube"), {
     method: "POST",
@@ -25,6 +31,8 @@ export async function submitYouTubeUrl(
       ...(options?.clipCount ? { clip_count: options.clipCount } : {}),
       ...(options?.isRemake ? { is_remake: true } : {}),
       ...(options?.captionStyle ? { caption_style: options.captionStyle, caption_font: options.captionStyle.preset } : {}),
+      ...(options?.tailBufferSeconds !== undefined ? { tail_buffer_seconds: options.tailBufferSeconds } : {}),
+      ...(options?.thumbnailOutroSeconds !== undefined ? { thumbnail_outro_seconds: options.thumbnailOutroSeconds } : {}),
     }),
   });
 

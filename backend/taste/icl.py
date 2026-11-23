@@ -345,7 +345,7 @@ def build_hybrid_narrative_prompt(
         "CRITICAL INSTRUCTION ON FALSE POSITIVES:\n"
         "Loud audio spikes alone are often FALSE POSITIVES (microphone bumps, laughter, coughing, screaming without narrative substance).\n"
         "Do NOT pick a clip just because it is marked with ⚡.\n"
-        "Instead, find the 2-4 most viral, self-contained STORIES, REVELATIONS, or LESSONS (22s to 32s each).\n"
+        "Instead, find the 2-4 most viral, self-contained STORIES, REVELATIONS, or LESSONS (30-90 seconds each, with a complete narrative arc).\n"
         "A winning clip MUST have:\n"
         "  1. HOOK (0-3s): A question, shocking statement, or curiosity gap that stops the scroll.\n"
         "  2. STORY FLOW: Clear context — the listener understands what is happening without watching the rest of the video.\n"

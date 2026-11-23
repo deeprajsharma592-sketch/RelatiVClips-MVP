@@ -741,15 +741,19 @@ def render_clip(
             except Exception:
                 pass
 
+        requested_outro_seconds = min(
+            4.0,
+            max(0.0, float(clip.get("thumbnail_outro_seconds", CTA_OUTRO_SECONDS))),
+        )
         if (
             CTA_OUTRO_ENABLED
-            and CTA_OUTRO_SECONDS > 0
+            and requested_outro_seconds > 0
             and resolved_video_id
             and resolved_video_id not in ("local", "unknown")
             and not str(resolved_video_id).startswith(("yt_", "surgical_"))
         ):
             if progress_callback:
-                progress_callback(f"Adding {CTA_OUTRO_SECONDS:.0f}s full-video CTA...")
+                progress_callback(f"Adding {requested_outro_seconds:.0f}s full-video CTA...")
             cta_added = _append_thumbnail_cta(
                 output_path=output_path,
                 source_path=video_path,
@@ -757,7 +761,7 @@ def render_clip(
                 video_id=resolved_video_id,
                 task_id=task_id,
                 clip_index=clip_index,
-                duration_s=CTA_OUTRO_SECONDS,
+                duration_s=requested_outro_seconds,
                 font_file=selected_font_file,
             )
 
@@ -795,9 +799,9 @@ def render_clip(
             "clip_id": clip_id,
             "start": start,
             "end": end,
-            "duration_s": round(duration + (CTA_OUTRO_SECONDS if cta_added else 0.0), 1),
+            "duration_s": round(duration + (requested_outro_seconds if cta_added else 0.0), 1),
             "source_duration_s": round(duration, 1),
-            "cta_duration_s": round(CTA_OUTRO_SECONDS if cta_added else 0.0, 1),
+            "cta_duration_s": round(requested_outro_seconds if cta_added else 0.0, 1),
             "cta_added": cta_added,
             "caption": clip.get("caption", ""),
             "viral_title": clip.get("viral_title", ""),

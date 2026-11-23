@@ -31,6 +31,7 @@ export interface TierConfig {
   creditsNumber: string;
   clipsCount: string;
   monthlyPrice: string;
+  originalMonthlyPrice?: string;
   yearlyPrice: string;
   yearlyBilled: string;
   accent: {
@@ -57,6 +58,7 @@ export const TIERS_CONFIG: TierConfig[] = [
     creditsNumber: "20,000",
     clipsCount: "100 clips / month",
     monthlyPrice: "$5.99",
+    originalMonthlyPrice: "$9.99",
     yearlyPrice: "$4.79",
     yearlyBilled: "Billed $57.48 annually",
     accent: {
@@ -71,6 +73,7 @@ export const TIERS_CONFIG: TierConfig[] = [
     },
     features: [
       "20,000 credits · up to 100 clips / month",
+      "Narrative-complete 30–90 second clips",
       "AI virality scoring & hook detection",
       "9:16 vertical dynamic face framing",
       "Karaoke word-by-word subtitles",
@@ -82,7 +85,7 @@ export const TIERS_CONFIG: TierConfig[] = [
   },
   {
     id: "creator_pro",
-    name: "RelatiV Pro",
+    name: "Pro Studio",
     tagline: "Active creators & streamers posting 3-5x weekly",
     badge: "⚡ MOST POPULAR",
     highlight: true,
@@ -105,6 +108,7 @@ export const TIERS_CONFIG: TierConfig[] = [
     },
     features: [
       "60,000 credits · up to 300 clips / month",
+      "Narrative-complete 30–90 second clips",
       "All 4 Content Archetypes (Streamer, Gaming, Podcast, Edu)",
       "1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)",
       "Auto B-roll insertion & AI Emojis",
@@ -117,7 +121,7 @@ export const TIERS_CONFIG: TierConfig[] = [
   {
     id: "creator_max",
     name: "RelatiV Max",
-    tagline: "Power creators, media studios, and creator houses",
+    tagline: "Best for studios & agencies",
     badge: "👑 STUDIO SCALE",
     image: "/hero-wheel/purple-hoodie-4x5.jpg",
     credits: "200,000 credits",
@@ -138,6 +142,7 @@ export const TIERS_CONFIG: TierConfig[] = [
     },
     features: [
       "200,000 credits · up to 1,000 clips / month",
+      "Narrative-complete 30–90 second clips",
       "Up to 90 min source video length",
       "2 concurrent active processing tasks",
       "Team seats & shared brand templates",
@@ -190,7 +195,7 @@ export default function InteractiveTierCards({
     }
     setLoadingPlan(tier.id);
     if (!user) {
-      router.push(`/signup?plan=${encodeURIComponent(tier.id)}&next=/dashboard`);
+      router.push(`/signup?next=/plans`);
       return;
     }
     const checkoutUrl = getPolarCheckoutUrl(tier.id, user);
@@ -553,13 +558,18 @@ function BackFace({
 
         {/* Price Display */}
         <div className="flex items-baseline gap-1.5">
+          {!isYearly && tier.originalMonthlyPrice && (
+            <span className="text-lg text-zinc-500 line-through decoration-zinc-500">
+              {tier.originalMonthlyPrice}
+            </span>
+          )}
           <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
             {displayPrice}
           </span>
           <span className="text-xs text-zinc-400 font-sans">/ month</span>
         </div>
         <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
-          {isYearly ? tier.yearlyBilled : "Billed monthly · Cancel anytime"}
+          {isYearly ? tier.yearlyBilled : tier.originalMonthlyPrice ? "First month launch price · then $9.99/month" : "Billed monthly · Cancel anytime"}
         </p>
       </div>
 

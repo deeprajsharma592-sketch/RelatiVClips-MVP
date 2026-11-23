@@ -55,7 +55,6 @@ from .routers import (
     dashboard_router,
     email_auth_router,
     billing_router,
-    razorpay_router,
     campaigns_router,
     claims_router,
     clips_router,
@@ -176,7 +175,6 @@ if not is_supabase_auth_configured():
     # Configured Supabase deployments must use Supabase Auth flows.
     app.include_router(email_auth_router.router)
 app.include_router(billing_router.router)
-app.include_router(razorpay_router.router)
 app.include_router(campaigns_router.router)
 app.include_router(claims_router.router)
 app.include_router(clips_router.router)

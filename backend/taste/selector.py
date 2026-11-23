@@ -34,50 +34,49 @@ def snap_to_sentence_boundary(
     Ensures the clip starts on the first word of a thought (not mid-syllable or
     after a cut-off phrase) and ends after a sentence-closing punctuation mark.
     """
+    video_duration = max(0.0, float(video_duration or 0.0))
+    start = max(0.0, float(start))
+    end = max(start, float(end))
+    source_ceiling = video_duration if video_duration > 0 else max(end, start + max_dur)
     if not transcript or not transcript.get("segments"):
-        return start, end
+        bounded_end = min(source_ceiling, max(end, start + min_dur))
+        bounded_start = start
+        if bounded_end - bounded_start < min_dur:
+            bounded_start = max(0.0, bounded_end - min_dur)
+        if bounded_end - bounded_start > max_dur:
+            bounded_end = bounded_start + max_dur
+        return bounded_start, bounded_end
 
     segments = transcript.get("segments") or []
-    snapped_start = start
-    snapped_end = end
-
-    # 1. Snap start: look for segment or sentence start within 3.5s of start
+    sentence_starts = {float(seg.get("start", 0)) for seg in segments}
+    sentence_ends = {
+        float(seg.get("end", 0))
+        for seg in segments
+        if any(mark in str(seg.get("text") or "").strip() for mark in SENTENCE_TERMINATORS)
+    }
     for seg in segments:
-        s_s = float(seg.get("start", 0))
-        s_e = float(seg.get("end", 0))
-        # If segment start is near our start, align to it
-        if abs(s_s - start) <= 3.5:
-            snapped_start = s_s
-            break
-        # If words with timestamps are available, find word after a punctuation mark
         words = seg.get("words") or []
-        for i, w in enumerate(words):
-            w_start = float(w.get("start", 0))
-            if abs(w_start - start) <= 2.5:
-                # If previous word ended with a terminator or this word is capitalized
-                prev_text = words[i - 1].get("word", "") if i > 0 else "."
-                if any(c in prev_text for c in SENTENCE_TERMINATORS) or w.get("word", "")[:1].isupper():
-                    snapped_start = w_start
-                    break
+        for index, word in enumerate(words):
+            text = str(word.get("word") or word.get("w") or "")
+            if any(mark in text for mark in SENTENCE_TERMINATORS):
+                sentence_ends.add(float(word.get("end", word.get("start", 0))))
+                if index + 1 < len(words):
+                    sentence_starts.add(float(words[index + 1].get("start", 0)))
 
-    # 2. Snap end: look for sentence ending punctuation within 4.5s of end
-    for seg in reversed(segments):
-        s_s = float(seg.get("start", 0))
-        s_e = float(seg.get("end", 0))
-        text = (seg.get("text") or "").strip()
-        if any(c in text for c in SENTENCE_TERMINATORS) and abs(s_e - end) <= 4.5:
-            candidate_dur = s_e - snapped_start
-            if min_dur <= candidate_dur <= max_dur:
-                snapped_end = s_e
-                break
+    nearby_starts = [value for value in sentence_starts if 0 <= value <= source_ceiling and abs(value - start) <= 3.5]
+    snapped_start = min(nearby_starts, key=lambda value: abs(value - start)) if nearby_starts else start
+    valid_ends = [
+        value for value in sentence_ends
+        if min_dur <= value - snapped_start <= max_dur and value <= source_ceiling
+    ]
+    snapped_end = min(valid_ends, key=lambda value: abs(value - end)) if valid_ends else min(source_ceiling, max(end, snapped_start + min_dur))
 
-    # Guard bounds
-    snapped_start = max(0.0, snapped_start)
-    snapped_end = min(video_duration, snapped_end)
     if snapped_end - snapped_start < min_dur:
-        snapped_end = min(video_duration, snapped_start + min_dur)
+        snapped_start = max(0.0, snapped_end - min_dur)
     if snapped_end - snapped_start > max_dur:
-        snapped_end = snapped_start + max_dur
+        eligible = [value for value in sentence_ends if min_dur <= value - snapped_start <= max_dur]
+        snapped_end = max(eligible) if eligible else snapped_start + max_dur
+    snapped_end = min(source_ceiling, snapped_end)
 
     return snapped_start, snapped_end
 

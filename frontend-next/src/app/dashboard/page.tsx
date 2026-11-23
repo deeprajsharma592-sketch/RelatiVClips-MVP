@@ -30,6 +30,7 @@ import StudioHeader from "@/components/dashboard/StudioHeader";
 import StudioHero from "@/components/dashboard/StudioHero";
 import UpgradeModal from "@/components/dashboard/UpgradeModal";
 import ClipInspectorModal from "@/components/ClipInspectorModal";
+import VideoProcessingView from "@/components/VideoProcessingView";
 import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
@@ -52,12 +53,15 @@ import type { Clip } from "@/types";
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, refresh: refreshUser } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   const taskIdParam = searchParams.get("taskId");
   const urlParam = searchParams.get("url");
   const captionStyleParam = searchParams.get("captionStyle");
+  const tailBufferParam = searchParams.get("tailBuffer");
+  const thumbnailOutroParam = searchParams.get("thumbnailOutro");
+  const paymentSucceeded = searchParams.get("payment") === "success";
   const tabParam = searchParams.get("tab") as StudioTab | null;
 
   // Active Navigation Tab
@@ -87,6 +91,13 @@ function DashboardContent() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!paymentSucceeded) return;
+    void refreshUser();
+    const timer = window.setTimeout(() => void refreshUser(), 2500);
+    return () => window.clearTimeout(timer);
+  }, [paymentSucceeded, refreshUser]);
 
   // Load genuine projects from storage on mount
   useEffect(() => {
@@ -202,7 +213,11 @@ function DashboardContent() {
       }
       let captionStyle: Record<string, unknown> | undefined;
       try { captionStyle = captionStyleParam ? JSON.parse(captionStyleParam) : undefined; } catch { captionStyle = undefined; }
-      submitYouTubeUrl(urlParam, { captionStyle })
+      submitYouTubeUrl(urlParam, {
+        captionStyle,
+        tailBufferSeconds: tailBufferParam === "0" ? 0 : 3,
+        thumbnailOutroSeconds: thumbnailOutroParam === "0" ? 0 : 4,
+      })
         .then((init) => {
           if (!isMounted) return;
           if (init.taskId) {
@@ -230,7 +245,7 @@ function DashboardContent() {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [router, taskIdParam, urlParam, captionStyleParam]);
+  }, [router, taskIdParam, urlParam, captionStyleParam, tailBufferParam, thumbnailOutroParam]);
 
   // Elapsed timer when generation is active
   useEffect(() => {
@@ -290,6 +305,12 @@ function DashboardContent() {
 
         {/* Content Pane */}
         <main className="flex-1 w-full min-w-0 max-w-[1480px] mx-auto p-5 pb-24 sm:p-8 sm:pb-24 lg:pb-10 xl:px-12 xl:py-10 space-y-8">
+          {paymentSucceeded && (
+            <div role="status" className="mx-auto flex max-w-5xl items-center gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+              <div><span className="font-semibold">Upgrade confirmed.</span> Your plan and credit balance are refreshing now.</div>
+            </div>
+          )}
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
             <div className="mx-auto max-w-[1120px] space-y-6 sm:space-y-7">
@@ -312,44 +333,21 @@ function DashboardContent() {
                 onStartProcess={(tid) => {
                   router.push(`/dashboard?taskId=${tid}`);
                 }}
-                onSubmitUrl={(u, _template, captionStyle) => {
-                  const styleQuery = captionStyle ? `&captionStyle=${encodeURIComponent(JSON.stringify(captionStyle))}` : "";
-                  router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}`);
+                onSubmitUrl={(u, config) => {
+                  const styleQuery = config.captionStyle ? `&captionStyle=${encodeURIComponent(JSON.stringify(config.captionStyle))}` : "";
+                  const finishQuery = `&tailBuffer=${config.includeNaturalTail ? 3 : 0}&thumbnailOutro=${config.includeThumbnailOutro ? 4 : 0}`;
+                  router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}${finishQuery}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
               />
 
-              {/* ── ACTIVE GENERATION / WAITING STATE ── */}
+              {/* ── ACTIVE GENERATION / WAITING STATE (Thinking AI Blob + Green Filling Thumbnail) ── */}
               {isGenerating && (
-                <div className="space-y-4 rounded-2xl border border-white/[0.09] bg-[#17181A] p-6 text-center shadow-[0_18px_50px_rgba(0,0,0,.2)] sm:p-8">
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    <span>Processing 9:16 Vertical Video</span>
-                  </div>
-
-                  <div className="max-w-md mx-auto space-y-1.5">
-                    <h2 className="text-lg font-bold text-white tracking-tight">
-                      {currentStepName || "RelatiV Engine is analyzing your video..."}
-                    </h2>
-                    <p className="text-xs text-zinc-400">
-                      Detecting peak retention moments, reframing face positions, and rendering subtitles.
-                    </p>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="max-w-md mx-auto space-y-1.5">
-                    <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-white rounded-full"
-                        animate={{ width: `${generationProgress}%` }}
-                        transition={{ ease: "easeInOut", duration: 0.5 }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                      <span>{generationProgress}% complete</span>
-                      <span>{elapsedSec}s elapsed</span>
-                    </div>
-                  </div>
+                <div className="rounded-2xl border border-white/10 bg-[#121215]/80 backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
+                  <VideoProcessingView
+                    thumbnailUrl={activeProject?.clips?.[0]?.thumbnail_url || null}
+                    progress={generationProgress}
+                  />
                 </div>
               )}
 

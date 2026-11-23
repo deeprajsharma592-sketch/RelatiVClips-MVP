@@ -34,6 +34,7 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClipInspectorModal from "@/components/ClipInspectorModal";
+import VideoProcessingView from "@/components/VideoProcessingView";
 import { StageAnimation } from "@/components/StageAnimation";
 import { ActivityFeed, type FeedEvent } from "@/components/ActivityFeed";
 import VideoIntake from "@/components/VideoIntake";
@@ -87,11 +88,18 @@ function ProcessFallback() {
   );
 }
 
+function getYouTubeThumbnail(url: string): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  return match ? `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg` : null;
+}
+
 function ProcessInner() {
   const params = useSearchParams();
 
   const initialUrl = params.get("url") || "";
   const initialTaskId = params.get("taskId") || params.get("task_id") || "";
+  const thumbnailUrl = getYouTubeThumbnail(initialUrl);
 
   const [state, setState] = useState<ProcessState>(initialUrl || initialTaskId ? "processing" : "idle");
   const [clips, setClips] = useState<Clip[]>([]);
@@ -344,258 +352,21 @@ function ProcessInner() {
             </div>
           )}
 
-          {/* Processing dashboard */}
+          {/* Processing dashboard — Zero clutter text, Thinking AI Blob on left, Green-filling thumbnail on right */}
           <AnimatePresence>
             {state === "processing" && (
               <motion.div
                 key="processing"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="max-w-5xl mx-auto"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
+                className="w-full flex items-center justify-center py-4"
               >
-                <div
-                  className="rounded-3xl p-6 md:p-8"
-                  style={{
-                    background: "var(--glass-light-strong)",
-                    backdropFilter: "blur(20px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                    border: "1px solid var(--color-border)",
-                    boxShadow:
-                      "0 8px 24px rgba(40, 30, 20, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
-                  }}
-                >
-                  {/* Stats bar */}
-                  <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2
-                        className="h-4 w-4 animate-spin"
-                        style={{ color: "var(--color-accent)" }}
-                      />
-                      <span
-                        className="text-[12px] font-mono uppercase tracking-wider"
-                        style={{ color: "var(--color-text-muted)" }}
-                      >
-                        Processing · {elapsedSec}s
-                        {etaSec !== null && (etaSec as number) > 0
-                          ? ` · ~${formatTime(etaSec as number)} left`
-                          : ""}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px] font-mono">
-                      {cacheHit && (
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                          style={{
-                            background: "rgba(16, 185, 129, 0.12)",
-                            color: "#10B981",
-                          }}
-                          title={`Cache hit · saved $${(cacheSavings ?? 0).toFixed(4)} · age ${(cacheAgeH ?? 0).toFixed(1)}h`}
-                        >
-                          <Zap className="h-3 w-3" />
-                          CACHE HIT
-                        </span>
-                      )}
-                      {costUsd !== null && (costUsd as number) > 0 && (
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                          style={{
-                            background: "rgba(245, 158, 11, 0.12)",
-                            color: "#F59E0B",
-                          }}
-                          title={`LLM cost: $${(costUsd as number).toFixed(4)} (${llmProvider ?? "—"})`}
-                        >
-                          <Coins className="h-3 w-3" />
-                          ${(costUsd as number).toFixed(4)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div
-                    className="relative h-1.5 w-full overflow-hidden rounded-full mb-2"
-                    style={{ background: "var(--color-surface-2)" }}
-                    role="progressbar"
-                    aria-valuenow={progress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <motion.div
-                      className="absolute inset-y-0 left-0 rounded-full"
-                      style={{
-                        width: `${progress}%`,
-                        background: "linear-gradient(90deg, #D946EF 0%, #F59E0B 100%)",
-                        boxShadow: "0 0 12px rgba(217, 70, 239, 0.45)",
-                      }}
-                      initial={false}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] font-mono mb-6">
-                    <span style={{ color: "var(--color-text-muted)" }}>
-                      {currentStepMsg}
-                    </span>
-                    <span
-                      style={{
-                        color: "var(--color-text-primary)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {Math.round(progress)}%
-                    </span>
-                  </div>
-
-                  {/* 6-step pipeline with per-stage animations */}
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-                    {STEPS.map((step) => {
-                      const isActive = step.number === stepNumber;
-                      const isPast = step.number < stepNumber;
-                      const durationS = stepTimes?.find((t) => t.step === step.number)?.duration_s;
-                      return (
-                        <motion.div
-                          key={step.number}
-                          layout
-                          initial={false}
-                          animate={{
-                            scale: isActive ? 1.02 : 1,
-                          }}
-                          className="rounded-2xl p-3 text-left relative overflow-hidden"
-                          style={{
-                            background: isActive
-                              ? "linear-gradient(135deg, rgba(217, 70, 239, 0.12) 0%, rgba(245, 158, 11, 0.06) 100%)"
-                              : "var(--color-surface-1)",
-                            border: isActive
-                              ? "1px solid rgba(217, 70, 239, 0.4)"
-                              : "1px solid var(--color-border)",
-                            opacity: isActive || isPast ? 1 : 0.55,
-                            transition: "background 0.3s, border-color 0.3s",
-                          }}
-                        >
-                          {isActive && (
-                            <motion.div
-                              className="absolute inset-0 rounded-2xl pointer-events-none"
-                              style={{
-                                background: "linear-gradient(135deg, rgba(217, 70, 239, 0.1) 0%, transparent 100%)",
-                              }}
-                              animate={{ opacity: [0.5, 1, 0.5] }}
-                              transition={{ duration: 1.6, repeat: Infinity }}
-                            />
-                          )}
-                          <div className="flex items-center justify-between mb-2 relative">
-                            <span className="text-lg">{step.icon}</span>
-                            <div style={{ color: isPast ? "#10B981" : isActive ? "var(--color-accent)" : "var(--color-text-muted)" }}>
-                              <StageAnimation
-                                step={step}
-                                state={isPast ? "done" : isActive ? "active" : "pending"}
-                                durationS={durationS}
-                              />
-                            </div>
-                          </div>
-                          <p
-                            className="text-[12px] font-semibold leading-tight mb-0.5 relative"
-                            style={{ color: "var(--color-text-primary)" }}
-                          >
-                            {step.label}
-                          </p>
-                          <p
-                            className="text-[10px] font-mono leading-snug relative"
-                            style={{ color: "var(--color-text-muted)" }}
-                          >
-                            {step.sub}
-                          </p>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Live activity feed + per-step timing breakdown */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div
-                      className="rounded-2xl p-4"
-                      style={{
-                        background: "var(--color-surface-1)",
-                        border: "1px solid var(--color-border)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span
-                          className="text-[10px] font-mono uppercase tracking-wider"
-                          style={{ color: "var(--color-text-muted)" }}
-                        >
-                          Activity
-                        </span>
-                        <span
-                          className="text-[10px] font-mono"
-                          style={{ color: "var(--color-text-muted)" }}
-                        >
-                          {feed.length} events
-                        </span>
-                      </div>
-                      <ActivityFeed events={feed} />
-                    </div>
-                    <div
-                      className="rounded-2xl p-4"
-                      style={{
-                        background: "var(--color-surface-1)",
-                        border: "1px solid var(--color-border)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span
-                          className="text-[10px] font-mono uppercase tracking-wider"
-                          style={{ color: "var(--color-text-muted)" }}
-                        >
-                          Stage timing
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {STEPS.map((step) => {
-                          const dur = stepTimes?.find((t) => t.step === step.number)?.duration_s;
-                          const isCurrent = step.number === stepNumber;
-                          return (
-                            <div
-                              key={step.number}
-                              className="flex items-center justify-between text-[11px] font-mono"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span style={{ width: 14, color: "var(--color-text-muted)" }}>
-                                  {step.number}
-                                </span>
-                                <span
-                                  style={{
-                                    color: isCurrent
-                                      ? "var(--color-accent)"
-                                      : dur
-                                      ? "var(--color-text-primary)"
-                                      : "var(--color-text-muted)",
-                                  }}
-                                >
-                                  {step.label}
-                                </span>
-                              </div>
-                              <span
-                                className="tabular-nums"
-                                style={{
-                                  color: dur ? "var(--color-text-primary)" : "var(--color-text-muted)",
-                                }}
-                              >
-                                {dur !== undefined
-                                  ? dur < 60
-                                    ? `${dur}s`
-                                    : `${Math.round(dur / 60)}m ${dur % 60}s`
-                                  : isCurrent
-                                  ? "running…"
-                                  : "—"}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <VideoProcessingView
+                  thumbnailUrl={thumbnailUrl}
+                  progress={progress}
+                />
               </motion.div>
             )}
           </AnimatePresence>

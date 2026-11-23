@@ -537,6 +537,8 @@ async def run_youtube_orchestrator(
     requested_clip_count: Optional[int] = None,
     max_source_duration_s: Optional[int] = None,
     llm_provider_preference: Optional[str] = None,
+    tail_buffer_seconds: float = 3.0,
+    thumbnail_outro_seconds: float = 4.0,
 ):
     """New pipeline path (PIPELINE_VERSION=2) — transcript-first selection.
 
@@ -727,6 +729,8 @@ async def run_youtube_orchestrator(
             caption_font=caption_font,
             caption_style=caption_style,
             target_clip_count=target_clip_count,
+            tail_buffer_seconds=tail_buffer_seconds,
+            thumbnail_outro_seconds=thumbnail_outro_seconds,
         ),
     )
     return final_clips
@@ -746,6 +750,8 @@ def _run_moment_pipeline(
     caption_font: str = "studio",
     caption_style: Optional[dict] = None,
     target_clip_count: int = 2,
+    tail_buffer_seconds: float = 3.0,
+    thumbnail_outro_seconds: float = 4.0,
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
 
@@ -757,7 +763,7 @@ def _run_moment_pipeline(
     from ..pipeline import renderer as renderer_module
     from ..pipeline.platforms import (
         adjust_clip_to_format as adjust_clip_for_platform,
-        style_caption, limit_hashtags,
+        apply_finishing_window, style_caption, limit_hashtags,
     )
     from datetime import datetime
     from ..llm.chain import call_with_fallback
@@ -1237,14 +1243,15 @@ def _run_moment_pipeline(
                 c_end,
                 video_duration=float(video_duration_s),
             )
-            # Keep the LLM's calibrated start, then include three seconds of
-            # natural source continuation. The optional thumbnail CTA remains
-            # a separate four-second outro appended by the renderer.
             calibrated_end = new_end
-            source_ceiling = float(video_duration_s) if float(video_duration_s or 0) > 0 else new_end + 3.0
-            new_end = min(source_ceiling, new_end + 3.0)
-            if new_end > calibrated_end:
-                reason = f"{reason}; +{new_end - calibrated_end:.1f}s natural tail"
+            new_end, applied_tail = apply_finishing_window(
+                new_start,
+                calibrated_end,
+                video_duration=float(video_duration_s),
+                tail_buffer_s=tail_buffer_seconds,
+            )
+            if applied_tail:
+                reason = f"{reason}; +{applied_tail:.1f}s natural tail"
             clip["start"] = round(new_start, 2)
             clip["end"] = round(new_end, 2)
             clip["duration_s"] = round(new_end - new_start, 2)
@@ -1260,6 +1267,9 @@ def _run_moment_pipeline(
             ]
             clip["transcript"] = {"segments": clip_segs} if clip_segs else None
             clip["_platform_adjustment"] = reason
+            clip["narrative_end"] = round(calibrated_end, 2)
+            clip["tail_buffer_seconds"] = round(applied_tail, 2)
+            clip["thumbnail_outro_seconds"] = round(max(0.0, min(4.0, thumbnail_outro_seconds)), 2)
             clip["caption"] = style_caption(clip.get("caption", ""))
             clip["hashtags"] = limit_hashtags(clip.get("hashtags", ""))
             adjusted.append(clip)
@@ -1529,6 +1539,8 @@ async def run_youtube_pipeline_async(
     is_remake: bool = False,
     max_source_duration_s: Optional[int] = None,
     llm_provider_preference: Optional[str] = None,
+    tail_buffer_seconds: float = 3.0,
+    thumbnail_outro_seconds: float = 4.0,
 ):
     async def settle_credits(output_clips: int = 0, *, failed: bool = False):
         if credit_reservation is None:
@@ -1553,7 +1565,12 @@ async def run_youtube_pipeline_async(
         from ..caching.service import get_cached_video
         from ..database.session import async_session, _DB_AVAILABLE
         cached = None
-        if is_remake or caption_font != "studio":
+        if (
+            is_remake
+            or caption_font != "studio"
+            or tail_buffer_seconds != 3.0
+            or thumbnail_outro_seconds != 4.0
+        ):
             cached = None
         elif _DB_AVAILABLE:
             async with async_session() as session:
@@ -1630,6 +1647,8 @@ async def run_youtube_pipeline_async(
                 requested_clip_count=requested_clip_count,
                 max_source_duration_s=max_source_duration_s,
                 llm_provider_preference=llm_provider_preference,
+                tail_buffer_seconds=tail_buffer_seconds,
+                thumbnail_outro_seconds=thumbnail_outro_seconds,
             )
             clips = result.get("clips", [])
             cost_usd = result.get("llm_cost_usd", 0.0)
@@ -1752,6 +1771,11 @@ async def process_youtube_url(
     raw_caption_style = request.get("caption_style") if isinstance(request.get("caption_style"), dict) else None
     caption_style = raw_caption_style or {"preset": caption_font, "overrides": {}}
     is_remake = bool(request.get("is_remake", False))
+    try:
+        tail_buffer_seconds = min(3.0, max(0.0, float(request.get("tail_buffer_seconds", 3.0))))
+        thumbnail_outro_seconds = min(4.0, max(0.0, float(request.get("thumbnail_outro_seconds", 4.0))))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Finishing durations must be numeric") from None
     raw_clip_count = request.get("clip_count")
     # Two clips is the default first run and exactly matches the two starter
     # credits granted during onboarding. Users may explicitly request 1..4.
@@ -1828,6 +1852,8 @@ async def process_youtube_url(
                 is_admin=user.is_admin or is_admin_email(user.email),
             ),
             llm_provider_preference="claude" if user.plan_tier in {"go", "creator_go"} else None,
+            tail_buffer_seconds=tail_buffer_seconds,
+            thumbnail_outro_seconds=thumbnail_outro_seconds,
         )
     )
 
