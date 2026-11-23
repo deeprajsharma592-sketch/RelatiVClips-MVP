@@ -15,7 +15,7 @@ export async function mountStudioTower(root, signal) {
     if (!gl) throw new Error('WebGL 2 unavailable');
     const vertex = `#version 300 es
     in vec3 position; in vec3 normal; in vec2 uv;
-    uniform vec4 camera; uniform float aspect; uniform vec2 motion; uniform float plume;
+    uniform vec4 camera; uniform float aspect; uniform vec2 motion; uniform float plume; uniform vec4 flightPose;
     out vec3 n; out vec2 t;
     vec3 orbit(vec3 p) {
       vec3 q=vec3(camera.y*p.x+camera.x*p.z,p.y,camera.y*p.z-camera.x*p.x);
@@ -31,8 +31,13 @@ export async function mountStudioTower(root, signal) {
       vec3 q=orbit(p+vec3(0.,motion.x-3.79,0.));
       float w=1.-q.z/17.;
       float scale=.246*min(1.,aspect/.50);
-      gl_Position=vec4(q.x*scale/aspect,q.y*scale,-q.z*.06,w);
-      n=orbit(normal); t=uv;
+      float c=cos(flightPose.w), s=sin(flightPose.w);
+      mat2 bank=mat2(c,s,-s,c);
+      vec2 projected=bank*q.xy*scale*flightPose.z;
+      gl_Position=vec4(projected/vec2(aspect,1.)+flightPose.xy*w,-q.z*.06,w);
+      n=orbit(normal);
+      n.xy=bank*n.xy;
+      t=uv;
     }`;
     const fragment = `#version 300 es
     precision highp float;
@@ -78,7 +83,7 @@ export async function mountStudioTower(root, signal) {
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
-    const uniforms=Object.fromEntries(['camera','aspect','textured','metal','motion','plume'].map(key=>[key,gl.getUniformLocation(program,key)]));
+    const uniforms=Object.fromEntries(['camera','aspect','textured','metal','motion','plume','flightPose'].map(key=>[key,gl.getUniformLocation(program,key)]));
     const response=await fetch('/studio-tower/mesh.json', {signal});
     if(!response.ok) throw new Error('Model data could not load');
     const [mesh,images]=await response.json();
@@ -140,7 +145,14 @@ export async function mountStudioTower(root, signal) {
     const returnDuration=700;
     const readingPause=2200;
     let azimuth=homeAzimuth, pitch=homePitch, drag=null, last=0;
+    const flightDuration=7200;
+    const flightThreshold=520;
+    const gestureGap=300;
+    const restPose=[0,0,1,0];
     let returnView=null;
+    let flight=null;
+    let flightPose=restPose;
+    let gesture=null;
     function draw(){
       const rect=canvas.getBoundingClientRect();
       const ratio=Math.min(window.devicePixelRatio||1,2);
@@ -151,6 +163,7 @@ export async function mountStudioTower(root, signal) {
       gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
       gl.uniform4f(uniforms.camera,Math.sin(azimuth),Math.cos(azimuth),Math.sin(pitch),Math.cos(pitch));
       gl.uniform1f(uniforms.aspect,width/height);
+      gl.uniform4fv(uniforms.flightPose,flightPose);
       gl.uniform2f(uniforms.motion,.075*Math.sin(clock*tau/4.5),clock);
       for(const mesh of meshes){
         if(mesh.plume){
@@ -174,7 +187,27 @@ export async function mountStudioTower(root, signal) {
       const elapsed=last ? Math.min(now-last,80) : 0;
       last=now;
       clock+=elapsed/1000;
-      if(returnView){
+      if(flight){
+        const progress=Math.max(0,Math.min(1,(now-flight.start)/flightDuration));
+        const eased=progress*progress*(3-2*progress);
+        const distance=Math.sin(Math.PI*eased);
+        const orbitAngle=tau*eased;
+        flightPose=[
+          flight.direction*.56*Math.sin(orbitAngle)*distance,
+          distance*(.18+.10*Math.cos(orbitAngle)),
+          1-.44*distance,
+          -flight.direction*.29*Math.cos(orbitAngle)*distance,
+        ];
+        azimuth=flight.azimuth+flight.turn*eased;
+        pitch=flight.pitch+(homePitch-flight.pitch)*eased+.25*distance;
+        if(progress===1){
+          flight=null;
+          flightPose=restPose;
+          azimuth=homeAzimuth;
+          pitch=homePitch;
+          returnView={start:now-returnDuration,azimuth,pitch,turn:0};
+        }
+      } else if(returnView){
         const progress=Math.max(0,Math.min(1,(now-returnView.start)/returnDuration));
         const eased=progress*progress*(3-2*progress);
         azimuth=returnView.azimuth+returnView.turn*eased;
@@ -187,7 +220,8 @@ export async function mountStudioTower(root, signal) {
       animationFrame=requestAnimationFrame(animate);
     }
     canvas.addEventListener('pointerdown',event=>{
-      if(drag) return;
+      if(drag||flight) return;
+      gesture=null;
       clearTimeout(resetTimer);
       returnView=null;
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
@@ -224,15 +258,36 @@ export async function mountStudioTower(root, signal) {
       queueReturn(reducedMotion?0:returnDelay);
     }, {signal});
     canvas.addEventListener('wheel',event=>{
-      if(drag||event.ctrlKey||!event.cancelable) return;
+      if(drag||event.ctrlKey) return;
       const horizontal=Math.abs(event.deltaX)>Math.abs(event.deltaY);
       const delta=horizontal?event.deltaX:event.shiftKey?event.deltaY:0;
       if(!delta) return;
-      event.preventDefault();
+      if(event.cancelable) event.preventDefault();
+      if(flight) return;
       const unit=event.deltaMode===1?16:event.deltaMode===2?canvas.clientWidth:1;
       const pixels=Math.max(-120,Math.min(120,delta*unit));
       azimuth=(azimuth+pixels*.006)%tau;
-      queueReturn();
+      const now=performance.now();
+      const direction=Math.sign(pixels);
+      if(!gesture||gesture.direction!==direction||now-gesture.last>gestureGap){
+        gesture={direction,start:now,last:now,distance:0};
+      }
+      gesture.last=now;
+      gesture.distance+=Math.abs(pixels);
+      if(!reducedMotion&&gesture.distance>=flightThreshold&&now-gesture.start>=280){
+        const delta=homeAzimuth-azimuth;
+        flight={
+          start:now,
+          direction,
+          azimuth,
+          pitch,
+          turn:Math.atan2(Math.sin(delta),Math.cos(delta))+direction*2*tau,
+        };
+        gesture=null;
+        returnView=null;
+      } else {
+        queueReturn();
+      }
       draw();
     }, {passive:false,signal});
     observer=new ResizeObserver(draw);
