@@ -110,16 +110,16 @@ export default function StudioHero({
 
   return (
     <div className="w-full min-w-0 font-sans">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#1a1b1d] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-white/[0.1] bg-[#17181a] shadow-[0_24px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/30">
         {/* Tabs Bar */}
-        <div className="flex h-14 items-end justify-between border-b border-white/[0.06] px-4">
-          <div className="flex items-center gap-2">
+        <div className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-4 py-2">
+          <div className="flex items-center gap-1 rounded-xl border border-white/[0.06] bg-black/20 p-1">
             <button
               onClick={() => setActiveTab("clip")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeTab === "clip"
-                  ? "bg-[#252629] text-white"
-                  : "text-zinc-400 hover:text-white"
+                ? "bg-[#292a2d] text-white shadow-sm ring-1 ring-white/[0.06]"
+                  : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
               }`}
             >
               <Film size={14} className="text-[#A8FF4F]" />
@@ -130,8 +130,8 @@ export default function StudioHero({
               onClick={() => setActiveTab("auto-edit")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeTab === "auto-edit"
-                  ? "bg-[#252629] text-white"
-                  : "text-zinc-400 hover:text-white"
+                ? "bg-[#292a2d] text-white shadow-sm ring-1 ring-white/[0.06]"
+                  : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
               }`}
             >
               <Wand2 size={13} className="text-zinc-400" />
@@ -141,7 +141,7 @@ export default function StudioHero({
 
           <button
             onClick={() => alert("Open editor mode")}
-            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300 cursor-pointer"
           >
             <Scissors size={13} />
             <span>Open editor</span>
@@ -149,8 +149,8 @@ export default function StudioHero({
         </div>
 
         {/* Input Bar */}
-        <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4">
-          <div className="relative flex flex-col gap-2 rounded-xl border border-white/10 bg-[#121315] p-2 focus-within:border-[#E7B84B]/55 transition sm:flex-row sm:items-center">
+        <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4 sm:px-5 sm:pt-5">
+          <div className="relative flex flex-col gap-2 rounded-xl border border-white/[0.11] bg-[#101113] p-2 transition focus-within:border-[#E7B84B]/55 focus-within:shadow-[0_0_0_3px_rgba(231,184,75,0.08)] sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center px-1.5">
               <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
               <input
@@ -176,7 +176,7 @@ export default function StudioHero({
                   if (error) setError(null);
                 }}
                 placeholder="Paste a YouTube link"
-                className="min-w-0 w-full bg-transparent text-sm text-white placeholder-[#77787d] focus:outline-none py-2.5"
+                className="min-w-0 w-full bg-transparent py-3 text-sm text-white placeholder-[#77787d] focus:outline-none"
               />
               <button
                 type="button"
@@ -189,7 +189,7 @@ export default function StudioHero({
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="w-full px-5 py-3 rounded-lg bg-[#F4F1E8] text-[#151515] hover:bg-white disabled:opacity-35 text-xs font-semibold transition shrink-0 cursor-pointer sm:w-auto"
+              className="w-full shrink-0 rounded-lg bg-[#F4F1E8] px-5 py-3 text-xs font-semibold text-[#151515] transition hover:bg-white disabled:opacity-35 cursor-pointer sm:w-auto"
             >
               Get clips in 1 click
             </button>
@@ -199,7 +199,7 @@ export default function StudioHero({
         </form>
 
         {/* Secondary Upload Actions Row */}
-        <div className="flex flex-wrap items-center gap-5 px-5 pb-4 pt-3 text-xs text-[#a1a2a7]">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 pb-5 pt-3 text-xs text-[#a1a2a7]">
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"

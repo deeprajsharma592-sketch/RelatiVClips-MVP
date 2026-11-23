@@ -18,6 +18,7 @@ temp/
 yolov10n.pt
 .venv_framing/
 *.mp4
+!frontend-next/public/videos/audience-network.mp4
 *.wav
 demo_test/
 e2e_youtube_run/

@@ -23,6 +23,7 @@ import {
   FolderOpen,
   RefreshCw,
   Calendar,
+  Zap,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
 import StudioHeader from "@/components/dashboard/StudioHeader";
@@ -291,13 +292,20 @@ function DashboardContent() {
         <main className="flex-1 w-full min-w-0 max-w-[1480px] mx-auto p-5 pb-24 sm:p-8 sm:pb-24 lg:pb-10 xl:px-12 xl:py-10 space-y-8">
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
-            <div className="space-y-8">
-              <div className="mx-auto flex max-w-5xl items-end justify-between gap-5">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8] sm:text-3xl">Turn the long take into the cut.</h1>
-                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#8f9095]">Start with the source. RelatiV finds the moments, frames the subject, and finishes the captions.</p>
+            <div className="mx-auto max-w-[1120px] space-y-6 sm:space-y-7">
+              <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                <div className="max-w-2xl">
+                  <div className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9a9ba1]">
+                    <span className="size-1.5 rounded-full bg-[#E7B84B]" />
+                    Creator workspace
+                  </div>
+                  <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-tight tracking-[-0.045em] text-[#F4F1E8]">Make a clip from any long video.</h1>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#9a9ba1]">Add a source and RelatiV will find the strongest moments, frame the subject, and finish your captions.</p>
                 </div>
-                <span className="hidden text-xs text-[#696a6f] sm:block">200 credits per finished clip</span>
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-2 text-xs text-[#b9b9bd]">
+                  <Zap className="size-3.5 text-[#E7B84B]" />
+                  200 credits per finished clip
+                </div>
               </div>
               {/* Studio Central Hero Intake Station */}
               <StudioHero
@@ -313,7 +321,7 @@ function DashboardContent() {
 
               {/* ── ACTIVE GENERATION / WAITING STATE ── */}
               {isGenerating && (
-                <div className="rounded-xl border border-white/10 bg-[#121215] p-6 text-center space-y-4 shadow-xl">
+                <div className="space-y-4 rounded-2xl border border-white/[0.09] bg-[#17181A] p-6 text-center shadow-[0_18px_50px_rgba(0,0,0,.2)] sm:p-8">
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                     <span>Processing 9:16 Vertical Video</span>
@@ -416,17 +424,14 @@ function DashboardContent() {
 
               {/* ── Empty Vault ── */}
               {!isGenerating && (!activeProject || (activeProject.clips?.length || 0) === 0) && (
-                <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-3">
-                  <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-zinc-400">
-                    <Video className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1 max-w-sm mx-auto">
-                    <h3 className="font-medium text-sm text-white">
-                      Your generated clips will appear here
-                    </h3>
-                    <p className="text-xs text-zinc-500 leading-relaxed">
-                      Drop a YouTube link above or upload video footage to extract clips.
-                    </p>
+                <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151619] px-5 py-8 sm:px-8 sm:py-9">
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,rgba(231,184,75,0.08),transparent_55%)]" />
+                  <div className="relative mx-auto flex max-w-lg flex-col items-center text-center">
+                    <div className="mb-4 grid size-12 place-items-center rounded-2xl border border-white/[0.1] bg-white/[0.04] text-[#d7d4ca] shadow-[inset_0_1px_rgba(255,255,255,.06)]">
+                      <Video className="size-5" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-[#F4F1E8]">Your clips will show up here</h3>
+                    <p className="mt-1.5 text-xs leading-5 text-[#85868c]">Paste a video link or upload footage to create your first set of clips.</p>
                   </div>
                 </div>
               )}
