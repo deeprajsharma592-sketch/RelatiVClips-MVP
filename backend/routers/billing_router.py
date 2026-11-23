@@ -143,6 +143,9 @@ class MessageResponse(BaseModel):
 def _verify_polar_signature(payload: bytes, request: Request) -> None:
     """Verify Polar's Standard Webhooks signature without exposing the secret."""
     if not POLAR_WEBHOOK_SECRET:
+        environment = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
+        if environment in {"production", "prod"}:
+            raise HTTPException(status_code=503, detail="Polar webhook secret is not configured")
         log.warning("polar.webhook.secret_missing — accepting unsigned payload in development mode")
         return
 
@@ -163,7 +166,7 @@ def _verify_polar_signature(payload: bytes, request: Request) -> None:
         secret_value = secret_value[6:]
     try:
         padding = "=" * (-len(secret_value) % 4)
-        secret = base64.b64decode(secret_value + padding, validate=True)
+        secret = base64.b64decode(secret_value + padding, altchars=b"-_", validate=True)
     except Exception:
         # Some Polar environments issue an opaque endpoint secret rather than
         # the conventional whsec_ base64 form.
@@ -199,6 +202,17 @@ def _polar_plan_key(data: dict) -> Optional[str]:
     return POLAR_PRODUCT_PLANS.get(str(product_id)) if product_id else None
 
 
+def _polar_metadata(data: dict) -> dict:
+    merged: dict = {}
+    for holder_name in ("checkout", "subscription", "order"):
+        holder = data.get(holder_name)
+        if isinstance(holder, dict) and isinstance(holder.get("metadata"), dict):
+            merged.update(holder["metadata"])
+    if isinstance(data.get("metadata"), dict):
+        merged.update(data["metadata"])
+    return merged
+
+
 def _polar_email(data: dict) -> Optional[str]:
     for holder_name in ("customer", "user"):
         holder = data.get(holder_name)
@@ -217,14 +231,19 @@ def _polar_grant_reference(event_type: str, data: dict) -> str:
     subscription_id = data.get("subscription_id")
     if not subscription_id and isinstance(data.get("subscription"), dict):
         subscription_id = data["subscription"].get("id")
+    subscription_id = subscription_id or (
+        data.get("id") if event_type.startswith("subscription.") else None
+    )
+    period_start = data.get("current_period_start") or data.get("started_at")
+    if subscription_id and period_start:
+        return f"polar:subscription:{subscription_id}:period:{period_start}:credits"
     if event_type == "subscription.created":
-        subscription_id = subscription_id or data.get("id")
         return f"polar:subscription:{subscription_id}:initial-credits"
     return f"polar:order:{data.get('id')}:credits"
 
 
 async def _polar_user(data: dict, session: AsyncSession) -> Optional[UserModel]:
-    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    metadata = _polar_metadata(data)
     user_id = metadata.get("user_id")
     if user_id:
         user = (await session.execute(select(UserModel).where(UserModel.id == str(user_id)))).scalar_one_or_none()
@@ -270,12 +289,12 @@ async def _grant_polar_plan(
     ))
 
 
-def _apply_polar_identity(user: UserModel, data: dict) -> None:
+def _apply_polar_identity(user: UserModel, data: dict, event_type: str = "") -> None:
     customer = data.get("customer") if isinstance(data.get("customer"), dict) else {}
     subscription = data.get("subscription") if isinstance(data.get("subscription"), dict) else {}
     user.polar_customer_id = str(data.get("customer_id") or customer.get("id") or user.polar_customer_id or "") or None
     subscription_id = data.get("subscription_id") or subscription.get("id")
-    if not subscription_id and str(data.get("id", "")).startswith("sub_"):
+    if not subscription_id and event_type.startswith("subscription."):
         subscription_id = data.get("id")
     if subscription_id:
         user.polar_subscription_id = str(subscription_id)
@@ -304,7 +323,7 @@ async def polar_webhook(request: Request, session: AsyncSession = Depends(get_se
         log.warning("polar.webhook.user_not_found type=%s email=%s", event_type, _polar_email(data))
         return {"status": "ok"}
 
-    _apply_polar_identity(user, data)
+    _apply_polar_identity(user, data, event_type)
     plan_key = _polar_plan_key(data)
     status = str(data.get("status") or "active").lower()
     period_end = _parse_polar_datetime(data.get("current_period_end") or data.get("ends_at"))

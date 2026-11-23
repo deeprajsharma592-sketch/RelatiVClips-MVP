@@ -1,9 +1,9 @@
 """
 Narrative-aware length policy.
 Enforces soft bounds without artificial target durations:
-- Hard bounds: 10s <= duration <= 150s. Reject outside.
+- Hard bounds: 30s <= duration <= 90s. Reject outside.
 - Never normalizes, rounds, pads, or trims clips toward a common length.
-- Duration distribution is content-driven (15s punchline, 28s anecdote, 56s explanation, 90s story).
+- Duration distribution is content-driven inside the 30–90 second window.
 - Metadata flags:
     fits_shorts: bool (<=180s)
     fits_reels_ideal: bool (<=90s)
@@ -18,7 +18,7 @@ def apply_length_policy(
     max_duration_s: float = CLIP_DURATION_HARD_MAX,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
-    Validates candidate duration against hard limits (10s - 150s).
+    Validates candidate duration against hard limits (30s - 90s).
     Attaches platform compatibility metadata flags.
     Rejects any clip outside hard bounds without forcing artificial duration targets.
     """

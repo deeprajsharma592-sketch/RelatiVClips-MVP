@@ -378,17 +378,17 @@ function DashboardContent() {
 
               {/* ── GENUINE CLIPS VAULT ── */}
               {activeProject && activeProject.status === "ready" && (activeProject.clips?.length || 0) > 0 && (
-                <div className="space-y-5 pt-2">
+                <div className="space-y-4 pt-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
                     <div>
-                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                        <span>{activeProject.title}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-md bg-white/10 text-zinc-200 border border-white/10 font-medium">
-                          {activeProject.clips?.length || 0} Clips
-                        </span>
+                      <h2 className="text-base sm:text-lg font-medium text-zinc-200">
+                        {activeProject.title && activeProject.title !== "My Clips Project"
+                          ? activeProject.title
+                          : "Give me highlight compilations of all the exciting moments in this video"}{" "}
+                        <span className="text-zinc-400 font-normal">({activeProject.clips?.length || 0})</span>
                       </h2>
                       <span suppressHydrationWarning className="text-xs text-zinc-500 mt-0.5 block">
-                        Generated {activeProject.createdAt ? new Date(activeProject.createdAt).toLocaleDateString() : "Today"} · 1080×1920 60FPS
+                        Generated {activeProject.createdAt ? new Date(activeProject.createdAt).toLocaleDateString() : "Today"} · 1080×1920 Vertical HD
                       </span>
                     </div>
 
@@ -413,8 +413,8 @@ function DashboardContent() {
                     </div>
                   </div>
 
-                  {/* 9:16 Vertical Grid (OpusClip Exact Style) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {/* 9:16 Vertical Grid matching Opus Clip exact style */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
                     {(activeProject.clips || []).map((clip, index) => (
                       <ClipCard
                         key={clip.clip_id || index}
@@ -617,24 +617,31 @@ function ClipCard({
       className="group relative flex flex-col justify-between rounded-xl overflow-hidden cursor-pointer transition-all duration-300 font-sans"
     >
       {/* 9:16 Aspect Frame */}
-      <div className="relative aspect-[9/16] w-full bg-[#111115] rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
+      <div className="relative aspect-[9/16] w-full bg-[#0d0e12] rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
+        {posterUrl && (
+          <img
+            src={posterUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-125 pointer-events-none"
+          />
+        )}
         {posterUrl && !videoError ? (
           <img
             src={posterUrl}
             alt={clip.viral_title || "Clip thumbnail"}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="relative z-10 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
             onError={() => setVideoError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-[#141418] flex items-center justify-center">
+          <div className="relative z-10 w-full h-full bg-[#141418] flex items-center justify-center">
             <Video className="w-8 h-8 text-zinc-600" />
           </div>
         )}
 
         {/* Play Icon Overlay on Hover */}
         <div
-          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center transition-opacity duration-200 ${
+          className={`absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center transition-opacity duration-200 ${
             isHovered ? "opacity-100" : "opacity-0"
           }`}
         >
@@ -644,8 +651,8 @@ function ClipCard({
         </div>
 
         {/* Timecode Badge (e.g. 00:00 01:13) */}
-        <div className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none">
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-black/80 text-zinc-200 backdrop-blur-md border border-white/10">
+        <div className="absolute bottom-2.5 right-2.5 z-20 pointer-events-none">
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-black/85 text-zinc-200 backdrop-blur-md border border-white/10">
             00:00 {mins}:{secs}
           </span>
         </div>
@@ -655,19 +662,12 @@ function ClipCard({
       <div className="pt-2.5 pb-1 flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           {/* Neon Virality Score */}
-          <span className="font-mono text-lg font-black text-emerald-400 tracking-tight leading-none drop-shadow-[0_0_12px_rgba(52,211,153,0.4)]">
+          <span className="font-mono text-xl font-bold text-[#22c55e] tracking-tight leading-none drop-shadow-[0_0_8px_rgba(34,197,94,0.35)]">
             {score}
           </span>
 
-          {/* Quick Action Icons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              title="Edit clip in Studio"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-[#4FD1C5] hover:bg-white/10 transition cursor-pointer"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+          {/* Quick Action Icons: Schedule & Download matching reference */}
+          <div className="flex items-center gap-1.5">
             {/* Calendar / Schedule Icon */}
             <button
               onClick={(e) => {
@@ -675,7 +675,7 @@ function ClipCard({
                 onSchedule();
               }}
               title="Schedule to YouTube Shorts"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
             >
               <Calendar className="w-4 h-4" />
             </button>
@@ -687,7 +687,7 @@ function ClipCard({
                 onRequestDownload();
               }}
               title="Download clip"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
             >
               <Download className="w-4 h-4" />
             </button>

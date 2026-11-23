@@ -83,8 +83,8 @@ WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
 
 TARGET_SAMPLE_RATE = 16000
 # Narrative-aware variable-length clipping bounds (NO fixed targets)
-CLIP_DURATION_HARD_MIN = float(os.getenv("CLIP_DURATION_HARD_MIN", "30.0"))
-CLIP_DURATION_HARD_MAX = float(os.getenv("CLIP_DURATION_HARD_MAX", "90.0"))
+CLIP_DURATION_HARD_MIN = 30.0
+CLIP_DURATION_HARD_MAX = 90.0
 # Legacy duration aliases kept for back-compat only
 CLIP_DURATION_MIN = int(CLIP_DURATION_HARD_MIN)
 CLIP_DURATION_MAX = int(CLIP_DURATION_HARD_MAX)

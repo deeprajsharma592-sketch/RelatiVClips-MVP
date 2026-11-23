@@ -8,7 +8,7 @@ Deterministic boundary refinement after LLM candidate discovery.
 from typing import List, Dict, Any, Optional, Tuple
 import re
 from .units import NarrativeUnit
-from ..utils.config import DEAD_AIR_MAX_S
+from ..utils.config import CLIP_DURATION_HARD_MAX, DEAD_AIR_MAX_S
 
 # Phrases that indicate the opening sentence depends on previous missing context
 DANGLING_START_PATTERNS = [
@@ -142,7 +142,7 @@ def ensure_payoff_included(
     end: float,
     payoff_text: Optional[str],
     units: List[NarrativeUnit],
-    max_duration_s: float = 150.0,
+    max_duration_s: float = CLIP_DURATION_HARD_MAX,
 ) -> float:
     """
     If the LLM specified a payoff_text that occurs after the initial candidate 'end',

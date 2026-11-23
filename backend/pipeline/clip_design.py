@@ -6,8 +6,8 @@ For each candidate clip [start, end], this module:
      starts on a real word, not mid-syllable).
   2. Snaps to the NEAREST SENTENCE BOUNDARY after end (so the clip ends
      on a complete thought, not a trailing "and-uh-").
-  3. Checks duration. If <10s, extends to next dramatic beat (energy peak).
-     If >22s, finds a 7-9s midpoint rehook and crops the rest.
+  3. Enforces the shared 30-90s narrative window and adds a midpoint rehook
+     when the story needs one.
   4. Validates: clip must contain at least one complete sentence
      AND land within the video bounds.
 
@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 
-# Narrative variable-length soft bounds (10s - 150s, NO artificial fixed target)
+# Narrative-complete hard bounds shared by every selection pipeline.
 from ..utils.config import CLIP_DURATION_HARD_MIN, CLIP_DURATION_HARD_MAX
 
 MIN_CLIP_S = CLIP_DURATION_HARD_MIN

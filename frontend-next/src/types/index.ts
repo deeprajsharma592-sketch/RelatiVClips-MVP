@@ -18,6 +18,8 @@ export interface Clip {
   hook_score?: number;
   story_score?: number;
   engagement_score?: number;
+  scene_analysis?: string;
+  analysis?: string;
   task_id?: string;
   caption_words?: Array<{
     w?: string;

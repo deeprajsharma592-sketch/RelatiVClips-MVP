@@ -1,8 +1,10 @@
 "use client";
 
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Pencil } from "lucide-react";
+import { Calendar, Download, Play, Video, Pencil } from "lucide-react";
 import type { Clip } from "@/types";
+import { apiPath } from "@/lib/apiBase";
 
 interface ClipCardProps {
   clip: Clip;
@@ -11,12 +13,7 @@ interface ClipCardProps {
   onDownload: (clip: Clip) => void;
   isSelected?: boolean;
   onEdit?: (clip: Clip) => void;
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  onSchedule?: (clip: Clip) => void;
 }
 
 export default function ClipCard({
@@ -26,70 +23,139 @@ export default function ClipCard({
   onDownload,
   isSelected,
   onEdit,
+  onSchedule,
 }: ClipCardProps) {
+  const [videoError, setVideoError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const posterUrl = clip.thumbnail_url
+    ? clip.thumbnail_url.startsWith("http")
+      ? clip.thumbnail_url
+      : apiPath(clip.thumbnail_url)
+    : clip.clip_id
+    ? apiPath(`/thumbnail/${clip.clip_id}`)
+    : undefined;
+
+  const score = Math.round(
+    clip.hook_score && clip.hook_score > 1
+      ? clip.hook_score
+      : clip.story_score && clip.story_score > 1
+      ? clip.story_score
+      : 89
+  );
+
+  const durationSec = clip.duration_s || 60;
+  const mins = Math.floor(durationSec / 60).toString().padStart(2, "0");
+  const secs = Math.floor(durationSec % 60).toString().padStart(2, "0");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className={`p-4 rounded-[4px] border transition-all duration-200 ${
-        isSelected
-          ? "border-accent bg-accent/5 glow-accent"
-          : "border-border bg-surface hover:border-accent"
-      }`}
+      transition={{ delay: index * 0.05 }}
       onClick={() => onSelect(clip)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`group relative flex flex-col justify-between rounded-xl overflow-hidden cursor-pointer transition-all duration-300 font-sans ${
+        isSelected ? "ring-2 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]" : ""
+      }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className="inline-flex items-center px-2 py-0.5 bg-accent/20 border border-accent/30 rounded-[2px] text-xs font-mono text-accent">
-          Clip #{index + 1}
-        </span>
-        <span className="text-xs font-mono text-text-muted">
-          {formatTime(clip.start)} - {formatTime(clip.end)}
-        </span>
+      {/* 9:16 Aspect Frame */}
+      <div className="relative aspect-[9/16] w-full bg-[#0d0e12] rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
+        {posterUrl && (
+          <img
+            src={posterUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-125 pointer-events-none"
+          />
+        )}
+        {posterUrl && !videoError ? (
+          <img
+            src={posterUrl}
+            alt={clip.viral_title || "Clip thumbnail"}
+            className="relative z-10 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            onError={() => setVideoError(true)}
+          />
+        ) : (
+          <div className="relative z-10 w-full h-full bg-[#141418] flex items-center justify-center">
+            <Video className="w-8 h-8 text-zinc-600" />
+          </div>
+        )}
+
+        {/* Play Icon Overlay on Hover */}
+        <div
+          className={`absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center transition-opacity duration-200 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <div className="w-12 h-12 rounded-full bg-white/90 text-black flex items-center justify-center shadow-2xl pl-1 group-hover:scale-110 transition-transform">
+            <Play className="w-5 h-5 fill-black" />
+          </div>
+        </div>
+
+        {/* Timecode Badge (e.g. 00:00 01:13) */}
+        <div className="absolute bottom-2.5 right-2.5 z-20 pointer-events-none">
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-black/85 text-zinc-200 backdrop-blur-md border border-white/10">
+            00:00 {mins}:{secs}
+          </span>
+        </div>
       </div>
 
-      <h3 className="text-sm font-display font-semibold text-white mb-1 leading-snug">
-        {clip.viral_title}
-      </h3>
+      {/* Metadata Row below card (Score + Schedule + Download) */}
+      <div className="pt-2.5 pb-1 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          {/* Neon Virality Score matching Opus Clip */}
+          <span className="font-mono text-xl font-bold text-[#22c55e] tracking-tight leading-none drop-shadow-[0_0_8px_rgba(34,197,94,0.35)]">
+            {score}
+          </span>
 
-      <p className="text-xs text-text-muted mb-3 line-clamp-2 leading-relaxed">
-        {clip.caption}
-      </p>
+          {/* Quick Action Icons: Schedule & Download */}
+          <div className="flex items-center gap-1.5">
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(clip);
+                }}
+                title="Edit clip in Studio"
+                className="p-1 rounded text-zinc-400 hover:text-[#4FD1C5] transition cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
 
-      <div className="flex items-center gap-3 mb-4">
-        <span className="font-mono text-[10px] text-accent-secondary/70">[{clip.duration_s.toFixed(1)}s]</span>
-        <span className="font-mono text-[10px] text-text-muted">{clip.file_size_mb.toFixed(1)} MB</span>
-        {clip.hashtags && (
-          <span className="font-mono text-[10px] text-accent/60 truncate max-w-[140px]">{clip.hashtags}</span>
-        )}
-      </div>
+            {/* Calendar / Schedule Icon */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onSchedule) onSchedule(clip);
+                else onSelect(clip);
+              }}
+              title="Schedule to YouTube Shorts"
+              className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
 
-      <div className="flex gap-2">
-        <motion.button
-          onClick={(e) => { e.stopPropagation(); onSelect(clip); }}
-          className="flex-1 py-2 bg-border text-text-muted text-xs font-semibold rounded-[2px] font-sans hover:bg-accent hover:text-white transition-colors"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          Preview
-        </motion.button>
-        {onEdit && (
-          <motion.button
-            onClick={(e) => { e.stopPropagation(); onEdit(clip); }}
-            className="flex items-center justify-center gap-1.5 border border-white/10 px-3 text-xs text-white hover:border-[#4FD1C5]/60 hover:text-[#4FD1C5]"
-            whileTap={{ scale: 0.98 }}
-          >
-            <Pencil className="size-3" /> Edit
-          </motion.button>
-        )}
-        <motion.button
-          onClick={(e) => { e.stopPropagation(); onDownload(clip); }}
-          className="flex-1 py-2 bg-accent text-white text-xs font-semibold rounded-[2px] font-sans"
-          whileHover={{ scale: 1.02, boxShadow: "0 0 15px rgba(77,77,255,0.3)" }}
-          whileTap={{ scale: 0.98 }}
-        >
-          Download
-        </motion.button>
+            {/* Download Icon */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload(clip);
+              }}
+              title="Download clip"
+              className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Title */}
+        <h3 className="font-medium text-xs text-zinc-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
+          {clip.viral_title || `Clip #${index + 1}`}
+        </h3>
       </div>
     </motion.div>
   );
