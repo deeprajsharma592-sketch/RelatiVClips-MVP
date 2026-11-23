@@ -5,11 +5,12 @@ import { useEffect, useState, type ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
   FlaskConical, Key, Layers, Sparkles, UserPlus, ChevronsLeft, BookOpen,
+  Clapperboard,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BrandLogo from "@/components/BrandLogo";
 
-export type StudioTab = "home" | "projects" | "brand-kit" | "assets" | "analyse" | "socials" | "calendar";
+export type StudioTab = "home" | "edit-studio" | "projects" | "brand-kit" | "assets" | "analyse" | "socials" | "calendar";
 
 interface StudioSidebarProps {
   activeTab: StudioTab;
@@ -20,6 +21,7 @@ interface StudioSidebarProps {
 type NavItem = { id: StudioTab; label: string; icon: ComponentType<{ size?: number; className?: string }>; pro?: boolean };
 const CREATE: NavItem[] = [
   { id: "home", label: "Home", icon: Home },
+  { id: "edit-studio", label: "Edit Studio", icon: Clapperboard },
   { id: "projects", label: "My projects", icon: FolderOpen },
   { id: "brand-kit", label: "Brand kit", icon: Sparkles, pro: true },
   { id: "assets", label: "Asset library", icon: Layers },

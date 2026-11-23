@@ -37,6 +37,7 @@ import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
 import CalendarView from "@/components/dashboard/CalendarView";
+import EditStudioView from "@/components/dashboard/EditStudioView";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
 import { getPolarCheckoutUrl } from "@/lib/polar";
@@ -68,7 +69,7 @@ function DashboardContent() {
 
   // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<StudioTab>(
-    tabParam && ["home", "projects", "brand-kit", "assets", "calendar", "analyse", "socials"].includes(tabParam)
+    tabParam && ["home", "edit-studio", "projects", "brand-kit", "assets", "calendar", "analyse", "socials"].includes(tabParam)
       ? tabParam
       : "home"
   );
@@ -446,6 +447,15 @@ function DashboardContent() {
           )}
 
           {/* TAB 2: MY PROJECTS */}
+          {activeTab === "edit-studio" && (
+            <EditStudioView
+              projects={projects}
+              onEdit={(clip, index) => setSelectedEditClip({ clip, index })}
+              onCreateClip={() => setActiveTab("home")}
+            />
+          )}
+
+          {/* TAB 3: MY PROJECTS */}
           {activeTab === "projects" && (
             <ProjectsView
               projects={projects}
