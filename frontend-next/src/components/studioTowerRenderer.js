@@ -146,8 +146,8 @@ export async function mountStudioTower(root, signal) {
     const readingPause=2200;
     let azimuth=homeAzimuth, pitch=homePitch, drag=null, last=0;
     const flightDuration=7200;
-    const flightThreshold=1650;
-    const flightGestureDuration=1100;
+    const flightThreshold=3300;
+    const flightGestureDuration=2200;
     const gestureGap=300;
     const restPose=[0,0,1,0];
     let returnView=null;
