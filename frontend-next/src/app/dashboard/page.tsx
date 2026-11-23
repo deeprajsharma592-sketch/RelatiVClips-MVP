@@ -22,11 +22,13 @@ import {
   Palette,
   FolderOpen,
   RefreshCw,
+  Calendar,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
 import StudioHeader from "@/components/dashboard/StudioHeader";
 import StudioHero from "@/components/dashboard/StudioHero";
 import UpgradeModal from "@/components/dashboard/UpgradeModal";
+import ClipInspectorModal from "@/components/ClipInspectorModal";
 import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
@@ -68,6 +70,7 @@ function DashboardContent() {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [pendingDownloadClip, setPendingDownloadClip] = useState<Clip | null>(null);
+  const [inspectedClip, setInspectedClip] = useState<{ clip: Clip; index: number } | null>(null);
 
   // Projects State
   const [projects, setProjects] = useState<StoredProject[]>([]);
@@ -395,15 +398,16 @@ function DashboardContent() {
                     </div>
                   </div>
 
-                  {/* 9:16 Vertical Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {/* 9:16 Vertical Grid (OpusClip Exact Style) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {(activeProject.clips || []).map((clip, index) => (
                       <ClipCard
                         key={clip.clip_id || index}
                         clip={clip}
                         index={index}
+                        onSelect={() => setInspectedClip({ clip, index })}
                         onRequestDownload={() => handleRequestDownload(clip)}
-                        onCrossPublish={() => setActiveTab("socials")}
+                        onSchedule={() => setInspectedClip({ clip, index })}
                       />
                     ))}
                   </div>
@@ -520,34 +524,37 @@ function DashboardContent() {
         onClose={() => setExportModalOpen(false)}
         clipTitle={pendingDownloadClip?.viral_title}
       />
+
+      {/* ── OpusClip Master Clip Inspector & YouTube Shorts Scheduler ── */}
+      <ClipInspectorModal
+        clip={inspectedClip?.clip || null}
+        index={inspectedClip?.index || 0}
+        isOpen={!!inspectedClip}
+        onClose={() => setInspectedClip(null)}
+        onRequestDownload={(c) => handleRequestDownload(c)}
+      />
     </div>
   );
 }
 
 /**
- * 9:16 Vertical Clip Card (Sharp edges, clean monochrome)
+ * 9:16 Vertical Clip Card (OpusClip exact match: clean poster, neon score, schedule & download icons)
  */
 function ClipCard({
   clip,
   index,
+  onSelect,
   onRequestDownload,
-  onCrossPublish,
+  onSchedule,
 }: {
   clip: Clip;
   index: number;
+  onSelect: () => void;
   onRequestDownload: () => void;
-  onCrossPublish: () => void;
+  onSchedule: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
   const [videoError, setVideoError] = useState(false);
-
-  const videoUrl = clip.download_url
-    ? clip.download_url.startsWith("http")
-      ? clip.download_url
-      : apiPath(clip.download_url)
-    : clip.file_path && clip.file_path.startsWith("http")
-    ? clip.file_path
-    : apiPath(`/download/${clip.clip_id}`);
+  const [isHovered, setIsHovered] = useState(false);
 
   const posterUrl = clip.thumbnail_url
     ? clip.thumbnail_url.startsWith("http")
@@ -557,114 +564,93 @@ function ClipCard({
     ? apiPath(`/thumbnail/${clip.clip_id}`)
     : undefined;
 
-  const handleCopyCaption = () => {
-    const text = `${clip.viral_title || ""}\n\n${clip.caption || ""}\n\n${clip.hashtags || ""}`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
+  const score = clip.hook_score || clip.story_score || 88;
+  const durationSec = clip.duration_s || 60;
+  const mins = Math.floor(durationSec / 60).toString().padStart(2, "0");
+  const secs = Math.floor(durationSec % 60).toString().padStart(2, "0");
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#121215] overflow-hidden flex flex-col justify-between shadow-lg group hover:border-white/20 transition-all font-sans">
+    <div
+      onClick={onSelect}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative flex flex-col justify-between rounded-xl overflow-hidden cursor-pointer transition-all duration-300 font-sans"
+    >
       {/* 9:16 Aspect Frame */}
-      <div className="relative aspect-[9/16] w-full bg-black overflow-hidden flex items-center justify-center">
-        {!videoError ? (
-          <video
-            src={videoUrl}
-            poster={posterUrl}
-            className="w-full h-full object-cover"
-            controls
-            playsInline
-            preload="metadata"
+      <div className="relative aspect-[9/16] w-full bg-[#111115] rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
+        {posterUrl && !videoError ? (
+          <img
+            src={posterUrl}
+            alt={clip.viral_title || "Clip thumbnail"}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
             onError={() => setVideoError(true)}
           />
         ) : (
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-            {posterUrl ? (
-              <img
-                src={posterUrl}
-                alt={clip.viral_title || "Clip thumbnail"}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full bg-[#121215] flex items-center justify-center">
-                <Video className="w-8 h-8 text-zinc-600" />
-              </div>
-            )}
-            <button
-              onClick={onRequestDownload}
-              className="absolute inset-0 m-auto w-12 h-12 rounded-lg bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all cursor-pointer"
-            >
-              <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
-            </button>
+          <div className="w-full h-full bg-[#141418] flex items-center justify-center">
+            <Video className="w-8 h-8 text-zinc-600" />
           </div>
         )}
 
-        {/* Hook Score Badge */}
-        {typeof clip.hook_score === "number" && (
-          <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white text-black shadow-md">
-              ⚡ {clip.hook_score}/100
-            </span>
+        {/* Play Icon Overlay on Hover */}
+        <div
+          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center transition-opacity duration-200 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <div className="w-12 h-12 rounded-full bg-white/90 text-black flex items-center justify-center shadow-2xl pl-1 group-hover:scale-110 transition-transform">
+            <Play className="w-5 h-5 fill-black" />
           </div>
-        )}
+        </div>
 
-        {/* Duration */}
+        {/* Timecode Badge (e.g. 00:00 01:13) */}
         <div className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none">
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/80 text-zinc-300 backdrop-blur-sm">
-            {clip.duration_s ? `${clip.duration_s.toFixed(0)}s` : "9:16"}
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-black/80 text-zinc-200 backdrop-blur-md border border-white/10">
+            00:00 {mins}:{secs}
           </span>
         </div>
       </div>
 
-      {/* Card Info */}
-      <div className="p-3.5 space-y-2.5 flex-1 flex flex-col justify-between">
-        <div className="space-y-1">
-          <h3 className="font-semibold text-xs text-white line-clamp-1">
-            {clip.viral_title || `Clip #${index + 1}`}
-          </h3>
-          {clip.caption && (
-            <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-              {clip.caption}
-            </p>
-          )}
-        </div>
+      {/* Metadata Row below card (Score + Schedule + Download) */}
+      <div className="pt-2.5 pb-1 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          {/* Neon Virality Score */}
+          <span className="font-mono text-lg font-black text-emerald-400 tracking-tight leading-none drop-shadow-[0_0_12px_rgba(52,211,153,0.4)]">
+            {score}
+          </span>
 
-        {/* Action Buttons (Clean rounded-lg) */}
-        <div className="pt-1 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
+          {/* Quick Action Icons */}
+          <div className="flex items-center gap-1">
+            {/* Calendar / Schedule Icon */}
             <button
-              onClick={onRequestDownload}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2.5 text-xs font-semibold text-black bg-white hover:bg-zinc-200 transition cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSchedule();
+              }}
+              title="Schedule to YouTube Shorts"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download</span>
+              <Calendar className="w-4 h-4" />
             </button>
 
+            {/* Download Icon */}
             <button
-              onClick={handleCopyCaption}
-              className="inline-flex items-center justify-center gap-1 rounded-md py-1.5 px-2.5 text-xs font-medium text-zinc-300 bg-white/[0.05] hover:bg-white/10 border border-white/10 transition cursor-pointer"
-              title="Copy caption"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRequestDownload();
+              }}
+              title="Download clip"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
             >
-              {copied ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-              )}
-              <span>{copied ? "Copied" : "Copy"}</span>
+              <Download className="w-4 h-4" />
             </button>
           </div>
-
-          <button
-            onClick={onCrossPublish}
-            className="w-full inline-flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2 text-[11px] font-medium text-zinc-300 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] transition cursor-pointer"
-          >
-            <Share2 className="w-3 h-3 text-zinc-400" />
-            <span>Publish to Socials</span>
-          </button>
         </div>
+
+        {/* Title */}
+        <h3 className="font-medium text-xs text-zinc-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
+          {clip.viral_title || `Clip #${index + 1}`}
+        </h3>
       </div>
     </div>
   );

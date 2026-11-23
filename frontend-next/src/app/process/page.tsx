@@ -28,9 +28,12 @@ import {
   Coins,
   Copy,
   CheckCircle2,
+  Calendar,
+  Play,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import ClipInspectorModal from "@/components/ClipInspectorModal";
 import { StageAnimation } from "@/components/StageAnimation";
 import { ActivityFeed, type FeedEvent } from "@/components/ActivityFeed";
 import VideoIntake from "@/components/VideoIntake";
@@ -92,6 +95,7 @@ function ProcessInner() {
 
   const [state, setState] = useState<ProcessState>(initialUrl || initialTaskId ? "processing" : "idle");
   const [clips, setClips] = useState<Clip[]>([]);
+  const [inspectedClip, setInspectedClip] = useState<{ clip: Clip; index: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Backend-driven progress fields (replaces the old 1.4s rotation timer)
   const [progress, setProgress] = useState(0);
@@ -643,9 +647,15 @@ function ProcessInner() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
                   {clips.map((clip, i) => (
-                    <ClipCard key={clip.clip_id || i} clip={clip} index={i} taskId={activeTaskId} />
+                    <ClipCard
+                      key={clip.clip_id || i}
+                      clip={clip}
+                      index={i}
+                      taskId={activeTaskId}
+                      onSelect={() => setInspectedClip({ clip, index: i })}
+                    />
                   ))}
                 </div>
                 <div className="mt-8 text-center">
@@ -671,6 +681,18 @@ function ProcessInner() {
           </AnimatePresence>
         </div>
       </main>
+
+      <ClipInspectorModal
+        clip={inspectedClip?.clip || null}
+        index={inspectedClip?.index || 0}
+        isOpen={!!inspectedClip}
+        onClose={() => setInspectedClip(null)}
+        onRequestDownload={(c) => {
+          const clipId = c.clip_id || c.download_url?.split(/[/\\]/).pop();
+          if (clipId) window.location.assign(`/api/proxy/download/${encodeURIComponent(clipId)}?download=1`);
+        }}
+      />
+
       <Footer />
     </>
   );
@@ -679,7 +701,17 @@ function ProcessInner() {
 /**
  * ClipCard — Vertical 9:16 Short-Form Clip Preview with Viral Score & 1-Click Export
  */
-function ClipCard({ clip, index, taskId }: { clip: Clip; index: number; taskId: string | null }) {
+function ClipCard({
+  clip,
+  index,
+  taskId,
+  onSelect,
+}: {
+  clip: Clip;
+  index: number;
+  taskId: string | null;
+  onSelect?: () => void;
+}) {
   const { user, loading } = useAuth();
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
@@ -807,8 +839,19 @@ function ClipCard({ clip, index, taskId }: { clip: Clip; index: number; taskId: 
 
         {downloadError && <p role="alert" className="text-xs text-rose-500">{downloadError}</p>}
 
-        {/* Export Buttons */}
+        {/* Export & Schedule Buttons */}
         <div className="pt-2 flex items-center gap-2">
+          {onSelect && (
+            <button
+              onClick={onSelect}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all cursor-pointer"
+              title="Inspect & Schedule to YouTube Shorts"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Schedule</span>
+            </button>
+          )}
+
           <button
             onClick={handleDownload}
             disabled={loading || signingIn || !videoUrl}
