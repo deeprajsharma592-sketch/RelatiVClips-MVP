@@ -28,7 +28,8 @@ export async function mountStudioTower(root, signal) {
       }
       vec3 q=orbit(p+vec3(0.,motion.x-3.79,0.));
       float w=1.-q.z/17.;
-      gl_Position=vec4(q.x*.216/aspect,q.y*.216,-q.z*.06,w);
+      float scale=.246*min(1.,aspect/.50);
+      gl_Position=vec4(q.x*scale/aspect,q.y*scale,-q.z*.06,w);
       n=orbit(normal); t=uv;
     }`;
     const fragment = `#version 300 es
