@@ -7,8 +7,6 @@ export async function mountStudioTower(root, signal) {
     observer?.disconnect();
   }, { once: true });
   const canvas = root.querySelector('canvas');
-  const button = root.querySelector('[data-spin]');
-  const slider = root.querySelector('input');
   const status = root.querySelector('[role=status]');
   try {
     const gl = canvas.getContext('webgl2', {alpha:true,antialias:true});
@@ -133,8 +131,7 @@ export async function mountStudioTower(root, signal) {
     const tau=Math.PI*2;
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let clock=0;
-    let azimuth=-Math.PI/4, pitch=-.39, drag=null, spinning=false, last=0;
-    const angle=()=>((Math.round(azimuth*180/Math.PI)%360)+360)%360;
+    let azimuth=-Math.PI/4, pitch=-.39, drag=null, last=0;
     function draw(){
       const rect=canvas.getBoundingClientRect();
       const ratio=Math.min(window.devicePixelRatio||1,2);
@@ -167,32 +164,12 @@ export async function mountStudioTower(root, signal) {
     function animate(now){
       const elapsed=last ? Math.min(now-last,80) : 0;
       last=now;
-      if(!reducedMotion) clock+=elapsed/1000;
-      if(spinning){
-        azimuth-=elapsed*tau/18000;
-        slider.value=angle();
-      }
+      clock+=elapsed/1000;
+      if(!drag) azimuth=(azimuth-elapsed*tau/18000)%tau;
       draw();
-      animationFrame=!reducedMotion||spinning ? requestAnimationFrame(animate) : 0;
-      if(!animationFrame) last=0;
+      animationFrame=requestAnimationFrame(animate);
     }
-    function stop(){
-      spinning=false;
-      button.setAttribute('aria-pressed','false');
-    }
-    button.addEventListener('click',()=>{
-      if(spinning){stop();return;}
-      spinning=true;
-      button.setAttribute('aria-pressed','true');
-      if(!animationFrame) animationFrame=requestAnimationFrame(animate);
-    }, {signal});
-    slider.addEventListener('input',()=>{
-      stop();
-      azimuth=Number(slider.value)*Math.PI/180;
-      draw();
-    }, {signal});
     canvas.addEventListener('pointerdown',event=>{
-      stop();
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
       canvas.setPointerCapture(event.pointerId);
     }, {signal});
@@ -201,21 +178,18 @@ export async function mountStudioTower(root, signal) {
       azimuth+=(event.clientX-drag.x)*.011;
       pitch=Math.max(-1.1,Math.min(1.1,pitch+(event.clientY-drag.y)*.009));
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
-      slider.value=angle();
       draw();
     }, {signal});
     canvas.addEventListener('lostpointercapture',()=>{drag=null;}, {signal});
     observer=new ResizeObserver(draw);
     observer.observe(canvas);
     draw();
-    slider.value=angle();
-    button.disabled=slider.disabled=false;
     root.dataset.live='true';
     status.hidden=true;
     if(!reducedMotion) animationFrame=requestAnimationFrame(animate);
   } catch(error) {
     if(signal.aborted) return;
-    status.textContent='Live 3D is unavailable in this panel. The rendered model is shown above.';
+    status.textContent='Live 3D is unavailable in this panel. A still image of the tower is shown.';
     console.error(error);
   }
 }
