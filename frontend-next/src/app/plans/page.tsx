@@ -4,7 +4,7 @@
  * /plans — RelatiV Clips Creator Pricing
  *
  * Streamlined creator-only pricing architecture:
- * - 3 Creator Plans: Go (₹499/mo), Pro (₹899/mo — Featured), Premium (₹1,999/mo)
+ * - 3 Creator Plans powered by Polar: Go, Pro Studio, and Max
  * - Zero audience selector / tabs: Clean, immediate display of creator plans
  * - Enterprise scale callout for 150+ clips / team accounts
  * - Creator-focused FAQ accordion
@@ -12,7 +12,6 @@
  */
 
 import { useState } from "react";
-import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -20,23 +19,22 @@ import {
   Check,
   ChevronDown,
   ArrowRight,
-  Loader2,
-  CreditCard,
   MessageSquare,
   HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getAppDashboardUrl } from "@/lib/domain";
-import {
-  createRazorpayOrder,
-  openRazorpayCheckout,
-  verifyRazorpayPayment,
-  type RazorpayPayment,
-} from "@/lib/razorpay";
+
+const POLAR_LINKS = {
+  creator_go: process.env.NEXT_PUBLIC_POLAR_GO_URL || "https://buy.polar.sh/polar_cl_oV9pu26KVXY5AL0EnxIejhiY7QGwAqDNOpI8u3oOGL5",
+  creator_pro: process.env.NEXT_PUBLIC_POLAR_PRO_URL || "https://buy.polar.sh/polar_cl_rz2IwXSHG15BCIlslVeArOIEchJevr6xEJn6u33tDli",
+  creator_max: process.env.NEXT_PUBLIC_POLAR_MAX_URL || "https://buy.polar.sh/polar_cl_a0EY6BIoTZ3GPMSiNIo1LU8EYRsMuHwM99TVU1zeGf7",
+} as const;
 
 interface Tier {
   name: string;
   price: string;
+  originalPrice?: string;
   unit?: string;
   cta: string;
   href: string;
@@ -47,7 +45,7 @@ interface Tier {
   planKey?:
     | "creator_go"
     | "creator_pro"
-    | "creator_premium"
+    | "creator_max"
     | "creator_enterprise";
   clipsIncluded?: number;
 }
@@ -56,6 +54,7 @@ const CREATOR_TIERS: Tier[] = [
   {
     name: "Go",
     price: "$5.99",
+    originalPrice: "$9.99",
     unit: "/month",
     cta: "Get Go",
     href: "/signup?plan=creator_starter",
@@ -76,43 +75,46 @@ const CREATOR_TIERS: Tier[] = [
   },
   {
     name: "Pro Studio",
-    price: "$11.99",
+    price: "$14.99",
     unit: "/month",
     cta: "Get Pro Studio",
     href: "/signup?plan=creator_pro",
     highlight: true,
     bestFor: "Active creators shipping 2-3 videos/week",
-    clipsIncluded: 90,
-    cpmHint: "Best value · 90 clips/mo",
+    clipsIncluded: 300,
+    cpmHint: "Most Popular · 300 clips/mo",
     features: [
-      "90 viral clips / month",
+      "60,000 credits · up to 300 clips / month",
       "All 4 Content Archetypes (Streamer, Gaming, Podcast, Edu)",
       "1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)",
       "Auto B-roll insertion & AI Emojis",
       "Fast priority GPU processing queue",
-      "Up to 90 min source video length",
+      "Up to 60 min source video length",
+      "1 priority processing task at a time",
       "Priority Discord & Email support",
     ],
     planKey: "creator_pro",
   },
   {
-    name: "Agency & Brand",
-    price: "Custom",
-    unit: "",
-    cta: "Contact us",
-    href: "/contact?intent=enterprise",
-    bestFor: "Media houses, podcast networks, power creators",
-    clipsIncluded: 999,
-    cpmHint: "Unlimited capacity",
+    name: "Max",
+    price: "$24.99",
+    unit: "/month",
+    cta: "Get Max",
+    href: "/signup?plan=creator_max&next=/plans",
+    bestFor: "Agencies & Studios",
+    clipsIncluded: 1000,
+    cpmHint: "Best for Agencies & Studios",
     features: [
-      "Unlimited clips & source hours",
+      "200,000 credits · up to 1,000 clips / month",
+      "Up to 90 min source video length",
+      "2 active processing tasks at a time",
       "Team seats & shared brand templates",
       "Dedicated GPU compute instance",
       "Custom subtitle typography & branding",
       "API & Webhook integrations",
       "Dedicated account manager & SLA",
     ],
-    planKey: "creator_premium",
+    planKey: "creator_max",
   },
 ];
 
@@ -148,57 +150,25 @@ export default function PlansPage() {
   const router = useRouter();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  const [razorpayReady, setRazorpayReady] = useState(false);
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-
-  const handleSubscribe = async (tier: Tier) => {
+  const handleSubscribe = (tier: Tier) => {
     if (!tier.planKey) return;
-    setCheckoutError(null);
 
     if (!user) {
-      router.push(`/signup?next=${encodeURIComponent("/plans")}`);
+      router.push("/signup?next=/plans");
       return;
     }
-
-    setLoadingPlan(tier.planKey);
     try {
-      const order = await createRazorpayOrder({ plan: tier.planKey });
-      openRazorpayCheckout(order, {
-        onSuccess: async (payment: RazorpayPayment) => {
-          try {
-            const result = await verifyRazorpayPayment(payment);
-            if (!result.success) {
-              setCheckoutError(result.message || "Payment is awaiting confirmation. Do not pay again.");
-              return;
-            }
-            router.push(`/account?billing=success&plan=${encodeURIComponent(tier.planKey!)}`);
-          } catch (error) {
-            setCheckoutError(`${error instanceof Error ? error.message : "Payment verification failed."} Do not pay again; contact support with your payment ID.`);
-          } finally {
-            setLoadingPlan(null);
-          }
-        },
-        onDismiss: () => setLoadingPlan(null),
-        onFailure: (message) => {
-          setCheckoutError(message);
-          setLoadingPlan(null);
-        },
-      });
-    } catch (error: unknown) {
-      setCheckoutError(error instanceof Error ? error.message : "Checkout failed. Try again in a moment.");
-      setLoadingPlan(null);
+      const checkoutUrl = new URL(POLAR_LINKS[tier.planKey]);
+      checkoutUrl.searchParams.set("customer_email", user.email);
+      checkoutUrl.searchParams.set("metadata[user_id]", user.id);
+      window.location.href = checkoutUrl.toString();
+    } catch {
+      router.push("/contact?intent=billing-support");
     }
   };
 
   return (
     <div className="relative w-full bg-[#F7F8FA] dark:bg-[#05060A] text-[#111318] dark:text-[#F4F6FA] selection:bg-amber-400 selection:text-black overflow-hidden transition-colors">
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-        onReady={() => setRazorpayReady(true)}
-        onError={() => setCheckoutError("Razorpay Checkout could not load. Check your connection and reload the page.")}
-      />
       {/* ── Subtle Background Grid & Atmospheric Illumination ── */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#D1D5DB_1px,transparent_1px)] dark:bg-[radial-gradient(#1A1F2C_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
       <div className="pointer-events-none absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-b from-indigo-500/10 via-purple-500/05 to-transparent blur-[140px]" />
@@ -228,11 +198,6 @@ export default function PlansPage() {
             Simple, transparent plans for creators. Choose the tools and monthly capacity that fit your workflow.
           </p>
 
-          {checkoutError && (
-            <div className="mt-3 px-4 py-2 rounded-xl text-xs bg-rose-500/10 border border-rose-500/20 text-rose-300 text-center font-sans max-w-md mx-auto">
-              {checkoutError}
-            </div>
-          )}
         </section>
 
         {/* ══════════════════════════════════════════════════════════

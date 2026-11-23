@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,13 +24,26 @@ from ..database.models import TaskModel, UserModel
 from ..database.session import get_session
 from ..database.repository import TaskRepository
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
-from ..services.entitlements import MAX_ACTIVE_TASKS_PER_USER, source_limit_seconds
+from ..services.entitlements import concurrency_limit, source_limit_seconds
 from ..utils.admin_access import is_admin_email
 from .auth_router import get_current_user
 
 progress_logs = {}
 _active_tasks = {}
-_active_user_tasks = {}
+_active_user_tasks: dict[str, set[str]] = {}
+
+
+def _track_user_task(user_id: str, task_id: str) -> None:
+    _active_user_tasks.setdefault(user_id, set()).add(task_id)
+
+
+def _release_user_task(user_id: str, task_id: str) -> None:
+    task_ids = _active_user_tasks.get(user_id)
+    if not task_ids:
+        return
+    task_ids.discard(task_id)
+    if not task_ids:
+        _active_user_tasks.pop(user_id, None)
 
 
 class LocalProcessRequest(BaseModel):
@@ -126,7 +139,7 @@ async def run_local_pipeline(
         finally:
             _active_tasks.pop(task_id, None)
             if user_id:
-                _active_user_tasks.pop(user_id, None)
+                _release_user_task(user_id, task_id)
             task_store.try_promote_queued()
         return
 
@@ -308,7 +321,7 @@ async def run_local_pipeline(
     finally:
         _active_tasks.pop(task_id, None)
         if user_id:
-            _active_user_tasks.pop(user_id, None)
+            _release_user_task(user_id, task_id)
         task_store.try_promote_queued()
 
 
@@ -346,17 +359,19 @@ async def process_local_video(
     )
     if limit_s and duration_s > limit_s:
         raise HTTPException(413, f"This plan accepts source videos up to {limit_s // 60} minutes.")
+    plan_concurrency = concurrency_limit(user.plan_tier)
+    await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"), {"user_id": user.id})
     active_count = (await session.execute(
         select(func.count(TaskModel.task_id)).where(
             TaskModel.user_id == user.id,
             TaskModel.status.in_(["queued", "processing"]),
         )
     )).scalar() or 0
-    if user.id in _active_user_tasks or active_count >= MAX_ACTIVE_TASKS_PER_USER:
-        raise HTTPException(409, "Your plan allows 1 active processing task at a time.")
+    if active_count >= plan_concurrency:
+        raise HTTPException(409, f"Your plan allows {plan_concurrency} active processing task(s) at a time.")
 
     task = task_store.create_task(f"Local: {Path(request.file_path).name}", user_id=user.id, persist=False)
-    _active_user_tasks[user.id] = task["task_id"]
+    _track_user_task(user.id, task["task_id"])
     try:
         await TaskRepository.create(
             session,
@@ -370,10 +385,10 @@ async def process_local_video(
         )
     except IntegrityError:
         await session.rollback()
-        _active_user_tasks.pop(user.id, None)
-        raise HTTPException(409, "Your plan allows 1 active processing task at a time.") from None
+        _release_user_task(user.id, task["task_id"])
+        raise HTTPException(409, f"Your plan allows {plan_concurrency} active processing task(s) at a time.") from None
     except Exception:
-        _active_user_tasks.pop(user.id, None)
+        _release_user_task(user.id, task["task_id"])
         task_store.update_task(task["task_id"], status=TaskStatus.FAILED, error="Credit reservation failed")
         raise
 

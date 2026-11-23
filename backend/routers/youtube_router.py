@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
 from typing import Optional, List, Dict
@@ -33,18 +33,19 @@ from ..database.session import get_session
 from ..database.repository import TaskRepository
 from .auth_router import get_current_user
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
-from ..services.entitlements import MAX_ACTIVE_TASKS_PER_USER, source_limit_seconds
+from ..services.entitlements import concurrency_limit, source_limit_seconds
 from ..utils.admin_access import is_admin_email
 
 progress_logs = {}
 _active_tasks = {}
-_active_user_tasks = {}
+_active_user_tasks: dict[str, set[str]] = {}
 
 
 def _release_active_task(task_id: str) -> None:
     _active_tasks.pop(task_id, None)
-    for user_id, active_task_id in list(_active_user_tasks.items()):
-        if active_task_id == task_id:
+    for user_id, active_task_ids in list(_active_user_tasks.items()):
+        active_task_ids.discard(task_id)
+        if not active_task_ids:
             _active_user_tasks.pop(user_id, None)
 
 VIRAL_KEYWORDS = [
@@ -809,45 +810,11 @@ def _run_moment_pipeline(
         sub_progress=0.8,
     )
 
-    # 1c. NEW 2026-06-15 (A1+A3): Speculative video download for top-3
-    #     candidates in PARALLEL with the LLM call. If LLM picks one of
-    #     the top-3, the video is already on disk and we skip the
-    #     expensive re-download step (saves ~35s).
-    #     Risk: 3 video downloads even if LLM picks none of them (~1.5MB
-    #     extra bandwidth). Win: 35s faster on the common case.
-    spec_results: Dict[int, Dict] = {}
-    try:
-        from ..pipeline.speculative import speculative_video_download
-        speculative_candidates = moment_dicts[:target_clip_count]
-        _bridge("video_dl", f"Pre-fetching video for top-{min(3, len(speculative_candidates))} candidates...",
-                step=4, sub_progress=0.82)
-        spec_results = speculative_video_download(
-            url=url,
-            top_candidates=speculative_candidates,
-            task_id=task_id,
-            log_fn=_bridge,
-            max_workers=2,
-        )
-        n_spec_ok = sum(1 for v in spec_results.values() if v.get("video_path"))
-        _bridge("video_dl", f"Speculative video: {n_spec_ok}/{len(spec_results)} ready",
-                step=4, sub_progress=0.84)
-        if n_spec_ok == 0:
-            raise RuntimeError(
-                "Source video download failed before paid clip selection. "
-                "No LLM call was made; check yt-dlp/ytagent formats and credentials."
-            )
-    except Exception as e:
-        _bridge("video_dl", f"Speculative video download failed: {e}",
-                step=4, sub_progress=0.84)
-        raise
-
     # 2. Engagement Signal Layer + Narrative Unit Segmentation + LLM Discovery
     _bridge("taste", "Analyzing engagement signals & narrative units...")
     import time
     from ..signals import (
         fetch_youtube_replay_signal,
-        fetch_twitch_clips_signal,
-        fetch_twitch_chat_signal,
         extract_transcript_density_signal,
         fuse_signals,
     )
@@ -872,8 +839,6 @@ def _run_moment_pipeline(
     sig_start_t = time.time()
     raw_signals = {
         "youtube_replay": fetch_youtube_replay_signal(url),
-        "twitch_clips": fetch_twitch_clips_signal(url),
-        "twitch_chat": None,
         "transcript_density": extract_transcript_density_signal(orig_transcript, dur_s),
     }
     fusion_res = fuse_signals(raw_signals, dur_s)
@@ -1337,80 +1302,31 @@ def _run_moment_pipeline(
         for c in final_clips
     ]
 
-    # NEW 2026-06-15 (A3): Try to use the speculative video cache first.
-    # If a LLM pick matches one of the top-3 pre-fetched videos, use it
-    # directly. Only fall back to the re-download for picks NOT in the
-    # speculative cache. This is the 35s speedup.
-    n_from_spec = 0
+    # Check segment cache for each LLM pick. If hit, reuse; if miss, download once.
+    from ..pipeline.cache import get_cached_segment
+    from ..utils.config import SURGICAL_BUFFER_SECONDS as _PAD
+
+    n_cached = 0
     n_need_download = 0
-    final_clips_with_video = []
-    for c in final_clips:
-        # Try speculative match
-        c_src_start = float(c.get("source_start", c.get("start", 0)))
-        c_src_end = float(c.get("source_end", c.get("end", 0)))
-        spec_match = None
-        for spec in spec_results.values():
-            if not spec.get("video_path"):
-                continue
-            spec_start = float(spec.get("source_start", 0))
-            spec_end = float(spec.get("source_end", 0))
-            # Must strictly cover the entire clip duration (both start and end)
-            if abs(spec_start - c_src_start) < 2.0 and spec_end >= (c_src_end - 2.0):
-                spec_match = spec
-                break
-        if spec_match:
-            c["video_path"] = spec_match["video_path"]
-            c["video_source_start"] = float(spec_match.get("source_start", 0))
-            c["video_source_end"] = float(spec_match.get("source_end", 999999))
-            n_from_spec += 1
-            final_clips_with_video.append(c)
+    for i, c in enumerate(final_clips):
+        c_start = float(c.get("start", c.get("source_start", 0)))
+        c_end = float(c.get("end", c.get("source_end", c_start + 15)))
+        cached = get_cached_segment(url, c_start, c_end)
+        if cached is not None:
+            c["video_path"] = str(cached)
+            c["video_source_start"] = max(0.0, c_start - _PAD)
+            c["video_source_end"] = c_end + _PAD
+            n_cached += 1
+            _bridge("video_dl", f"  segment {i+1} cache hit [{c_start:.1f}-{c_end:.1f}]",
+                    step=4, sub_progress=(i + 0.5) / len(final_clips))
+            _on_vid_done(0, len(final_clips), True)
         else:
             c["_needs_video_download"] = True
-            final_clips_with_video.append(c)
             n_need_download += 1
-    final_clips = final_clips_with_video
 
-    if n_from_spec > 0:
-        _bridge("video_dl", f"Using {n_from_spec} pre-fetched video(s) from speculative cache",
-                step=4, sub_progress=0.97)
-
-    if n_need_download > 0:
-        # Only download the ones we couldn't pre-fetch
-        video_candidates_to_fetch = [
-            {"start": c.get("start", c.get("source_start")),
-             "end": c.get("end", c.get("source_end"))}
-            for c in final_clips if c.get("_needs_video_download")
-        ]
-        # NEW 2026-06-15: Segment cache (Option 3).
-        # Check cache for each needed segment. If hit, reuse; if miss, download.
-        from ..pipeline.cache import get_cached_segment, save_segment_cache
-        clips_needing_dl = [c for c in final_clips if c.get("_needs_video_download")]
-        cached_segs = []
-        to_download = []  # list of (clip_index_in_final_clips, cand_dict)
-        for i, (clip, cand) in enumerate(zip(clips_needing_dl, video_candidates_to_fetch)):
-            cached = get_cached_segment(url, cand["start"], cand["end"])
-            if cached is not None:
-                clip["video_path"] = str(cached)
-                # The cached file was saved by surgical download with padded boundaries.
-                # Use cand["start"] as proxy for the file's actual content start:
-                # the file = (cand["start"] - pad) to (cand["end"] + pad).
-                from ..utils.config import SURGICAL_BUFFER_SECONDS as _PAD
-                clip["video_source_start"] = max(0.0, cand["start"] - _PAD)
-                clip["video_source_end"] = cand["end"] + _PAD
-                clip.pop("_needs_video_download", None)
-                cached_segs.append(clip)
-                _bridge("video_dl", f"  segment {i+1} cache hit [{cand['start']:.1f}-{cand['end']:.1f}]",
-                        step=4, sub_progress=(i + 0.5) / len(clips_needing_dl))
-            else:
-                to_download.append((clip, cand))
-        if cached_segs:
-            n_cached = len(cached_segs)
-            n_to_dl = len(to_download)
-            _bridge("video_dl", f"Segment cache: {n_cached} hit, {n_to_dl} to download",
-                    step=4, sub_progress=0.5)
-        # Mark non-downloaded clips as already done in the counter
-        for _ in cached_segs:
-            _on_vid_done(0, len(final_clips), True)
+    if n_cached > 0:
+        _bridge("video_dl", f"Segment cache: {n_cached} hit, {n_need_download} to download",
+                step=4, sub_progress=0.5)
 
     # All clips either have video_path now, or are about to be downloaded.
     # NEW 2026-06-16: STREAMING RENDER. Instead of downloading ALL segments
@@ -1840,28 +1756,24 @@ async def process_youtube_url(
         if requested_clip_count < 1 or requested_clip_count > 4:
             raise HTTPException(status_code=422, detail="clip_count must be between 1 and 4")
 
-    if user.id in _active_user_tasks:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "ACTIVE_JOB_LIMIT",
-                "message": "You already have an active processing task. Wait for it to finish before starting another.",
-            },
-        )
+    plan_concurrency = concurrency_limit(user.plan_tier)
+    # Serialize admission per user across backend workers. The task row is
+    # committed before the advisory lock is released by TaskRepository.create.
+    await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"), {"user_id": user.id})
     active_count = (await session.execute(
         select(func.count(TaskModel.task_id)).where(
             TaskModel.user_id == user.id,
             TaskModel.status.in_(["queued", "processing"]),
         )
     )).scalar() or 0
-    if active_count >= MAX_ACTIVE_TASKS_PER_USER:
+    if active_count >= plan_concurrency:
         raise HTTPException(
             status_code=409,
-            detail={"code": "ACTIVE_JOB_LIMIT", "message": "Your plan allows 1 active processing task at a time."},
+            detail={"code": "ACTIVE_JOB_LIMIT", "message": f"Your plan allows {plan_concurrency} active processing task(s) at a time."},
         )
 
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}", user_id=user.id, persist=False)
-    _active_user_tasks[user.id] = task["task_id"]
+    _active_user_tasks.setdefault(user.id, set()).add(task["task_id"])
 
     try:
         await TaskRepository.create(
@@ -1880,10 +1792,10 @@ async def process_youtube_url(
         )
     except IntegrityError:
         await session.rollback()
-        _active_user_tasks.pop(user.id, None)
-        raise HTTPException(409, "Your plan allows 1 active processing task at a time.") from None
+        _release_active_task(task["task_id"])
+        raise HTTPException(409, f"Your plan allows {plan_concurrency} active processing task(s) at a time.") from None
     except Exception:
-        _active_user_tasks.pop(user.id, None)
+        _release_active_task(task["task_id"])
         task_store.update_task(
             task["task_id"],
             status=TaskStatus.FAILED,

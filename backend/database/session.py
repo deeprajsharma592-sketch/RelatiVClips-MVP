@@ -75,6 +75,11 @@ async def init_db():
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_unit_version INTEGER NOT NULL DEFAULT 1"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) NOT NULL DEFAULT 'free'"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS polar_customer_id VARCHAR(80)"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS polar_subscription_id VARCHAR(80)"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS polar_subscription_status VARCHAR(24) NOT NULL DEFAULT 'none'"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS polar_current_period_end TIMESTAMP"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS polar_cancel_at_period_end BOOLEAN NOT NULL DEFAULT false"))
         await conn.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"))
         # One-time denomination migration: old credits represented clips; v2
         # represents 1/200th of a clip. The version flag makes this idempotent.
@@ -83,10 +88,9 @@ async def init_db():
         await conn.execute(text("ALTER TABLE users ALTER COLUMN credit_unit_version SET DEFAULT 2"))
         await conn.execute(text("UPDATE users SET is_admin = true WHERE lower(email) = 'deeprajsharma592@gmail.com'"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id)"))
-        await conn.execute(text(
-            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_one_active_per_user "
-            "ON tasks (user_id) WHERE user_id IS NOT NULL AND status IN ('queued', 'processing')"
-        ))
+        await conn.execute(text("DROP INDEX IF EXISTS uq_tasks_one_active_per_user"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_polar_customer_id ON users(polar_customer_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_polar_subscription_id ON users(polar_subscription_id)"))
         await conn.execute(text("ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL"))
         await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_words JSONB"))
         await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_style JSONB"))

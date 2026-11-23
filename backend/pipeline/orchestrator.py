@@ -38,7 +38,6 @@ from ..utils.config import TEMP_DIR, OUTPUTS_DIR
 from . import audio_analysis
 from . import hooks as hook_stage
 from . import surgical as surgical_stage
-from . import speculative  # for speculative_video_download
 from ..database import rag_store  # ChromaDB-backed RAG (2026-06-25)
 from . import transcription as transcription_module
 from . import face_detection as face_stage
@@ -524,12 +523,9 @@ def _run_stage_8_render(
     rendered = []
     for i, clip in enumerate(clips):
         _emit(progress, "render", f"Rendering clip {i+1}/{len(clips)}...")
-        # Use specvid_path (full H.264 video) over audio_path (audio-only .m4a).
-        # specvid_path is set by speculative_video_download in stage 4.
-        # audio_path is the audio-only surgical segment — FFmpeg produces 0 KB with it.
+        # Use video_path (full H.264 video) over audio_path.
         clip_input = (
-            clip.get("specvid_path")
-            or clip.get("video_path")
+            clip.get("video_path")
             or clip.get("audio_path")
             or clip.get("file_path")
             or source
@@ -680,24 +676,6 @@ def run_new_pipeline(
             result["segments"] = segments
             result["stages_run"].append(4)
 
-            # ── Speculative video download ──────────────────────────────────
-            # Download full video (not just audio) for top-K candidates
-            # in parallel with stage 5/6. This is what the renderer needs
-            # (audio_path = audio-only .m4a; specvid_path = full H.264 video).
-            if video_meta.get("source_type") == "youtube":
-                spec_results = speculative.speculative_video_download(
-                    source, hook_candidates, task_id,
-                    log_fn=lambda m: _emit(progress, "specvid", m),
-                )
-                # Attach video paths and the exact source interval represented
-                # by each padded local file.
-                for i, seg in enumerate(segments):
-                    spec = spec_results.get(i, {})
-                    seg["specvid_path"] = spec.get("video_path")
-                    if spec.get("video_path"):
-                        seg["video_source_start"] = spec.get("source_start")
-                        seg["video_source_end"] = spec.get("source_end")
-
     # Stage 5: Per-segment transcription (or use precomputed YouTube captions)
     if 5 in run_set and segments:
         segments = _run_stage_5_transcribe_segments(
@@ -751,7 +729,6 @@ def run_new_pipeline(
                 # directly with the clip's source timestamps.
                 clip["source_start"] = matching.get("source_start", clip_start)
                 clip["source_end"] = matching.get("source_end", float(clip.get("end", clip_start + 15)))
-                clip["specvid_path"] = matching.get("specvid_path")
                 clip["video_source_start"] = matching.get("video_source_start")
                 clip["video_source_end"] = matching.get("video_source_end")
                 if matching.get("video_path"):

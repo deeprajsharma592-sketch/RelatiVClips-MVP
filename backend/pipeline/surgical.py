@@ -70,11 +70,12 @@ def _ytdlp_section_url(
         p = Path(dest_path)
         out_template = str(p.parent / f"{p.stem}.%(ext)s")
 
+    from ..utils.config import ytdlp_supports_js_runtimes
     cmd = [
         YTDLP_PATH,
         "-f", "ba/140/251/b/best/18",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--js-runtimes", "node",
+        *(["--js-runtimes", "node"] if ytdlp_supports_js_runtimes() else []),
         "--extractor-args", f"youtube:player_client={extractor_client}",
         "-o", out_template,
         "--no-warnings",
@@ -140,7 +141,7 @@ def _ytdlp_video_section_url(
         "--merge-output-format", "mp4",
         "--format-sort", "res:1080,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
-        "--js-runtimes", "node",
+        *(["--js-runtimes", "node"] if ytdlp_supports_js_runtimes() else []),
         "--extractor-args", f"youtube:player_client={extractor_client}",
         "-o", out_template,
         "--no-warnings",

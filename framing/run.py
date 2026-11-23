@@ -37,16 +37,37 @@ from .s10_qa import generate_qa_report
 
 def _face_to_output(face, crop, out_w, out_h, y_offset=0):
     """Map a source [x,y,w,h] face through the exact final crop."""
-    if not face or not crop or len(face) < 4 or len(crop) < 4:
+    if not face or not crop:
         return None
-    fx, fy, fw, fh = map(float, face[:4])
-    cx, cy, cw, ch = map(float, crop[:4])
+    if isinstance(face, dict):
+        fx = float(face.get("x") or face.get("x1") or 0)
+        fy = float(face.get("y") or face.get("y1") or 0)
+        fw = float(face.get("w") or 0)
+        fh = float(face.get("h") or 0)
+    elif len(face) >= 4:
+        fx, fy, fw, fh = map(float, face[:4])
+    else:
+        return None
+
+    if isinstance(crop, dict):
+        cx = float(crop.get("x1") or crop.get("x") or 0)
+        cy = float(crop.get("y1") or crop.get("y") or 0)
+        cw = float(crop.get("w") or 0)
+        ch = float(crop.get("h") or 0)
+    elif len(crop) >= 4:
+        cx, cy, cw, ch = map(float, crop[:4])
+    else:
+        return None
+
+    if cw <= 0 or ch <= 0:
+        return None
+
     pad_x, pad_y = fw * 0.12, fh * 0.12
-    x1 = (fx - pad_x - cx) * out_w / max(1, cw)
-    y1 = (fy - pad_y - cy) * out_h / max(1, ch) + y_offset
-    x2 = (fx + fw + pad_x - cx) * out_w / max(1, cw)
-    y2 = (fy + fh + pad_y - cy) * out_h / max(1, ch) + y_offset
-    return [round(max(0, x1), 1), round(max(y_offset, y1), 1), round(min(out_w, x2), 1), round(min(y_offset + out_h, y2), 1)]
+    x1 = (fx - pad_x - cx) * out_w / max(1.0, cw)
+    y1 = (fy - pad_y - cy) * out_h / max(1.0, ch) + y_offset
+    x2 = (fx + fw + pad_x - cx) * out_w / max(1.0, cw)
+    y2 = (fy + fh + pad_y - cy) * out_h / max(1.0, ch) + y_offset
+    return [round(max(0.0, x1), 1), round(max(y_offset, y1), 1), round(min(out_w, x2), 1), round(min(y_offset + out_h, y2), 1)]
 
 
 def _build_subject_track(plan_frames, fps, out_w, out_h, scene_h):

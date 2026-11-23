@@ -6,6 +6,7 @@ renders SINGLE, STACK (1080x960 x 2), or FIT_BLUR, and pipes BGR to ffmpeg (spec
 from __future__ import annotations
 
 import time
+import sys
 import cv2
 import numpy as np
 import subprocess
@@ -14,6 +15,37 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .config import get_binary_paths
 from .debug_overlay import draw_debug_overlay
+
+
+_BEST_H264_ENCODER = None
+
+def _get_h264_encoder_args(ffmpeg_bin: str, crf: int = 18, preset: str = "medium") -> list:
+    """Detect GPU hardware-accelerated H.264 encoder with clean CPU fallback.
+    Priority:
+      1. h264_nvenc (NVIDIA GPU server / RunPod / EC2) -> ~1.5s render
+      2. h264_videotoolbox (Apple Silicon Mac) -> ~2s render
+      3. libx264 (Universal CPU fallback) -> ~9s render
+    """
+    global _BEST_H264_ENCODER
+    if _BEST_H264_ENCODER is None:
+        try:
+            res = subprocess.run([ffmpeg_bin, "-encoders"], capture_output=True, text=True, timeout=5)
+            stdout = res.stdout or ""
+            if "h264_nvenc" in stdout:
+                _BEST_H264_ENCODER = "nvenc"
+            elif "h264_videotoolbox" in stdout and sys.platform == "darwin":
+                _BEST_H264_ENCODER = "videotoolbox"
+            else:
+                _BEST_H264_ENCODER = "libx264"
+        except Exception:
+            _BEST_H264_ENCODER = "libx264"
+
+    if _BEST_H264_ENCODER == "nvenc":
+        return ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", str(crf), "-pix_fmt", "yuv420p"]
+    elif _BEST_H264_ENCODER == "videotoolbox":
+        return ["-c:v", "h264_videotoolbox", "-b:v", "6500k", "-pix_fmt", "yuv420p"]
+    else:
+        return ["-c:v", "libx264", "-crf", str(crf), "-preset", preset, "-pix_fmt", "yuv420p"]
 
 
 def render_fit_blur_frame(frame: np.ndarray, target_w: int = 1080, target_h: int = 1920, blur_sigma: int = 30) -> np.ndarray:
@@ -184,11 +216,9 @@ def render_video(
         ffmpeg_cmd.extend(["-vf", f"ass='{escaped_sub}':fontsdir='{escaped_fonts}'"])
         print(f"[Framing Render] Burning viral subtitles from {subtitle_path}")
 
+    encoder_args = _get_h264_encoder_args(bins["ffmpeg"], crf=crf, preset=preset)
+    ffmpeg_cmd.extend(encoder_args)
     ffmpeg_cmd.extend([
-        "-c:v", "libx264",
-        "-crf", str(crf),
-        "-preset", preset,
-        "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "160k",
         "-shortest",

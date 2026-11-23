@@ -153,8 +153,38 @@ YT_PROXY = os.getenv("YT_PROXY", "")
 
 import shutil as _shutil
 
-FFMPEG_PATH = os.getenv("FFMPEG_PATH") or _shutil.which("ffmpeg") or "ffmpeg"
-FFPROBE_PATH = os.getenv("FFPROBE_PATH") or _shutil.which("ffprobe") or "ffprobe"
+FFMPEG_PATH = os.getenv("FFMPEG_PATH") or _shutil.which("ffmpeg")
+FFPROBE_PATH = os.getenv("FFPROBE_PATH") or _shutil.which("ffprobe")
+
+if not FFMPEG_PATH:
+    try:
+        import static_ffmpeg
+        _ffmpeg_bins = list(Path(static_ffmpeg.__file__).parent.glob("bin/**/ffmpeg"))
+        if _ffmpeg_bins and _ffmpeg_bins[0].exists():
+            FFMPEG_PATH = str(_ffmpeg_bins[0])
+            _ffprobe_bins = list(Path(static_ffmpeg.__file__).parent.glob("bin/**/ffprobe"))
+            if _ffprobe_bins and _ffprobe_bins[0].exists():
+                FFPROBE_PATH = str(_ffprobe_bins[0])
+    except Exception:
+        pass
+
+if not FFMPEG_PATH:
+    FFMPEG_PATH = "ffmpeg"
+if not FFPROBE_PATH:
+    FFPROBE_PATH = "ffprobe"
+
+_SUPPORTS_JS_RUNTIMES = None
+
+def ytdlp_supports_js_runtimes() -> bool:
+    global _SUPPORTS_JS_RUNTIMES
+    if _SUPPORTS_JS_RUNTIMES is None:
+        try:
+            import subprocess
+            proc = subprocess.run([YTDLP_PATH, "--help"], capture_output=True, text=True, timeout=5)
+            _SUPPORTS_JS_RUNTIMES = "--js-runtimes" in (proc.stdout or "")
+        except Exception:
+            _SUPPORTS_JS_RUNTIMES = False
+    return bool(_SUPPORTS_JS_RUNTIMES)
 # Pin to venv-installed yt-dlp (2026+ has --js-runtimes, --remote-components
 # needed for YouTube's 2025+ challenge solver). System /usr/bin/yt-dlp is
 # typically the old 2024 version from apt and breaks.

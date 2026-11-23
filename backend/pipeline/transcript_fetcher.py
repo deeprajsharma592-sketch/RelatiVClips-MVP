@@ -156,16 +156,67 @@ def _parse_srt(srt_path: str) -> list:
     return segments
 
 
+def _extract_video_id(url: str) -> Optional[str]:
+    m = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", url)
+    return m.group(1) if m else None
+
+
+def _try_innertube_transcript(url: str, log: Callable) -> Optional[dict]:
+    """Instant InnerTube transcript API (<1s, free, immune to player challenge / 429)."""
+    vid = _extract_video_id(url)
+    if not vid:
+        return None
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        api = YouTubeTranscriptApi()
+        if hasattr(api, "fetch"):
+            fetched = api.fetch(vid)
+        elif hasattr(YouTubeTranscriptApi, "get_transcript"):
+            fetched = YouTubeTranscriptApi.get_transcript(vid)
+        else:
+            return None
+
+        segments = []
+        for s in fetched:
+            text = getattr(s, "text", None) if not isinstance(s, dict) else s.get("text")
+            start = getattr(s, "start", None) if not isinstance(s, dict) else s.get("start")
+            duration = getattr(s, "duration", None) if not isinstance(s, dict) else s.get("duration")
+            txt = str(text or "").strip()
+            if txt and txt != "[Music]":
+                segments.append({
+                    "start": round(float(start or 0), 3),
+                    "end": round(float((start or 0) + (duration or 0)), 3),
+                    "text": txt,
+                    "speaker": "A",
+                })
+        if segments:
+            log(f"  InnerTube captions: {len(segments)} segments fetched in <1s")
+            return {"segments": segments, "language": "en", "source": "innertube_api"}
+    except Exception as e:
+        log(f"  InnerTube captions not available ({e}); trying yt-dlp fallback...")
+    return None
+
+
 def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dict]:
     """
-    Try to get transcript via yt-dlp auto-generated subtitles.
+    Try to get transcript via InnerTube API or yt-dlp auto-generated subtitles.
     Routes through Deepraj's laptop (residential IP) first, then falls back
     to direct server download.
 
     Returns segments dict or None if unavailable.
     """
+    # --- Step 0: Try InnerTube transcript API (fastest, ~1s, immune to yt-dlp 429) ---
+    innertube_res = _try_innertube_transcript(url, log)
+    if innertube_res and innertube_res.get("segments"):
+        return innertube_res
+
     import requests as _requests
-    from ..utils.config import RESIDENTIAL_DOWNLOAD_URL, RESIDENTIAL_DOWNLOAD_TIMEOUT, RESIDENTIAL_DOWNLOAD_TOKEN
+    from ..utils.config import (
+        RESIDENTIAL_DOWNLOAD_URL,
+        RESIDENTIAL_DOWNLOAD_TIMEOUT,
+        RESIDENTIAL_DOWNLOAD_TOKEN,
+        ytdlp_supports_js_runtimes,
+    )
 
     # --- Step 1: Try laptop proxy only if configured and valid ---
     if RESIDENTIAL_DOWNLOAD_URL and "overbid-unleaded-pencil" not in RESIDENTIAL_DOWNLOAD_URL:
@@ -230,7 +281,7 @@ def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dic
     if FFMPEG_PATH:
         cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
     import shutil
-    if shutil.which("node"):
+    if shutil.which("node") and ytdlp_supports_js_runtimes():
         cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
 
     cmd.extend(cookie_args)
