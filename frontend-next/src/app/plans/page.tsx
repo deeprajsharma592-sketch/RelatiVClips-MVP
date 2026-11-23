@@ -340,17 +340,17 @@ export default function PlansPage() {
           <div className="mt-8 sm:mt-10 rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0B0D12] p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm dark:shadow-lg">
             <div className="space-y-1">
               <h3 className="font-display font-semibold text-lg text-zinc-900 dark:text-white">
-                Need custom volume, team accounts, or dedicated GPU lanes?
+                Need more with API endpoint or custom volume?
               </h3>
               <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-sans max-w-2xl">
-                Our Agency & Enterprise tier starts with volume discounts, no watermark, dedicated compute, and custom API integrations.
+                High-volume processing pipelines, dedicated GPU compute instances, webhook callbacks, and developer REST API access.
               </p>
             </div>
             <Link
-              href="/contact?intent=enterprise"
+              href="/contact?intent=api"
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10 transition-all shrink-0"
             >
-              <span>Contact Enterprise</span>
+              <span>Contact us</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

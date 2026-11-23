@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Sparkles, Zap, Shield, Crown, ArrowRight, Loader2 } from "lucide-react";
+import { X, Check, Sparkles, Zap, Shield, Crown, ArrowRight, Loader2, Code2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getPolarCheckoutUrl } from "@/lib/polar";
 
@@ -58,7 +58,7 @@ export default function UpgradeModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full max-w-5xl bg-[#0E0F14] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl overflow-hidden z-10"
+          className="relative w-full max-w-5xl bg-[#0E0F14] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh] z-10"
         >
           {/* Subtle Ambient Radial Glow */}
           <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -197,19 +197,19 @@ export default function UpgradeModal({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-base font-semibold text-white">Pro Studio</h3>
-                  <span className="text-[11px] font-medium text-zinc-300 bg-white/10 px-2 py-0.5 rounded border border-white/10">
-                    90 clips/mo
+                  <span className="text-[11px] font-medium text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                    300 clips/mo
                   </span>
                 </div>
                 <div className="mb-4">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-white">
-                      ${billingCycle === "yearly" ? "9.59" : "11.99"}
+                      ${billingCycle === "yearly" ? "11.99" : "14.99"}
                     </span>
                     <span className="text-xs text-zinc-400">/ month</span>
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-1">
-                    {billingCycle === "yearly" ? "Billed $115 annually" : "Billed monthly"}
+                    {billingCycle === "yearly" ? "Billed $143.88 annually" : "Billed monthly"}
                   </p>
                 </div>
 
@@ -235,7 +235,7 @@ export default function UpgradeModal({
                 <div className="space-y-2.5 text-xs text-zinc-200">
                   <div className="flex items-center gap-2 font-medium text-white">
                     <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span><b>90 viral clips</b> / month</span>
+                    <span><b>60,000 credits</b> · up to 300 clips / month</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-cyan-400 shrink-0" />
@@ -255,43 +255,64 @@ export default function UpgradeModal({
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>Up to 90 min source video length</span>
+                    <span>Up to 60 min source video length</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 3. Business Tier */}
+            {/* 3. Max Tier */}
             <div className="bg-white/[0.02] border border-white/10 hover:border-white/20 rounded-xl p-5 flex flex-col justify-between transition group">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold text-white">Agency & Brand</h3>
-                  <span className="text-[11px] font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                    Unlimited
+                  <h3 className="text-base font-semibold text-white">Max</h3>
+                  <span className="text-[11px] font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                    1,000 clips/mo
                   </span>
                 </div>
                 <div className="mb-4">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-white">Custom</span>
+                    <span className="text-3xl font-extrabold text-white">
+                      ${billingCycle === "yearly" ? "19.99" : "24.99"}
+                    </span>
+                    <span className="text-xs text-zinc-400">/ month</span>
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-1">
-                    Tailored for media houses & creator teams
+                    {billingCycle === "yearly" ? "Billed $239.88 annually" : "Billed monthly"}
                   </p>
                 </div>
 
-                <Link
-                  href="/contact"
-                  onClick={onClose}
-                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5 cursor-pointer"
+                <button
+                  type="button"
+                  disabled={Boolean(loadingPlan)}
+                  onClick={() => handleSelectPlan("creator_max")}
+                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5 cursor-pointer"
                 >
-                  Contact us
-                  <ArrowRight size={13} />
-                </Link>
+                  {loadingPlan === "creator_max" ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Opening Checkout…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Get Max</span>
+                      <ArrowRight size={13} />
+                    </>
+                  )}
+                </button>
 
                 <div className="space-y-2.5 text-xs text-zinc-300">
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>Unlimited clips & source hours</span>
+                    <span><b>200,000 credits</b> · up to 1,000 clips / month</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={14} className="text-purple-400 shrink-0" />
+                    <span>Up to 90 min source video length</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={14} className="text-purple-400 shrink-0" />
+                    <span>2 concurrent processing tasks</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-purple-400 shrink-0" />
@@ -299,19 +320,40 @@ export default function UpgradeModal({
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>Dedicated GPU compute instance</span>
+                    <span>Dedicated priority GPU compute lane</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-purple-400 shrink-0" />
                     <span>Custom subtitle typography & branding</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>API & Webhook integrations</span>
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* API Endpoint & Custom Volume Callout */}
+          <div className="mt-5 p-3.5 sm:p-4 rounded-xl border border-white/10 bg-white/[0.03] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                <Code2 size={15} className="text-cyan-400" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-white">
+                  Need more with API endpoint?
+                </div>
+                <div className="text-[11px] text-zinc-400">
+                  Custom high-volume pipelines, dedicated instances, and automated webhook integrations.
+                </div>
+              </div>
+            </div>
+            <Link
+              href="/contact?intent=api"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition shrink-0 cursor-pointer"
+            >
+              <span>Contact us</span>
+              <ArrowRight size={12} />
+            </Link>
           </div>
 
           {/* Footer Guarantee */}

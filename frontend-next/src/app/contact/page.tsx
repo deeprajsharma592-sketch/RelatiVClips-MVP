@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -26,6 +26,20 @@ export default function ContactPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const intent = params.get("intent");
+      if (intent === "api") {
+        setSubject("API & High-Volume Endpoint Inquiry");
+      } else if (intent === "enterprise") {
+        setSubject("Agency & Enterprise Inquiry");
+      } else if (intent === "billing-support") {
+        setSubject("Billing & Subscription Support");
+      }
+    }
+  }, []);
 
   const handleCopyEmail = useCallback(async () => {
     try {
