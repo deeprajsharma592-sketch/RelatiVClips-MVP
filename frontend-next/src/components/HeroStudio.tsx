@@ -139,17 +139,17 @@ export default function HeroStudio() {
               Paste a link or drop a raw take. RelatiV finds the moments, edits the clips, and sizes them for every platform.
             </p>
           </div>
-          <div className="mt-10 w-full max-w-[56rem] pointer-events-auto lg:mt-8 lg:max-w-[46rem]">
+          <div className="mt-10 w-full max-w-[56rem] pointer-events-auto lg:mt-8 lg:max-w-[50rem]">
             <form
               onSubmit={handleSubmit}
               aria-label="Create clips"
               aria-busy={pending !== null}
-              className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2.5 rounded-[20px] border border-[#43394f] bg-[#191621] p-3 shadow-[4px_5px_0_#08070b] sm:flex sm:items-center sm:gap-2 sm:rounded-[28px] sm:border-zinc-300 sm:bg-white sm:p-1.5 lg:p-1 sm:shadow-[0_8px_30px_#0002] sm:dark:border-[#373044] sm:dark:bg-[#191621] sm:dark:shadow-black/30"
+              className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2.5 rounded-[18px] border border-[#43394f] bg-[#191621] p-3 shadow-[4px_5px_0_#08070b] sm:flex sm:items-center sm:gap-2 sm:rounded-[24px] sm:border-zinc-300 sm:bg-white sm:p-1.5 lg:p-1 sm:shadow-[0_8px_30px_#0002] sm:dark:border-[#373044] sm:dark:bg-[#191621] sm:dark:shadow-black/30"
             >
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="col-span-2 flex min-h-[52px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#373044] bg-[#100e17] px-3 focus-within:border-violet-400 sm:min-h-12 lg:min-h-10 sm:rounded-[20px] sm:border-zinc-200 sm:bg-zinc-50 sm:focus-within:border-violet-500 sm:dark:border-[#373044] sm:dark:bg-[#100e17] sm:dark:focus-within:border-violet-400"
+                className="col-span-2 flex min-h-[52px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#373044] bg-[#100e17] px-3 focus-within:border-violet-400 sm:min-h-12 lg:min-h-11 sm:rounded-[17px] sm:border-zinc-200 sm:bg-zinc-50 sm:focus-within:border-violet-500 sm:dark:border-[#373044] sm:dark:bg-[#100e17] sm:dark:focus-within:border-violet-400"
               >
                 <Link2 className="size-4 shrink-0 text-zinc-400 sm:text-zinc-500 sm:dark:text-zinc-400" aria-hidden="true" />
                 <input
@@ -181,7 +181,7 @@ export default function HeroStudio() {
                 disabled={pending !== null}
                 aria-label="Upload file"
                 title="Upload file"
-                className="col-start-2 row-start-2 inline-flex min-h-12 lg:min-h-10 min-w-0 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#52465f] px-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:cursor-wait sm:min-w-10 sm:gap-2 sm:rounded-[20px] sm:border-zinc-200 sm:px-3 sm:font-medium sm:text-zinc-700 sm:hover:bg-zinc-100 sm:dark:border-[#373044] sm:dark:text-zinc-200 sm:dark:hover:bg-white/10"
+                className="col-start-2 row-start-2 inline-flex min-h-12 lg:min-h-11 min-w-0 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#52465f] px-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:cursor-wait sm:min-w-10 sm:gap-2 sm:rounded-[17px] sm:border-zinc-200 sm:px-3 sm:font-medium sm:text-zinc-700 sm:hover:bg-zinc-100 sm:dark:border-[#373044] sm:dark:text-zinc-200 sm:dark:hover:bg-white/10"
               >
                 <Upload className="size-4" aria-hidden="true" />
                 <span>Upload file</span>
@@ -191,7 +191,7 @@ export default function HeroStudio() {
                 type="submit"
                 disabled={pending !== null}
                 aria-label={pending ? "Starting clip generation" : "Get free clips"}
-                className="col-start-1 row-start-2 inline-flex min-h-12 lg:min-h-10 min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-violet-200 px-2.5 text-sm font-bold text-violet-950 transition hover:bg-violet-100 disabled:cursor-wait sm:rounded-[20px] sm:bg-violet-700 sm:px-4 sm:text-white sm:hover:bg-violet-800 sm:dark:bg-violet-200 sm:dark:text-violet-950 sm:dark:hover:bg-violet-100"
+                className="col-start-1 row-start-2 inline-flex min-h-12 lg:min-h-11 min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-white px-2.5 text-sm font-bold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-wait sm:rounded-[17px] sm:px-4"
               >
                 {pending ? (pending === "upload" ? "Uploading…" : "Starting…") : (
                   <>
