@@ -19,6 +19,7 @@ from backend.caching import (
     get_directory_size_mb,
     VideoCacheModel,
 )
+from backend.utils.config import RENDER_VERSION
 
 
 def test_canonicalize_youtube_url_variations():
@@ -104,7 +105,8 @@ def test_check_rendered_files_exist_validation(tmp_path):
     valid_clips = [{
         "start": 10.0,
         "end": 45.0,
-        "file_path": str(real_file)
+        "file_path": str(real_file),
+        "render_version": RENDER_VERSION,
     }]
     assert check_rendered_files_exist(valid_clips) is True
 

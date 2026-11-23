@@ -41,6 +41,39 @@ _active_tasks = {}
 _active_user_tasks: dict[str, set[str]] = {}
 
 
+def _cacheable_render_settings(
+    caption_font: str,
+    caption_style: Optional[dict],
+    *,
+    is_remake: bool,
+    tail_buffer_seconds: float,
+    thumbnail_outro_seconds: float,
+) -> bool:
+    """Return whether a render can share the canonical result cache.
+
+    ``normalize_caption_preset`` converts the product's default ``studio``
+    selection to ``impact`` before this function runs. Treating only the
+    literal word ``studio`` as cacheable made normal requests permanently
+    bypass both cache reads and writes.
+    """
+    if is_remake or tail_buffer_seconds != 3.0 or thumbnail_outro_seconds != 4.0:
+        return False
+    if caption_font not in {"studio", "impact"}:
+        return False
+    style = caption_style if isinstance(caption_style, dict) else {}
+    if str(style.get("preset") or caption_font).lower() not in {"studio", "impact"}:
+        return False
+    overrides = style.get("overrides") if isinstance(style.get("overrides"), dict) else {}
+    # These values are the dashboard's default studio presentation and do not
+    # represent a custom render variant.
+    return all(
+        key in {"colorway", "position_mode"}
+        and (key != "colorway" or value == "yellow")
+        and (key != "position_mode" or value == "auto")
+        for key, value in overrides.items()
+    )
+
+
 def _release_active_task(task_id: str) -> None:
     _active_tasks.pop(task_id, None)
     for user_id, active_task_ids in list(_active_user_tasks.items()):
@@ -1565,12 +1598,14 @@ async def run_youtube_pipeline_async(
         from ..caching.service import get_cached_video
         from ..database.session import async_session, _DB_AVAILABLE
         cached = None
-        if (
-            is_remake
-            or caption_font != "studio"
-            or tail_buffer_seconds != 3.0
-            or thumbnail_outro_seconds != 4.0
-        ):
+        cacheable_settings = _cacheable_render_settings(
+            caption_font,
+            caption_style,
+            is_remake=is_remake,
+            tail_buffer_seconds=tail_buffer_seconds,
+            thumbnail_outro_seconds=thumbnail_outro_seconds,
+        )
+        if not cacheable_settings:
             cached = None
         elif _DB_AVAILABLE:
             async with async_session() as session:
@@ -1684,7 +1719,7 @@ async def run_youtube_pipeline_async(
             )
             # Save to Database Cache (Supabase PostgreSQL + local file backup)
             # Universal cache key (canonical video_id) so all formats share the entry.
-            if caption_font == "studio" and clips and clips[0].get("file_path"):
+            if cacheable_settings and clips and clips[0].get("file_path"):
                 try:
                     from ..caching.service import save_cached_video
                     from ..database.session import async_session, _DB_AVAILABLE

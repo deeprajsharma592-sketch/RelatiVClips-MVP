@@ -3,7 +3,7 @@ Pipeline cache (URL-keyed result cache + Source segment cache).
 
 SIMPLIFIED 2026-06-15:
   - Dropped `platform` from result cache key — all platforms (TikTok/Reels/Shorts)
-    now produce the same universal 9:16 22-30s clip, so same URL = same cache
+    now produce the same universal 9:16 30-90s clip, so same URL = same cache
     entry. Cache hit rate triples vs the old (url, platform) key.
   - Kept segment cache as-is (it was always URL-based).
 
@@ -173,10 +173,10 @@ def save_result_cache(url: str, result: dict) -> bool:
             "cached_url_hash": url_hash(url),
         }
         for c in result.get("clips", []):
-            cacheable_clip = {
-                k: v for k, v in c.items()
-                if k not in ("file_path",)
-            }
+            # This file is an internal server cache. Keep the absolute media
+            # path so the fallback can prove that the rendered asset still
+            # exists. Public status responses sanitize file_path separately.
+            cacheable_clip = dict(c)
             cacheable["clips"].append(cacheable_clip)
 
         tmp = path.with_suffix(".tmp")
