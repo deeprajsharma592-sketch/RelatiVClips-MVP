@@ -156,11 +156,6 @@ def _parse_srt(srt_path: str) -> list:
     return segments
 
 
-def _extract_video_id(url: str) -> Optional[str]:
-    m = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", url)
-    return m.group(1) if m else None
-
-
 def _try_innertube_transcript(url: str, log: Callable) -> Optional[dict]:
     """Instant InnerTube transcript API (<1s, free, immune to player challenge / 429)."""
     vid = _extract_video_id(url)

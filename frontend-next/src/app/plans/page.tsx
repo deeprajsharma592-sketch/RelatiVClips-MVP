@@ -21,15 +21,12 @@ import {
   ArrowRight,
   MessageSquare,
   HelpCircle,
+  Loader2,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getAppDashboardUrl } from "@/lib/domain";
-
-const POLAR_LINKS = {
-  creator_go: process.env.NEXT_PUBLIC_POLAR_GO_URL || "https://buy.polar.sh/polar_cl_oV9pu26KVXY5AL0EnxIejhiY7QGwAqDNOpI8u3oOGL5",
-  creator_pro: process.env.NEXT_PUBLIC_POLAR_PRO_URL || "https://buy.polar.sh/polar_cl_rz2IwXSHG15BCIlslVeArOIEchJevr6xEJn6u33tDli",
-  creator_max: process.env.NEXT_PUBLIC_POLAR_MAX_URL || "https://buy.polar.sh/polar_cl_a0EY6BIoTZ3GPMSiNIo1LU8EYRsMuHwM99TVU1zeGf7",
-} as const;
+import { getPolarCheckoutUrl, POLAR_LINKS } from "@/lib/polar";
 
 interface Tier {
   name: string;
@@ -149,20 +146,21 @@ export default function PlansPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   const handleSubscribe = (tier: Tier) => {
     if (!tier.planKey) return;
 
     if (!user) {
-      router.push("/signup?next=/plans");
+      router.push(`/signup?plan=${encodeURIComponent(tier.planKey)}&next=/plans`);
       return;
     }
+    setLoadingPlan(tier.planKey);
     try {
-      const checkoutUrl = new URL(POLAR_LINKS[tier.planKey]);
-      checkoutUrl.searchParams.set("customer_email", user.email);
-      checkoutUrl.searchParams.set("metadata[user_id]", user.id);
-      window.location.href = checkoutUrl.toString();
+      const checkoutUrl = getPolarCheckoutUrl(tier.planKey, user);
+      window.location.href = checkoutUrl;
     } catch {
+      setLoadingPlan(null);
       router.push("/contact?intent=billing-support");
     }
   };
@@ -271,7 +269,7 @@ export default function PlansPage() {
                         <button
                           type="button"
                           onClick={() => handleSubscribe(tier)}
-                          disabled={!razorpayReady || loadingPlan === tier.planKey}
+                          disabled={loadingPlan === tier.planKey}
                           className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer ${
                             isHighlight
                               ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"

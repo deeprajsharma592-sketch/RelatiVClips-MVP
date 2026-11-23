@@ -2,6 +2,8 @@
 Local Video Router
 Handles processing of local video files through the async pipeline.
 """
+from __future__ import annotations
+
 import sys
 import os
 from pathlib import Path

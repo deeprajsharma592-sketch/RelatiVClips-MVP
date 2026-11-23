@@ -13,6 +13,8 @@ without needing YouTube to be available.
 
 If no VTT files exist in temp/, the test is skipped (vacuously true).
 """
+from __future__ import annotations
+
 import os
 from pathlib import Path
 

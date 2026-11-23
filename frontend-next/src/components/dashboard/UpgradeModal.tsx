@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Sparkles, Zap, Shield, Crown, ArrowRight } from "lucide-react";
+import { X, Check, Sparkles, Zap, Shield, Crown, ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import { getPolarCheckoutUrl } from "@/lib/polar";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -16,7 +19,24 @@ export default function UpgradeModal({
   onClose,
   onSelectPlan,
 }: UpgradeModalProps) {
+  const { user } = useAuth();
+  const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  const handleSelectPlan = (planKey: string) => {
+    if (onSelectPlan) {
+      onSelectPlan(planKey);
+      return;
+    }
+    setLoadingPlan(planKey);
+    if (!user) {
+      router.push(`/signup?plan=${encodeURIComponent(planKey)}&next=/dashboard`);
+      return;
+    }
+    const checkoutUrl = getPolarCheckoutUrl(planKey, user);
+    window.location.href = checkoutUrl;
+  };
 
   if (!isOpen) return null;
 
@@ -120,11 +140,22 @@ export default function UpgradeModal({
                 </div>
 
                 <button
-                  onClick={() => onSelectPlan?.("starter")}
-                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5"
+                  type="button"
+                  disabled={Boolean(loadingPlan)}
+                  onClick={() => handleSelectPlan("creator_go")}
+                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5 cursor-pointer"
                 >
-                  Get Go
-                  <ArrowRight size={13} />
+                  {loadingPlan === "creator_go" ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Opening Checkout…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Get Go</span>
+                      <ArrowRight size={13} />
+                    </>
+                  )}
                 </button>
 
                 <div className="space-y-2.5 text-xs text-zinc-300">
@@ -183,11 +214,22 @@ export default function UpgradeModal({
                 </div>
 
                 <button
-                  onClick={() => onSelectPlan?.("pro")}
-                  className="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-zinc-200 text-black text-xs font-bold transition flex items-center justify-center gap-1.5 shadow mb-5 cursor-pointer"
+                  type="button"
+                  disabled={Boolean(loadingPlan)}
+                  onClick={() => handleSelectPlan("creator_pro")}
+                  className="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-zinc-200 disabled:opacity-50 text-black text-xs font-bold transition flex items-center justify-center gap-1.5 shadow mb-5 cursor-pointer"
                 >
-                  Get Pro Studio
-                  <Zap size={14} className="fill-black" />
+                  {loadingPlan === "creator_pro" ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin text-black" />
+                      <span>Opening Checkout…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Get Pro Studio</span>
+                      <Zap size={14} className="fill-black" />
+                    </>
+                  )}
                 </button>
 
                 <div className="space-y-2.5 text-xs text-zinc-200">

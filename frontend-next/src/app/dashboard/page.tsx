@@ -33,6 +33,7 @@ import ProjectsView from "@/components/dashboard/ProjectsView";
 import CalendarView from "@/components/dashboard/CalendarView";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
+import { getPolarCheckoutUrl } from "@/lib/polar";
 import { authPageHref } from "@/lib/auth-destination";
 import { apiPath } from "@/lib/apiBase";
 import { checkProcessingStatus, submitYouTubeUrl } from "@/lib/api";
@@ -504,6 +505,14 @@ function DashboardContent() {
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
+        onSelectPlan={(planKey) => {
+          if (!user) {
+            router.push(`/signup?plan=${encodeURIComponent(planKey)}&next=/dashboard`);
+            return;
+          }
+          const checkoutUrl = getPolarCheckoutUrl(planKey, user);
+          window.location.href = checkoutUrl;
+        }}
       />
 
       <AuthExportModal

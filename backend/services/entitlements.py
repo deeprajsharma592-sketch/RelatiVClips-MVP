@@ -2,6 +2,7 @@
 
 Keep billing, the API, and the UI backed by the same server-side values.
 """
+from __future__ import annotations
 
 CLIP_CREDIT_COST = 200
 ONBOARDING_CLIPS = 2

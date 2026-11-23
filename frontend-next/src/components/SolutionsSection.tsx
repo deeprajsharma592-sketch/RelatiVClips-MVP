@@ -35,7 +35,7 @@ function NetworkConnection({
   progress: MotionValue<number>;
   reduceMotion: boolean;
 }) {
-  const draw = useTransform(progress, audience.reveal, [0, 1], { clamp: true });
+  const draw = useTransform(progress, audience.reveal as unknown as number[], [0, 1], { clamp: true });
   const [edgeX, edgeY] = audience.edge;
   const [mobileEdgeX, mobileEdgeY] = audience.mobileEdge;
 
