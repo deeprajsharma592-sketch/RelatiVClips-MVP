@@ -29,7 +29,7 @@ export async function mountStudioTower(root, signal) {
         p.y+=trail*.045*sin(motion.y*18.-p.y*9.);
       }
       vec3 q=orbit(p+vec3(0.,motion.x-3.79,0.));
-      float w=1.-q.z/17.;
+      float w=1.+(1.-flightPose.z)*.55-q.z/17.;
       float scale=.246*min(1.,aspect/.50);
       float c=cos(flightPose.w), s=sin(flightPose.w);
       mat2 bank=mat2(c,s,-s,c);
@@ -146,7 +146,8 @@ export async function mountStudioTower(root, signal) {
     const readingPause=2200;
     let azimuth=homeAzimuth, pitch=homePitch, drag=null, last=0;
     const flightDuration=7200;
-    const flightThreshold=520;
+    const flightThreshold=1650;
+    const flightGestureDuration=1100;
     const gestureGap=300;
     const restPose=[0,0,1,0];
     let returnView=null;
@@ -192,14 +193,15 @@ export async function mountStudioTower(root, signal) {
         const eased=progress*progress*(3-2*progress);
         const distance=Math.sin(Math.PI*eased);
         const orbitAngle=tau*eased;
+        const cameraArc=Math.sin(orbitAngle);
         flightPose=[
           flight.direction*.56*Math.sin(orbitAngle)*distance,
-          distance*(.18+.10*Math.cos(orbitAngle)),
-          1-.44*distance,
+          distance*(.12+.24*cameraArc),
+          1-.32*distance,
           -flight.direction*.29*Math.cos(orbitAngle)*distance,
         ];
         azimuth=flight.azimuth+flight.turn*eased;
-        pitch=flight.pitch+(homePitch-flight.pitch)*eased+.25*distance;
+        pitch=flight.pitch+(homePitch-flight.pitch)*eased+distance*(.35+.70*cameraArc);
         if(progress===1){
           flight=null;
           flightPose=restPose;
@@ -274,7 +276,7 @@ export async function mountStudioTower(root, signal) {
       }
       gesture.last=now;
       gesture.distance+=Math.abs(pixels);
-      if(!reducedMotion&&gesture.distance>=flightThreshold&&now-gesture.start>=280){
+      if(!reducedMotion&&gesture.distance>=flightThreshold&&now-gesture.start>=flightGestureDuration){
         const delta=homeAzimuth-azimuth;
         flight={
           start:now,
