@@ -132,7 +132,13 @@ export async function mountStudioTower(root, signal) {
     const tau=Math.PI*2;
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let clock=0;
-    let azimuth=-Math.PI/4, pitch=-.39, drag=null, last=0;
+    const homeAzimuth=-Math.PI/4;
+    const homePitch=-.39;
+    const returnDelay=1000;
+    const returnDuration=700;
+    const readingPause=2200;
+    let azimuth=homeAzimuth, pitch=homePitch, drag=null, last=0;
+    let returnView=null;
     function draw(){
       const rect=canvas.getBoundingClientRect();
       const ratio=Math.min(window.devicePixelRatio||1,2);
@@ -166,11 +172,21 @@ export async function mountStudioTower(root, signal) {
       const elapsed=last ? Math.min(now-last,80) : 0;
       last=now;
       clock+=elapsed/1000;
-      if(!drag) azimuth=(azimuth-elapsed*tau/18000)%tau;
+      if(returnView){
+        const progress=Math.max(0,Math.min(1,(now-returnView.start)/returnDuration));
+        const eased=progress*progress*(3-2*progress);
+        azimuth=returnView.azimuth+returnView.turn*eased;
+        pitch=returnView.pitch+(homePitch-returnView.pitch)*eased;
+        if(now>=returnView.start+returnDuration+readingPause) returnView=null;
+      } else if(!drag){
+        azimuth=(azimuth-elapsed*tau/18000)%tau;
+      }
       draw();
       animationFrame=requestAnimationFrame(animate);
     }
     canvas.addEventListener('pointerdown',event=>{
+      if(drag) return;
+      returnView=null;
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
       canvas.setPointerCapture(event.pointerId);
     }, {signal});
@@ -181,7 +197,23 @@ export async function mountStudioTower(root, signal) {
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
       draw();
     }, {signal});
-    canvas.addEventListener('lostpointercapture',()=>{drag=null;}, {signal});
+    canvas.addEventListener('lostpointercapture',event=>{
+      if(drag?.id!==event.pointerId) return;
+      drag=null;
+      if(reducedMotion){
+        azimuth=homeAzimuth;
+        pitch=homePitch;
+        draw();
+        return;
+      }
+      const delta=homeAzimuth-azimuth;
+      returnView={
+        start:performance.now()+returnDelay,
+        azimuth,
+        pitch,
+        turn:Math.atan2(Math.sin(delta),Math.cos(delta)),
+      };
+    }, {signal});
     observer=new ResizeObserver(draw);
     observer.observe(canvas);
     draw();
