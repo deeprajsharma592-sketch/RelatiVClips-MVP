@@ -1,10 +1,8 @@
 .stage {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(100%, calc((100svh - 8rem) * 16 / 9));
+  position: relative;
+  width: min(100%, 1440px);
+  margin-inline: auto;
   aspect-ratio: 16 / 9;
-  transform: translate(-50%, -52%);
   container-type: inline-size;
 }
 
