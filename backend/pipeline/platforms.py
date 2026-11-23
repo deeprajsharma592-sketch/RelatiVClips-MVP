@@ -34,7 +34,7 @@ from ..utils.config import CLIP_DURATION_HARD_MIN, CLIP_DURATION_HARD_MAX
 
 @dataclass
 class ClipFormat:
-    """Universal output format with natural content-driven variable duration (10s - 150s)."""
+    """Universal output format with natural content-driven variable duration (30s - 90s)."""
     name: str = "universal"
     min_duration_s: float = CLIP_DURATION_HARD_MIN
     max_duration_s: float = CLIP_DURATION_HARD_MAX

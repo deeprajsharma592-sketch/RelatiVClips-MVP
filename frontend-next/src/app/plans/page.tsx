@@ -12,108 +12,16 @@
  */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
-  Check,
   ChevronDown,
   ArrowRight,
   MessageSquare,
   HelpCircle,
-  Loader2,
-  CreditCard,
 } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
 import { getAppDashboardUrl } from "@/lib/domain";
-import { getPolarCheckoutUrl, POLAR_LINKS } from "@/lib/polar";
-
-interface Tier {
-  name: string;
-  price: string;
-  originalPrice?: string;
-  unit?: string;
-  cta: string;
-  href: string;
-  highlight?: boolean;
-  bestFor: string;
-  features: string[];
-  cpmHint?: string;
-  planKey?:
-    | "creator_go"
-    | "creator_pro"
-    | "creator_max"
-    | "creator_enterprise";
-  clipsIncluded?: number;
-}
-
-const CREATOR_TIERS: Tier[] = [
-  {
-    name: "Go",
-    price: "$5.99",
-    originalPrice: "$9.99",
-    unit: "/month",
-    cta: "Get Go",
-    href: "/signup?plan=creator_starter",
-    bestFor: "Solo creators dipping toes in",
-    clipsIncluded: 100,
-    features: [
-      "20,000 credits · up to 100 clips / month",
-      "AI virality scoring & hook detection",
-      "9:16 vertical dynamic face framing",
-      "Karaoke word-by-word subtitles",
-      "No RelatiV watermark",
-      "Up to 30 min source video length",
-      "1 active processing task at a time",
-      "Exports available for 7 days",
-      "Global card billing (Visa, Mastercard, Amex)",
-    ],
-    planKey: "creator_go",
-  },
-  {
-    name: "Pro Studio",
-    price: "$14.99",
-    unit: "/month",
-    cta: "Get Pro Studio",
-    href: "/signup?plan=creator_pro",
-    highlight: true,
-    bestFor: "Active creators shipping 2-3 videos/week",
-    clipsIncluded: 300,
-    cpmHint: "Most Popular · 300 clips/mo",
-    features: [
-      "60,000 credits · up to 300 clips / month",
-      "All 4 Content Archetypes (Streamer, Gaming, Podcast, Edu)",
-      "1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)",
-      "Auto B-roll insertion & AI Emojis",
-      "Fast priority GPU processing queue",
-      "Up to 60 min source video length",
-      "1 priority processing task at a time",
-      "Priority Discord & Email support",
-    ],
-    planKey: "creator_pro",
-  },
-  {
-    name: "Max",
-    price: "$24.99",
-    unit: "/month",
-    cta: "Get Max",
-    href: "/signup?plan=creator_max&next=/plans",
-    bestFor: "Agencies & Studios",
-    clipsIncluded: 1000,
-    cpmHint: "Best for Agencies & Studios",
-    features: [
-      "200,000 credits · up to 1,000 clips / month",
-      "Up to 90 min source video length",
-      "2 active processing tasks at a time",
-      "Team seats & shared brand templates",
-      "Dedicated GPU compute instance",
-      "Custom subtitle typography & branding",
-      "API & Webhook integrations",
-      "Dedicated account manager & SLA",
-    ],
-    planKey: "creator_max",
-  },
-];
+import InteractiveTierCards from "@/components/pricing/InteractiveTierCards";
 
 const CREATOR_FAQS = [
   {
@@ -143,27 +51,7 @@ const CREATOR_FAQS = [
 ];
 
 export default function PlansPage() {
-  const { user } = useAuth();
-  const router = useRouter();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-
-  const handleSubscribe = (tier: Tier) => {
-    if (!tier.planKey) return;
-
-    if (!user) {
-      router.push(`/signup?plan=${encodeURIComponent(tier.planKey)}&next=/plans`);
-      return;
-    }
-    setLoadingPlan(tier.planKey);
-    try {
-      const checkoutUrl = getPolarCheckoutUrl(tier.planKey, user);
-      window.location.href = checkoutUrl;
-    } catch {
-      setLoadingPlan(null);
-      router.push("/contact?intent=billing-support");
-    }
-  };
 
   return (
     <div className="relative w-full bg-[#F7F8FA] dark:bg-[#05060A] text-[#111318] dark:text-[#F4F6FA] selection:bg-amber-400 selection:text-black overflow-hidden transition-colors">
@@ -199,140 +87,11 @@ export default function PlansPage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════
-            SECTION 02: 3 CREATOR PRICING CARDS (Go, Pro, Premium)
+            SECTION 02: 3 INTERACTIVE CREATOR PRICING CARDS
             ══════════════════════════════════════════════════════════ */}
-        <section>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
-            {CREATOR_TIERS.map((tier) => {
-              const isHighlight = tier.highlight;
-              return (
-                <div
-                  key={tier.name}
-                  className={`relative rounded-3xl p-7 sm:p-8 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 backdrop-blur-xl group ${
-                    isHighlight
-                      ? "bg-[#FAFCFF] dark:bg-[#0E1118] border border-amber-500/70 dark:border-amber-400/80 shadow-md hover:shadow-2xl dark:shadow-[0_0_40px_rgba(251,191,36,0.18)] z-10"
-                      : "bg-white dark:bg-[#0B0D12] border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 shadow-sm hover:shadow-xl dark:shadow-xl"
-                  }`}
-                >
-                  {/* Top Ambient Highlight on Featured Pro Card */}
-                  {isHighlight && (
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent pointer-events-none rounded-t-3xl" />
-                  )}
-
-                  {/* Top Content Block */}
-                  <div>
-                    {/* 1. Plan Name & Badge */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="font-display text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                        {tier.name}
-                      </span>
-                      {isHighlight && (
-                        <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-400 text-black shadow-md shadow-amber-400/20">
-                          Most popular
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 2. Short Description */}
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans mb-4 min-h-[32px]">
-                      Best for {tier.bestFor}
-                    </p>
-
-                    {/* 3 & 4. Price & Billing Period */}
-                    <div className="flex items-baseline gap-1.5 mb-2">
-                      <span className="font-display font-bold text-4xl sm:text-5xl text-zinc-900 dark:text-white tracking-tight">
-                        {tier.price}
-                      </span>
-                      {tier.unit && (
-                        <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-sans">
-                          {tier.unit}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 5. Supporting Plan Information */}
-                    <div className="min-h-[24px] mb-6">
-                      {tier.clipsIncluded ? (
-                        <p className="text-xs font-sans text-cyan-600 dark:text-cyan-400 font-medium">
-                          Includes {tier.clipsIncluded} AI clips / month
-                        </p>
-                      ) : tier.cpmHint ? (
-                        <p className="text-xs font-sans text-zinc-600 dark:text-zinc-400">
-                          {tier.cpmHint}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {/* 6. Primary Plan CTA */}
-                    <div className="mb-6">
-                      {user && tier.planKey ? (
-                        <button
-                          type="button"
-                          onClick={() => handleSubscribe(tier)}
-                          disabled={loadingPlan === tier.planKey}
-                          className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer ${
-                            isHighlight
-                              ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"
-                              : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10"
-                          }`}
-                        >
-                          {loadingPlan === tier.planKey ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>Opening Checkout…</span>
-                            </>
-                          ) : (
-                            <>
-                              <CreditCard className="h-4 w-4" />
-                              <span>{tier.cta}</span>
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <Link
-                          href={tier.href}
-                          className={`w-full py-3.5 px-5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 ${
-                            isHighlight
-                              ? "bg-[#111318] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-100 shadow-md"
-                              : "bg-black/[0.04] hover:bg-black/[0.08] text-zinc-900 dark:bg-white/[0.06] dark:hover:bg-white/15 dark:text-white border border-black/10 dark:border-white/10"
-                          }`}
-                        >
-                          <span>{tier.cta}</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </Link>
-                      )}
-                    </div>
-
-                    {/* 7. Feature Divider */}
-                    <div className="border-t border-black/[0.08] dark:border-white/[0.08] pt-6 mb-3">
-                      <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 block">
-                        What&apos;s included
-                      </span>
-                    </div>
-
-                    {/* 8. Feature List */}
-                    <ul className="space-y-3">
-                      {tier.features.map((f) => (
-                        <li
-                          key={f}
-                          className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 font-sans leading-relaxed"
-                        >
-                          <Check
-                            className={`w-4 h-4 mt-0.5 shrink-0 ${
-                              isHighlight
-                                ? "text-amber-500 dark:text-amber-400"
-                                : "text-cyan-600 dark:text-cyan-400"
-                            }`}
-                          />
-                          <span>{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <section className="mb-14">
+          <InteractiveTierCards />
+        </section>
 
           {/* ══════════════════════════════════════════════════════════
               SECTION 03: ENTERPRISE CALLOUT FOR HIGH-VOLUME CREATORS
@@ -354,7 +113,6 @@ export default function PlansPage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-        </section>
 
         {/* ══════════════════════════════════════════════════════════
             SECTION 04: FREQUENTLY ASKED QUESTIONS (Creator-Focused)

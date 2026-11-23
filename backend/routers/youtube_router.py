@@ -1237,6 +1237,14 @@ def _run_moment_pipeline(
                 c_end,
                 video_duration=float(video_duration_s),
             )
+            # Keep the LLM's calibrated start, then include three seconds of
+            # natural source continuation. The optional thumbnail CTA remains
+            # a separate four-second outro appended by the renderer.
+            calibrated_end = new_end
+            source_ceiling = float(video_duration_s) if float(video_duration_s or 0) > 0 else new_end + 3.0
+            new_end = min(source_ceiling, new_end + 3.0)
+            if new_end > calibrated_end:
+                reason = f"{reason}; +{new_end - calibrated_end:.1f}s natural tail"
             clip["start"] = round(new_start, 2)
             clip["end"] = round(new_end, 2)
             clip["duration_s"] = round(new_end - new_start, 2)

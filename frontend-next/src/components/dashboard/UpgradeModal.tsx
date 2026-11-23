@@ -1,12 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Sparkles, Zap, Shield, Crown, ArrowRight, Loader2, Code2 } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
-import { getPolarCheckoutUrl } from "@/lib/polar";
+import { X, Shield, Crown, ArrowRight, Code2 } from "lucide-react";
+import InteractiveTierCards from "@/components/pricing/InteractiveTierCards";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -19,46 +16,27 @@ export default function UpgradeModal({
   onClose,
   onSelectPlan,
 }: UpgradeModalProps) {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-
-  const handleSelectPlan = (planKey: string) => {
-    if (onSelectPlan) {
-      onSelectPlan(planKey);
-      return;
-    }
-    setLoadingPlan(planKey);
-    if (!user) {
-      router.push(`/signup?plan=${encodeURIComponent(planKey)}&next=/dashboard`);
-      return;
-    }
-    const checkoutUrl = getPolarCheckoutUrl(planKey, user);
-    window.location.href = checkoutUrl;
-  };
-
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md">
         {/* Backdrop click to close */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0"
+          className="absolute inset-0 cursor-pointer"
         />
 
         {/* Modal Window */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          initial={{ opacity: 0, scale: 0.96, y: 14 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full max-w-5xl bg-[#0E0F14] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh] z-10"
+          exit={{ opacity: 0, scale: 0.96, y: 14 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="relative w-full max-w-5xl bg-[#0A0B0E] border border-white/10 rounded-2xl p-5 sm:p-8 shadow-2xl overflow-y-auto max-h-[94vh] z-10"
         >
           {/* Subtle Ambient Radial Glow */}
           <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -67,272 +45,31 @@ export default function UpgradeModal({
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition"
+            className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition z-20 cursor-pointer"
             aria-label="Close modal"
           >
             <X size={16} />
           </button>
 
           {/* Header */}
-          <div className="text-center max-w-xl mx-auto mb-8">
+          <div className="text-center max-w-xl mx-auto mb-6 sm:mb-8">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium mb-3">
               <Crown size={13} className="text-amber-400" />
               Creator Growth Plans
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2 font-display">
               Upgrade your plan
             </h2>
-            <p className="text-sm text-zinc-400">
+            <p className="text-xs sm:text-sm text-zinc-400 font-sans">
               Get watermark-free 4K exports, auto-reframe, and automated cross-platform posting.
             </p>
-
-            {/* Billing Toggle */}
-            <div className="inline-flex items-center p-1 bg-white/5 border border-white/10 rounded-full mt-5">
-              <button
-                type="button"
-                onClick={() => setBillingCycle("monthly")}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition ${
-                  billingCycle === "monthly"
-                    ? "bg-white text-black shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                type="button"
-                onClick={() => setBillingCycle("yearly")}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition ${
-                  billingCycle === "yearly"
-                    ? "bg-white text-black shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                Yearly
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
-                  Save 20%
-                </span>
-              </button>
-            </div>
           </div>
 
-          {/* 3 Tier Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* 1. Starter Tier */}
-            <div className="bg-white/[0.02] border border-white/10 hover:border-white/20 rounded-xl p-5 flex flex-col justify-between transition group">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold text-white">Go</h3>
-                  <span className="text-[11px] font-medium text-zinc-400 bg-white/5 px-2 py-0.5 rounded">
-                    100 clips/mo
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-white">
-                      ${billingCycle === "yearly" ? "4.79" : "5.99"}
-                    </span>
-                    <span className="text-xs text-zinc-400">/ month</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 mt-1">
-                    {billingCycle === "yearly" ? "Billed $57.48 annually" : "Billed monthly"}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={Boolean(loadingPlan)}
-                  onClick={() => handleSelectPlan("creator_go")}
-                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5 cursor-pointer"
-                >
-                  {loadingPlan === "creator_go" ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Opening Checkout…</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Get Go</span>
-                      <ArrowRight size={13} />
-                    </>
-                  )}
-                </button>
-
-                <div className="space-y-2.5 text-xs text-zinc-300">
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span><b>20,000 credits</b> · up to 100 clips / month</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>AI virality scoring & hook detection</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>9:16 vertical dynamic face framing</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>Karaoke word-by-word subtitles</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>No RelatiV watermark</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <Check size={14} className="text-zinc-400 shrink-0" />
-                    <span>Up to 30 min source video length</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Pro Tier (Highlighted) */}
-            <div className="relative bg-gradient-to-b from-white/[0.08] to-white/[0.02] border-2 border-cyan-400/60 rounded-xl p-5 flex flex-col justify-between shadow-lg shadow-cyan-500/10 transition group">
-              {/* Badge */}
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md shadow">
-                Most Popular
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold text-white">Pro Studio</h3>
-                  <span className="text-[11px] font-medium text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                    300 clips/mo
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-white">
-                      ${billingCycle === "yearly" ? "11.99" : "14.99"}
-                    </span>
-                    <span className="text-xs text-zinc-400">/ month</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 mt-1">
-                    {billingCycle === "yearly" ? "Billed $143.88 annually" : "Billed monthly"}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={Boolean(loadingPlan)}
-                  onClick={() => handleSelectPlan("creator_pro")}
-                  className="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-zinc-200 disabled:opacity-50 text-black text-xs font-bold transition flex items-center justify-center gap-1.5 shadow mb-5 cursor-pointer"
-                >
-                  {loadingPlan === "creator_pro" ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin text-black" />
-                      <span>Opening Checkout…</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Get Pro Studio</span>
-                      <Zap size={14} className="fill-black" />
-                    </>
-                  )}
-                </button>
-
-                <div className="space-y-2.5 text-xs text-zinc-200">
-                  <div className="flex items-center gap-2 font-medium text-white">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span><b>60,000 credits</b> · up to 300 clips / month</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span><b>All 4 Content Archetypes</b> (Streamer, Gaming, Podcast, Edu)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>1-Click Multi-Platform Auto Publisher (TikTok, Shorts, Reels)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>Auto B-roll insertion & AI Emojis</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>Fast priority GPU processing queue</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-cyan-400 shrink-0" />
-                    <span>Up to 60 min source video length</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Max Tier */}
-            <div className="bg-white/[0.02] border border-white/10 hover:border-white/20 rounded-xl p-5 flex flex-col justify-between transition group">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold text-white">Max</h3>
-                  <span className="text-[11px] font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                    1,000 clips/mo
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-white">
-                      ${billingCycle === "yearly" ? "19.99" : "24.99"}
-                    </span>
-                    <span className="text-xs text-zinc-400">/ month</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 mt-1">
-                    {billingCycle === "yearly" ? "Billed $239.88 annually" : "Billed monthly"}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={Boolean(loadingPlan)}
-                  onClick={() => handleSelectPlan("creator_max")}
-                  className="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 mb-5 cursor-pointer"
-                >
-                  {loadingPlan === "creator_max" ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Opening Checkout…</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Get Max</span>
-                      <ArrowRight size={13} />
-                    </>
-                  )}
-                </button>
-
-                <div className="space-y-2.5 text-xs text-zinc-300">
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span><b>200,000 credits</b> · up to 1,000 clips / month</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>Up to 90 min source video length</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>2 concurrent processing tasks</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>Team seats & shared brand templates</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>Dedicated priority GPU compute lane</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-purple-400 shrink-0" />
-                    <span>Custom subtitle typography & branding</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* ── 3 INTERACTIVE TIER FLIP CARDS ── */}
+          <InteractiveTierCards onSelectPlan={onSelectPlan} />
 
           {/* API Endpoint & Custom Volume Callout */}
-          <div className="mt-5 p-3.5 sm:p-4 rounded-xl border border-white/10 bg-white/[0.03] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <div className="mt-8 p-4 rounded-xl border border-white/10 bg-white/[0.03] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
                 <Code2 size={15} className="text-cyan-400" />
@@ -357,7 +94,7 @@ export default function UpgradeModal({
           </div>
 
           {/* Footer Guarantee */}
-          <div className="mt-8 pt-4 border-t border-white/5 flex flex-wrap items-center justify-between text-xs text-zinc-400 gap-2">
+          <div className="mt-6 pt-4 border-t border-white/5 flex flex-wrap items-center justify-between text-xs text-zinc-400 gap-2 font-mono">
             <div className="flex items-center gap-1.5">
               <Shield size={14} className="text-emerald-400" />
               <span>Cancel anytime in 1 click. Instant activation.</span>

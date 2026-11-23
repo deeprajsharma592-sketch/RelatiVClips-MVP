@@ -4,6 +4,7 @@ import os
 import subprocess
 import json
 import urllib.request
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -28,6 +29,20 @@ from ..utils.vram_manager import clear_gpu
 from framing.layout_policy import batch_context_position
 
 _THUMB_CACHE: Dict[str, str] = {}
+
+_CURATED_CAPTION_FONTS = (
+    ("Montserrat ExtraBold", "Montserrat-ExtraBold.ttf"),
+    ("Montserrat Black", "Montserrat-Black.ttf"),
+    ("Inter ExtraBold", "Inter-ExtraBold.ttf"),
+    ("Poppins ExtraBold", "Poppins-ExtraBold.ttf"),
+    ("Anton", "Anton-Regular.ttf"),
+)
+
+
+def _caption_font_for_clip(task_id: str, clip_index: int) -> tuple[str, str]:
+    """Choose one of five licensed fonts, stable across retries of a clip."""
+    seed = hashlib.sha256(f"{task_id}:{clip_index}".encode("utf-8")).digest()
+    return _CURATED_CAPTION_FONTS[int.from_bytes(seed[:2], "big") % len(_CURATED_CAPTION_FONTS)]
 
 
 def _thumbnail_cta_visual_filter(duration_s: float, escaped_font: str) -> str:
@@ -76,13 +91,13 @@ def _thumbnail_cta_visual_filter(duration_s: float, escaped_font: str) -> str:
         # always visible; the outer 12px matte reads as a deliberate card.
         f"[cardsrc]scale={card_width}:{card_height}:force_original_aspect_ratio=decrease:flags=lanczos,"
         f"pad={card_width}:{card_height}:(ow-iw)/2:(oh-ih)/2:color=0x09090B,"
-        f"pad={outer_width}:{outer_height}:{matte}:{matte}:color=white[card];"
+        f"pad={outer_width}:{outer_height}:{matte}:{matte}:color=0x18181B[card];"
         f"[bg][card]overlay=x=(W-w)/2:y='{slide_y}':eval=frame,"
-        f"drawtext=fontfile='{escaped_font}':text='WATCH THE FULL VIDEO':"
+        f"drawtext=fontfile='{escaped_font}':text='WATCH THE FULL STORY':"
         f"fontcolor=white:fontsize={title_size}:x=(w-text_w)/2:y={title_y}:"
         f"borderw=3:bordercolor=black@0.48:alpha='{title_alpha}',"
-        f"drawtext=fontfile='{escaped_font}':text='Continue watching on YouTube':"
-        f"fontcolor=white:fontsize={subtitle_size}:x=(w-text_w)/2:y={subtitle_y}:"
+        f"drawtext=fontfile='{escaped_font}':text='The rest is on YouTube  →':"
+        f"fontcolor=0xE4E4E7:fontsize={subtitle_size}:x=(w-text_w)/2:y={subtitle_y}:"
         f"alpha='{subtitle_alpha}',"
         f"fade=t=in:st=0:d=0.34,"
         f"fade=t=out:st={fade_out_start:.2f}:d=0.32,"
@@ -132,6 +147,7 @@ def _append_thumbnail_cta(
     task_id: str,
     clip_index: int,
     duration_s: float = 4.0,
+    font_file: str = "Poppins-ExtraBold.ttf",
 ) -> bool:
     """Append a thumbnail CTA while continuing the next source-audio seconds."""
     if duration_s <= 0 or not output_path.exists() or not Path(source_path).exists():
@@ -147,7 +163,7 @@ def _append_thumbnail_cta(
     cta_path = TEMP_DIR / f"cta_{task_id}_{clip_index}.mp4"
     joined_path = TEMP_DIR / f"joined_{task_id}_{clip_index}.mp4"
     concat_list = TEMP_DIR / f"concat_{task_id}_{clip_index}.txt"
-    font_path = CAPTION_FONT_DIR / "BarlowCondensed-ExtraBold.ttf"
+    font_path = CAPTION_FONT_DIR / font_file
     escaped_font = str(font_path.as_posix()).replace(":", "\\:").replace("'", "\\'")
 
     visual_filter = _thumbnail_cta_visual_filter(duration_s, escaped_font)
@@ -499,6 +515,24 @@ def render_clip(
     output_filename = f"{clip_id}.mp4"
     output_path = OUTPUTS_DIR / output_filename
 
+    # Use a curated, deterministic font rotation for automatic captions. A
+    # retry renders identically, while different output clips get visual range.
+    requested_caption_font = str(clip.get("caption_font") or "studio").strip().lower()
+    caption_font = normalize_caption_preset(requested_caption_font)
+    selected_font_family, selected_font_file = _caption_font_for_clip(task_id, clip_index)
+    style_payload = clip.get("style") if isinstance(clip.get("style"), dict) else {}
+    style_overrides = dict(style_payload.get("overrides") or {})
+    auto_typography = requested_caption_font in ("", "studio", "auto", "random")
+    if auto_typography and not style_overrides.get("font"):
+        style_overrides["font"] = {
+            "family": selected_font_family,
+            "file": selected_font_file,
+            "weight": 900 if "Black" in selected_font_family else 800,
+        }
+    clip["style"] = {"preset": style_payload.get("preset") or caption_font, "overrides": style_overrides}
+    if auto_typography:
+        clip["caption_font_family"] = selected_font_family
+
     # Generate viral dynamic captions
     subtitle_path = None
     try:
@@ -549,7 +583,6 @@ def render_clip(
 
     dynamic_rendered = False
     layout_mode = str(clip.get("layout_mode") or "auto").lower()
-    caption_font = normalize_caption_preset(clip.get("caption_font"))
     clip["caption_font"] = caption_font
     resolved_layout_mode = layout_mode
     context_position = str(
@@ -579,8 +612,11 @@ def render_clip(
                 print(f"[Renderer] Attempting RelatiV Dynamic Framing Engine for clip {clip_index}...")
                 pretrim_path = TEMP_DIR / f"pretrim_{task_id}_{clip_index}.mp4"
                 trim_cmd = [
-                    FFMPEG_PATH, "-y", "-ss", str(rel_start),
-                    "-i", str(video_path), "-t", str(duration),
+                    FFMPEG_PATH, "-y", "-i", str(video_path),
+                    # Output-side seek is frame accurate. Input-side `-ss`
+                    # seeks to a preceding keyframe and can desync ASS events.
+                    "-ss", str(rel_start), "-t", str(duration),
+                    "-avoid_negative_ts", "make_zero",
                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-c:a", "aac", str(pretrim_path)
                 ]
                 subprocess.run(trim_cmd, capture_output=True, timeout=120)
@@ -722,6 +758,7 @@ def render_clip(
                 task_id=task_id,
                 clip_index=clip_index,
                 duration_s=CTA_OUTRO_SECONDS,
+                font_file=selected_font_file,
             )
 
         file_size_mb = round(output_path.stat().st_size / (1024 * 1024), 2)
@@ -771,6 +808,7 @@ def render_clip(
             "layout_mode": resolved_layout_mode,
             "context_position": context_position,
             "caption_font": caption_font,
+            "caption_font_family": clip.get("caption_font_family"),
             "render_version": RENDER_VERSION,
             "created_at": datetime.now().isoformat()
         }

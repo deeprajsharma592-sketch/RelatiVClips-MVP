@@ -383,7 +383,7 @@ def build_hybrid_narrative_prompt(
     parts.append("\nFULL TRANSCRIPT:\n" + "\n".join(transcript_lines))
 
     parts.append(
-        f"\nSelect the {max_picks} most viral, self-contained story clips (45-90 seconds long, complete narrative arc).\n"
+        f"\nSelect the {max_picks} most viral, self-contained story clips (30-90 seconds long, complete narrative arc).\n"
         "Return STRICT JSON only:\n"
         "{\n"
         '  "picks": [\n'

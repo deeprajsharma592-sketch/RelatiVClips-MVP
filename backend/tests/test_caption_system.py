@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from backend.captioning.ass_builder import build_ass
+from backend.captioning.ass_builder import normalize_words
 from backend.captioning.placement import choose_layout
 from backend.captioning.registry import get_registry, validate_fonts
 
@@ -37,3 +38,25 @@ def test_subject_face_disqualifies_low_slot():
     layout = choose_layout(groups, track, "impact")
     assert layout[0]["slot"] != "low"
     assert layout[0]["face_overlap"] <= 0.02
+
+
+def test_absolute_word_timestamps_are_rebased_to_clip_time():
+    words = normalize_words({
+        "start": 120.0,
+        "end": 130.0,
+        "words": [
+            {"word": "RIGHT", "start": 121.25, "end": 121.60},
+            {"word": "NOW", "start": 121.60, "end": 122.00},
+        ],
+    })
+    assert words[0]["start"] == 1.25
+    assert words[1]["end"] == 2.0
+
+
+def test_relative_word_timestamps_are_not_rebased_twice():
+    words = normalize_words({
+        "start": 120.0,
+        "end": 130.0,
+        "words": [{"word": "NOW", "start": 1.0, "end": 1.4}],
+    })
+    assert words[0]["start"] == 1.0

@@ -83,14 +83,14 @@ WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
 
 TARGET_SAMPLE_RATE = 16000
 # Narrative-aware variable-length clipping bounds (NO fixed targets)
-CLIP_DURATION_HARD_MIN = float(os.getenv("CLIP_DURATION_HARD_MIN", "10.0"))
-CLIP_DURATION_HARD_MAX = float(os.getenv("CLIP_DURATION_HARD_MAX", "150.0"))
+CLIP_DURATION_HARD_MIN = float(os.getenv("CLIP_DURATION_HARD_MIN", "30.0"))
+CLIP_DURATION_HARD_MAX = float(os.getenv("CLIP_DURATION_HARD_MAX", "90.0"))
 # Legacy duration aliases kept for back-compat only
 CLIP_DURATION_MIN = int(CLIP_DURATION_HARD_MIN)
 CLIP_DURATION_MAX = int(CLIP_DURATION_HARD_MAX)
 
 # Bump whenever cached rendered media must be regenerated for a new layout.
-RENDER_VERSION = os.getenv("RENDER_VERSION", "thumbnail-cta-v4")
+RENDER_VERSION = os.getenv("RENDER_VERSION", "caption-sync-tail-v5")
 CTA_OUTRO_ENABLED = os.getenv("CTA_OUTRO_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 CTA_OUTRO_SECONDS = max(0.0, float(os.getenv("CTA_OUTRO_SECONDS", "4.0")))
 NUM_CLIPS_LOCAL = 3

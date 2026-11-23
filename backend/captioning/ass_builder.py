@@ -36,10 +36,30 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
     supplied = clip.get("words") or (clip.get("edit") or {}).get("words")
     result = []
     if supplied:
+        # Word payloads come from two pipelines: Whisper/source transcripts use
+        # absolute video timestamps, while editor/remake payloads are already
+        # clip-relative. Detect the former instead of blindly treating every
+        # value as relative (which delayed captions by the source clip start).
+        supplied_starts = [float(w.get("start", 0)) for w in supplied]
+        supplied_ends = [float(w.get("end", w.get("start", 0))) for w in supplied]
+        absolute_timeline = bool(
+            start > 0.5
+            and supplied_starts
+            and (
+                max(supplied_ends) > duration + 0.75
+                or sum(start - 0.75 <= value <= end + 0.75 for value in supplied_starts)
+                >= max(1, len(supplied_starts) // 2)
+            )
+        )
+        offset = start if absolute_timeline else 0.0
         for word in supplied:
             text = _clean(word.get("w") or word.get("word"))
             if text:
-                result.append({"w": text, "start": max(0.0, float(word.get("start", 0))), "end": min(duration, float(word.get("end", 0.3))), "emph": int(word.get("emph", 0))})
+                word_start = float(word.get("start", 0)) - offset
+                word_end = float(word.get("end", word_start + offset + 0.3)) - offset
+                if word_end <= 0 or word_start >= duration:
+                    continue
+                result.append({"w": text, "start": max(0.0, word_start), "end": min(duration, max(word_start + 0.04, word_end)), "emph": int(word.get("emph", 0))})
         return sorted(result, key=lambda item: item["start"])
     for segment in (clip.get("transcript") or {}).get("segments", []):
         words = segment.get("words") or []

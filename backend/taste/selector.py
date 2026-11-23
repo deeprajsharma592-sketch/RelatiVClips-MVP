@@ -13,9 +13,9 @@ from ..utils.config import CLIP_DURATION_HARD_MIN, CLIP_DURATION_HARD_MAX
 
 log = logging.getLogger(__name__)
 
-# Duration bounds: sweet spot for viral short-form (Shorts / Reels / TikTok)
-CLIP_DURATION_MIN = max(10.0, float(CLIP_DURATION_HARD_MIN))
-CLIP_DURATION_MAX = min(60.0, float(CLIP_DURATION_HARD_MAX))
+# Duration bounds: sweet spot for viral short-form (Shorts / Reels / TikTok: 30s - 90s)
+CLIP_DURATION_MIN = max(30.0, float(CLIP_DURATION_HARD_MIN))
+CLIP_DURATION_MAX = min(90.0, float(CLIP_DURATION_HARD_MAX))
 QUALITY_FLOOR = 0.7  # per PIPELINE-VISION.md: never ship < 0.7
 
 SENTENCE_TERMINATORS = ".!?"
