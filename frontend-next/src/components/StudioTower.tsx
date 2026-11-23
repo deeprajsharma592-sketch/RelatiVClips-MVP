@@ -29,7 +29,7 @@ export default function StudioTower() {
     <section aria-label="Interactive studio tower" className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 sm:py-20">
       <div ref={root} className="group relative h-[clamp(440px,77svh,840px)]">
         <Image
-          src="/studio-tower/poster.png"
+          src="/studio-tower/hover-transparent.png"
           alt="Metallic studio tower hovering above a blue exhaust plume"
           fill
           unoptimized
