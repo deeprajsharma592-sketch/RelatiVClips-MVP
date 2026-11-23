@@ -503,8 +503,9 @@ def _audio_moments_from_file(
 
     # Top 8 sustained peaks
     for i, p in enumerate(result.get("peaks", [])[:8], 1):
-        start = max(0, p["timestamp"] - 5.0)
-        end = min(video_duration_s, start + 15.0)
+        start = max(0, p["timestamp"] - 4.0)
+        dur = 35.0 + (i % 4) * 8.0  # naturally varies between 35s, 43s, 51s, 59s
+        end = min(video_duration_s, start + dur)
         moments.append(Moment(
             index=i,
             start=round(start, 2),
@@ -523,10 +524,13 @@ def _audio_moments_from_file(
 
     # Top 5 sustained valleys
     for j, v in enumerate(result.get("valleys", [])[:5], 100):
+        start = max(0, v["start"] - 2.0)
+        dur = 36.0 + (j % 3) * 10.0  # naturally varies between 36s, 46s, 56s
+        end = min(video_duration_s, start + dur)
         moments.append(Moment(
             index=j,
-            start=v["start"],
-            end=v["end"],
+            start=round(start, 2),
+            end=round(end, 2),
             signal_type="valley",
             score=v["score"],
             snippet=f"[audio valley — {v['duration_s']:.1f}s pause, depth={v['depth']:.2f}]",

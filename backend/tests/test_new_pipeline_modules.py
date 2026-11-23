@@ -328,12 +328,12 @@ class TestRankCandidates:
         llm_response = [{
             "candidate_index": 1,
             "trim_start_offset": -2.0,  # extend 2s before
-            "trim_end_offset": 10.0,    # extend 10s after → total ~12s
+            "trim_end_offset": 30.0,    # extend 30s after → total 34s
             "edit_reason": "x",
         }]
         result = rank_candidates(cands, llm_response, 60.0)
         assert result[0]["start"] == 8.0
-        assert result[0]["end"] == 22.0  # 12 + 10
+        assert result[0]["end"] == 42.0  # 12 + 30
 
     def test_enforces_min_duration(self):
         # If trim makes it too short, extend to MIN
