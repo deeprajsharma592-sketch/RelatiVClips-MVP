@@ -2,8 +2,10 @@ export async function mountStudioTower(root, signal) {
   if (signal.aborted) return;
   let animationFrame = 0;
   let observer;
+  let resetTimer;
   signal.addEventListener('abort', () => {
     cancelAnimationFrame(animationFrame);
+    clearTimeout(resetTimer);
     observer?.disconnect();
   }, { once: true });
   const canvas = root.querySelector('canvas');
@@ -186,6 +188,7 @@ export async function mountStudioTower(root, signal) {
     }
     canvas.addEventListener('pointerdown',event=>{
       if(drag) return;
+      clearTimeout(resetTimer);
       returnView=null;
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
       canvas.setPointerCapture(event.pointerId);
@@ -197,23 +200,41 @@ export async function mountStudioTower(root, signal) {
       drag={id:event.pointerId,x:event.clientX,y:event.clientY};
       draw();
     }, {signal});
-    canvas.addEventListener('lostpointercapture',event=>{
-      if(drag?.id!==event.pointerId) return;
-      drag=null;
+    function queueReturn(delay=returnDelay){
       if(reducedMotion){
-        azimuth=homeAzimuth;
-        pitch=homePitch;
-        draw();
+        clearTimeout(resetTimer);
+        resetTimer=setTimeout(()=>{
+          azimuth=homeAzimuth;
+          pitch=homePitch;
+          draw();
+        },delay);
         return;
       }
       const delta=homeAzimuth-azimuth;
       returnView={
-        start:performance.now()+returnDelay,
+        start:performance.now()+delay,
         azimuth,
         pitch,
         turn:Math.atan2(Math.sin(delta),Math.cos(delta)),
       };
+    }
+    canvas.addEventListener('lostpointercapture',event=>{
+      if(drag?.id!==event.pointerId) return;
+      drag=null;
+      queueReturn(reducedMotion?0:returnDelay);
     }, {signal});
+    canvas.addEventListener('wheel',event=>{
+      if(drag||event.ctrlKey||!event.cancelable) return;
+      const horizontal=Math.abs(event.deltaX)>Math.abs(event.deltaY);
+      const delta=horizontal?event.deltaX:event.shiftKey?event.deltaY:0;
+      if(!delta) return;
+      event.preventDefault();
+      const unit=event.deltaMode===1?16:event.deltaMode===2?canvas.clientWidth:1;
+      const pixels=Math.max(-120,Math.min(120,delta*unit));
+      azimuth=(azimuth+pixels*.006)%tau;
+      queueReturn();
+      draw();
+    }, {passive:false,signal});
     observer=new ResizeObserver(draw);
     observer.observe(canvas);
     draw();
