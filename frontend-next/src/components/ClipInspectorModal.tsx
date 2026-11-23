@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import type { Clip } from "@/types";
 import { apiPath } from "@/lib/apiBase";
@@ -37,6 +38,7 @@ interface ClipInspectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRequestDownload: (clip: Clip) => void;
+  onOpenEditor?: (clip: Clip) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -51,6 +53,7 @@ export default function ClipInspectorModal({
   isOpen,
   onClose,
   onRequestDownload,
+  onOpenEditor,
 }: ClipInspectorModalProps) {
   const [activeTab, setActiveTab] = useState<"analysis" | "transcript">("analysis");
   const [liked, setLiked] = useState<boolean | null>(null);
@@ -343,6 +346,14 @@ export default function ClipInspectorModal({
             <div className="lg:col-span-3 space-y-3">
               {!showScheduler ? (
                 <>
+                  {onOpenEditor && (
+                    <button
+                      onClick={() => onOpenEditor(clip)}
+                      className="flex w-full items-center justify-center gap-2 border border-[#4FD1C5]/35 bg-[#4FD1C5]/[0.08] px-4 py-3 text-xs font-bold text-[#9CEAE2] transition hover:border-[#4FD1C5]/70 hover:bg-[#4FD1C5]/[0.12]"
+                    >
+                      <Pencil className="size-4" /> Open Studio Editor
+                    </button>
+                  )}
                   {/* Primary 1: Schedule to YouTube */}
                   <button
                     onClick={() => setShowScheduler(true)}

@@ -1,4 +1,5 @@
 import type { ProcessInitResponse, StatusResponse } from "@/types";
+import type { ClipRemakePayload } from "@/types/editor";
 
 import { apiPath } from "./apiBase";
 import {
@@ -11,6 +12,24 @@ import { getSupabaseBrowserClient } from "./supabase/client";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function remakeClip(clipId: string, payload: ClipRemakePayload) {
+  const response = await fetch(apiPath(`/api/v1/clips/${encodeURIComponent(clipId)}/remake`), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data?.detail;
+    throw new Error((typeof detail === "string" ? detail : detail?.message) || data?.error || `Render failed (HTTP ${response.status})`);
+  }
+  if (typeof window !== "undefined" && typeof data.credits_remaining === "number") {
+    window.dispatchEvent(new CustomEvent("relativ:credits-updated", { detail: { balance: data.credits_remaining } }));
+  }
+  return data;
 }
 
 export async function submitYouTubeUrl(

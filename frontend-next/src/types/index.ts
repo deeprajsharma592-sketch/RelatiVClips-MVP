@@ -18,6 +18,18 @@ export interface Clip {
   hook_score?: number;
   story_score?: number;
   engagement_score?: number;
+  task_id?: string;
+  caption_words?: Array<{
+    w?: string;
+    word?: string;
+    start: number;
+    end: number;
+    emph?: number;
+    deleted?: boolean;
+  }>;
+  caption_style?: Record<string, unknown>;
+  caption_layout?: Array<Record<string, unknown>>;
+  subject_track?: Array<Record<string, unknown>>;
 }
 
 export interface ProcessStep {

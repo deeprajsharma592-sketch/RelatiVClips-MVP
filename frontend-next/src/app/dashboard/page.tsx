@@ -24,12 +24,14 @@ import {
   RefreshCw,
   Calendar,
   Zap,
+  Pencil,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
 import StudioHeader from "@/components/dashboard/StudioHeader";
 import StudioHero from "@/components/dashboard/StudioHero";
 import UpgradeModal from "@/components/dashboard/UpgradeModal";
 import ClipInspectorModal from "@/components/ClipInspectorModal";
+import ClipEditorModal from "@/components/dashboard/editor/ClipEditorModal";
 import VideoProcessingView from "@/components/VideoProcessingView";
 import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
@@ -76,6 +78,7 @@ function DashboardContent() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [pendingDownloadClip, setPendingDownloadClip] = useState<Clip | null>(null);
   const [inspectedClip, setInspectedClip] = useState<{ clip: Clip; index: number } | null>(null);
+  const [selectedEditClip, setSelectedEditClip] = useState<{ clip: Clip; index: number } | null>(null);
 
   // Projects State
   const [projects, setProjects] = useState<StoredProject[]>([]);
@@ -414,6 +417,7 @@ function DashboardContent() {
                         onSelect={() => setInspectedClip({ clip, index })}
                         onRequestDownload={() => handleRequestDownload(clip)}
                         onSchedule={() => setInspectedClip({ clip, index })}
+                        onEdit={() => setSelectedEditClip({ clip, index })}
                       />
                     ))}
                   </div>
@@ -535,6 +539,22 @@ function DashboardContent() {
         isOpen={!!inspectedClip}
         onClose={() => setInspectedClip(null)}
         onRequestDownload={(c) => handleRequestDownload(c)}
+        onOpenEditor={(clip) => {
+          setInspectedClip(null);
+          const index = activeProject?.clips.findIndex((candidate) => candidate.clip_id === clip.clip_id) ?? 0;
+          setSelectedEditClip({ clip, index: Math.max(0, index) });
+        }}
+      />
+      <ClipEditorModal
+        clip={selectedEditClip?.clip || null}
+        index={selectedEditClip?.index || 0}
+        onClose={() => setSelectedEditClip(null)}
+        onSaveSuccess={(updated) => {
+          if (!activeProject) return;
+          const clips = (activeProject.clips || []).map((item) => item.clip_id === updated.clip_id ? updated : item);
+          updateProjectStatus(activeProject.id, "ready", clips, 100);
+          setProjects(getStoredProjects());
+        }}
       />
     </div>
   );
@@ -549,12 +569,14 @@ function ClipCard({
   onSelect,
   onRequestDownload,
   onSchedule,
+  onEdit,
 }: {
   clip: Clip;
   index: number;
   onSelect: () => void;
   onRequestDownload: () => void;
   onSchedule: () => void;
+  onEdit: () => void;
 }) {
   const [videoError, setVideoError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -624,6 +646,13 @@ function ClipCard({
 
           {/* Quick Action Icons */}
           <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              title="Edit clip in Studio"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-[#4FD1C5] hover:bg-white/10 transition cursor-pointer"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
             {/* Calendar / Schedule Icon */}
             <button
               onClick={(e) => {

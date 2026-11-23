@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Pencil } from "lucide-react";
 import type { Clip } from "@/types";
 
 interface ClipCardProps {
@@ -9,6 +10,7 @@ interface ClipCardProps {
   onSelect: (clip: Clip) => void;
   onDownload: (clip: Clip) => void;
   isSelected?: boolean;
+  onEdit?: (clip: Clip) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -23,6 +25,7 @@ export default function ClipCard({
   onSelect,
   onDownload,
   isSelected,
+  onEdit,
 }: ClipCardProps) {
   return (
     <motion.div
@@ -70,6 +73,15 @@ export default function ClipCard({
         >
           Preview
         </motion.button>
+        {onEdit && (
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); onEdit(clip); }}
+            className="flex items-center justify-center gap-1.5 border border-white/10 px-3 text-xs text-white hover:border-[#4FD1C5]/60 hover:text-[#4FD1C5]"
+            whileTap={{ scale: 0.98 }}
+          >
+            <Pencil className="size-3" /> Edit
+          </motion.button>
+        )}
         <motion.button
           onClick={(e) => { e.stopPropagation(); onDownload(clip); }}
           className="flex-1 py-2 bg-accent text-white text-xs font-semibold rounded-[2px] font-sans"
