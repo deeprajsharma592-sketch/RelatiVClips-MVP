@@ -144,12 +144,12 @@ export default function HeroStudio() {
               onSubmit={handleSubmit}
               aria-label="Create clips"
               aria-busy={pending !== null}
-              className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2.5 rounded-[18px] border border-[#43394f] bg-[#191621] p-3 shadow-[4px_5px_0_#08070b] sm:flex sm:items-center sm:gap-2 sm:rounded-[24px] sm:border-zinc-300 sm:bg-white sm:p-1.5 lg:p-1 sm:shadow-[0_8px_30px_#0002] sm:dark:border-[#373044] sm:dark:bg-[#191621] sm:dark:shadow-black/30"
+              className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2.5 rounded-[18px] border border-[#3a3a3a] bg-[#171717] p-3 shadow-[4px_5px_0_#080808] sm:flex sm:items-center sm:gap-2 sm:rounded-[24px] sm:border-zinc-300 sm:bg-white sm:p-1.5 lg:p-1 sm:shadow-[0_8px_30px_#0002] sm:dark:border-[#333333] sm:dark:bg-[#171717] sm:dark:shadow-black/30"
             >
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="col-span-2 flex min-h-[52px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#373044] bg-[#100e17] px-3 focus-within:border-violet-400 sm:min-h-12 lg:min-h-11 sm:rounded-[17px] sm:border-zinc-200 sm:bg-zinc-50 sm:focus-within:border-violet-500 sm:dark:border-[#373044] sm:dark:bg-[#100e17] sm:dark:focus-within:border-violet-400"
+                className="col-span-2 flex min-h-[52px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#333333] bg-[#101010] px-3 focus-within:border-neutral-400 sm:min-h-12 lg:min-h-11 sm:rounded-[17px] sm:border-zinc-200 sm:bg-zinc-50 sm:focus-within:border-neutral-500 sm:dark:border-[#333333] sm:dark:bg-[#101010] sm:dark:focus-within:border-neutral-400"
               >
                 <Link2 className="size-4 shrink-0 text-zinc-400 sm:text-zinc-500 sm:dark:text-zinc-400" aria-hidden="true" />
                 <input
@@ -181,7 +181,7 @@ export default function HeroStudio() {
                 disabled={pending !== null}
                 aria-label="Upload file"
                 title="Upload file"
-                className="col-start-2 row-start-2 inline-flex min-h-12 lg:min-h-11 min-w-0 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#52465f] px-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:cursor-wait sm:min-w-10 sm:gap-2 sm:rounded-[17px] sm:border-zinc-200 sm:px-3 sm:font-medium sm:text-zinc-700 sm:hover:bg-zinc-100 sm:dark:border-[#373044] sm:dark:text-zinc-200 sm:dark:hover:bg-white/10"
+                className="col-start-2 row-start-2 inline-flex min-h-12 lg:min-h-11 min-w-0 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#404040] px-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:cursor-wait sm:min-w-10 sm:gap-2 sm:rounded-[17px] sm:border-zinc-200 sm:px-3 sm:font-medium sm:text-zinc-700 sm:hover:bg-zinc-100 sm:dark:border-[#333333] sm:dark:text-zinc-200 sm:dark:hover:bg-white/10"
               >
                 <Upload className="size-4" aria-hidden="true" />
                 <span>Upload file</span>
