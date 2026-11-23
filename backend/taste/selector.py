@@ -5,20 +5,88 @@ clip objects ready for the renderer.
 This is the glue between the LLM's edit commands and the renderer's
 input format. It also applies the quality floor and dedupes.
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import logging
+import re
+
+from ..utils.config import CLIP_DURATION_HARD_MIN, CLIP_DURATION_HARD_MAX
 
 log = logging.getLogger(__name__)
 
-CLIP_DURATION_MIN = 10.0
-CLIP_DURATION_MAX = 20.0
+# Duration bounds: sweet spot for viral short-form (Shorts / Reels / TikTok)
+CLIP_DURATION_MIN = max(10.0, float(CLIP_DURATION_HARD_MIN))
+CLIP_DURATION_MAX = min(60.0, float(CLIP_DURATION_HARD_MAX))
 QUALITY_FLOOR = 0.7  # per PIPELINE-VISION.md: never ship < 0.7
+
+SENTENCE_TERMINATORS = ".!?"
+
+
+def snap_to_sentence_boundary(
+    start: float,
+    end: float,
+    transcript: Optional[Dict],
+    video_duration: float,
+    min_dur: float = CLIP_DURATION_MIN,
+    max_dur: float = CLIP_DURATION_MAX,
+) -> Tuple[float, float]:
+    """Snap start/end timestamps to clean sentence boundaries.
+
+    Ensures the clip starts on the first word of a thought (not mid-syllable or
+    after a cut-off phrase) and ends after a sentence-closing punctuation mark.
+    """
+    if not transcript or not transcript.get("segments"):
+        return start, end
+
+    segments = transcript.get("segments") or []
+    snapped_start = start
+    snapped_end = end
+
+    # 1. Snap start: look for segment or sentence start within 3.5s of start
+    for seg in segments:
+        s_s = float(seg.get("start", 0))
+        s_e = float(seg.get("end", 0))
+        # If segment start is near our start, align to it
+        if abs(s_s - start) <= 3.5:
+            snapped_start = s_s
+            break
+        # If words with timestamps are available, find word after a punctuation mark
+        words = seg.get("words") or []
+        for i, w in enumerate(words):
+            w_start = float(w.get("start", 0))
+            if abs(w_start - start) <= 2.5:
+                # If previous word ended with a terminator or this word is capitalized
+                prev_text = words[i - 1].get("word", "") if i > 0 else "."
+                if any(c in prev_text for c in SENTENCE_TERMINATORS) or w.get("word", "")[:1].isupper():
+                    snapped_start = w_start
+                    break
+
+    # 2. Snap end: look for sentence ending punctuation within 4.5s of end
+    for seg in reversed(segments):
+        s_s = float(seg.get("start", 0))
+        s_e = float(seg.get("end", 0))
+        text = (seg.get("text") or "").strip()
+        if any(c in text for c in SENTENCE_TERMINATORS) and abs(s_e - end) <= 4.5:
+            candidate_dur = s_e - snapped_start
+            if min_dur <= candidate_dur <= max_dur:
+                snapped_end = s_e
+                break
+
+    # Guard bounds
+    snapped_start = max(0.0, snapped_start)
+    snapped_end = min(video_duration, snapped_end)
+    if snapped_end - snapped_start < min_dur:
+        snapped_end = min(video_duration, snapped_start + min_dur)
+    if snapped_end - snapped_start > max_dur:
+        snapped_end = snapped_start + max_dur
+
+    return snapped_start, snapped_end
 
 
 def rank_candidates(
     candidates: List[Dict],
     llm_response: Optional[List[Dict]],
     video_duration: float,
+    transcript: Optional[Dict] = None,
 ) -> List[Dict]:
     """Combine hook candidates with the LLM's selection into final clips.
 
@@ -68,9 +136,19 @@ def rank_candidates(
         # floor only applies to the energy-peak fallback path (below).
         # We do enforce duration bounds, dedup, and the video-duration cap.
 
-        # Apply trim offsets (new: trim_start/trim_end, legacy: trim_start_offset)
-        start = max(0.0, cand["start"] + sel.get("trim_start", sel.get("trim_start_offset", 0)))
-        end = min(video_duration, cand["end"] + sel.get("trim_end", sel.get("trim_end_offset", 0)))
+        # If sel contains direct narrative start/end timestamps, honor them
+        if "start" in sel and "end" in sel and float(sel["end"]) > float(sel["start"]):
+            start = max(0.0, float(sel["start"]))
+            end = min(video_duration, float(sel["end"]))
+        else:
+            # Apply trim offsets (new: trim_start/trim_end, legacy: trim_start_offset)
+            start = max(0.0, cand["start"] + sel.get("trim_start", sel.get("trim_start_offset", 0)))
+            end = min(video_duration, cand["end"] + sel.get("trim_end", sel.get("trim_end_offset", 0)))
+
+        # Snap to clean sentence boundaries if transcript is present
+        cand_tr = transcript or cand.get("transcript")
+        if cand_tr:
+            start, end = snap_to_sentence_boundary(start, end, cand_tr, video_duration)
 
         # Enforce duration window
         if end - start < CLIP_DURATION_MIN:
@@ -102,12 +180,16 @@ def rank_candidates(
 
     if not final:
         log.warning("LLM response was empty after filtering — falling back")
-        return _fallback_selection(candidates, video_duration)
+        return _fallback_selection(candidates, video_duration, transcript=transcript)
 
     return final
 
 
-def _fallback_selection(candidates: List[Dict], video_duration: float) -> List[Dict]:
+def _fallback_selection(
+    candidates: List[Dict],
+    video_duration: float,
+    transcript: Optional[Dict] = None,
+) -> List[Dict]:
     """If LLM is unavailable, pick the top 3 hook candidates that meet
     the quality floor. Better than nothing; not as good as taste-aware."""
     qualified = [c for c in candidates if c.get("hook_score", 0) >= QUALITY_FLOOR]
@@ -119,7 +201,10 @@ def _fallback_selection(candidates: List[Dict], video_duration: float) -> List[D
     final = []
     for cand in qualified[:3]:
         start = max(0.0, cand["start"])
-        end = min(video_duration, start + 15.0)  # default 15s clip
+        end = min(video_duration, start + 35.0)  # default 35s natural clip
+        cand_tr = transcript or cand.get("transcript")
+        if cand_tr:
+            start, end = snap_to_sentence_boundary(start, end, cand_tr, video_duration)
         if end - start < CLIP_DURATION_MIN:
             end = min(video_duration, start + CLIP_DURATION_MIN)
         if end - start > CLIP_DURATION_MAX:

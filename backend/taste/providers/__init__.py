@@ -7,11 +7,7 @@ Each provider implements the `LLMProvider` ABC:
     - cost_per_1k_tokens: float (0.0 for free tiers)
     - available() -> bool: check if the provider is usable in this env
 
-Selection logic lives in `select_provider()` which picks the highest-priority
-available provider.
-
-When Claude credits land, `ClaudeProvider` becomes usable automatically.
-Until then, `MiniMaxProvider` is the zero-cost default.
+Selection is deliberately restricted to the three approved transports.
 """
 import logging
 from abc import ABC, abstractmethod
@@ -50,34 +46,6 @@ class LLMProvider(ABC):
         return True
 
 
-class MiniMaxProvider(LLMProvider):
-    """MiniMax direct provider — zero cost, decent prompt-following.
-
-    Default when no other provider is configured. Useful for development
-    and as a free fallback.
-    """
-
-    name = "MiniMax"
-    cost_per_1k_tokens = 0.0
-
-    def __init__(self, model: str = "MiniMax/MiniMax-M3"):
-        self.model = model
-
-    def generate(self, prompt: str, max_tokens: int = 1024) -> str:
-        # In a real deployment, this would call the MiniMax API.
-        # For now, the orchestrator passes llm_callable directly when this
-        # provider is selected, so this method is only invoked in tests
-        # that exercise the provider contract.
-        raise NotImplementedError(
-            "MiniMaxProvider.generate must be wired with an llm_callable "
-            "or replaced with a real API client. See provider_factory."
-        )
-
-    def available(self) -> bool:
-        # Always available — the orchestrator supplies the callable.
-        return True
-
-
 class ClaudeProvider(LLMProvider):
     """Anthropic Claude provider.
 
@@ -89,7 +57,7 @@ class ClaudeProvider(LLMProvider):
     cost_per_1k_tokens = 0.003  # input, sonnet; output is $0.015
 
     def __init__(self, model: Optional[str] = None):
-        self.model = "claude-haiku-4-5-20251001"
+        self.model = "claude-haiku-5-5"
         try:
             import anthropic  # type: ignore
             self._anthropic = anthropic
@@ -129,77 +97,10 @@ class ClaudeProvider(LLMProvider):
         return True
 
 
-class MimoProvider(LLMProvider):
-    """Xiaomi MiMo V2.6 Pro provider for structured clip calibration."""
-
-    name = "mimo"
-    cost_per_1k_tokens = 0.000435
-
-    def __init__(self, model: Optional[str] = None):
-        self.model = model or _env("MIMO_MODEL") or "mimo-v2.6-pro"
-
-    def generate(self, prompt: str, max_tokens: int = 1024) -> str:
-        from backend.llm.mimo_client import generate
-        return generate(prompt, max_tokens=max_tokens)
-
-    def available(self) -> bool:
-        return bool(_env("MIMO_API_KEY"))
-
-
-class DeepseekProvider(LLMProvider):
-    """Deepseek provider — open-source-class quality, low cost.
-
-    Activated when `DEEPSEEK_API_KEY` is set. Useful as a middle-tier
-    alternative when Claude is overkill for the task.
-    """
-
-    name = "deepseek"
-    cost_per_1k_tokens = 0.00014  # input
-
-    def __init__(self, model: str = "deepseek-chat"):
-        self.model = model
-        try:
-            import openai  # type: ignore
-            self._openai = openai
-            self._client: Optional["openai.OpenAI"] = None
-        except ImportError:
-            self._openai = None
-            self._client = None
-
-    def _get_client(self):
-        if self._client is None and self._openai is not None:
-            api_key = _env("DEEPSEEK_API_KEY")
-            if not api_key:
-                raise RuntimeError("DEEPSEEK_API_KEY not set")
-            self._client = self._openai.OpenAI(
-                api_key=api_key, base_url="https://api.deepseek.com/v1"
-            )
-        return self._client
-
-    def generate(self, prompt: str, max_tokens: int = 1024) -> str:
-        client = self._get_client()
-        if client is None:
-            raise RuntimeError("openai SDK not installed (deepseek uses OpenAI-compat API)")
-        resp = client.chat.completions.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.choices[0].message.content or ""
-
-    def available(self) -> bool:
-        if not _env("DEEPSEEK_API_KEY"):
-            return False
-        if self._openai is None:
-            log.warning("openai SDK not installed; DeepseekProvider unavailable")
-            return False
-        return True
-
-
 class OpenRouterHaikuProvider(LLMProvider):
     name = "openrouter_haiku_5_5"
     cost_per_1k_tokens = 0.00010
-    model = "anthropic/claude-haiku-4.5"
+    model = "anthropic/claude-haiku-5.5"
 
     def generate(self, prompt: str, max_tokens: int = 1024) -> str:
         from backend.llm.openrouter_client import generate_haiku

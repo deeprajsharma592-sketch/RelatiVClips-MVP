@@ -62,7 +62,8 @@ def get_default_llm_callable() -> Callable[[str], str]:
     """Return a callable that uses the auto-selected LLM provider.
 
     Used when the orchestrator's `llm_callable` arg is not provided.
-    Selects the highest-priority available provider (Claude → Deepseek → MiniMax).
+    Uses only the fixed chain: Anthropic Haiku 5.5, OpenRouter Haiku 5.5,
+    then OpenRouter DeepSeek V4.1 Flash 1017.
     """
     provider = _select_provider()
     log.info(f"Default LLM callable using provider: {provider.name}")
@@ -212,6 +213,7 @@ def _run_stage_6_taste_select(
             })
         return taste_selector.rank_candidates(
             candidates, synthetic_picks, video_duration=video_meta.get("duration_s", 0),
+            transcript=transcript,
         )
 
     # ── LAYER 2: budget check ──────────────────────────────────────────
@@ -222,6 +224,7 @@ def _run_stage_6_taste_select(
               f"exhausted. Using energy-peak fallback.")
         return taste_selector.rank_candidates(
             candidates, None, video_duration=video_meta.get("duration_s", 0),
+            transcript=transcript,
         )
 
     # ── LAYER 2.5: pick model tier (smart / calibration / budget / fallback) ──
@@ -290,16 +293,34 @@ def _run_stage_6_taste_select(
     except Exception as e:
         log.warning(f"Archetype/retention pre-pass failed: {e}")
 
-    # Build moments list for the new prompt
+    # Build moments list for the new prompt with expanded narrative context
     moment_list = []
+    all_segs = (transcript.get("segments") or []) if transcript else []
     for i, c in enumerate(candidates, 1):
+        c_start = float(c.get("start", 0))
+        c_end = float(c.get("end", 0))
+
+        # Build expanded narrative context from surrounding transcript segments if available
+        context_snippet = ""
+        if all_segs:
+            overlapping_texts = [
+                s.get("text", "").strip() for s in all_segs
+                if float(s.get("end", 0)) >= c_start - 2.0 and float(s.get("start", 0)) <= c_end + 25.0
+                and s.get("text", "").strip()
+            ]
+            if overlapping_texts:
+                context_snippet = " ".join(overlapping_texts)[:600]
+
+        if not context_snippet:
+            context_snippet = (c.get("snippet") or c.get("reason") or c.get("text") or "")[:500]
+
         moment_list.append(taste_icl.Moment(
             index=i,
-            start=float(c.get("start", 0)),
-            end=float(c.get("end", 0)),
+            start=c_start,
+            end=c_end,
             signal_type=c.get("signal_type", "peak"),
             score=float(c.get("score", c.get("hook_score", 0.5))),
-            snippet=(c.get("snippet") or c.get("reason") or c.get("text") or "")[:200],
+            snippet=context_snippet,
             source=c.get("source", "pre_scored"),
             story_position=float(c.get("story_position", 0.5)),
         ))
@@ -454,6 +475,7 @@ def _run_stage_6_taste_select(
 
     ranked = taste_selector.rank_candidates(
         candidates, llm_response, video_duration=video_meta.get("duration_s", 0),
+        transcript=transcript,
     )
     # Carry the zero-token content classification into the framing engine. This
     # is a hint, not a hard override: the visual policy still verifies that a

@@ -37,6 +37,6 @@ def test_openrouter_models_are_fixed(monkeypatch):
     openrouter_client.generate_deepseek("transcript")
 
     assert calls == [
-        "anthropic/claude-haiku-4.5",
+        "anthropic/claude-haiku-5.5",
         "deepseek/deepseek-v4.1-flash-1017",
     ]

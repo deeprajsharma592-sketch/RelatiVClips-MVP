@@ -4,7 +4,7 @@ smart-skip heuristic that avoids calling the LLM when text+audio detection
 already produced 3 high-confidence candidates.
 
 Why this exists:
-  - Anthropic Haiku 4.5 costs $1/MTok input + $5/MTok output (as of 2025-06).
+  - The approved chain contains only Haiku 5.5 and DeepSeek V4.1 Flash 1017.
   - With the $20 budget the user allocated, we can afford ~2000-4000
     taste-selection calls, but only if we don't waste tokens.
   - Most requests: 15 candidate moments × ~50 tokens prompt line = 750 input
@@ -40,21 +40,12 @@ _model_router = None
 # Update these if Anthropic changes pricing.
 _COST_PER_MTOK = {
     # Model: (input_usd_per_mtok, output_usd_per_mtok)
-    "anthropic/claude-haiku-4.5": (1.0, 5.0),
+    "claude-haiku-5-5": (0.10, 0.50),
+    "anthropic/claude-haiku-5.5": (0.10, 0.50),
     "deepseek/deepseek-v4.1-flash-1017": (0.036, 0.50),
-    "claude-haiku-4-5-20251001": (1.0, 5.0),
-    "claude-3-haiku-20240307": (0.25, 1.25),
-    "claude-haiku-3-5-20241022": (0.80, 4.0),
-    "claude-3-5-sonnet-20241022": (3.0, 15.0),
-    "deepseek-chat": (0.14, 0.28),
-    "deepseek-reasoner": (0.55, 2.19),
-    "mimo-v2.6-pro": (0.435, 0.87),
-    "llama-3.3-70b-versatile": (0.59, 0.79),  # Groq
-    "llama-3.1-8b-instant": (0.05, 0.08),     # Groq
-    "mixtral-8x7b-32768": (0.24, 0.24),       # Groq
 }
 
-_DEFAULT_COST = (1.0, 5.0)  # approved primary: Haiku 4.5
+_DEFAULT_COST = (0.10, 0.50)  # approved primary: Haiku 5.5
 
 
 # ─── Configurable caps (env-driven) ────────────────────────────────────────
@@ -126,7 +117,7 @@ def estimate_cost_usd(
 
     cache_read / cache_write: tokens that hit Anthropic's prompt cache.
     For models with prompt caching, the cached portion is billed at the
-    cache_read rate ($0.10/MTok for Haiku 4.5) instead of the input rate.
+    cache_read rate instead of the standard input rate.
     """
     rate = _COST_PER_MTOK.get(model, _DEFAULT_COST)
     # For models with cache rates, use them; otherwise treat as standard input
@@ -146,28 +137,9 @@ def estimate_cost_usd(
 # When a model reports cache_read_input_tokens, we bill those at this rate
 # instead of the standard input rate. Set to None to disable caching.
 _CACHE_RATES = {
-    "anthropic/claude-haiku-4.5": {"read": 0.10, "write": 1.25},
+    "claude-haiku-5-5": {"read": 0.01, "write": 0.125},
+    "anthropic/claude-haiku-5.5": {"read": 0.01, "write": 0.125},
     "deepseek/deepseek-v4.1-flash-1017": {"read": 0.01, "write": None},
-    "claude-haiku-4-5-20251001": {
-        "read": 0.10,    # 10x cheaper than fresh input
-        "write": 1.25,   # slightly more than input (we pay for the cache slot)
-    },
-    "claude-haiku-3-5-20241022": {
-        "read": 0.08,
-        "write": 1.0,
-    },
-    "claude-3-5-sonnet-20241022": {
-        "read": 0.30,
-        "write": 3.75,
-    },
-    "deepseek-v4-flash": {
-        "read": 0.0028,  # 50x cheaper than fresh input
-        "write": 0.14,
-    },
-    "deepseek-v4-pro": {
-        "read": 0.003625,
-        "write": 0.435,
-    },
 }
 
 
@@ -181,7 +153,7 @@ def record_call(
     """Record a successful LLM call. Returns the cost in USD.
 
     cache_read / cache_write: tokens that hit Anthropic's prompt cache.
-    These are billed at the cache rates ($0.10/MTok read for Haiku 4.5).
+    These are billed at the configured cache rates.
     """
     _maybe_reset_daily()
     cost = estimate_cost_usd(model, input_tokens, output_tokens, cache_read, cache_write)

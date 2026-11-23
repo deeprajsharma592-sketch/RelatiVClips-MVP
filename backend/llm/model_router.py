@@ -1,41 +1,8 @@
-"""
-LLM model tier router — picks the right model for the right job.
+"""Strict RelatiV calibration model metadata.
 
-Why this exists:
-  - Story-type content (podcasts, interviews, vlogs) needs narrative understanding.
-  - Different cost/quality tradeoffs make sense for different phases of the product:
-      * Calibration phase (first ~2-3 months): high quality (Haiku 4.5) to build
-        a "taste" dataset we can later distill to cheaper models.
-      * Post-calibration: switch to budget tier (DeepSeek V4-Flash).
-      * Always: hard fallback (Groq GPT OSS 20B) if everything else is down.
-
-Pricing reference (as of 2025-06):
-  ┌──────────────────────┬────────────┬────────────┬──────────────┐
-  │ Model                │ Input $/MT │ Output $/MT│ Cache read   │
-  ├──────────────────────┼────────────┼────────────┼──────────────┤
-  │ claude-haiku-4-5     │ 1.00       │ 5.00       │ 0.10         │
-  │ deepseek-v4-flash    │ 0.14       │ 0.28       │ 0.0028       │
-  │ deepseek-v4-pro      │ 0.435      │ 0.87       │ 0.003625     │
-  │ gpt-oss-20b (Groq)   │ 0.075      │ 0.30       │ n/a          │
-  └──────────────────────┴────────────┴────────────┴──────────────┘
-
-Per-pick cost (assume 800 input + 200 output tokens, Haiku WITHOUT caching):
-  - Haiku 4.5:       800/1M * 1.0  +  200/1M * 5.0  =  $0.00180
-  - Haiku 4.5 (cached, 700/800 hit): 700/1M*0.10 + 100/1M*1.0 + 200/1M*5.0 = $0.00117
-  - DeepSeek V4-Flash: 800/1M * 0.14 + 200/1M * 0.28 = $0.000168
-  - DeepSeek V4-Pro:   800/1M * 0.435 + 200/1M * 0.87 = $0.000522
-  - Groq GPT OSS 20B:  800/1M * 0.075 + 200/1M * 0.30 = $0.000120
-
-$20 budget yields:
-  - Haiku 4.5 no cache:   ~11,100 picks
-  - Haiku 4.5 with cache: ~17,000 picks
-  - DeepSeek V4-Flash:    ~119,000 picks
-  - Groq GPT OSS 20B:     ~166,000 picks
-
-The router:
-  1. Honors a forced tier (env LLM_TIER = "calibration" | "budget" | "fallback")
-  2. Auto-selects based on phase + budget remaining
-  3. Returns the model name and an estimated cost per pick
+Every tier uses one immutable sequence: Anthropic Haiku 5.5 directly, the
+same model through OpenRouter, then DeepSeek V4.1 Flash 1017 through
+OpenRouter. No auto-router, alias, or unlisted model is permitted.
 """
 import logging
 import os
@@ -54,27 +21,25 @@ class LLMTier(str, Enum):
     SMART = "smart"               # Router decides per-request
 
 
-from ..utils.config import CLAUDE_MODEL
-
 # Map tier -> (primary model, fallback chain)
 # Note: "smart" is a router meta-tier, not a real choice — it dispatches to
 # one of the other three at runtime. We omit it from TIER_CONFIG.
 TIER_CONFIG = {
     LLMTier.CALIBRATION: {
-        "primary": "claude-haiku-4-5-20251001",
-        "fallback": ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash-1017"],
+        "primary": "claude-haiku-5-5",
+        "fallback": ["anthropic/claude-haiku-5.5", "deepseek/deepseek-v4.1-flash-1017"],
         "description": "Strict RelatiV calibration chain; no other models are permitted.",
         "use_cache": True,
     },
     LLMTier.BUDGET: {
-        "primary": "claude-haiku-4-5-20251001",
-        "fallback": ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash-1017"],
+        "primary": "claude-haiku-5-5",
+        "fallback": ["anthropic/claude-haiku-5.5", "deepseek/deepseek-v4.1-flash-1017"],
         "description": "Strict RelatiV calibration chain; no other models are permitted.",
         "use_cache": True,
     },
     LLMTier.FALLBACK: {
-        "primary": "claude-haiku-4-5-20251001",
-        "fallback": ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash-1017"],
+        "primary": "claude-haiku-5-5",
+        "fallback": ["anthropic/claude-haiku-5.5", "deepseek/deepseek-v4.1-flash-1017"],
         "description": "Strict RelatiV calibration chain; no other models are permitted.",
         "use_cache": True,
     },
@@ -83,45 +48,17 @@ TIER_CONFIG = {
 
 # ─── Cost constants (USD per million tokens) ────────────────────────────────
 COST_PER_MTOK = {
-    "anthropic/claude-haiku-4.5": {
-        "input": 1.0, "output": 5.0,
-        "cache_read": 0.10, "cache_write": 1.25,
+    "claude-haiku-5-5": {
+        "input": 0.10, "output": 0.50,
+        "cache_read": 0.01, "cache_write": 0.125,
+    },
+    "anthropic/claude-haiku-5.5": {
+        "input": 0.10, "output": 0.50,
+        "cache_read": 0.01, "cache_write": 0.125,
     },
     "deepseek/deepseek-v4.1-flash-1017": {
         "input": 0.036, "output": 0.50,
         "cache_read": 0.01, "cache_write": None,
-    },
-    "claude-3-haiku-20240307": {
-        "input": 0.25, "output": 1.25,
-        "cache_read": 0.03, "cache_write": 0.30,
-    },
-    "claude-3-5-haiku-20241022": {
-        "input": 0.80, "output": 4.0,
-        "cache_read": 0.08, "cache_write": 1.0,
-    },
-    "claude-haiku-4-5-20251001": {
-        "input": 1.0, "output": 5.0,
-        "cache_read": 0.10, "cache_write": 1.25,
-    },
-    "deepseek-v4-flash": {
-        "input": 0.14, "output": 0.28,
-        "cache_read": 0.0028, "cache_write": 0.14,
-    },
-    "deepseek-v4-pro": {
-        "input": 0.435, "output": 0.87,
-        "cache_read": 0.003625, "cache_write": 0.435,
-    },
-    "minimax-m3": {
-        # MiniMax M3 (this session's active model). Pricing not publicly published
-        # yet — using conservative placeholder. Will be updated once known.
-        # Estimated: ~10x cheaper than Haiku based on size class.
-        "input": 0.10, "output": 0.40,
-        "cache_read": None, "cache_write": None,
-    },
-    "gpt-oss-20b": {
-        # Legacy: kept in case someone has GROQ_API_KEY set
-        "input": 0.075, "output": 0.30,
-        "cache_read": None, "cache_write": None,
     },
 }
 
@@ -161,7 +98,7 @@ def estimate_pick_cost(
 
     cache_hit_ratio: fraction of input tokens that hit cache (0.0 to 1.0).
     """
-    rates = COST_PER_MTOK.get(model, COST_PER_MTOK["claude-haiku-4-5-20251001"])
+    rates = COST_PER_MTOK.get(model, COST_PER_MTOK["claude-haiku-5-5"])
     if rates.get("cache_read") is not None and cache_hit_ratio > 0:
         cached = input_tokens * cache_hit_ratio
         fresh = input_tokens * (1.0 - cache_hit_ratio)

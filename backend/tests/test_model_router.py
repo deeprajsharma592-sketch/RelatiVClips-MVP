@@ -35,7 +35,7 @@ def test_budget_tier():
     import importlib
     importlib.reload(model_router)
     model, tier, cpp = model_router.pick_model()
-    assert "deepseek" in model or "minimax" in model, f"Expected cheap model, got {model}"
+    assert model == "claude-haiku-5-5"
     assert tier == "budget", f"Expected budget, got {tier}"
     print(f"✓ budget tier → {model} (${cpp:.6f}/pick)")
 
@@ -45,47 +45,38 @@ def test_fallback_tier():
     import importlib
     importlib.reload(model_router)
     model, tier, cpp = model_router.pick_model()
-    assert "minimax" in model, f"Expected minimax, got {model}"
+    assert model == "claude-haiku-5-5"
     assert tier == "fallback", f"Expected fallback, got {tier}"
     print(f"✓ fallback tier → {model} (${cpp:.6f}/pick)")
 
 
 def test_cost_estimation_haiku_no_cache():
-    """Haiku 4.5: 800 input + 200 output, no cache = $0.0018"""
-    cost = estimate_pick_cost("claude-haiku-4-5-20251001", 800, 200, cache_hit_ratio=0.0)
-    expected = (800/1_000_000 * 1.0) + (200/1_000_000 * 5.0)
+    """Haiku 5.5: 800 input + 200 output at configured rates."""
+    cost = estimate_pick_cost("claude-haiku-5-5", 800, 200, cache_hit_ratio=0.0)
+    expected = (800/1_000_000 * 0.10) + (200/1_000_000 * 0.50)
     assert abs(cost - expected) < 1e-6, f"Expected ${expected}, got ${cost}"
     print(f"✓ Haiku no cache: 800/200 tokens = ${cost:.6f}")
 
 
 def test_cost_estimation_haiku_with_cache():
-    """Haiku 4.5: 800 input, 700 cached + 100 fresh + 200 output"""
-    cost = estimate_pick_cost("claude-haiku-4-5-20251001", 800, 200, cache_hit_ratio=0.875)
-    # 700 * 0.10 + 100 * 1.0 + 200 * 5.0 = 0.07 + 0.1 + 1.0 = $1.17/M
-    expected = (700/1_000_000 * 0.10) + (100/1_000_000 * 1.0) + (200/1_000_000 * 5.0)
+    """Haiku 5.5: 800 input, 700 cached + 100 fresh + 200 output."""
+    cost = estimate_pick_cost("claude-haiku-5-5", 800, 200, cache_hit_ratio=0.875)
+    expected = (700/1_000_000 * 0.01) + (100/1_000_000 * 0.10) + (200/1_000_000 * 0.50)
     assert abs(cost - expected) < 1e-6, f"Expected ${expected}, got ${cost}"
-    print(f"✓ Haiku cached (87.5%): 800/200 tokens = ${cost:.6f} (vs ${(800/1_000_000*1.0+200/1_000_000*5.0):.6f} without cache)")
+    print(f"✓ Haiku cached (87.5%): 800/200 tokens = ${cost:.6f}")
 
 
 def test_cost_estimation_deepseek_flash():
-    """V4-Flash: $0.14 input + $0.28 output, 10x cheaper than Haiku"""
-    cost = estimate_pick_cost("deepseek-v4-flash", 800, 200)
-    expected = (800/1_000_000 * 0.14) + (200/1_000_000 * 0.28)
+    """DeepSeek V4.1 Flash 1017 uses the exact OpenRouter model ID."""
+    cost = estimate_pick_cost("deepseek/deepseek-v4.1-flash-1017", 800, 200)
+    expected = (800/1_000_000 * 0.036) + (200/1_000_000 * 0.50)
     assert abs(cost - expected) < 1e-6
     print(f"✓ DeepSeek V4-Flash: 800/200 tokens = ${cost:.6f}")
 
 
-def test_cost_estimation_gpt_oss():
-    """MiniMax M3: cheapest active provider, $0.10 + $0.40"""
-    cost = estimate_pick_cost("minimax-m3", 800, 200)
-    expected = (800/1_000_000 * 0.10) + (200/1_000_000 * 0.40)
-    assert abs(cost - expected) < 1e-6
-    print(f"✓ Groq GPT OSS 20B: 800/200 tokens = ${cost:.6f}")
-
-
 def test_picks_per_dollar():
     """$1 should buy us at least 500 picks on every tier."""
-    for model in ["claude-haiku-4-5-20251001", "deepseek-v4-flash", "minimax-m3"]:
+    for model in ["claude-haiku-5-5", "anthropic/claude-haiku-5.5", "deepseek/deepseek-v4.1-flash-1017"]:
         ppd = picks_per_dollar(model)
         assert ppd > 500, f"{model}: only {ppd} picks/$1"
         print(f"✓ {model}: {ppd} picks per $1")
@@ -101,11 +92,11 @@ def test_budget_enforcement():
     cost_per_pick = 0.0002
     # Simulate 1999 picks (just under threshold)
     for _ in range(1999):
-        model_router.record_pick("claude-haiku-4-5-20251001", cost_per_pick)
+        model_router.record_pick("claude-haiku-5-5", cost_per_pick)
     model, tier, cpp = model_router.pick_model()
     assert tier == "calibration", f"Expected calibration at 1999 picks, got {tier}"
     # Bump to threshold
-    model_router.record_pick("claude-haiku-4-5-20251001", cost_per_pick)
+    model_router.record_pick("claude-haiku-5-5", cost_per_pick)
     model, tier, cpp = model_router.pick_model()
     assert tier == "budget", f"Expected budget at 2000 picks, got {tier}"
     print(f"✓ smart mode: 1999 picks → calibration, 2000+ → budget ({tier})")
@@ -117,7 +108,7 @@ def test_hard_budget_fallback():
     import importlib
     importlib.reload(model_router)
     # Record a $1.50 burn (over $1.00 hard cap)
-    model_router.record_pick("claude-haiku-4-5-20251001", 1.50)
+    model_router.record_pick("claude-haiku-5-5", 1.50)
     model, tier, cpp = model_router.pick_model()
     assert tier == "fallback", f"Expected fallback after hard budget, got {tier}"
     print(f"✓ smart mode: hard budget exceeded → fallback ({tier})")
@@ -140,10 +131,9 @@ def test_cache_savings_tracking():
     """Cache savings should be tracked when cache_read > 0."""
     initial = cost_control.cost_status().get("cache_savings_usd_today", 0)
     # 1000 input, 800 cached, 200 fresh
-    cost_control.record_call("claude-haiku-4-5-20251001", 1000, 200, cache_read=800)
+    cost_control.record_call("claude-haiku-5-5", 1000, 200, cache_read=800)
     after = cost_control.cost_status()["cache_savings_usd_today"]
-    # Savings = 1000*1.0 - (800*0.10 + 200*1.0) = 1000 - 280 = 720 (in micro-USD = $0.00072)
-    expected_savings = 1000/1_000_000 * 1.0 - (800/1_000_000 * 0.10 + 200/1_000_000 * 1.0)
+    expected_savings = 1000/1_000_000 * 0.10 - (800/1_000_000 * 0.01 + 200/1_000_000 * 0.10)
     assert after >= initial + expected_savings - 1e-6, \
         f"Expected savings ≥ {expected_savings}, got {after - initial}"
     print(f"✓ cache savings tracked: ${after - initial:.6f} from 1 call with 80% cache hit")
@@ -156,7 +146,6 @@ if __name__ == "__main__":
     test_cost_estimation_haiku_no_cache()
     test_cost_estimation_haiku_with_cache()
     test_cost_estimation_deepseek_flash()
-    test_cost_estimation_gpt_oss()
     test_picks_per_dollar()
     test_budget_enforcement()
     test_hard_budget_fallback()

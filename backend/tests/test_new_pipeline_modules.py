@@ -11,7 +11,7 @@ from datetime import datetime
 
 from backend.pipeline.hooks import detect_hooks, _lexical_hook_score, _normalize_energy
 from backend.taste.icl import build_prompt, parse_response, CreatorClipHistory, HookCandidate
-from backend.taste.selector import rank_candidates, QUALITY_FLOOR
+from backend.taste.selector import rank_candidates, QUALITY_FLOOR, CLIP_DURATION_MAX
 from backend.taste.store import (
     load_history, append_history, update_metrics, creator_exists,
 )
@@ -346,7 +346,7 @@ class TestRankCandidates:
         cands = [{"start": 10.0, "end": 12.0, "hook_score": 0.9, "components": {}}]
         llm_response = [{"candidate_index": 1, "trim_start_offset": 0, "trim_end_offset": 100}]
         result = rank_candidates(cands, llm_response, 60.0)
-        assert result[0]["end"] - result[0]["start"] <= 20.0  # CLIP_DURATION_MAX
+        assert result[0]["end"] - result[0]["start"] <= CLIP_DURATION_MAX
 
 
 # --- taste/store.py ---

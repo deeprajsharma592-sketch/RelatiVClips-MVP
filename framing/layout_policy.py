@@ -132,8 +132,18 @@ def choose_layout(
 
     if requested in {"portrait", "context", "conversation", "fit"}:
         return LayoutDecision(requested, position, "explicit layout request", signal_dict)
+
+    # 1. Multi-person conversation / podcast (2+ distinct tracked faces in landscape)
+    if signals.landscape and signals.face_count >= 2:
+        return LayoutDecision("conversation", position, "two-person conversation", signal_dict)
     if any(token in hint for token in CONVERSATION_HINTS) and signals.face_count >= 2:
         return LayoutDecision("conversation", position, "two-person conversation", signal_dict)
+
+    # 2. Zero faces detected in landscape (gameplay, screencast, b-roll, demo) -> fullframe fit/blur
+    if signals.landscape and signals.face_count == 0:
+        return LayoutDecision("fit", position, "no face detected — preserving fullframe with blur backdrop", signal_dict)
+
+    # 3. Content explicitly flagged as context (gaming, tutorial, slides)
     if any(token in hint for token in CONTEXT_HINTS) and signals.landscape:
         return LayoutDecision("context", position, f"content hint: {hint}", signal_dict)
 

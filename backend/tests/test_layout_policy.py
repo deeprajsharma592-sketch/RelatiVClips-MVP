@@ -59,6 +59,20 @@ def test_two_person_podcast_uses_conversation_policy():
     assert decision.mode == "conversation"
 
 
+def test_two_faces_without_hint_uses_conversation_stack():
+    decision = choose_layout(
+        "auto", "top", None, _signals(face_count=2)
+    )
+    assert decision.mode == "conversation"
+
+
+def test_zero_faces_landscape_uses_fit_blur():
+    decision = choose_layout(
+        "auto", "top", None, _signals(face_count=0)
+    )
+    assert decision.mode == "fit"
+
+
 def test_explicit_layout_override_wins():
     decision = choose_layout("portrait", "bottom", "gaming", _signals())
     assert decision.mode == "portrait"

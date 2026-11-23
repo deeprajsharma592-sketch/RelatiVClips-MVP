@@ -2,22 +2,15 @@
 
 Mocks the underlying SDKs so we can exercise the contract without keys.
 """
-import os
 import pytest
 
 from backend.taste.providers import (
-    LLMProvider, MiniMaxProvider, MimoProvider, ClaudeProvider, DeepseekProvider,
+    LLMProvider, ClaudeProvider, OpenRouterHaikuProvider, OpenRouterDeepSeekProvider,
     select_provider, PROVIDER_PRIORITY,
 )
 
 
 class TestProviderContract:
-    def test_minimax_available_by_default(self):
-        p = MiniMaxProvider()
-        assert p.available() is True
-        assert p.name == "MiniMax"
-        assert p.cost_per_1k_tokens == 0.0
-
     def test_claude_unavailable_without_key(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         p = ClaudeProvider()
@@ -35,31 +28,28 @@ class TestProviderContract:
         else:
             assert p.available() is True
 
-    def test_deepseek_unavailable_without_key(self, monkeypatch):
-        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-        p = DeepseekProvider()
-        assert p.available() is False
-
-    def test_mimo_requires_key(self, monkeypatch):
-        monkeypatch.delenv("MIMO_API_KEY", raising=False)
-        assert MimoProvider().available() is False
-        monkeypatch.setenv("MIMO_API_KEY", "test-key")
-        assert MimoProvider().available() is True
+    def test_openrouter_transports_require_key(self, monkeypatch):
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        assert OpenRouterHaikuProvider().available() is False
+        assert OpenRouterDeepSeekProvider().available() is False
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        assert OpenRouterHaikuProvider().available() is True
+        assert OpenRouterDeepSeekProvider().available() is True
 
 
 class TestSelectProvider:
-    def test_falls_back_to_minimax(self, monkeypatch):
+    def test_raises_when_no_approved_provider_is_configured(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-        p = select_provider()
-        # MiniMax should be the last-resort fallback
-        assert p.name == "MiniMax"
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="No approved RelatiV"):
+            select_provider()
 
     def test_priority_order(self):
-        assert PROVIDER_PRIORITY[0] is MimoProvider
-        assert PROVIDER_PRIORITY[1] is ClaudeProvider
-        assert PROVIDER_PRIORITY[2] is DeepseekProvider
-        assert PROVIDER_PRIORITY[3] is MiniMaxProvider
+        assert PROVIDER_PRIORITY == [
+            ClaudeProvider,
+            OpenRouterHaikuProvider,
+            OpenRouterDeepSeekProvider,
+        ]
 
 
 class TestProviderABC:

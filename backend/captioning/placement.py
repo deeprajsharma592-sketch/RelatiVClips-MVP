@@ -5,6 +5,7 @@ from typing import Iterable
 SLOTS = {
     "low": (540, 1190, 0.0, 1.0),
     "mid_low": (540, 1037, 0.3, 1.0),
+    "divider": (540, 960, 0.25, 1.0),
     "high": (540, 461, 0.6, 1.0),
     "mid": (540, 806, 1.2, 1.0),
     "left_low": (310, 1190, 0.5, 0.85),
@@ -34,8 +35,8 @@ def _overlap(rect: list[float], box: list[float] | None) -> float:
 def choose_layout(groups: list[dict], subject_track: list[dict] | None, preset: str) -> list[dict]:
     track = subject_track or []
     order = list(SLOTS)
-    if preset == "stack":
-        order = ["low", "mid_low", "left_low", "right_low", "left_high", "right_high", "high", "mid"]
+    if preset in {"stack", "conversation"}:
+        order = ["divider", "low", "mid_low", "left_low", "right_low", "left_high", "right_high", "high", "mid"]
     if preset == "hookcard":
         order = ["high", "left_high", "right_high", "low", "mid_low", "mid"]
     previous = None

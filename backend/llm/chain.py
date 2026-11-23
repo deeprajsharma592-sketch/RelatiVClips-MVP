@@ -4,8 +4,8 @@ LLM chain with circuit breaker and provider fallback.
 Goal: never let a single provider failure take down the pipeline.
 
 The production calibration order is fixed and cannot be configured:
-  1. Claude Haiku 4.5 via Anthropic
-  2. Claude Haiku 4.5 via OpenRouter
+  1. Claude Haiku 5.5 via Anthropic
+  2. Claude Haiku 5.5 via OpenRouter
   3. DeepSeek V4.1 Flash 1017 via OpenRouter
 
 No auto-router, latest alias, MiMo, Groq, MiniMax, or other model is allowed
@@ -154,7 +154,7 @@ def _build_claude_callable() -> Optional[Callable[[str], str]]:
         # All approved providers share the exact stable calibration instructions.
         from ..taste.icl import RELATIVSAUCE_SYSTEM_PROMPT
         system_prompt = RELATIVSAUCE_SYSTEM_PROMPT
-        candidate_models = ["claude-haiku-4-5-20251001"]
+        candidate_models = ["claude-haiku-5-5"]
 
         last_error = None
         for current_model in candidate_models:
@@ -241,9 +241,9 @@ def _provider_chain(provider_override: Optional[str] = None) -> List[Tuple[str, 
     openrouter_deepseek = _build_openrouter_deepseek_callable()
     chain: List[Tuple[str, Callable[[str], str]]] = []
     if claude:
-        chain.append(("anthropic_direct_haiku_4_5", claude))
+        chain.append(("anthropic_direct_haiku_5_5", claude))
     if openrouter_haiku:
-        chain.append(("openrouter_haiku_4_5", openrouter_haiku))
+        chain.append(("openrouter_haiku_5_5", openrouter_haiku))
     if openrouter_deepseek:
         chain.append(("openrouter_deepseek_v4_1_flash_1017", openrouter_deepseek))
     return chain
@@ -283,9 +283,9 @@ def available_providers() -> List[str]:
     """Return the names of providers that are configured (ignoring breakers)."""
     names = []
     if ANTHROPIC_API_KEY:
-        names.append("anthropic_direct_haiku_4_5")
+        names.append("anthropic_direct_haiku_5_5")
     if OPENROUTER_API_KEY:
-        names.extend(["openrouter_haiku_4_5", "openrouter_deepseek_v4_1_flash_1017"])
+        names.extend(["openrouter_haiku_5_5", "openrouter_deepseek_v4_1_flash_1017"])
     return names
 
 

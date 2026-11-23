@@ -238,8 +238,8 @@ def run_pipeline(
     single_p2_plan = plan_camera_single_shot(p2_samples, 0, total_frames, fps, src_w, src_h, config) if p2_samples else []
     context_plan = plan_camera_context_shot(p1_samples, 0, total_frames, fps, src_w, src_h, config) if p1_samples else []
     
-    # STACK is only possible if both P1 and P2 exist AND represent distinct subjects
-    has_two_distinct_subjects = bool(p1_samples and p2_samples and any(seg.get("state") == "STACK" for seg in layout_segments))
+    # STACK is possible if both P1 and P2 exist AND either layout_decision is conversation OR a layout segment called for STACK
+    has_two_distinct_subjects = bool(p1_samples and p2_samples and (layout_decision.mode == "conversation" or any(seg.get("state") == "STACK" for seg in layout_segments)))
     stack_plan = plan_camera_stack_shot(p1_samples, p2_samples, 0, total_frames, fps, src_w, src_h, config) if has_two_distinct_subjects else []
 
     # ── Stage 8: Zoom Planner

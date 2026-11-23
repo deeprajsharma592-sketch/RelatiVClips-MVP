@@ -12,7 +12,7 @@ from ..taste.icl import RELATIVSAUCE_SYSTEM_PROMPT
 from ..utils.config import OPENROUTER_API_KEY, OPENROUTER_BASE_URL
 
 
-OPENROUTER_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
+OPENROUTER_HAIKU_MODEL = "anthropic/claude-haiku-5.5"
 OPENROUTER_DEEPSEEK_MODEL = "deepseek/deepseek-v4.1-flash-1017"
 ALLOWED_MODELS = frozenset({OPENROUTER_HAIKU_MODEL, OPENROUTER_DEEPSEEK_MODEL})
 

@@ -42,7 +42,7 @@ class Moment:
 
     def to_prompt_line(self) -> str:
         dur = self.end - self.start
-        snip = (self.snippet[:80] + "…") if len(self.snippet) > 80 else self.snippet
+        snip = (self.snippet[:450] + "…") if len(self.snippet) > 450 else self.snippet
         pos_pct = int(self.story_position * 100)
         return (
             f"[{self.index}] t={self.start:.1f}-{self.end:.1f}s ({dur:.0f}s, "
@@ -182,20 +182,21 @@ def build_archetype_aware_prompt(
 
     parts: List[str] = []
 
-    # 1. SYSTEM — explicit 3-job instruction
+    # 1. SYSTEM — explicit 3-job instruction + RelatiVSauce quality laws
     parts.append(
-        "You are a short-form video editor (TikTok/Reels/Shorts). You do "
-        "THREE things for each pick:\n"
-        "  1. HOOK (6-10 words): the FIRST thing the viewer sees/hears. "
-        "Must create an OPEN LOOP — a question, surprise, or curiosity gap "
-        "that they want closed.\n"
-        "  2. RETENTION BRIDGE (8-15 words): the 'and then what?' that "
-        "keeps them watching. Connect the hook to a payoff.\n"
-        "  3. TITLE (3-6 words, ALL CAPS): for thumbnail/UI. "
-        "Stop-scrolling, specific, not generic.\n\n"
-        "Be SPECIFIC to the moment. Reference the actual content, not "
-        "abstract patterns. Avoid 'TOP MOMENT', 'YOU WON'T BELIEVE' as a "
-        "literal phrase — find the precise beat."
+        "You are an elite short-form video editor (TikTok/Reels/Shorts). "
+        "Your job is to find moments that develop a complete, self-contained story arc (25s–60s) "
+        "with an explosive hook, clear narrative flow, and a satisfying punchline or resolution.\n\n"
+        "STRICT QUALITY RULES:\n"
+        "  - HOOK FIRST: The hook is the first spoken line (0–3s). It must open a curiosity gap.\n"
+        "  - NO DANGLING START: Never pick a clip that begins with unexplained pronouns ('and that\\'s why he did it', 'so they told me'). A stranger with no context must understand immediately.\n"
+        "  - COMPLETE ARC & PAYOFF: The ending MUST land whole. Never cut off mid-sentence, mid-thought, or before the resolution/punchline.\n"
+        "  - DURATION: Aim for 25s to 60s clips so the thought has room to breathe.\n\n"
+        "For each pick, provide:\n"
+        "  1. HOOK (6-10 words): the exact OPEN LOOP in the first sentence.\n"
+        "  2. RETENTION BRIDGE (8-15 words): the 'and then what?' connecting hook to payoff.\n"
+        "  3. TITLE (3-6 words, ALL CAPS): stop-scrolling, specific, not generic.\n\n"
+        "Be SPECIFIC to the moment. Reference the actual content, not abstract patterns."
     )
 
     # 2. ARCHETYPE — context for the LLM
@@ -406,7 +407,7 @@ def build_hybrid_narrative_prompt(
 
 
 _RELATIVSAUCE_PATH = Path(__file__).with_name("RelatiVSauce.md")
-# V2 is the single source of truth for both Claude and MiMo. Keep this byte
+# V2 is the single source of truth for every approved provider. Keep this byte
 # stable: provider prompt caches key off the unchanged system-prefix content.
 RELATIVSAUCE_SYSTEM_PROMPT = _RELATIVSAUCE_PATH.read_text(encoding="utf-8").strip()
 RELATIVSAUCE_PROMPT_SHA256 = hashlib.sha256(
@@ -469,27 +470,14 @@ def build_relativsauce_prompt(
         if not txt:
             continue
 
-        markers = []
-        # Check heat region hint
+        # Real viewer engagement heat from replay curves (sparse hint, not acoustic noise)
+        tags = []
         if hot_regions:
             for hr_s, hr_e, hr_val in hot_regions:
                 if not (e < hr_s or s > hr_e):
-                    markers.append(f"🔥 [ENGAGEMENT HEAT: {hr_val:.2f}]")
+                    tags.append("[HEAT]")
                     break
 
-        for m in moments:
-            if not (e < m.start or s > m.end):
-                if m.signal_type in ("peak", "steep_peak"):
-                    markers.append("⚡ [LOUD ACOUSTIC BURST]")
-                elif m.signal_type in ("valley", "steep_valley", "silence"):
-                    markers.append("🤫 [DRAMATIC PAUSE]")
-                break
-
-        tags = []
-        if any("LOUD" in marker for marker in markers):
-            tags.append("[LOUD]")
-        if any("PAUSE" in marker for marker in markers):
-            tags.append("[SILENCE]")
         speaker = str(seg.get("speaker") or seg.get("speaker_id") or "A")
         marker_str = f" {' '.join(tags)}" if tags else ""
         transcript_lines.append(

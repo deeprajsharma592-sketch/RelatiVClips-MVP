@@ -30,7 +30,7 @@ MAX_CONCURRENT_TASKS = 1
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 # Fixed by product policy. Model selection is intentionally not env-driven.
-CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+CLAUDE_MODEL = "claude-haiku-5-5"
 
 # Strict OpenRouter fallback transport. Model IDs are fixed in
 # backend.llm.openrouter_client and cannot be overridden by environment.
@@ -42,17 +42,12 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")  # also "deepseek-reasoner"
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 
-# --- Xiaomi MiMo (OpenAI-compatible clip calibration provider) ---
-MIMO_API_KEY = os.getenv("MIMO_API_KEY", "")
-MIMO_MODEL = os.getenv("MIMO_MODEL", "mimo-v2.6-pro")
-MIMO_BASE_URL = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
-
 # Calibration routing is fixed in backend.llm.chain. These legacy values remain
 # readable only so older modules can import them; they do not choose a model.
 LLM_PROVIDER = "strict"
 LLM_PROVIDER_PRIORITY = [
-    "anthropic_direct_haiku_4_5",
-    "openrouter_haiku_4_5",
+    "anthropic_direct_haiku_5_5",
+    "openrouter_haiku_5_5",
     "openrouter_deepseek_v4_1_flash_1017",
 ]
 

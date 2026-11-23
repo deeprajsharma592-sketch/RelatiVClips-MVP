@@ -271,7 +271,7 @@ async def llm_status():
     """Show LLM chain configuration and circuit breaker state. Useful for ops.
 
     Returns configured providers, which one would be used next, and breaker state.
-    If you see 'groq' in providers_configured with breaker closed, the LLM is live.
+    The configured list is restricted to the three approved model transports.
     """
     try:
         from .llm.chain import chain_status
