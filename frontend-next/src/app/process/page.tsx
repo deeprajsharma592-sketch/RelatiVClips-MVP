@@ -418,16 +418,31 @@ function ProcessInner() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
-                  {clips.map((clip, i) => (
-                    <ClipCard
-                      key={clip.clip_id || i}
-                      clip={clip}
-                      index={i}
-                      taskId={activeTaskId}
-                      onSelect={() => setInspectedClip({ clip, index: i })}
-                    />
-                  ))}
+                <div className="w-full px-2 sm:px-6 md:px-8 py-2 flex justify-center">
+                  <div
+                    className={`grid gap-6 sm:gap-7 transition-all duration-300 w-full ${
+                      clips.length === 1
+                        ? "max-w-sm"
+                        : clips.length === 2
+                        ? "grid-cols-1 sm:grid-cols-2 max-w-2xl"
+                        : clips.length === 3
+                        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl"
+                        : clips.length === 4
+                        ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-4 max-w-5xl"
+                        : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 max-w-7xl"
+                    }`}
+                  >
+                    {clips.map((clip, i) => (
+                      <div key={clip.clip_id || i} className="w-full max-w-[320px] mx-auto">
+                        <ClipCard
+                          clip={clip}
+                          index={i}
+                          taskId={activeTaskId}
+                          onSelect={() => setInspectedClip({ clip, index: i })}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="mt-8 text-center">
                   <button

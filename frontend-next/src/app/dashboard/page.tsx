@@ -51,6 +51,7 @@ import {
   clearAllStoredProjects,
   type StoredProject,
 } from "@/lib/projectStorage";
+import { getYouTubeThumbnail } from "@/lib/youtube";
 import type { Clip } from "@/types";
 
 function DashboardContent() {
@@ -350,11 +351,15 @@ function DashboardContent() {
                 }}
               />
 
-              {/* ── ACTIVE GENERATION / WAITING STATE (Thinking AI Blob + Green Filling Thumbnail) ── */}
+              {/* ── ACTIVE GENERATION / WAITING STATE (Thumbnail + Cross Layout + Left Corner ETA) ── */}
               {isGenerating && (
                 <div className="rounded-2xl border border-white/10 bg-[#121215]/80 backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
                   <VideoProcessingView
-                    thumbnailUrl={activeProject?.clips?.[0]?.thumbnail_url || null}
+                    thumbnailUrl={
+                      getYouTubeThumbnail(urlParam) ||
+                      activeProject?.clips?.[0]?.thumbnail_url ||
+                      null
+                    }
                     progress={generationProgress}
                   />
                 </div>
@@ -413,19 +418,34 @@ function DashboardContent() {
                     </div>
                   </div>
 
-                  {/* 9:16 Vertical Grid matching Opus Clip exact style */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-                    {(activeProject.clips || []).map((clip, index) => (
-                      <ClipCard
-                        key={clip.clip_id || index}
-                        clip={clip}
-                        index={index}
-                        onSelect={() => setInspectedClip({ clip, index })}
-                        onRequestDownload={() => handleRequestDownload(clip)}
-                        onSchedule={() => setInspectedClip({ clip, index })}
-                        onEdit={() => setSelectedEditClip({ clip, index })}
-                      />
-                    ))}
+                  {/* Adaptive Responsive Layout for n Number of Clips with Generous Side Space */}
+                  <div className="w-full px-1 sm:px-4 md:px-6 py-2">
+                    <div
+                      className={`grid gap-6 sm:gap-7 transition-all duration-300 ${
+                        (activeProject.clips?.length || 0) === 1
+                          ? "max-w-sm"
+                          : (activeProject.clips?.length || 0) === 2
+                          ? "grid-cols-1 sm:grid-cols-2 max-w-2xl"
+                          : (activeProject.clips?.length || 0) === 3
+                          ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl"
+                          : (activeProject.clips?.length || 0) === 4
+                          ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-4 max-w-5xl"
+                          : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 max-w-7xl"
+                      }`}
+                    >
+                      {(activeProject.clips || []).map((clip, index) => (
+                        <div key={clip.clip_id || index} className="w-full max-w-[320px]">
+                          <ClipCard
+                            clip={clip}
+                            index={index}
+                            onSelect={() => setInspectedClip({ clip, index })}
+                            onRequestDownload={() => handleRequestDownload(clip)}
+                            onSchedule={() => setInspectedClip({ clip, index })}
+                            onEdit={() => setSelectedEditClip({ clip, index })}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

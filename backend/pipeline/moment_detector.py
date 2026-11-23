@@ -143,13 +143,24 @@ def _caption_moments_from_transcript(
             peak_words.extend((s.get("text") or "").split())
         else:
             if in_peak:
-                # End of peak region
+                # End of peak region: expand from peak_start forward to capture a complete 30-60s thought
                 if peak_end - peak_start >= 2.0 and len(peak_words) >= 4:
                     snippet = " ".join(peak_words[:12])
+                    clip_start = max(0.0, peak_start - 2.0)
+                    clip_end = clip_start + 35.0
+                    for s_seg in segs:
+                        s_end = float(s_seg.get("end", 0))
+                        s_text = (s_seg.get("text") or "").strip()
+                        if s_end - clip_start >= 30.0:
+                            clip_end = s_end
+                            if any(s_text.endswith(p) for p in (".", "!", "?")):
+                                break
+                            if s_end - clip_start >= 65.0:
+                                break
                     moments.append(Moment(
                         index=0,  # filled in later
-                        start=peak_start,
-                        end=peak_end,
+                        start=round(clip_start, 2),
+                        end=round(min(video_duration_s if video_duration_s > 0 else clip_end, clip_end), 2),
                         signal_type="density",
                         score=min(1.0, (peak_end - peak_start) / 15.0 * 0.7 + 0.3),
                         snippet=snippet,
@@ -160,10 +171,21 @@ def _caption_moments_from_transcript(
                 peak_words = []
     if in_peak and peak_end - peak_start >= 2.0 and peak_words:
         snippet = " ".join(peak_words[:12])
+        clip_start = max(0.0, peak_start - 2.0)
+        clip_end = clip_start + 35.0
+        for s_seg in segs:
+            s_end = float(s_seg.get("end", 0))
+            s_text = (s_seg.get("text") or "").strip()
+            if s_end - clip_start >= 30.0:
+                clip_end = s_end
+                if any(s_text.endswith(p) for p in (".", "!", "?")):
+                    break
+                if s_end - clip_start >= 65.0:
+                    break
         moments.append(Moment(
             index=0,
-            start=peak_start,
-            end=peak_end,
+            start=round(clip_start, 2),
+            end=round(min(video_duration_s if video_duration_s > 0 else clip_end, clip_end), 2),
             signal_type="density",
             score=min(1.0, (peak_end - peak_start) / 15.0 * 0.7 + 0.3),
             snippet=snippet,
@@ -177,9 +199,18 @@ def _caption_moments_from_transcript(
         cur_start = float(segs[i].get("start", 0))
         gap = cur_start - prev_end
         if gap >= 1.5:
-            # The valley is the gap; the clip window is ±4s around it
+            # The valley is the hook trigger; the clip window expands forward for a complete 30s-60s thought
             clip_start = max(0, prev_end - 1.0)
-            clip_end = cur_start + 4.0
+            clip_end = clip_start + 35.0
+            for future_seg in segs[i:]:
+                f_end = float(future_seg.get("end", 0))
+                f_text = (future_seg.get("text") or "").strip()
+                if f_end - clip_start >= 30.0:
+                    clip_end = f_end
+                    if any(f_text.endswith(p) for p in (".", "!", "?")):
+                        break
+                    if f_end - clip_start >= 60.0:
+                        break
             # Use surrounding text as the snippet
             before_text = (segs[i - 1].get("text") or "").strip()
             after_text = (segs[i].get("text") or "").strip()
@@ -188,8 +219,8 @@ def _caption_moments_from_transcript(
                 snippet = "[dramatic pause]"
             moments.append(Moment(
                 index=0,
-                start=clip_start,
-                end=clip_end,
+                start=round(clip_start, 2),
+                end=round(min(video_duration_s if video_duration_s > 0 else clip_end, clip_end), 2),
                 signal_type="silence",
                 score=min(1.0, gap / 4.0 * 0.6 + 0.4),
                 snippet=snippet,
@@ -363,15 +394,20 @@ def _content_signal_moments(
         cluster_bonus = min(0.2, (len(cluster) - 1) * 0.05)
         all_reasons = sorted({r for _, _, rs in cluster for r in rs})
         final_score = min(1.0, mean_score + cluster_bonus)
-        # Pad window to 10-20s
+        # Ensure short-form narrative duration (30s - 75s)
         win_dur = end - start
-        if win_dur < 10:
-            pad = (10 - win_dur) / 2
-            start = max(0, start - pad)
-            end = end + pad
-        elif win_dur > 25:
-            # Keep last 20s of the cluster
-            end = start + 20
+        if win_dur < 30.0:
+            for j in range(last_i + 1, len(segs)):
+                s_end = float(segs[j].get("end", 0))
+                s_text = (segs[j].get("text") or "").strip()
+                if s_end - start >= 30.0:
+                    end = s_end
+                    if any(s_text.endswith(p) for p in (".", "!", "?")):
+                        break
+                    if s_end - start >= 70.0:
+                        break
+        elif win_dur > 90.0:
+            end = start + 90.0
         reasons_str = ",".join(all_reasons[:3])
         moments.append(Moment(
             index=0,
@@ -418,10 +454,10 @@ def _pad_with_temporal_candidates(
     for i in range(target_count):
         if i in used_segs:
             continue
-        # Center of segment, with a 15s window (the standard clip length)
-        center = (i + 0.5) * seg_dur
-        start = max(0.0, center - 7.5)
-        end = min(video_duration_s, center + 7.5)
+        # Target natural 35s - 65s story arcs
+        dur = min(max(32.0, seg_dur * 0.7), 65.0)
+        start = max(0.0, center - (dur * 0.35))
+        end = min(video_duration_s, start + dur)
         padded.append(Moment(
             index=0,  # re-indexed later
             start=round(start, 2),
