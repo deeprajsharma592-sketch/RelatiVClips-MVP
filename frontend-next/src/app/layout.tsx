@@ -7,6 +7,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
 import "./globals.css";
+import glass from "@/components/TasteGlass.module.css";
 
 // ── FONT 1: GEIST — Primary display and headings (Variable font)
 const geist = Geist({
@@ -173,7 +174,7 @@ export default function RootLayout({
           <SmoothScroll>
             <AuthProvider>
               <Header />
-              <main id="main-content" className="flex-1 relative z-[1]">{children}</main>
+              <main id="main-content" className={`flex-1 relative z-[1] ${glass.palette}`}>{children}</main>
               <Footer />
               <Script
                 id="org-ld-json"

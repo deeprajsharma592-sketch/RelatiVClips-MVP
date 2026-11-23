@@ -2154,3 +2154,16 @@ pre *:focus-visible,
     0 1px 2px rgba(40, 30, 20, 0.06) !important;
   transition-duration: 60ms;
 }
+
+/* Silver glass finish for white headings in the site content. */
+@supports (background-clip: text) {
+  @media (forced-colors: none) {
+    #main-content :is(h1, h2, h3, h4, h5, h6):is(.text-white, #creator-results-title),
+    .dark #main-content :is(h1, h2, h3, h4, h5, h6)[class~="dark:text-white"] {
+      background-image: var(--taste-glass-reflection),
+        linear-gradient(var(--taste-glass-base), var(--taste-glass-base));
+      background-clip: text;
+      color: transparent;
+    }
+  }
+}
