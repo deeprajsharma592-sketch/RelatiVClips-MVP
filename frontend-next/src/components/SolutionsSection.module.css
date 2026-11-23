@@ -1,0 +1,53 @@
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(100%, calc((100svh - 8rem) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  transform: translate(-50%, -52%);
+  container-type: inline-size;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.launch {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 0.65cqw;
+  min-height: 44px;
+  height: 6.4cqw;
+  padding: 0 2.05cqw;
+  border: 1px solid #5c5e69;
+  border-radius: 100px;
+  background: linear-gradient(#202128, #08090c 75%);
+  box-shadow: inset 0 1px 1px #ffffff33, inset 0 -2px 3px #000, 0 5px 22px #000;
+  color: #fdfcfc;
+  font: 700 clamp(15px, 4cqw, 60px)/1 system-ui, sans-serif;
+  letter-spacing: -0.065em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.launch:active {
+  transform: translate(-50%, -50%) scale(0.96);
+}
+
+.launch:focus-visible {
+  outline: 2px solid #fd4777;
+  outline-offset: 4px;
+}
+
+.launch span {
+  width: 1.8cqw;
+  height: 2.1cqw;
+  background: #fd4777;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
