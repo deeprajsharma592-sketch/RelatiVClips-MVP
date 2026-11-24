@@ -15,8 +15,7 @@
   position: fixed;
   inset: 0;
   content: "";
-  background: #000 url("/homepage-background.png") center top /
-    auto clamp(760px, 110svh, 1200px) no-repeat;
+  background: #000 url("/homepage-starfield.webp") center / cover no-repeat;
 }
 
 .roadmap {
