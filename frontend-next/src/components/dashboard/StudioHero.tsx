@@ -6,7 +6,6 @@ import {
   Link2,
   FolderOpen,
   Film,
-  Scissors,
   Wand2,
   Loader2,
 } from "lucide-react";
@@ -34,8 +33,6 @@ interface StudioHeroProps {
   onStartProcess?: (taskId: string, template?: string) => void;
   onSubmitUrl?: (url: string, config: RecipeConfig) => void;
   onOpenUpgrade?: () => void;
-  onOpenEditor?: () => void;
-  hasEditableClip?: boolean;
   isGenerating?: boolean;
 }
 
@@ -43,8 +40,6 @@ export default function StudioHero({
   onStartProcess,
   onSubmitUrl,
   onOpenUpgrade,
-  onOpenEditor,
-  hasEditableClip = false,
   isGenerating = false,
 }: StudioHeroProps) {
   const [activeTab, setActiveTab] = useState<"clip" | "auto-edit">("clip");
@@ -150,16 +145,6 @@ export default function StudioHero({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onOpenEditor}
-            disabled={!hasEditableClip || !onOpenEditor}
-            title={hasEditableClip ? "Open the newest generated clip in Studio" : "Generate a clip before opening Studio"}
-            className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-xs transition enabled:cursor-pointer enabled:text-[#9CEAE2] enabled:hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:text-zinc-500 sm:text-sm"
-          >
-            <Scissors size={15} aria-hidden="true" />
-            <span>{hasEditableClip ? "Edit newest clip" : "Open editor"}</span>
-          </button>
         </div>
 
         <div className="overflow-hidden rounded-b-[36px] rounded-tr-[36px] bg-[#242527] shadow-[0_14px_42px_rgba(0,0,0,0.2)]">

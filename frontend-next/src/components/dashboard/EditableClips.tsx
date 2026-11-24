@@ -26,13 +26,13 @@ function posterUrl(clip: Clip) {
   return clip.clip_id ? apiPath(`/thumbnail/${clip.clip_id}`) : "";
 }
 
-export default function EditStudioView({
+export default function EditableClips({
   projects,
   onEdit,
   onCreateClip,
 }: {
   projects: StoredProject[];
-  onEdit: (clip: Clip, index: number) => void;
+  onEdit: (clip: Clip, index: number, projectId: string) => void;
   onCreateClip: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -56,12 +56,12 @@ export default function EditStudioView({
   }, [projects, query, sort]);
 
   return (
-    <div className="mx-auto max-w-5xl pb-16">
+    <div className="pb-12">
       <header className="flex flex-col gap-5 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Clapperboard className="size-5 text-[#4FD1C5]" />
-            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8]">Edit Studio</h1>
+            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8]">Editable clips</h2>
           </div>
           <p className="mt-1.5 max-w-lg text-xs leading-5 text-[#85868b]">Choose a generated cut to adjust its timing, transcript, captions and framing.</p>
         </div>
@@ -83,13 +83,13 @@ export default function EditStudioView({
             const poster = posterUrl(clip);
             return (
               <article key={`${projectId}-${clip.clip_id}`} className="group grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/[0.07] py-3 last:border-b-0 sm:grid-cols-[116px_minmax(0,1fr)_auto] sm:gap-5 sm:py-4">
-                <button type="button" onClick={() => onEdit(clip, index)} className="relative aspect-video overflow-hidden border border-white/[0.08] bg-[#1B1C20] text-[#5F6168]">
+                <button type="button" onClick={() => onEdit(clip, index, projectId)} className="relative aspect-video overflow-hidden border border-white/[0.08] bg-[#1B1C20] text-[#5F6168]">
                   {poster ? <Image src={poster} alt="" fill unoptimized className="object-cover transition duration-300 group-hover:scale-[1.03]" /> : <span className="grid h-full place-items-center"><Video className="size-5" /></span>}
                   <span className="absolute right-1.5 bottom-1 bg-black/80 px-1.5 py-0.5 font-mono text-[9px] text-white">{timecode(clip.duration_s || 0)}</span>
                 </button>
 
                 <div className="min-w-0">
-                  <button type="button" onClick={() => onEdit(clip, index)} className="block max-w-full truncate text-left text-sm font-medium text-[#ECEAE3] transition hover:text-white">
+                  <button type="button" onClick={() => onEdit(clip, index, projectId)} className="block max-w-full truncate text-left text-sm font-medium text-[#ECEAE3] transition hover:text-white">
                     {clip.viral_title || `Clip ${index + 1}`}
                   </button>
                   <p className="mt-1 truncate text-[11px] text-[#777980]">{projectTitle}</p>
@@ -100,8 +100,8 @@ export default function EditStudioView({
                   </div>
                 </div>
 
-                <button type="button" onClick={() => onEdit(clip, index)} className="flex h-9 items-center gap-2 border border-[#4FD1C5]/30 bg-[#4FD1C5]/[0.07] px-3 text-[11px] font-semibold text-[#9CEAE2] transition hover:border-[#4FD1C5]/65 hover:bg-[#4FD1C5]/[0.12] sm:px-4">
-                  <Pencil className="size-3.5" /><span className="hidden sm:inline">Edit in Studio</span><span className="sm:hidden">Edit</span>
+                <button type="button" onClick={() => onEdit(clip, index, projectId)} className="flex h-9 items-center gap-2 border border-[#4FD1C5]/30 bg-[#4FD1C5]/[0.07] px-3 text-[11px] font-semibold text-[#9CEAE2] transition hover:border-[#4FD1C5]/65 hover:bg-[#4FD1C5]/[0.12] sm:px-4">
+                  <Pencil className="size-3.5" /><span className="hidden sm:inline">Edit clip</span><span className="sm:hidden">Edit</span>
                 </button>
               </article>
             );

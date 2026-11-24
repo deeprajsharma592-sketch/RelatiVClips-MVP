@@ -37,7 +37,7 @@ import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
 import CalendarView from "@/components/dashboard/CalendarView";
-import EditStudioView from "@/components/dashboard/EditStudioView";
+import EditableClips from "@/components/dashboard/EditableClips";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
 import { getPolarCheckoutUrl } from "@/lib/polar";
@@ -66,11 +66,11 @@ function DashboardContent() {
   const tailBufferParam = searchParams.get("tailBuffer");
   const thumbnailOutroParam = searchParams.get("thumbnailOutro");
   const paymentSucceeded = searchParams.get("payment") === "success";
-  const tabParam = searchParams.get("tab") as StudioTab | null;
+  const tabParam = searchParams.get("tab") as StudioTab | "edit-studio" | null;
 
   // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<StudioTab>(
-    tabParam && ["home", "edit-studio", "projects", "brand-kit", "assets", "calendar", "analyse", "socials"].includes(tabParam)
+    tabParam === "edit-studio" ? "projects" : tabParam && ["home", "projects", "brand-kit", "assets", "calendar", "analyse", "socials"].includes(tabParam)
       ? tabParam
       : "home"
   );
@@ -80,7 +80,7 @@ function DashboardContent() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [pendingDownloadClip, setPendingDownloadClip] = useState<Clip | null>(null);
   const [inspectedClip, setInspectedClip] = useState<{ clip: Clip; index: number } | null>(null);
-  const [selectedEditClip, setSelectedEditClip] = useState<{ clip: Clip; index: number } | null>(null);
+  const [selectedEditClip, setSelectedEditClip] = useState<{ clip: Clip; index: number; projectId: string } | null>(null);
 
   // Projects State
   const [projects, setProjects] = useState<StoredProject[]>([]);
@@ -372,11 +372,6 @@ function DashboardContent() {
                   router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}${finishQuery}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-                hasEditableClip={Boolean(activeProject?.clips?.length)}
-                onOpenEditor={() => {
-                  const clip = activeProject?.clips?.[0];
-                  if (clip) setSelectedEditClip({ clip, index: 0 });
-                }}
               />
 
               {/* ── ACTIVE GENERATION / WAITING STATE (Only when actively processing and project is not ready) ── */}
@@ -455,7 +450,6 @@ function DashboardContent() {
                         onSelect={() => setInspectedClip({ clip, index })}
                         onRequestDownload={() => handleRequestDownload(clip)}
                         onSchedule={() => setInspectedClip({ clip, index })}
-                        onEdit={() => setSelectedEditClip({ clip, index })}
                       />
                     ))}
                   </div>
@@ -478,30 +472,27 @@ function DashboardContent() {
             </div>
           )}
 
-          {/* TAB 2: MY PROJECTS */}
-          {activeTab === "edit-studio" && (
-            <EditStudioView
-              projects={projects}
-              onEdit={(clip, index) => setSelectedEditClip({ clip, index })}
-              onCreateClip={() => setActiveTab("home")}
-            />
-          )}
-
-          {/* TAB 3: MY PROJECTS */}
           {activeTab === "projects" && (
-            <ProjectsView
-              projects={projects}
-              onSelectProject={(id) => {
-                setActiveProjectId(id);
-                setIsGenerating(false);
-                setActiveTab("home");
-              }}
-              onRefresh={refreshProjects}
-              onNewClip={() => {
-                setIsGenerating(false);
-                setActiveTab("home");
-              }}
-            />
+            <>
+              <ProjectsView
+                projects={projects}
+                onSelectProject={(id) => {
+                  setActiveProjectId(id);
+                  setIsGenerating(false);
+                  setActiveTab("home");
+                }}
+                onRefresh={refreshProjects}
+                onNewClip={() => {
+                  setIsGenerating(false);
+                  setActiveTab("home");
+                }}
+              />
+              <EditableClips
+                projects={projects}
+                onEdit={(clip, index, projectId) => setSelectedEditClip({ clip, index, projectId })}
+                onCreateClip={() => setActiveTab("home")}
+              />
+            </>
           )}
 
           {/* TAB 3: ANALYSE */}
@@ -603,20 +594,16 @@ function DashboardContent() {
         isOpen={!!inspectedClip}
         onClose={() => setInspectedClip(null)}
         onRequestDownload={(c) => handleRequestDownload(c)}
-        onOpenEditor={(clip) => {
-          setInspectedClip(null);
-          const index = activeProject?.clips.findIndex((candidate) => candidate.clip_id === clip.clip_id) ?? 0;
-          setSelectedEditClip({ clip, index: Math.max(0, index) });
-        }}
       />
       <ClipEditorModal
         clip={selectedEditClip?.clip || null}
         index={selectedEditClip?.index || 0}
         onClose={() => setSelectedEditClip(null)}
         onSaveSuccess={(updated) => {
-          if (!activeProject) return;
-          const clips = (activeProject.clips || []).map((item) => item.clip_id === updated.clip_id ? updated : item);
-          updateProjectStatus(activeProject.id, "ready", clips, 100);
+          const project = getStoredProjects().find(({ id }) => id === selectedEditClip?.projectId);
+          if (!project) return;
+          const clips = (project.clips || []).map((item) => item.clip_id === updated.clip_id ? updated : item);
+          updateProjectStatus(project.id, "ready", clips, 100);
           setProjects(getStoredProjects());
         }}
       />
@@ -633,14 +620,12 @@ function ClipCard({
   onSelect,
   onRequestDownload,
   onSchedule,
-  onEdit,
 }: {
   clip: Clip;
   index: number;
   onSelect: () => void;
   onRequestDownload: () => void;
   onSchedule: () => void;
-  onEdit: () => void;
 }) {
   const [videoError, setVideoError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
