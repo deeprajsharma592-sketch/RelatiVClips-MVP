@@ -82,7 +82,7 @@ export function mountAudienceWeb(canvas, reducedMotion) {
     const scale=Math.min(30,4+end*.054)*spread;
     const fromLowerHand=card.label==='SaaS';
     const handSide=fromLowerHand?1:Math.sign(card.ux);
-    const handOffset=handSide*Math.min(98,end*.72);
+    const handOffset=handSide*Math.min(85,end*.72);
     const driftBend=Math.hypot(driftX,driftY)*.42;
     const roll=.34+Math.sin(floatTime+card.ux*2)*.16;
     const onSide=card.w*.5*Math.abs(card.uy)<halfH*Math.abs(card.ux);
