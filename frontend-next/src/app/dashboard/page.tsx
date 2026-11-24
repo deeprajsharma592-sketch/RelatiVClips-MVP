@@ -655,7 +655,7 @@ function ClipCard({
       ? (clip as any).score
       : Math.max(72, 91 - index * 5);
   const durationSec = clip.duration_s || 60;
-  const mins = Math.floor(durationSec / 60).toString().padStart(2, "0");
+  const mins = Math.floor(durationSec / 60);
   const secs = Math.floor(durationSec % 60).toString().padStart(2, "0");
 
   return (
@@ -699,10 +699,10 @@ function ClipCard({
           </div>
         </div>
 
-        {/* Timecode Badge (e.g. 00:00 01:13) */}
+        {/* Clip duration */}
         <div className="absolute bottom-2.5 right-2.5 z-20 pointer-events-none">
           <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-black/85 text-zinc-200 backdrop-blur-md border border-white/10">
-            00:00 {mins}:{secs}
+            {mins}:{secs}
           </span>
         </div>
       </div>
