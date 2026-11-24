@@ -2,7 +2,6 @@
 
 import FloatingAirship from "@/components/FloatingAirship";
 import HeroStudio from "@/components/HeroStudio";
-import OwnYourTaste from "@/components/OwnYourTaste";
 import TasteTimeline from "@/components/TasteTimeline";
 import StickyInputBar from "@/components/StickyInputBar";
 import SolutionsSection from "@/components/SolutionsSection";
@@ -28,9 +27,6 @@ export default function HomePage() {
 
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
-
-      {/* ── MANIFESTO TRANSITION: Glass word collision ── */}
-      <OwnYourTaste />
 
       <TasteTimeline />
 
