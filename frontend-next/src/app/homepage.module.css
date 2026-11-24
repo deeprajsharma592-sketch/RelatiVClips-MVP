@@ -11,11 +11,13 @@
   pointer-events: none;
 }
 
-.backdrop::before {
+.backdropImage {
   position: fixed;
   inset: 0;
-  content: "";
-  background: #000 url("/homepage-starfield.svg") center / cover no-repeat;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .roadmap {

@@ -11,7 +11,11 @@ import styles from "./homepage.module.css";
 export default function HomePage() {
   return (
     <div className={`${styles.page} relative min-h-screen w-full overflow-x-clip text-white selection:bg-amber-400 selection:text-black`}>
-      <div className={styles.backdrop} aria-hidden="true" />
+      <div className={styles.backdrop} aria-hidden="true">
+        {/* Keep this SVG as a viewport-sized image so it is drawn at device resolution. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className={styles.backdropImage} src="/homepage-starfield.svg" alt="" fetchPriority="high" />
+      </div>
 
       {/* ── Unobtrusive Floating Bottom Conversion Dock ── */}
       <StickyInputBar />
