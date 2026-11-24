@@ -79,7 +79,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#08080A]/95 backdrop-blur-md border-b border-white/[0.08]">
+    <header className="sticky top-0 z-50">
       <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-10">
         {/* Brand Logo (Clean, crisp white) */}
         <div className="flex items-center gap-3">

@@ -7,7 +7,7 @@
   position: absolute;
   inset: 0;
   z-index: -2;
-  clip-path: inset(0);
+  clip-path: inset(-4rem 0 0);
   pointer-events: none;
 }
 
