@@ -98,6 +98,42 @@ async def lifespan(app: FastAPI):
 
     start_cleanup_scheduler()
 
+    async def _social_publish_loop():
+        from sqlalchemy import select
+        from .database.models import ScheduledPostModel, SocialAccountModel
+        from .database.session import async_session
+        from .services.social_publishing import execute_scheduled_post, utc_now_naive
+        while True:
+            await asyncio.sleep(60)
+            try:
+                async with async_session() as session:
+                    due = (
+                        await session.execute(
+                            select(ScheduledPostModel).where(
+                                ScheduledPostModel.status == "scheduled",
+                                ScheduledPostModel.scheduled_at <= utc_now_naive(),
+                            )
+                        )
+                    ).scalars().all()
+                    for post in due:
+                        post.status = "publishing"
+                        await session.commit()
+                        accs = (
+                            await session.execute(
+                                select(SocialAccountModel).where(
+                                    SocialAccountModel.user_id == post.user_id,
+                                    SocialAccountModel.platform.in_(post.platforms or []),
+                                )
+                            )
+                        ).scalars().all()
+                        await execute_scheduled_post(session, post, {a.platform: a for a in accs})
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                print(f"[SocialScheduler] Tick error: {exc}")
+
+    social_scheduler_task = asyncio.create_task(_social_publish_loop())
+
     if sys.platform == "win32":
         try:
             import ctypes
@@ -117,6 +153,7 @@ async def lifespan(app: FastAPI):
             pass
 
     stop_cleanup_scheduler()
+    social_scheduler_task.cancel()
     set_event_loop(None)
     try:
         await close_db()
@@ -157,7 +194,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     # Don't allow credentials across origins unless explicitly listed above
     allow_origin_regex=r"^https?://localhost:\d+$|^https?://.*\.vercel\.app$",
