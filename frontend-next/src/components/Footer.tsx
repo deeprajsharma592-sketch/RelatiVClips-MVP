@@ -64,7 +64,7 @@ export default function Footer() {
 
   return (
     <footer
-      className="relative overflow-hidden"
+      className="relative z-[1] overflow-hidden"
       style={{
         background:
           "linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-deep) 100%)",

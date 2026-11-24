@@ -1,5 +1,6 @@
 "use client";
 
+import FloatingAirship from "@/components/FloatingAirship";
 import HeroStudio from "@/components/HeroStudio";
 import OwnYourTaste from "@/components/OwnYourTaste";
 import TasteTimeline from "@/components/TasteTimeline";
@@ -18,6 +19,8 @@ export default function HomePage() {
           <img className={styles.starDetail} src="/homepage-night-sky-stars.svg" alt="" />
         </div>
       </div>
+
+      <FloatingAirship homepage />
 
       {/* ── Unobtrusive Floating Bottom Conversion Dock ── */}
       <StickyInputBar />

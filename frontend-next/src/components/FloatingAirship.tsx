@@ -4,13 +4,14 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styles from "./FloatingAirship.module.css";
 
-export default function FloatingAirship() {
+export default function FloatingAirship({ homepage = false }: { homepage?: boolean }) {
   const pathname = usePathname();
+  if (!pathname || (pathname === "/") !== homepage) return null;
   const segments = pathname?.split("/") ?? [];
   if (segments.includes("dashboard") || segments[1] === "onboarding") return null;
 
   return (
-    <div className={styles.flight}>
+    <div className={homepage ? `${styles.flight} ${styles.homepageFlight}` : styles.flight}>
       <Image
         className={styles.airship}
         src="/own-your-taste-airship.png"
