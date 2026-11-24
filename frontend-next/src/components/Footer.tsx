@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import BrandLogo from "@/components/BrandLogo";
 
 const FOOTER_COLS = [
@@ -63,9 +62,9 @@ export default function Footer() {
   if (isAppOrAuthRoute) return null;
 
   return (
-    <footer className="relative z-[1] px-4 py-10 sm:px-8 lg:py-16" style={{ background: "var(--color-bg-deep)" }}>
+    <footer className="relative z-[1] px-4 py-6 sm:px-8 lg:py-8" style={{ background: "var(--color-bg-deep)" }}>
       <div
-        className="mx-auto max-w-7xl overflow-hidden rounded-[28px] border px-6 py-9 sm:px-10 sm:py-12 lg:px-16"
+        className="mx-auto max-w-7xl overflow-hidden rounded-[28px] border px-6 py-6 sm:px-10 sm:py-8 lg:px-16"
         style={{ background: "var(--color-surface-2)", borderColor: "var(--color-border)" }}
       >
         <div className="grid gap-9 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,2.85fr)] lg:gap-12">
@@ -159,7 +158,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom — copyright + socials */}
-        <div className="mt-9 flex flex-col gap-5 border-t pt-6 sm:flex-row sm:items-center sm:justify-between"
+        <div className="mt-6 flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
           style={{ borderColor: "var(--color-border)" }}>
           <div className="flex flex-col gap-1">
             <p
@@ -201,25 +200,6 @@ export default function Footer() {
             ))}
           </div>
         </div>
-
-        {/* Big wordmark — premium designer moment */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="mt-10 text-center sm:mt-14"
-        >
-          <p
-            className="footer-wordmark font-display font-semibold tracking-tight select-none"
-            style={{
-              fontSize: "clamp(3rem, 14vw, 11rem)",
-              lineHeight: 0.85,
-            }}
-          >
-            Relati<span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}>V</span>
-          </p>
-        </motion.div>
       </div>
     </footer>
   );
