@@ -125,6 +125,17 @@ function DashboardContent() {
   useEffect(() => {
     if (!taskIdParam && !urlParam) return;
 
+    // Check if we already have a stored project for this task that is already completed
+    const existing = getStoredProjects().find(
+      (p) => taskIdParam && p.taskId === taskIdParam
+    );
+    if (existing && existing.status === "ready" && (existing.clips?.length || 0) > 0) {
+      setActiveProjectId(existing.id);
+      setIsGenerating(false);
+      router.replace("/dashboard");
+      return;
+    }
+
     setActiveTab("home");
     const sourceName = urlParam ? "YouTube Video" : "Uploaded Video";
     const newProj = createNewProject(sourceName, taskIdParam || undefined);
@@ -163,6 +174,7 @@ function DashboardContent() {
             updateProjectStatus(newProj.id, "ready", status.clips, 100);
             setProjects(getStoredProjects());
             window.localStorage.removeItem("relativ:active-job");
+            router.replace("/dashboard");
           } else if (status.status === "failed") {
             if (pollInterval) clearInterval(pollInterval);
             setIsGenerating(false);
@@ -170,6 +182,7 @@ function DashboardContent() {
             updateProjectStatus(newProj.id, "failed", [], 0);
             setProjects(getStoredProjects());
             window.localStorage.removeItem("relativ:active-job");
+            router.replace("/dashboard");
           } else {
             const raw =
               typeof status.progress === "number"
@@ -265,6 +278,13 @@ function DashboardContent() {
   // Active genuine project
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || null;
 
+  // Whenever the active project is ready or has completed clips, ensure generation state is dismissed
+  useEffect(() => {
+    if (activeProject && activeProject.status === "ready" && (activeProject.clips?.length || 0) > 0) {
+      setIsGenerating(false);
+    }
+  }, [activeProject?.id, activeProject?.status, activeProject?.clips?.length]);
+
   // Real download handler
   const handleRequestDownload = (clip: Clip) => {
     executeDownload(clip);
@@ -351,8 +371,8 @@ function DashboardContent() {
                 }}
               />
 
-              {/* ── ACTIVE GENERATION / WAITING STATE (Thumbnail + Cross Layout + Left Corner ETA) ── */}
-              {isGenerating && (
+              {/* ── ACTIVE GENERATION / WAITING STATE (Only when actively processing and project is not ready) ── */}
+              {isGenerating && (!activeProject || (activeProject.status !== "ready" && (activeProject.clips?.length || 0) === 0)) && (
                 <div className="rounded-2xl border border-white/10 bg-[#121215]/80 backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
                   <VideoProcessingView
                     thumbnailUrl={
@@ -481,10 +501,14 @@ function DashboardContent() {
               projects={projects}
               onSelectProject={(id) => {
                 setActiveProjectId(id);
+                setIsGenerating(false);
                 setActiveTab("home");
               }}
               onRefresh={refreshProjects}
-              onNewClip={() => setActiveTab("home")}
+              onNewClip={() => {
+                setIsGenerating(false);
+                setActiveTab("home");
+              }}
             />
           )}
 
