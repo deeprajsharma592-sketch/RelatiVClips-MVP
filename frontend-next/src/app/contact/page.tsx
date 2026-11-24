@@ -37,6 +37,8 @@ export default function ContactPage() {
         setSubject("Agency & Enterprise Inquiry");
       } else if (intent === "billing-support") {
         setSubject("Billing & Subscription Support");
+      } else if (intent === "clip-credits") {
+        setSubject("Clip Credits Request");
       }
     }
   }, []);

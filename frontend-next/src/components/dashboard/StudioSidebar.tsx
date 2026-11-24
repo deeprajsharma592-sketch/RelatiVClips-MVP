@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
-  Key, Layers, UserPlus, ChevronsLeft, BookOpen,
+  Key, Layers, ChevronsLeft, BookOpen,
   Clapperboard,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -76,9 +76,13 @@ export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }:
           <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium text-white">{name}</span><span className="mt-0.5 block text-[10px] text-[#8d8e93]">Personal workspace · Free</span></span>
           <span className="h-1.5 w-1.5 rounded-full bg-[#A8FF4F]" />
         </button>
-        <button type="button" onClick={onOpenUpgrade} className="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-white/[0.07] px-3 text-xs text-[#c8c8cc] hover:bg-white/[0.04]">
-          <span className="flex items-center gap-2"><UserPlus size={14} />Invite members</span><span className="text-[#E7B84B]">◆</span>
-        </button>
+        <Link
+          href="/contact?intent=clip-credits"
+          className="mt-2 flex h-9 w-full items-center gap-2 rounded-md border border-white/[0.07] px-3 text-xs text-[#c8c8cc] hover:bg-white/[0.04]"
+        >
+          <Zap size={14} aria-hidden="true" />
+          Get Clip Credits
+        </Link>
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-2">
