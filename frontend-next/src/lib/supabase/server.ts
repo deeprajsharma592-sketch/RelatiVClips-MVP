@@ -17,7 +17,10 @@ export async function createSupabaseServerClient() {
       setAll(cookiesToSet) {
         try {
           for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+            cookieStore.set(name, value, {
+              ...options,
+              maxAge: options?.maxAge === 0 ? 0 : options?.maxAge ?? 60 * 60 * 24 * 365,
+            });
           }
         } catch {
           // Server components cannot write cookies; the callback route and

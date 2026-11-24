@@ -77,8 +77,17 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       }
     }
     const { data } = await supabase.auth.getSession();
-    if (data.session?.access_token) {
-      headers.set("authorization", `Bearer ${data.session.access_token}`);
+    let session = data.session;
+    const nowSec = Math.floor(Date.now() / 1000);
+    // Refresh proactively if the access token is expired or within 2 minutes of expiry
+    if (session && (!session.expires_at || session.expires_at - nowSec < 120)) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed.session) {
+        session = refreshed.session;
+      }
+    }
+    if (session?.access_token) {
+      headers.set("authorization", `Bearer ${session.access_token}`);
     }
   }
 
@@ -98,7 +107,11 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
 
   const withSupabaseCookies = (response: NextResponse) => {
     for (const cookie of supabaseCookiesToSet) {
-      response.cookies.set(cookie.name, cookie.value, cookie.options as never);
+      const opts = (cookie.options || {}) as Record<string, unknown>;
+      response.cookies.set(cookie.name, cookie.value, {
+        ...opts,
+        maxAge: opts.maxAge === 0 ? 0 : (opts.maxAge as number | undefined) ?? 60 * 60 * 24 * 365,
+      } as never);
     }
     return response;
   };

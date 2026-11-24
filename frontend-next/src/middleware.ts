@@ -23,6 +23,7 @@
  * role gate. Belt + suspenders.
  */
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 import { authPageHref, safeAuthDestination } from "@/lib/auth-destination";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
@@ -61,9 +62,40 @@ function hasSessionCookie(req: NextRequest): boolean {
   }
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const isAuthed = hasSessionCookie(req);
+  let isAuthed = hasSessionCookie(req);
+
+  const refreshedCookies: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
+  const supabaseConfig = getSupabasePublicConfig();
+  if (supabaseConfig && isAuthed) {
+    try {
+      const supabase = createServerClient(supabaseConfig.url, supabaseConfig.key, {
+        cookies: {
+          getAll: () => req.cookies.getAll(),
+          setAll: (cookiesToSet) => {
+            for (const c of cookiesToSet) {
+              refreshedCookies.push(c);
+            }
+          },
+        },
+      });
+      await supabase.auth.getUser();
+    } catch {
+      // Transient auth/network error: keep existing cookie state and let client recover.
+    }
+  }
+
+  const withRefreshedCookies = (res: NextResponse) => {
+    for (const cookie of refreshedCookies) {
+      const opts = (cookie.options || {}) as Record<string, unknown>;
+      res.cookies.set(cookie.name, cookie.value, {
+        ...opts,
+        maxAge: opts.maxAge === 0 ? 0 : (opts.maxAge as number | undefined) ?? 60 * 60 * 24 * 365,
+      } as never);
+    }
+    return res;
+  };
 
   // 0. Hostname-Aware Subdomain Routing
   const rawHost = req.headers.get("host")?.toLowerCase() || req.nextUrl.hostname.toLowerCase();
@@ -90,13 +122,13 @@ export function middleware(req: NextRequest) {
     if (pathname === "/") {
       const url = req.nextUrl.clone();
       url.pathname = "/dashboard";
-      return NextResponse.rewrite(url);
+      return withRefreshedCookies(NextResponse.rewrite(url));
     }
     // If user accesses /dashboard on studio subdomain, redirect to root for clean URL while preserving search params
     if (pathname === "/dashboard") {
       const url = req.nextUrl.clone();
       url.pathname = "/";
-      return NextResponse.redirect(url);
+      return withRefreshedCookies(NextResponse.redirect(url));
     }
   }
 
@@ -112,14 +144,14 @@ export function middleware(req: NextRequest) {
       `https://studio.relativclips.com${pathname === "/dashboard" ? "/" : pathname.replace(/^\/dashboard/, "")}`
     );
     req.nextUrl.searchParams.forEach((val, key) => target.searchParams.set(key, val));
-    return NextResponse.redirect(target, 307);
+    return withRefreshedCookies(NextResponse.redirect(target, 307));
   }
 
   // Let the workspace request a fresh login when its session check fails.
   const needsFreshSession = req.nextUrl.searchParams.get("auth_error") === "session";
   if (isAuthed && !needsFreshSession && AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     const next = safeAuthDestination(req.nextUrl.searchParams.get("next"));
-    return NextResponse.redirect(new URL(next || "/account", req.url));
+    return withRefreshedCookies(NextResponse.redirect(new URL(next || "/account", req.url)));
   }
 
   // 2. Anonymous users hitting protected routes → /signup (with a hint)
@@ -133,7 +165,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return withRefreshedCookies(NextResponse.next());
 }
 
 /**

@@ -153,10 +153,18 @@ export async function logout(): Promise<void> {
 
 export async function me(): Promise<AuthResponse | null> {
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase.auth.getUser();
+  let { data, error } = await supabase.auth.getUser();
   if (error) {
     if (error.name === "AuthSessionMissingError") return null;
-    throw new Error(error.message);
+    // If access token expired while tab was idle, attempt one refresh before failing.
+    const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+    if (!refreshErr && refreshed.user) {
+      data = { user: refreshed.user };
+      error = null;
+    } else {
+      if (refreshErr?.name === "AuthSessionMissingError") return null;
+      throw new Error(error.message);
+    }
   }
   if (!data.user) return null;
 
