@@ -23,7 +23,6 @@ import {
   FolderOpen,
   RefreshCw,
   Calendar,
-  Zap,
   Pencil,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
@@ -351,15 +350,7 @@ function DashboardContent() {
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
             <div className="mx-auto max-w-[1120px] space-y-6 sm:space-y-7">
-              <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-                <div className="max-w-2xl">
-                  <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-tight tracking-[-0.045em] text-[#F4F1E8]">Make a clip from any long video.</h1>
-                </div>
-                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-2 text-xs text-[#b9b9bd]">
-                  <Zap className="size-3.5 text-[#E7B84B]" />
-                  200 credits per finished clip
-                </div>
-              </div>
+              <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-tight tracking-[-0.045em] text-[#F4F1E8]">Make a clip from any long video.</h1>
               {/* Studio Central Hero Intake Station */}
               <StudioHero
                 isGenerating={isGenerating}
