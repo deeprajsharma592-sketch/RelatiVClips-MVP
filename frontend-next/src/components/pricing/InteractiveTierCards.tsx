@@ -33,6 +33,7 @@ export interface TierConfig {
   monthlyPrice: string;
   originalMonthlyPrice?: string;
   yearlyPrice: string;
+  originalYearlyPrice?: string;
   yearlyBilled: string;
   accent: {
     color: string;
@@ -57,10 +58,11 @@ export const TIERS_CONFIG: TierConfig[] = [
     credits: "20,000 credits",
     creditsNumber: "20,000",
     clipsCount: "100 clips / month",
-    monthlyPrice: "$5.99",
-    originalMonthlyPrice: "$9.99",
-    yearlyPrice: "$4.79",
-    yearlyBilled: "Billed $57.48 annually",
+    monthlyPrice: "$7.99",
+    originalMonthlyPrice: "$11.99",
+    yearlyPrice: "$5.99",
+    originalYearlyPrice: "$9.59",
+    yearlyBilled: "Billed $71.88 annually",
     accent: {
       color: "cyan",
       border: "border-cyan-500/30 hover:border-cyan-400/50",
@@ -94,7 +96,9 @@ export const TIERS_CONFIG: TierConfig[] = [
     creditsNumber: "60,000",
     clipsCount: "300 clips / month",
     monthlyPrice: "$14.99",
+    originalMonthlyPrice: "$24.99",
     yearlyPrice: "$11.99",
+    originalYearlyPrice: "$19.99",
     yearlyBilled: "Billed $143.88 annually",
     accent: {
       color: "amber",
@@ -127,9 +131,11 @@ export const TIERS_CONFIG: TierConfig[] = [
     credits: "200,000 credits",
     creditsNumber: "200,000",
     clipsCount: "1,000 clips / month",
-    monthlyPrice: "$24.99",
-    yearlyPrice: "$19.99",
-    yearlyBilled: "Billed $239.88 annually",
+    monthlyPrice: "$29.99",
+    originalMonthlyPrice: "$49.99",
+    yearlyPrice: "$23.99",
+    originalYearlyPrice: "$39.99",
+    yearlyBilled: "Billed $287.88 annually",
     accent: {
       color: "purple",
       border: "border-purple-500/30 hover:border-purple-400/50",
@@ -411,11 +417,23 @@ function FrontFace({
 
       {/* 3. Middle / Bottom Information Block */}
       <div className="relative z-10 space-y-3.5 mt-auto">
-        {/* Tier Name */}
+        {/* Tier Name & Launch Offer Price */}
         <div>
-          <h3 className="font-display font-bold text-2xl sm:text-3xl text-white tracking-tight drop-shadow-md">
-            {tier.name}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-display font-bold text-2xl sm:text-3xl text-white tracking-tight drop-shadow-md">
+              {tier.name}
+            </h3>
+            {/* Price badge on front face */}
+            <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 shrink-0">
+              <span className="text-xs text-zinc-400 line-through decoration-red-400 font-mono">
+                {tier.originalMonthlyPrice}
+              </span>
+              <span className="text-sm font-extrabold text-white font-mono">
+                {tier.monthlyPrice}
+              </span>
+              <span className="text-[10px] text-zinc-400 font-mono">/mo</span>
+            </div>
+          </div>
           <p className="text-xs text-zinc-300/90 font-sans mt-0.5 line-clamp-1">
             {tier.tagline}
           </p>
@@ -557,19 +575,24 @@ function BackFace({
         )}
 
         {/* Price Display */}
-        <div className="flex items-baseline gap-1.5">
-          {!isYearly && tier.originalMonthlyPrice && (
-            <span className="text-lg text-zinc-500 line-through decoration-zinc-500">
-              {tier.originalMonthlyPrice}
+        <div className="flex items-baseline gap-2 flex-wrap">
+          {(!isYearly ? tier.originalMonthlyPrice : tier.originalYearlyPrice) && (
+            <span className="text-lg sm:text-xl text-zinc-500 line-through decoration-red-500/70 font-semibold font-mono">
+              {!isYearly ? tier.originalMonthlyPrice : tier.originalYearlyPrice}
             </span>
           )}
-          <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-mono">
             {displayPrice}
           </span>
           <span className="text-xs text-zinc-400 font-sans">/ month</span>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            40% OFF
+          </span>
         </div>
         <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
-          {isYearly ? tier.yearlyBilled : tier.originalMonthlyPrice ? "First month launch price · then $9.99/month" : "Billed monthly · Cancel anytime"}
+          {isYearly
+            ? tier.yearlyBilled
+            : "Special 40% launch offer · Billed monthly · Cancel anytime"}
         </p>
       </div>
 

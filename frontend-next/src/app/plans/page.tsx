@@ -65,10 +65,16 @@ export default function PlansPage() {
             SECTION 01: PRICING INTRODUCTION (Center-aligned Hero)
             ══════════════════════════════════════════════════════════ */}
         <section className="text-center max-w-3xl mx-auto space-y-4 mb-12 sm:mb-14">
-          {/* Understated Monospace Telemetry Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/[0.08] text-xs font-mono text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
-            <span>[Φ-PRICING] · CREATOR PLANS</span>
+          {/* Understated Monospace Telemetry Badge & Launch Special */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/[0.08] text-xs font-mono text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
+              <span>[Φ-PRICING] · CREATOR PLANS</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Launch Special · 40% OFF All Plans</span>
+            </div>
           </div>
 
           {/* Editorial Headline */}

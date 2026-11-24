@@ -552,7 +552,7 @@ function DashboardContent() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer"
               >
                 <Crown className="w-3.5 h-3.5" />
-                <span>Upgrade to Pro ($11.99/mo)</span>
+                <span>Upgrade to Pro (<span className="line-through text-zinc-500 font-normal">$24.99</span> $14.99/mo)</span>
               </button>
             </div>
           )}
