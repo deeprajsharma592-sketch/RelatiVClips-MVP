@@ -96,6 +96,16 @@ async def init_db():
         await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_style JSONB"))
         await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS caption_layout JSONB"))
         await conn.execute(text("ALTER TABLE clips ADD COLUMN IF NOT EXISTS subject_track JSONB"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_consent BOOLEAN NOT NULL DEFAULT true"))
+        await conn.execute(text("ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS platform_account_id VARCHAR(120)"))
+        await conn.execute(text("ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS followers_text VARCHAR(80)"))
+        await conn.execute(text("ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS api_key TEXT"))
+        await conn.execute(text("ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS scopes TEXT"))
+        await conn.execute(text("ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS extra_metadata JSONB"))
+        await conn.execute(text("ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_events_clip_id ON clip_feedback_events(clip_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_events_creator_created ON clip_feedback_events(creator_id, created_at)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_events_user_clip ON clip_feedback_events(user_id, clip_id)"))
         await conn.execute(text(
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_auth_user_id "
             "ON users (auth_user_id)"

@@ -1,6 +1,6 @@
 import uuid
-from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, DateTime, JSON, Text, Boolean, Enum as SAEnum, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Float, Integer, DateTime, JSON, Text, Boolean, Enum as SAEnum, ForeignKey, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional, List
 import enum
@@ -111,6 +111,8 @@ class UserModel(Base):
     polar_subscription_status: Mapped[str] = mapped_column(String(24), default="none", nullable=False)
     polar_current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     polar_cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # User privacy consent for feedback data collection & preference personalization
+    feedback_consent: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -408,19 +410,116 @@ class CampaignClipModel(Base):
 
 
 class SocialAccountModel(Base):
-    """Linked social account for multi-platform clip publishing."""
+    """Linked social account for multi-platform clip publishing and analytics."""
 
     __tablename__ = "social_accounts"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     platform: Mapped[str] = mapped_column(String(30), index=True)  # youtube, tiktok, instagram
+    platform_account_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)  # YT channel ID or IG business ID
     account_handle: Mapped[str] = mapped_column(String(100))
     account_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    followers_text: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     access_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    scopes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     auto_publish: Mapped[bool] = mapped_column(Boolean, default=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=True)
+
+
+class ScheduledPostModel(Base):
+    """Scheduled or published social post on the publishing calendar."""
+
+    __tablename__ = "scheduled_posts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    clip_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    video_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    title: Mapped[str] = mapped_column(String(200), default="RelatiV Clip")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    hashtags: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    platforms: Mapped[list] = mapped_column(JSON, default=list)  # ["youtube", "instagram"]
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    timezone_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="scheduled", index=True)  # scheduled, publishing, published, failed, cancelled
+    publish_results: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Preference & Feedback Models (Append-only events + derived tables)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ClipFeedbackEventModel(Base):
+    """Append-only ledger of all user feedback actions (like, dislike, download, etc.).
+    
+    Never hard-deleted in normal operation. Current reaction state per user is derived
+    from their latest like/dislike event, so toggling works without losing historical audit logs.
+    """
+
+    __tablename__ = "clip_feedback_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    clip_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    clip_version: Mapped[str] = mapped_column(String(20), default="1.0", nullable=False)
+    model_version: Mapped[str] = mapped_column(String(50), default="relativ-v2.0", nullable=False)
+    event_type: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    points: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason_codes: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    reason_other_text: Mapped[Optional[str]] = mapped_column(String(280), nullable=True)
+    clip_features: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_feedback_events_clip_id", "clip_id"),
+        Index("ix_feedback_events_creator_created", "creator_id", "created_at"),
+        Index("ix_feedback_events_user_clip", "user_id", "clip_id"),
+    )
+
+
+class ClipScoreModel(Base):
+    """Derived scoring table tracking current net score and reaction counts per clip.
+    
+    Refreshed asynchronously on feedback events to keep API requests sub-10ms.
+    """
+
+    __tablename__ = "clip_scores"
+
+    clip_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    creator_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+    net_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    likes_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    dislikes_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    downloads_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_events: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_feedback_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class CreatorPreferenceModel(Base):
+    """Aggregated preference points and feature affinities per creator for downstream model fine-tuning and ranking."""
+
+    __tablename__ = "creator_preferences"
+
+    creator_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    net_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_events: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    dislike_reasons: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    feature_affinities: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    top_avoid_reasons: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
 

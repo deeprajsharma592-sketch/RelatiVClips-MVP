@@ -22,7 +22,7 @@ type NavItem = { id: StudioTab; label: string; icon: ComponentType<{ size?: numb
 const CREATE: NavItem[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "edit-studio", label: "Edit Studio", icon: Clapperboard },
-  { id: "projects", label: "My projects", icon: FolderOpen },
+  { id: "projects", label: "Clip Vault", icon: FolderOpen },
   { id: "assets", label: "Asset library", icon: Layers },
 ];
 const PUBLISH: NavItem[] = [
@@ -96,11 +96,17 @@ export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }:
           <span className="text-[#E7B84B]">Add</span>
         </button>
         {[
-          [Key, "API access"], [BookOpen, "Learning center"], [HelpCircle, "Help center"],
-        ].map(([Icon, label]) => (
-          <button key={label as string} type="button" onClick={() => label === "API access" && onOpenUpgrade()} className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12px] text-[#8f9095] hover:bg-white/[0.04] hover:text-white">
-            <Icon size={14} />{label as string}
-          </button>
+          { Icon: Key, label: "API access", href: "/api-access" },
+          { Icon: BookOpen, label: "Learning center", href: "/learning-center" },
+          { Icon: HelpCircle, label: "Help center", href: "/help-center" },
+        ].map(({ Icon, label, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12px] text-[#8f9095] hover:bg-white/[0.04] hover:text-white transition-colors"
+          >
+            <Icon size={14} />{label}
+          </Link>
         ))}
       </div>
     </aside>

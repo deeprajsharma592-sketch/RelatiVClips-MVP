@@ -65,6 +65,7 @@ from .routers import (
     credits_router,
     captions_router,
     editor_router,
+    feedback_router,
 )
 from .caching import cache_router
 from .utils.config import OUTPUTS_DIR, TEMP_DIR, FILE_RETENTION_HOURS
@@ -186,6 +187,7 @@ app.include_router(socials_router.router)
 app.include_router(credits_router.router)
 app.include_router(captions_router.router)
 app.include_router(editor_router.router)
+app.include_router(feedback_router.router)
 app.include_router(cache_router)
 app.include_router(cache_router, prefix="/api/v1")
 

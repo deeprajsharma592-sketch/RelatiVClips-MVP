@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import type { Clip } from "@/types";
 import { apiPath } from "@/lib/apiBase";
+import { sendClipFeedback } from "@/lib/feedback";
+import DislikeFeedbackPopup, { type DislikeFeedbackData } from "./DislikeFeedbackPopup";
 
 function YouTubeIcon({ className }: { className?: string }) {
   return (
@@ -51,6 +53,7 @@ export default function ClipInspectorModal({
 }: ClipInspectorModalProps) {
   const [transcriptOnly, setTranscriptOnly] = useState(false);
   const [liked, setLiked] = useState<"heart" | "dislike" | null>(null);
+  const [showDislikePopup, setShowDislikePopup] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [xmlExported, setXmlExported] = useState(false);
@@ -83,6 +86,7 @@ export default function ClipInspectorModal({
       setCurrentTime(0);
       setDuration(clip.duration_s || 60);
       setLiked(null);
+      setShowDislikePopup(false);
     }
   }, [clip, index]);
 
@@ -201,6 +205,65 @@ export default function ClipInspectorModal({
     }
   };
 
+  const handleLikeToggle = async () => {
+    const prevLiked = liked;
+    const nextLiked = liked === "heart" ? null : "heart";
+    const eventType = nextLiked === "heart" ? "like" : "unlike";
+
+    // Optimistic UI update
+    setLiked(nextLiked);
+    if (showDislikePopup) setShowDislikePopup(false);
+
+    try {
+      await sendClipFeedback(clip.clip_id, { event_type: eventType });
+    } catch (err) {
+      console.error("Failed to record like feedback:", err);
+      // Rollback on failure
+      setLiked(prevLiked);
+    }
+  };
+
+  const handleDislikeToggle = async () => {
+    const prevLiked = liked;
+    if (liked === "dislike") {
+      // Optimistic undislike
+      setLiked(null);
+      setShowDislikePopup(false);
+      try {
+        await sendClipFeedback(clip.clip_id, { event_type: "undislike" });
+      } catch (err) {
+        console.error("Failed to record undislike feedback:", err);
+        setLiked(prevLiked);
+      }
+    } else {
+      // Optimistic dislike and reveal non-blocking popup
+      setLiked("dislike");
+      setShowDislikePopup(true);
+    }
+  };
+
+  const handleDislikeSubmit = async (data: DislikeFeedbackData) => {
+    setShowDislikePopup(false);
+    try {
+      await sendClipFeedback(clip.clip_id, {
+        event_type: "dislike",
+        reason_codes: data.reason_codes.length > 0 ? data.reason_codes : undefined,
+        reason_other_text: data.reason_other_text,
+      });
+    } catch (err) {
+      console.error("Failed to submit dislike feedback:", err);
+      setLiked(null);
+    }
+  };
+
+  const handleDownloadClick = () => {
+    // Record download preference event (+3 points server-side)
+    sendClipFeedback(clip.clip_id, { event_type: "download" }).catch((err) => {
+      console.warn("Could not log download event:", err);
+    });
+    onRequestDownload(clip);
+  };
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-8 overflow-y-auto">
@@ -235,10 +298,10 @@ export default function ClipInspectorModal({
             <div className="lg:col-span-5 flex gap-4 items-start">
               {/* Score Metric Column */}
               <div className="flex flex-col shrink-0">
-                {/* Heart & Dislike icons side by side */}
-                <div className="flex items-center gap-1.5 mb-2.5">
+                {/* Heart & Dislike icons side by side with non-blocking feedback popup */}
+                <div className="relative flex items-center gap-1.5 mb-2.5">
                   <button
-                    onClick={() => setLiked(liked === "heart" ? null : "heart")}
+                    onClick={handleLikeToggle}
                     title="Favorite clip"
                     className={`p-1.5 rounded-lg border transition cursor-pointer ${
                       liked === "heart"
@@ -249,8 +312,8 @@ export default function ClipInspectorModal({
                     <Heart className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => setLiked(liked === "dislike" ? null : "dislike")}
-                    title="Not interested"
+                    onClick={handleDislikeToggle}
+                    title="Not interested / dislike"
                     className={`p-1.5 rounded-lg border transition cursor-pointer ${
                       liked === "dislike"
                         ? "bg-zinc-700/50 border-zinc-500 text-zinc-200"
@@ -259,6 +322,14 @@ export default function ClipInspectorModal({
                   >
                     <ThumbsDown className="w-4 h-4" />
                   </button>
+
+                  {/* 5-second Non-blocking Dislike Reasons Popup */}
+                  <DislikeFeedbackPopup
+                    isOpen={showDislikePopup}
+                    onClose={() => setShowDislikePopup(false)}
+                    onSubmit={handleDislikeSubmit}
+                    initialTimerSeconds={5}
+                  />
                 </div>
 
                 {/* Score Number: 89/100 */}
@@ -404,7 +475,7 @@ export default function ClipInspectorModal({
 
                   {/* Button 3: Download > */}
                   <button
-                    onClick={() => onRequestDownload(clip)}
+                    onClick={handleDownloadClick}
                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-[#1e1e24] hover:bg-[#282830] border border-white/10 text-white text-xs font-semibold transition cursor-pointer"
                   >
                     <div className="flex items-center gap-3">

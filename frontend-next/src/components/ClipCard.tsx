@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Calendar, Download, Play, Video, Pencil } from "lucide-react";
 import type { Clip } from "@/types";
 import { apiPath } from "@/lib/apiBase";
+import { sendClipFeedback } from "@/lib/feedback";
 
 interface ClipCardProps {
   clip: Clip;
@@ -144,6 +145,9 @@ export default function ClipCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                if (clip.clip_id) {
+                  sendClipFeedback(clip.clip_id, { event_type: "download" }).catch(() => {});
+                }
                 onDownload(clip);
               }}
               title="Download clip"

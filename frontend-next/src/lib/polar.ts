@@ -1,13 +1,13 @@
 export const POLAR_LINKS = {
   creator_go:
     process.env.NEXT_PUBLIC_POLAR_GO_URL ||
-    "https://buy.polar.sh/polar_cl_oV9pu26KVXY5AL0EnxIejhiY7QGwAqDNOpI8u3oOGL5",
+    "https://buy.polar.sh/polar_cl_SkTRBMl0h4Y1isEZS3tiIozkfGWjGytLEjh7o2p7FA7",
   creator_pro:
     process.env.NEXT_PUBLIC_POLAR_PRO_URL ||
-    "https://buy.polar.sh/polar_cl_rz2IwXSHG15BCIlslVeArOIEchJevr6xEJn6u33tDli",
+    "https://buy.polar.sh/polar_cl_kqxzP1N2PZLr5lj3PAPNFKy3h6Y4VhqUz4mfG1hnp7D",
   creator_max:
     process.env.NEXT_PUBLIC_POLAR_MAX_URL ||
-    "https://buy.polar.sh/polar_cl_a0EY6BIoTZ3GPMSiNIo1LU8EYRsMuHwM99TVU1zeGf7",
+    "https://buy.polar.sh/polar_cl_2RCkBlYrrYGvXY0s9zq09iMOK8mZYR9vAGVEZ2kGhZL",
 } as const;
 
 export type PolarPlanKey = keyof typeof POLAR_LINKS;

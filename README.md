@@ -65,3 +65,90 @@ docker compose up --build
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0 (async), PostgreSQL
 - **AI/ML:** Librosa, faster-whisper, Ultralytics YOLOv10, Claude API
 - **Infra:** Docker Compose, Caddy reverse proxy
+
+---
+
+## Feedback & Preference Points System
+
+RelatiV incorporates a creator preference learning system that records user reactions to generated clips into structured "preference points". These preference points feed downstream ranking models and personalized clip selection per creator.
+
+### Point Weights (`backend/feedback/weights.py`)
+
+All point values are computed strictly on the server:
+
+| Event Type | Points Delta | Behavior |
+|---|---|---|
+| `like` | **+1** | Positive preference signal |
+| `unlike` | **-1** | Reverses previous like |
+| `download` | **+3** | Strongest positive signal. **Counts once per clip per user**; subsequent downloads log events with 0 points |
+| `dislike` | **-2** | Negative preference signal |
+| `dismiss_popup` | **-2** | Dismissing the 5s reasons popup without choosing reasons still counts as a dislike |
+| `undislike` | **+2** | Reverses previous dislike |
+
+### Dislike Flow & Frontend Popup
+
+- When a user clicks **Dislike**, an optimistic UI update reflects the dislike immediately, and a non-blocking 5-second popup appears anchored directly near the clip.
+- Multi-select reason chips:
+  - `hook_bad`: "Hook is not good"
+  - `face_track_bad`: "Face not tracked well"
+  - `no_context`: "Wrong moment / no context"
+  - `captions_bad`: "Captions are off"
+  - `length_bad`: "Too long / too short"
+  - `other`: "Other" (reveals a ≤280 character text box and pauses the countdown while typing)
+- Tapping **Submit** saves on tap without extra confirmation. If the 5s timer expires without reasons, it auto-dismisses and saves as a dislike with no reason. The popup never blocks the user from continuing to interact with the studio.
+
+### How to Add a New Reason Code
+
+1. Open `backend/feedback/weights.py`.
+2. Add your new code to `DISLIKE_REASONS`:
+   ```python
+   DISLIKE_REASONS = {
+       "hook_bad": "Hook is not good",
+       ...
+       "audio_sync_bad": "Audio is out of sync",  # <-- your new reason code
+   }
+   ```
+3. Open `frontend-next/src/components/DislikeFeedbackPopup.tsx`.
+4. Add the chip to `REASON_OPTIONS`:
+   ```typescript
+   { id: "audio_sync_bad", label: "Audio is out of sync" },
+   ```
+5. Done! The backend automatically validates against `VALID_REASON_CODES` and aggregates points per reason code in `creator_preferences`.
+
+### Privacy & GDPR
+
+- **Consent check:** Feedback is only stored for users who have `feedback_consent = true` (checked before saving). If disabled, `403 Forbidden` is returned.
+- **No raw media:** `clip_feedback_events` and derived tables store only IDs, scores, and derived features — never raw audio or video.
+- **Data Export:** `GET /api/v1/users/me/feedback/export` exports all feedback signals for the user.
+- **Data Deletion:** `DELETE /api/v1/users/me/feedback` erases user feedback rows and recalculates derived scores.
+
+---
+
+## Accessing PostgreSQL From Your Mac
+
+You can connect directly to PostgreSQL from your Mac using any SQL client (such as **TablePlus**, **DBeaver**, **Postico**, or terminal `psql`).
+
+### Option A: Local Docker PostgreSQL (Port 5432)
+
+In `docker-compose.yml`, port `5432:5432` is mapped to your Mac host:
+
+- **Host:** `localhost` or `127.0.0.1`
+- **Port:** `5432`
+- **User:** `relativ_admin`
+- **Password:** `relativ_secure_pass`
+- **Database:** `relativ_db`
+- **Connection URL:**
+  ```bash
+  postgresql://relativ_admin:relativ_secure_pass@localhost:5432/relativ_db
+  ```
+- **Terminal CLI Command:**
+  ```bash
+  psql "postgresql://relativ_admin:relativ_secure_pass@localhost:5432/relativ_db"
+  ```
+
+### Option B: Supabase Hosted PostgreSQL
+
+If connecting to your remote Supabase instance:
+- Connection string is located in your `.env` as `DATABASE_URL` (format: `postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres?sslmode=require`).
+- Paste this URI directly into TablePlus / DBeaver using "Import from URL".
+

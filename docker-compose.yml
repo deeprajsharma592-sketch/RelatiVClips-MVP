@@ -62,6 +62,8 @@ services:
       retries: 3
   db:
     image: postgres:15-alpine
+    ports:
+    - "5432:5432"
     environment:
     - POSTGRES_USER=relativ_admin
     - POSTGRES_PASSWORD=relativ_secure_pass

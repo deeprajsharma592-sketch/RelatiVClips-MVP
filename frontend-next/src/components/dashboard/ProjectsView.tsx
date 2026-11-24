@@ -24,7 +24,7 @@ export default function ProjectsView({ projects, onSelectProject, onRefresh, onN
   return (
     <div className="space-y-8 pb-16">
       <div className="flex flex-col gap-5 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div><h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8]">My projects</h1><p className="mt-1 text-xs text-[#85868b]">Every source, cut and export from this workspace.</p></div>
+        <div><h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8]">Clip Vault</h1><p className="mt-1 text-xs text-[#85868b]">Every source, cut and export from this workspace.</p></div>
         <label className="flex h-9 w-full items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3 sm:w-64">
           <Search size={14} className="text-[#73747a]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects" className="w-full bg-transparent text-xs text-white outline-none placeholder:text-[#66676c]" />
         </label>
