@@ -29,6 +29,8 @@ export default function HomePage() {
       {/* ── HERO: Kinetic Long-Form In -> Short-Form Out (Client Spec) ── */}
       <HeroStudio />
 
+      <div data-airship-lane aria-hidden="true" className="h-[clamp(112px,21svh,176px)]" />
+
       <TasteTimeline />
 
       <StudioTower />
