@@ -1,30 +1,28 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Share2,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Sparkles,
-  Upload,
   Calendar,
-  RefreshCw,
-  ExternalLink,
+  CheckCircle2,
+  KeyRound,
+  Link2,
+  Loader2,
   Plus,
+  RefreshCw,
   Trash2,
-  ShieldCheck,
-  Zap,
-  Play,
-  Film,
-  Send,
-  Sliders,
-  Check,
+  X,
 } from "lucide-react";
-import { apiPath } from "@/lib/apiBase";
+import {
+  ConnectedAccount,
+  SocialPlatform,
+  connectSocialAccount,
+  disconnectSocialAccount,
+  fetchSocialAccounts,
+  refreshSocialAccount,
+  startSocialOAuth,
+  updateSocialAccount,
+} from "@/lib/socials";
 
-// ── SVG Brand Icons for YouTube, TikTok, Instagram ─────────────────────────
 export function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -49,512 +47,485 @@ export function InstagramIcon({ className = "w-4 h-4" }: { className?: string })
   );
 }
 
-export interface ConnectedAccount {
-  id: string;
-  platform: "youtube" | "tiktok" | "instagram";
-  name: string;
-  handle: string;
-  followers: string;
-  avatarUrl: string;
-  status: "connected" | "pending" | "reconnect_needed";
-  autoPublish: boolean;
-  connectedAt: string;
-}
-
-const INITIAL_ACCOUNTS: ConnectedAccount[] = [
+const PLATFORMS: Array<{
+  id: SocialPlatform;
+  label: string;
+  subtitle: string;
+  accentClass: string;
+}> = [
   {
-    id: "yt-1",
-    platform: "youtube",
-    name: "RelatiV Creator Studio",
-    handle: "@RelatiVCreators",
-    followers: "48.2K subscribers",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces",
-    status: "connected",
-    autoPublish: true,
-    connectedAt: "Connected 12 days ago",
+    id: "youtube",
+    label: "YouTube",
+    subtitle: "Shorts publishing & YouTube Analytics API",
+    accentClass: "bg-red-600 text-white",
   },
   {
-    id: "tt-1",
-    platform: "tiktok",
-    name: "RelatiV Viral Daily",
-    handle: "@relativclips.ai",
-    followers: "128.9K followers",
-    avatarUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&crop=faces",
-    status: "connected",
-    autoPublish: true,
-    connectedAt: "Connected 3 weeks ago",
-  },
-  {
-    id: "ig-1",
-    platform: "instagram",
-    name: "RelatiV Shorts & Reels",
-    handle: "@relativclips",
-    followers: "73.4K followers",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces",
-    status: "connected",
-    autoPublish: false,
-    connectedAt: "Connected 5 days ago",
+    id: "instagram",
+    label: "Instagram",
+    subtitle: "Reels publishing & Graph API insights",
+    accentClass: "bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white",
   },
 ];
 
-export default function SocialAccountsView() {
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>(INITIAL_ACCOUNTS);
-  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+export default function SocialAccountsView({
+  onOpenCalendar,
+}: {
+  onOpenCalendar?: () => void;
+}) {
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [oauthAvailable, setOauthAvailable] = useState<{ youtube: boolean; instagram: boolean }>({
+    youtube: false,
+    instagram: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Uploader / Cross-Publisher state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["youtube", "tiktok", "instagram"]);
-  const [caption, setCaption] = useState<string>(
-    "This 1 trick unlocked 100k views in 48 hours without spending a single dollar on ads 🔥\n\nDrop a comment if you want the full breakdown!"
-  );
-  const [hashtags, setHashtags] = useState<string>("#relativclips #creatorlife #growthhacks #viralshorts #marketingtips");
-  const [scheduleType, setScheduleType] = useState<"now" | "peak" | "custom">("now");
-  const [isPublishing, setIsPublishing] = useState<boolean>(false);
-  const [publishSuccess, setPublishSuccess] = useState<boolean>(false);
+  // Connect / Update modal state
+  const [modalPlatform, setModalPlatform] = useState<SocialPlatform | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [channelIdInput, setChannelIdInput] = useState("");
+  const [accessTokenInput, setAccessTokenInput] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadAccounts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetchSocialAccounts();
+      setAccounts(res.accounts || []);
+      if (res.oauth_available) setOauthAvailable(res.oauth_available);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load social accounts.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const togglePlatform = (p: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(p) ? prev.filter((item) => item !== p) : [...prev, p]
-    );
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts]);
+
+  const openModal = (platform: SocialPlatform, existing?: ConnectedAccount) => {
+    setModalPlatform(platform);
+    setChannelIdInput(existing?.platform_account_id || existing?.handle || "");
+    setApiKeyInput("");
+    setAccessTokenInput("");
+    setModalError(null);
   };
 
-  const handleToggleAutoPublish = (id: string) => {
-    setAccounts((prev) =>
-      prev.map((acc) =>
-        acc.id === id ? { ...acc, autoPublish: !acc.autoPublish } : acc
-      )
-    );
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+  const handleOAuth = async (platform: SocialPlatform) => {
+    setModalError(null);
+    setSubmitting(true);
+    try {
+      const { auth_url } = await startSocialOAuth(platform);
+      window.location.href = auth_url;
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : "Could not start OAuth flow.");
+      setSubmitting(false);
     }
   };
 
-  const handleGenerateAiCaption = () => {
-    setCaption(
-      "The unspoken truth about short-form algorithms that top agencies will never tell you 🤫 Watch till the end to see the 3s retention drop!"
-    );
-    setHashtags("#algorithmhacks #contentcreator #reelsgrowth #tiktoktips #foryoupage #viralpost");
+  const handleConnectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalPlatform) return;
+    setModalError(null);
+    setSubmitting(true);
+    try {
+      await connectSocialAccount({
+        platform: modalPlatform,
+        channel_id: channelIdInput.trim() || undefined,
+        api_key: apiKeyInput.trim() || undefined,
+        access_token: accessTokenInput.trim() || undefined,
+      });
+      setModalPlatform(null);
+      await loadAccounts();
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : "Connection failed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleExecutePublish = () => {
-    if (selectedPlatforms.length === 0) return;
-    setIsPublishing(true);
-
-    setTimeout(() => {
-      setIsPublishing(false);
-      setPublishSuccess(true);
-      setTimeout(() => {
-        setPublishSuccess(false);
-      }, 4000);
-    }, 2200);
+  const handleToggleAutoPublish = async (acc: ConnectedAccount) => {
+    setBusyId(acc.id);
+    try {
+      const res = await updateSocialAccount(acc.id, { auto_publish: !acc.auto_publish });
+      setAccounts((prev) => prev.map((a) => (a.id === acc.id ? res.account : a)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update account.");
+    } finally {
+      setBusyId(null);
+    }
   };
+
+  const handleRefresh = async (acc: ConnectedAccount) => {
+    setBusyId(acc.id);
+    try {
+      const res = await refreshSocialAccount(acc.id);
+      setAccounts((prev) => prev.map((a) => (a.id === acc.id ? res.account : a)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not refresh account.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDisconnect = async (acc: ConnectedAccount) => {
+    setBusyId(acc.id);
+    try {
+      await disconnectSocialAccount(acc.id);
+      setAccounts((prev) => prev.filter((a) => a.id !== acc.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not disconnect account.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const byPlatform = new Map(accounts.map((a) => [a.platform, a]));
 
   return (
-    <div className="space-y-8 pb-16 font-sans">
-      {/* ── Title & Intro Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+    <div className="mx-auto max-w-4xl space-y-6 pb-16">
+      {/* Clean Header */}
+      <div className="flex flex-col gap-3 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Social Accounts & Auto-Publisher
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1E8]">
+            Social accounts
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Link your YouTube, TikTok, and Instagram accounts to publish clips directly.
+          <p className="mt-1 text-xs text-[#85868b]">
+            Connect YouTube and Instagram to schedule posts on the calendar and pull live analytics.
           </p>
         </div>
-
-        {/* Global Stats Badge */}
-        <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-right">
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">
-            Combined Reach
-          </span>
-          <span className="text-sm font-bold text-white">
-            250.5K Audience
-          </span>
-        </div>
+        {onOpenCalendar && (
+          <button
+            type="button"
+            onClick={onOpenCalendar}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3.5 text-xs font-medium text-white hover:bg-[#202226] transition cursor-pointer"
+          >
+            <Calendar size={14} />
+            <span>Open calendar</span>
+          </button>
+        )}
       </div>
 
-      {/* ── SECTION 1: CONNECTED SOCIAL ACCOUNTS ── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-            <span>Connected Channels ({accounts.length})</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          </h2>
-          <span className="text-[11px] text-zinc-500">OAuth 2.0 direct API connection</span>
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-300">
+          {error}
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {accounts.map((acc) => {
-            const isYt = acc.platform === "youtube";
-            const isTt = acc.platform === "tiktok";
-            const isIg = acc.platform === "instagram";
+      {/* Platform Connection Cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className="h-48 animate-pulse rounded-xl border border-white/[0.06] bg-[#141517]"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {PLATFORMS.map((plat) => {
+            const acc = byPlatform.get(plat.id);
+            const isBusy = acc ? busyId === acc.id : false;
 
             return (
               <div
-                key={acc.id}
-                className="rounded-xl border border-white/[0.08] bg-[#121215] p-4 flex flex-col justify-between space-y-3 shadow-md"
+                key={plat.id}
+                className="flex flex-col justify-between rounded-xl border border-white/[0.08] bg-[#141517] p-5 transition hover:border-white/[0.14]"
               >
-                {/* Account Head */}
+                {/* Top row */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {acc?.avatar_url ? (
                       <img
-                        src={acc.avatarUrl}
+                        src={acc.avatar_url}
                         alt={acc.name}
-                        className="w-9 h-9 rounded-md object-cover border border-white/10"
+                        className="h-10 w-10 rounded-lg object-cover border border-white/10 shrink-0"
                       />
+                    ) : (
                       <div
-                        className={`absolute -bottom-1 -right-1 w-4 h-4 rounded flex items-center justify-center text-white text-[9px] shadow-sm ${
-                          isYt
-                            ? "bg-red-600"
-                            : isTt
-                            ? "bg-black text-cyan-300 border border-white/20"
-                            : "bg-zinc-800 border border-white/20 text-white"
-                        }`}
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 ${plat.accentClass}`}
                       >
-                        {isYt && <YoutubeIcon className="w-2 h-2" />}
-                        {isTt && <TiktokIcon className="w-2 h-2" />}
-                        {isIg && <InstagramIcon className="w-2 h-2" />}
+                        {plat.id === "youtube" ? (
+                          <YoutubeIcon className="w-5 h-5" />
+                        ) : (
+                          <InstagramIcon className="w-5 h-5" />
+                        )}
                       </div>
-                    </div>
+                    )}
 
-                    <div className="truncate">
-                      <h3 className="text-xs font-bold text-white truncate">{acc.name}</h3>
-                      <p className="text-[11px] text-zinc-400 truncate">{acc.handle}</p>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold text-white">
+                        {acc ? acc.name : plat.label}
+                      </h2>
+                      <p className="truncate text-xs text-[#85868b]">
+                        {acc ? acc.handle : plat.subtitle}
+                      </p>
                     </div>
                   </div>
 
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shrink-0">
-                    <ShieldCheck className="w-2.5 h-2.5" />
-                    Active
-                  </span>
+                  {acc ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300 shrink-0">
+                      <CheckCircle2 size={11} />
+                      Connected
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-0.5 text-[11px] text-[#77787d] shrink-0">
+                      Not linked
+                    </span>
+                  )}
                 </div>
 
-                {/* Stats & Meta */}
-                <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-zinc-400">
-                    <span className="text-[11px]">Audience</span>
-                    <span className="font-semibold text-white text-[11px]">{acc.followers}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-zinc-500">
-                    <span className="text-[10px]">Connection</span>
-                    <span className="text-[10px]">{acc.connectedAt}</span>
-                  </div>
+                {/* Middle metadata */}
+                <div className="my-4 rounded-lg border border-white/[0.05] bg-white/[0.02] px-3.5 py-2.5 text-xs">
+                  {acc ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[#85868b]">Audience</span>
+                      <span className="font-medium text-white">{acc.followers}</span>
+                    </div>
+                  ) : (
+                    <p className="text-[#77787d] leading-relaxed">
+                      Link via {plat.id === "youtube" ? "Google OAuth or YouTube API Key" : "Meta OAuth or Graph Access Token"} to enable scheduling &amp; analytics.
+                    </p>
+                  )}
+                  {acc && (
+                    <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
+                      <span className="text-[#6f7075]">Capabilities</span>
+                      <span className="text-[#a5a6aa]">
+                        {acc.can_publish ? "Publish + Schedule + Analytics" : "Analytics & Schedule"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Auto Publish Toggle & Actions */}
-                <div className="pt-1 border-t border-white/[0.06] flex items-center justify-between text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={acc.autoPublish}
-                      onChange={() => handleToggleAutoPublish(acc.id)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-7 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-white relative" />
-                    <span className="text-[11px] text-zinc-300 font-medium">Auto-post</span>
-                  </label>
+                {/* Bottom actions */}
+                {acc ? (
+                  <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={acc.auto_publish}
+                        disabled={isBusy}
+                        onChange={() => handleToggleAutoPublish(acc)}
+                        className="sr-only peer"
+                      />
+                      <div className="relative h-4 w-7 rounded-full bg-zinc-800 after:absolute after:top-[2px] after:left-[2px] after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-all peer-checked:bg-emerald-500 peer-checked:after:translate-x-full" />
+                      <span className="text-xs text-[#a5a6aa]">Auto-post</span>
+                    </label>
 
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openModal(plat.id, acc)}
+                        disabled={isBusy}
+                        className="rounded-md px-2 py-1 text-[11px] text-[#a5a6aa] hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
+                        title="Update API credentials"
+                      >
+                        <KeyRound size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRefresh(acc)}
+                        disabled={isBusy}
+                        className="rounded-md px-2 py-1 text-[11px] text-[#a5a6aa] hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
+                        title="Refresh channel stats"
+                      >
+                        <RefreshCw size={13} className={isBusy ? "animate-spin" : ""} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnect(acc)}
+                        disabled={isBusy}
+                        className="rounded-md px-2 py-1 text-[11px] text-[#a5a6aa] hover:bg-red-500/10 hover:text-red-300 transition cursor-pointer"
+                        title="Disconnect account"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => {
-                      alert(`Account ${acc.handle} sync refreshed.`);
-                    }}
-                    className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-                    title="Refresh connection tokens"
+                    type="button"
+                    onClick={() => openModal(plat.id)}
+                    className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#F4F1E8] text-xs font-semibold text-[#151515] hover:bg-white transition cursor-pointer"
                   >
-                    <RefreshCw className="w-3 h-3" />
+                    <Plus size={14} />
+                    <span>Connect {plat.label}</span>
                   </button>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
-      </div>
+      )}
 
-      {/* ── SECTION 2: CROSS-PLATFORM VIDEO UPLOADER & SCHEDULER ── */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-5 sm:p-6 space-y-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-4">
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Upload className="w-4 h-4 text-zinc-400" />
-              <span>Cross-Platform Video Uploader</span>
-            </h2>
-            <p className="text-xs text-zinc-400">
-              Upload a 9:16 vertical clip to publish across YouTube Shorts, TikTok, and Instagram simultaneously.
-            </p>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[11px] text-zinc-300">
-            <Sparkles className="w-3 h-3 text-zinc-400" />
-            <span>AI Caption Engine Ready</span>
-          </div>
-        </div>
-
-        {/* Form Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT: Media Upload & Preview (5 cols) */}
-          <div className="lg:col-span-5 space-y-3">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative aspect-[9/16] max-h-[420px] mx-auto w-full rounded-xl border border-dashed transition cursor-pointer flex flex-col items-center justify-center p-6 text-center overflow-hidden ${
-                previewUrl
-                  ? "border-white/20 bg-black"
-                  : "border-white/15 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/30"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/mp4,video/quicktime,video/webm"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-
-              {previewUrl ? (
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <video
-                    src={previewUrl}
-                    className="w-full h-full object-cover rounded-lg"
-                    controls
-                    playsInline
-                  />
-                  <div className="absolute top-2.5 right-2.5 z-10">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedFile(null);
-                        setPreviewUrl(null);
-                      }}
-                      className="p-1 rounded-md bg-black/80 hover:bg-black text-white text-xs border border-white/20"
-                      title="Remove video"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-300 flex items-center justify-center mx-auto">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-white">Click or drag 9:16 video</p>
-                    <p className="text-[11px] text-zinc-500">MP4, MOV up to 500MB</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {selectedFile && (
-              <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/10 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 truncate">
-                  <Film className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                  <span className="text-white font-medium truncate">{selectedFile.name}</span>
-                </div>
-                <span className="text-zinc-500 text-[11px] shrink-0">
-                  {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT: Platforms, Caption & Schedule (7 cols) */}
-          <div className="lg:col-span-7 space-y-4">
-            {/* Step 1: Destination Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                1. Target Platforms
-              </label>
-              <div className="grid grid-cols-3 gap-2.5">
-                {/* YouTube */}
-                <button
-                  type="button"
-                  onClick={() => togglePlatform("youtube")}
-                  className={`p-2.5 rounded-lg border flex items-center gap-2 transition text-left cursor-pointer ${
-                    selectedPlatforms.includes("youtube")
-                      ? "border-white/30 bg-white/10 text-white"
-                      : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-white"
+      {/* Connect / API Credentials Modal */}
+      {modalPlatform && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-[#141517] p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.07] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    modalPlatform === "youtube"
+                      ? "bg-red-600 text-white"
+                      : "bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white"
                   }`}
                 >
-                  <div className="w-6 h-6 rounded bg-red-600 flex items-center justify-center text-white shrink-0">
-                    <YoutubeIcon className="w-3 h-3" />
-                  </div>
-                  <div className="truncate leading-tight">
-                    <span className="text-xs font-semibold block">Shorts</span>
-                  </div>
-                  {selectedPlatforms.includes("youtube") && (
-                    <Check className="w-3 h-3 text-white ml-auto shrink-0" />
+                  {modalPlatform === "youtube" ? (
+                    <YoutubeIcon className="w-4 h-4" />
+                  ) : (
+                    <InstagramIcon className="w-4 h-4" />
                   )}
-                </button>
-
-                {/* TikTok */}
-                <button
-                  type="button"
-                  onClick={() => togglePlatform("tiktok")}
-                  className={`p-2.5 rounded-lg border flex items-center gap-2 transition text-left cursor-pointer ${
-                    selectedPlatforms.includes("tiktok")
-                      ? "border-white/30 bg-white/10 text-white"
-                      : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <div className="w-6 h-6 rounded bg-zinc-900 border border-white/20 flex items-center justify-center text-white shrink-0">
-                    <TiktokIcon className="w-3 h-3" />
-                  </div>
-                  <div className="truncate leading-tight">
-                    <span className="text-xs font-semibold block">TikTok</span>
-                  </div>
-                  {selectedPlatforms.includes("tiktok") && (
-                    <Check className="w-3 h-3 text-white ml-auto shrink-0" />
-                  )}
-                </button>
-
-                {/* Instagram Reels */}
-                <button
-                  type="button"
-                  onClick={() => togglePlatform("instagram")}
-                  className={`p-2.5 rounded-lg border flex items-center gap-2 transition text-left cursor-pointer ${
-                    selectedPlatforms.includes("instagram")
-                      ? "border-white/30 bg-white/10 text-white"
-                      : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <div className="w-6 h-6 rounded bg-zinc-800 border border-white/20 flex items-center justify-center text-white shrink-0">
-                    <InstagramIcon className="w-3 h-3" />
-                  </div>
-                  <div className="truncate leading-tight">
-                    <span className="text-xs font-semibold block">Reels</span>
-                  </div>
-                  {selectedPlatforms.includes("instagram") && (
-                    <Check className="w-3 h-3 text-white ml-auto shrink-0" />
-                  )}
-                </button>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">
+                    Connect {modalPlatform === "youtube" ? "YouTube" : "Instagram"}
+                  </h3>
+                  <p className="text-[11px] text-[#85868b]">
+                    {modalPlatform === "youtube"
+                      ? "YouTube Data & Analytics API"
+                      : "Instagram Graph API"}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            {/* Step 2: Caption & AI Optimizer */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  2. Caption
-                </label>
-                <button
-                  type="button"
-                  onClick={handleGenerateAiCaption}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-white/5 border border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>AI Hook</span>
-                </button>
-              </div>
-
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                rows={3}
-                placeholder="Enter caption with hook and engagement question..."
-                className="w-full rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 resize-none transition"
-              />
-            </div>
-
-            {/* Step 3: Hashtags */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                3. Hashtags
-              </label>
-              <input
-                type="text"
-                value={hashtags}
-                onChange={(e) => setHashtags(e.target.value)}
-                placeholder="#relativclips #viral #shorts #fyp"
-                className="w-full rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2 text-xs text-zinc-300 placeholder-zinc-500 focus:outline-none focus:border-white/30 font-mono transition"
-              />
-            </div>
-
-            {/* Step 4: Schedule */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                4. Timing
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setScheduleType("now")}
-                  className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 text-xs font-medium transition cursor-pointer ${
-                    scheduleType === "now"
-                      ? "border-white/30 bg-white/10 text-white"
-                      : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <Zap className="w-3 h-3" />
-                  <span>Publish Immediately</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setScheduleType("peak")}
-                  className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 text-xs font-medium transition cursor-pointer ${
-                    scheduleType === "peak"
-                      ? "border-white/30 bg-white/10 text-white"
-                      : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <Clock className="w-3 h-3" />
-                  <span>Peak Time (6:30 PM)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Execute Button */}
-            <div className="pt-2">
               <button
                 type="button"
-                onClick={handleExecutePublish}
-                disabled={isPublishing || selectedPlatforms.length === 0}
-                className="w-full py-2.5 px-4 rounded-lg font-bold text-xs bg-white text-black hover:bg-zinc-200 transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                onClick={() => setModalPlatform(null)}
+                className="rounded-md p-1 text-[#85868b] hover:bg-white/[0.06] hover:text-white cursor-pointer"
               >
-                {isPublishing ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-black" />
-                    <span>Publishing to {selectedPlatforms.length} Platforms...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-3.5 h-3.5 text-black" />
-                    <span>
-                      {scheduleType === "now"
-                        ? `Publish Now to ${selectedPlatforms.length} Platforms`
-                        : `Schedule to ${selectedPlatforms.length} Platforms`}
-                    </span>
-                  </>
-                )}
+                <X size={16} />
               </button>
             </div>
 
-            {/* Success Notification */}
-            <AnimatePresence>
-              {publishSuccess && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-emerald-300 text-xs"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Broadcast queued successfully for selected platforms!</span>
-                </motion.div>
+            <div className="mt-4 space-y-4">
+              {oauthAvailable[modalPlatform] && (
+                <>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => handleOAuth(modalPlatform)}
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#F4F1E8] text-xs font-semibold text-[#151515] hover:bg-white transition cursor-pointer disabled:opacity-50"
+                  >
+                    <Link2 size={14} />
+                    <span>
+                      Continue with {modalPlatform === "youtube" ? "Google OAuth" : "Meta OAuth"}
+                    </span>
+                  </button>
+                  <div className="relative flex items-center py-1">
+                    <div className="flex-grow border-t border-white/[0.08]" />
+                    <span className="mx-3 text-[10px] uppercase tracking-wider text-[#6f7075]">
+                      or enter API credentials
+                    </span>
+                    <div className="flex-grow border-t border-white/[0.08]" />
+                  </div>
+                </>
               )}
-            </AnimatePresence>
+
+              <form onSubmit={handleConnectSubmit} className="space-y-3">
+                {modalPlatform === "youtube" ? (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                        YouTube API Key (Data / Analytics)
+                      </label>
+                      <input
+                        type="password"
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        placeholder="AIzaSy..."
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                        Channel ID or @Handle
+                      </label>
+                      <input
+                        type="text"
+                        value={channelIdInput}
+                        onChange={(e) => setChannelIdInput(e.target.value)}
+                        placeholder="UC... or @yourchannel"
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                        OAuth Access Token{" "}
+                        <span className="text-[#6f7075]">(optional, required for direct Shorts upload)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={accessTokenInput}
+                        onChange={(e) => setAccessTokenInput(e.target.value)}
+                        placeholder="ya29...."
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                        Instagram Graph API Access Token
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={accessTokenInput}
+                        onChange={(e) => setAccessTokenInput(e.target.value)}
+                        placeholder="EAA..."
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                        Instagram Business Account ID{" "}
+                        <span className="text-[#6f7075]">(optional, auto-detected)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={channelIdInput}
+                        onChange={(e) => setChannelIdInput(e.target.value)}
+                        placeholder="178414..."
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {modalError && (
+                  <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                    {modalError}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalPlatform(null)}
+                    className="h-9 rounded-md border border-white/[0.08] px-3.5 text-xs text-[#a5a6aa] hover:text-white cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="inline-flex h-9 items-center gap-2 rounded-md bg-[#F4F1E8] px-4 text-xs font-semibold text-[#151515] hover:bg-white disabled:opacity-50 cursor-pointer"
+                  >
+                    {submitting && <Loader2 size={13} className="animate-spin" />}
+                    <span>Save &amp; Verify</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

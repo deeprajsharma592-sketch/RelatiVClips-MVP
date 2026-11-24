@@ -511,10 +511,14 @@ function DashboardContent() {
           )}
 
           {/* TAB 3: ANALYSE */}
-          {activeTab === "analyse" && <AnalyseView />}
+          {activeTab === "analyse" && (
+            <AnalyseView onConnectAccount={() => setActiveTab("socials")} />
+          )}
 
           {/* TAB 4: SOCIAL ACCOUNTS & CROSS-PLATFORM PUBLISHER */}
-          {activeTab === "socials" && <SocialAccountsView />}
+          {activeTab === "socials" && (
+            <SocialAccountsView onOpenCalendar={() => setActiveTab("calendar")} />
+          )}
 
           {/* TAB 5: BRAND KIT (PRO GATED) */}
           {activeTab === "brand-kit" && (
@@ -564,7 +568,16 @@ function DashboardContent() {
 
           {/* TAB 7: CALENDAR */}
           {activeTab === "calendar" && (
-            <CalendarView onSchedule={() => setActiveTab("socials")} />
+            <CalendarView
+              onOpenSocials={() => setActiveTab("socials")}
+              availableClips={projects.flatMap((p) =>
+                (p.clips || []).map((c, idx) => ({
+                  id: c.clip_id || `${p.id}-${idx}`,
+                  title: c.viral_title || c.caption || `${p.title} #${idx + 1}`,
+                  videoUrl: c.video_url || c.download_url || "",
+                }))
+              )}
+            />
           )}
         </main>
       </div>
