@@ -91,7 +91,7 @@ def apply_finishing_window(
     start: float,
     narrative_end: float,
     video_duration: float = 0.0,
-    tail_buffer_s: float = 3.0,
+    tail_buffer_s: float = 5.0,
 ) -> tuple[float, float]:
     """Append user-selected natural context after the calibrated narrative.
 
@@ -99,7 +99,7 @@ def apply_finishing_window(
     tail is deliberately metadata-separated so it is never mistaken for an
     LLM-selected boundary. The thumbnail outro is added later by the renderer.
     """
-    requested = min(3.0, max(0.0, float(tail_buffer_s or 0.0)))
+    requested = min(5.0, max(0.0, float(tail_buffer_s or 0.0)))
     ceiling = float(video_duration) if float(video_duration or 0.0) > 0 else narrative_end + requested
     finished_end = min(ceiling, float(narrative_end) + requested)
     return finished_end, max(0.0, finished_end - float(narrative_end))

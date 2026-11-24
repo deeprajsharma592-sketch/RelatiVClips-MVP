@@ -56,7 +56,7 @@ def _cacheable_render_settings(
     literal word ``studio`` as cacheable made normal requests permanently
     bypass both cache reads and writes.
     """
-    if is_remake or tail_buffer_seconds != 3.0 or thumbnail_outro_seconds != 4.0:
+    if is_remake or tail_buffer_seconds != 5.0 or thumbnail_outro_seconds != 4.0:
         return False
     if caption_font not in {"studio", "impact"}:
         return False
@@ -570,7 +570,7 @@ async def run_youtube_orchestrator(
     requested_clip_count: Optional[int] = None,
     max_source_duration_s: Optional[int] = None,
     llm_provider_preference: Optional[str] = None,
-    tail_buffer_seconds: float = 3.0,
+    tail_buffer_seconds: float = 5.0,
     thumbnail_outro_seconds: float = 4.0,
 ):
     """New pipeline path (PIPELINE_VERSION=2) — transcript-first selection.
@@ -783,7 +783,7 @@ def _run_moment_pipeline(
     caption_font: str = "studio",
     caption_style: Optional[dict] = None,
     target_clip_count: int = 2,
-    tail_buffer_seconds: float = 3.0,
+    tail_buffer_seconds: float = 5.0,
     thumbnail_outro_seconds: float = 4.0,
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
@@ -1599,7 +1599,7 @@ async def run_youtube_pipeline_async(
     is_remake: bool = False,
     max_source_duration_s: Optional[int] = None,
     llm_provider_preference: Optional[str] = None,
-    tail_buffer_seconds: float = 3.0,
+    tail_buffer_seconds: float = 5.0,
     thumbnail_outro_seconds: float = 4.0,
 ):
     async def settle_credits(output_clips: int = 0, *, failed: bool = False):
@@ -1834,7 +1834,7 @@ async def process_youtube_url(
     caption_style = raw_caption_style or {"preset": caption_font, "overrides": {}}
     is_remake = bool(request.get("is_remake", False))
     try:
-        tail_buffer_seconds = min(3.0, max(0.0, float(request.get("tail_buffer_seconds", 3.0))))
+        tail_buffer_seconds = min(5.0, max(0.0, float(request.get("tail_buffer_seconds", 5.0))))
         thumbnail_outro_seconds = min(4.0, max(0.0, float(request.get("thumbnail_outro_seconds", 4.0))))
     except (TypeError, ValueError):
         raise HTTPException(status_code=422, detail="Finishing durations must be numeric") from None

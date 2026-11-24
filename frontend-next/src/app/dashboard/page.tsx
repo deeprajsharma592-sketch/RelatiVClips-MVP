@@ -246,7 +246,7 @@ function DashboardContent() {
       try { captionStyle = captionStyleParam ? JSON.parse(captionStyleParam) : undefined; } catch { captionStyle = undefined; }
       submitYouTubeUrl(urlParam, {
         captionStyle,
-        tailBufferSeconds: tailBufferParam === "0" ? 0 : 3,
+        tailBufferSeconds: tailBufferParam === "0" ? 0 : 5,
         thumbnailOutroSeconds: thumbnailOutroParam === "0" ? 0 : 4,
       })
         .then((init) => {
@@ -374,7 +374,7 @@ function DashboardContent() {
                 }}
                 onSubmitUrl={(u, config) => {
                   const styleQuery = config.captionStyle ? `&captionStyle=${encodeURIComponent(JSON.stringify(config.captionStyle))}` : "";
-                  const finishQuery = `&tailBuffer=${config.includeNaturalTail ? 3 : 0}&thumbnailOutro=${config.includeThumbnailOutro ? 4 : 0}`;
+                  const finishQuery = `&tailBuffer=${config.includeNaturalTail ? 5 : 0}&thumbnailOutro=${config.includeThumbnailOutro ? 4 : 0}`;
                   router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}${finishQuery}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}

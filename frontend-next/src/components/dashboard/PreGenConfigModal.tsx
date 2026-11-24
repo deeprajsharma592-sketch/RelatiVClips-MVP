@@ -308,14 +308,14 @@ export default function PreGenConfigModal({
                 </button>
               </div>
 
-              {/* Natural Scene Ending (+3s Tail Buffer) */}
+              {/* Natural Scene Ending (+5s Tail Buffer) */}
               <div className="p-3.5 rounded-xl bg-[#13141B] border border-white/10 flex items-center justify-between gap-3 shadow-lg shadow-black/40">
                 <div>
                   <div className="text-xs font-semibold text-white">
-                    Natural Scene Ending (+3s Tail Buffer)
+                    Natural Scene Ending (+5s Tail Buffer)
                   </div>
                   <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">
-                    Avoid abrupt cutoffs by extending past the last sentence boundary
+                    Avoid abrupt cutoffs by extending 5 seconds past the last sentence boundary
                   </div>
                 </div>
                 <button

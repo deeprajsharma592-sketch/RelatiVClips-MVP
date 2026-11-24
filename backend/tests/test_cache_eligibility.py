@@ -1,7 +1,7 @@
 from backend.routers.youtube_router import _cacheable_render_settings
 
 
-def eligible(font="impact", style=None, *, remake=False, tail=3.0, outro=4.0):
+def eligible(font="impact", style=None, *, remake=False, tail=5.0, outro=4.0):
     return _cacheable_render_settings(
         font,
         style or {"preset": font, "overrides": {}},
