@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, type CSSProperties, type DragEvent, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Link2, Upload } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
 import ShatterPhrase from "./ShatterPhrase";
 import { animateHeroThumbnails } from "./hero-thumbnail-transfers";
@@ -144,25 +144,33 @@ export default function HeroStudio() {
               onSubmit={handleSubmit}
               aria-label="Create clips"
               aria-busy={pending !== null}
-              className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2.5 rounded-[18px] border border-[#3a3a3a] bg-[#171717] p-3 shadow-[4px_5px_0_#080808] sm:flex sm:items-center sm:gap-2 sm:rounded-[24px] sm:border-zinc-300 sm:bg-white sm:p-2 lg:p-1.5 sm:shadow-[0_8px_30px_#0002] sm:dark:border-[#333333] sm:dark:bg-[#171717] sm:dark:shadow-black/30"
+              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-3 sm:flex-nowrap"
             >
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="col-span-2 flex min-h-[52px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#333333] bg-[#101010] px-3 focus-within:border-neutral-400 sm:min-h-14 lg:min-h-12 sm:rounded-[17px] sm:border-zinc-200 sm:bg-zinc-50 sm:focus-within:border-neutral-500 sm:dark:border-[#333333] sm:dark:bg-[#101010] sm:dark:focus-within:border-neutral-400"
+                className="flex min-h-14 w-full min-w-0 items-center gap-2.5 rounded-full bg-[#f2f2f4] py-1.5 pl-4 pr-1.5 text-left text-zinc-950 shadow-[0_8px_30px_#0003] focus-within:ring-2 focus-within:ring-sky-400 sm:w-auto sm:flex-1 sm:gap-3 sm:pl-5"
               >
-                <Link2 className="size-4 shrink-0 text-zinc-400 sm:text-zinc-500 sm:dark:text-zinc-400" aria-hidden="true" />
+                <Link2 className="size-5 shrink-0 text-slate-600" aria-hidden="true" />
                 <input
                   type="text"
                   inputMode="url"
-                  aria-label="Video link"
+                  aria-label="YouTube video link"
                   value={url}
                   onChange={(event) => setUrl(event.target.value)}
-                  placeholder="Paste a link"
-                  className="min-w-0 flex-1 border-0 bg-transparent py-2.5 text-base text-white placeholder:text-zinc-400 focus-visible:outline-none lg:py-2 lg:text-sm sm:text-zinc-900 sm:placeholder:text-zinc-600 sm:dark:text-white sm:dark:placeholder:text-zinc-400"
+                  placeholder="Paste a YouTube link"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm placeholder:text-slate-500 focus:outline-none sm:text-base"
                 />
+                <button
+                  type="submit"
+                  disabled={pending !== null}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-black px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:cursor-wait sm:px-7"
+                >
+                  {pending === "link" ? "Starting…" : "Get clips"}
+                </button>
               </div>
 
+              <span className="text-sm text-zinc-400" aria-hidden="true">or</span>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -174,31 +182,13 @@ export default function HeroStudio() {
                 }}
                 className="hidden"
               />
-
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={pending !== null}
-                aria-label="Upload file"
-                title="Upload file"
-                className="col-start-2 row-start-2 inline-flex min-h-12 lg:min-h-10 min-w-0 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#404040] px-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:cursor-wait sm:min-h-14 lg:min-h-12 sm:min-w-10 sm:gap-2 sm:rounded-[17px] sm:border-zinc-200 sm:px-3 sm:font-medium sm:text-zinc-700 sm:hover:bg-zinc-100 sm:dark:border-[#333333] sm:dark:text-zinc-200 sm:dark:hover:bg-white/10"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#f2f2f4] px-6 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 disabled:cursor-wait sm:min-h-14 sm:px-7"
               >
-                <Upload className="size-4" aria-hidden="true" />
-                <span>Upload file</span>
-              </button>
-
-              <button
-                type="submit"
-                disabled={pending !== null}
-                aria-label={pending ? "Starting clip generation" : "Get free clips"}
-                className="col-start-1 row-start-2 inline-flex min-h-12 lg:min-h-10 min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-white px-2.5 text-sm font-bold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-wait sm:min-h-14 lg:min-h-12 sm:rounded-[17px] sm:px-4"
-              >
-                {pending ? (pending === "upload" ? "Uploading…" : "Starting…") : (
-                  <>
-                    <span>Get free clips</span>
-                    <ArrowRight className="hidden size-4 sm:block" aria-hidden="true" />
-                  </>
-                )}
+                {pending === "upload" ? "Uploading…" : "Upload"}
               </button>
             </form>
             {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
