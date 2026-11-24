@@ -333,7 +333,6 @@ function DashboardContent() {
       <StudioSidebar
         activeTab={activeTab}
         onSelectTab={(t) => setActiveTab(t)}
-        onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
       />
 
       {/* ── Main Studio Stage ── */}
@@ -569,7 +568,7 @@ function DashboardContent() {
                 (p.clips || []).map((c, idx) => ({
                   id: c.clip_id || `${p.id}-${idx}`,
                   title: c.viral_title || c.caption || `${p.title} #${idx + 1}`,
-                  videoUrl: c.video_url || c.download_url || "",
+                  videoUrl: c.download_url || "",
                 }))
               )}
             />

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ComponentType } from "react";
+import type { ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
   Key, Layers, ChevronsLeft, BookOpen,
@@ -15,7 +15,6 @@ export type StudioTab = "home" | "edit-studio" | "projects" | "brand-kit" | "ass
 interface StudioSidebarProps {
   activeTab: StudioTab;
   onSelectTab: (tab: StudioTab) => void;
-  onOpenUpgrade: () => void;
 }
 
 type NavItem = { id: StudioTab; label: string; icon: ComponentType<{ size?: number; className?: string }> };
@@ -31,21 +30,10 @@ const PUBLISH: NavItem[] = [
   { id: "socials", label: "Social accounts", icon: Share2 },
 ];
 
-export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }: StudioSidebarProps) {
+export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarProps) {
   const { user } = useAuth();
   const name = user?.name || "Creator";
   const initial = name.charAt(0).toUpperCase();
-  const [balance, setBalance] = useState<number | null>(null);
-  const credits = balance ?? user?.credit_balance ?? 0;
-
-  useEffect(() => {
-    const update = (event: Event) => {
-      const next = (event as CustomEvent<{ balance?: number }>).detail?.balance;
-      if (typeof next === "number") setBalance(next);
-    };
-    window.addEventListener("relativ:credits-updated", update);
-    return () => window.removeEventListener("relativ:credits-updated", update);
-  }, []);
 
   const group = (label: string, items: NavItem[]) => (
     <section className="space-y-1">
@@ -91,10 +79,6 @@ export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }:
       </nav>
 
       <div className="space-y-1 border-t border-white/[0.06] p-3">
-        <button onClick={onOpenUpgrade} className="mb-3 flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-[#1a1b1e] px-3 py-2.5 text-xs">
-          <span className="flex items-center gap-2 text-[#c8c9cd]"><Zap size={14} className="fill-[#E7B84B] text-[#E7B84B]" /><b className="text-white">{credits}</b> credits</span>
-          <span className="text-[#E7B84B]">Add</span>
-        </button>
         {[
           { Icon: Key, label: "API access", href: "/api-access" },
           { Icon: BookOpen, label: "Learning center", href: "/learning-center" },
