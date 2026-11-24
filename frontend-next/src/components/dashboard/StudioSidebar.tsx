@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
-  FlaskConical, Key, Layers, Sparkles, UserPlus, ChevronsLeft, BookOpen,
+  Key, Layers, UserPlus, ChevronsLeft, BookOpen,
   Clapperboard,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -18,12 +18,11 @@ interface StudioSidebarProps {
   onOpenUpgrade: () => void;
 }
 
-type NavItem = { id: StudioTab; label: string; icon: ComponentType<{ size?: number; className?: string }>; pro?: boolean };
+type NavItem = { id: StudioTab; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 const CREATE: NavItem[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "edit-studio", label: "Edit Studio", icon: Clapperboard },
   { id: "projects", label: "My projects", icon: FolderOpen },
-  { id: "brand-kit", label: "Brand kit", icon: Sparkles, pro: true },
   { id: "assets", label: "Asset library", icon: Layers },
 ];
 const PUBLISH: NavItem[] = [
@@ -51,13 +50,12 @@ export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }:
   const group = (label: string, items: NavItem[]) => (
     <section className="space-y-1">
       <p className="px-3 pb-1 text-[11px] font-medium text-[#77787d]">{label}</p>
-      {items.map(({ id, label: itemLabel, icon: Icon, pro }) => {
+      {items.map(({ id, label: itemLabel, icon: Icon }) => {
         const selected = activeTab === id;
         return (
           <button key={id} type="button" onClick={() => onSelectTab(id)}
             className={`group flex h-9 w-full items-center justify-between rounded-md px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E7B84B]/70 ${selected ? "bg-[#27282b] text-[#F5F2E9]" : "text-[#b6b7bc] hover:bg-white/[0.045] hover:text-white"}`}>
             <span className="flex items-center gap-2.5"><Icon size={15} className={selected ? "text-[#E7B84B]" : "text-[#8b8c91] group-hover:text-[#d7d7da]"} />{itemLabel}</span>
-            {pro && <span className="text-[10px] text-[#E7B84B]">◆</span>}
           </button>
         );
       })}
@@ -66,7 +64,7 @@ export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }:
 
   return (
     <>
-    <aside className="sticky top-0 z-30 hidden h-screen w-[220px] shrink-0 select-none flex-col border-r border-white/[0.07] bg-[#141517] lg:flex">
+    <aside className="sticky top-0 z-30 hidden h-screen w-[244px] shrink-0 select-none flex-col border-r border-white/[0.07] bg-[#141517] lg:flex">
       <div className="flex h-16 items-center justify-between px-4">
         <Link href="/" aria-label="RelatiV home"><BrandLogo iconWidth={30} wordmarkClassName="text-sm font-semibold text-white" /></Link>
         <button type="button" aria-label="Collapse navigation" className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.07] text-[#85868b] hover:text-white"><ChevronsLeft size={15} /></button>
@@ -94,7 +92,7 @@ export default function StudioSidebar({ activeTab, onSelectTab, onOpenUpgrade }:
           <span className="text-[#E7B84B]">Add</span>
         </button>
         {[
-          [FlaskConical, "RelatiV Labs"], [Key, "API access"], [BookOpen, "Learning center"], [HelpCircle, "Help center"],
+          [Key, "API access"], [BookOpen, "Learning center"], [HelpCircle, "Help center"],
         ].map(([Icon, label]) => (
           <button key={label as string} type="button" onClick={() => label === "API access" && onOpenUpgrade()} className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12px] text-[#8f9095] hover:bg-white/[0.04] hover:text-white">
             <Icon size={14} />{label as string}
