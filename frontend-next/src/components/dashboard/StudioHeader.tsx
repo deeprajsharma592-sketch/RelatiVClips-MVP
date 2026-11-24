@@ -12,9 +12,14 @@ export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
     <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#111214]/95 backdrop-blur-xl">
       <div className="flex h-14 items-center px-4 lg:px-7">
         <div className="flex items-center gap-3 lg:hidden"><BrandLogo iconWidth={28} wordmarkClassName="text-sm font-semibold text-white" /></div>
-        <button onClick={onOpenUpgrade} className="mx-auto hidden items-center gap-3 rounded-md border border-white/[0.07] bg-[#17181a] py-1 pl-3 text-[11px] text-[#c6c6ca] sm:flex">
-          <span className="text-[#E7B84B]">◆</span><span>Export without watermarks and keep every clip on-brand.</span>
-          <span className="rounded-r-md bg-[#25262a] px-3 py-1.5 text-white">View plans</span>
+        <button
+          type="button"
+          onClick={onOpenUpgrade}
+          className="mx-auto hidden min-w-0 items-center gap-3 rounded-full border border-white/10 bg-[#17181a] p-1 pl-3 text-xs text-[#c6c6ca] transition hover:border-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B] sm:flex"
+        >
+          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[#E7B84B]" />
+          <span className="min-w-0 truncate">Export without watermarks and keep every clip on-brand.</span>
+          <span className="shrink-0 rounded-full bg-[#27282b] px-3 py-1.5 font-medium text-white">View plans</span>
         </button>
         <div className="ml-auto flex items-center gap-2">
           <button aria-label="Notifications" className="grid h-8 w-8 place-items-center rounded-md text-[#a1a2a7] hover:bg-white/[0.05] hover:text-white"><Bell size={15} /></button>
