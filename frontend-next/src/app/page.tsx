@@ -18,6 +18,7 @@ export default function HomePage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className={styles.starDetail} src="/homepage-night-sky-stars.svg" alt="" />
         </div>
+        <FloatingAirship />
       </div>
 
       <FloatingAirship homepage />

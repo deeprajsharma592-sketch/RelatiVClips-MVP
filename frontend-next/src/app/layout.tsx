@@ -3,7 +3,6 @@ import Script from "next/script";
 import { Geist, Geist_Mono, Inter, Fraunces } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingAirship from "@/components/FloatingAirship";
 import SmoothScroll from "@/components/SmoothScroll";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/lib/AuthContext";
@@ -175,7 +174,6 @@ export default function RootLayout({
           <SmoothScroll>
             <AuthProvider>
               <Header />
-              <FloatingAirship />
               <main id="main-content" className={`flex-1 relative z-[1] ${glass.palette}`}>{children}</main>
               <Footer />
               <Script
