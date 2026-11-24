@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import { mountAudienceWeb } from "./audienceWebScene";
 import styles from "./SolutionsSection.module.css";
 
@@ -44,6 +45,14 @@ export default function SolutionsSection() {
       </h2>
       <div className={styles.stage}>
         <canvas ref={canvasRef} className={styles.canvas} width={1440} height={810} aria-hidden="true" />
+        <Image
+          src="/audience-web-hero.png"
+          alt=""
+          width={720}
+          height={658}
+          unoptimized
+          className={styles.webHero}
+        />
         <button ref={buttonRef} className={styles.launch} type="button" aria-label="RelatiV, replay the audience animation">
           RelatiV<span aria-hidden="true" />
         </button>
