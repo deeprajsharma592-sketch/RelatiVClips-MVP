@@ -354,12 +354,7 @@ function DashboardContent() {
             <div className="mx-auto max-w-[1120px] space-y-6 sm:space-y-7">
               <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                 <div className="max-w-2xl">
-                  <div className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9a9ba1]">
-                    <span className="size-1.5 rounded-full bg-[#E7B84B]" />
-                    Creator workspace
-                  </div>
                   <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-tight tracking-[-0.045em] text-[#F4F1E8]">Make a clip from any long video.</h1>
-                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#9a9ba1]">Add a source and RelatiV will find the strongest moments, frame the subject, and finish your captions.</p>
                 </div>
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-2 text-xs text-[#b9b9bd]">
                   <Zap className="size-3.5 text-[#E7B84B]" />

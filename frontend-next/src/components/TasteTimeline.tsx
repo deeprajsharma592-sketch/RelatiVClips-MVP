@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
-import { ArrowRight, Heart, MessageCircle, Pause, Play, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Heart, MessageCircle, Pause, Play } from "lucide-react";
 import styles from "./TasteTimeline.module.css";
 import glass from "./TasteGlass.module.css";
 
@@ -35,7 +35,6 @@ const REACTIONS = [
   { kind: "comment", text: "Great pacing!", tone: "mint" },
   { kind: "like", text: "968", tone: "violet" },
 ];
-const PAGE_COUNT = Math.ceil(CLIP_IMAGES.length / SCENES.length);
 
 type Box = { x: number; y: number; width: number; height: number };
 type Journey = { from: Box; to: Box; stageWidth: number };
@@ -99,9 +98,8 @@ export default function TasteTimeline() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [panelVisible, setPanelVisible] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const [gallery, setGallery] = useState(0);
   const [time, setTime] = useState(0);
-  const [scores, setScores] = useState(() => SCENES.map(({ score }) => score));
+  const [scores] = useState(() => SCENES.map(({ score }) => score));
   const reduceMotion = useReducedMotion();
   const inView = useInView(stageRef);
   const selected = Math.min(SCENES.length - 1, Math.floor(time / 6));
@@ -159,11 +157,6 @@ export default function TasteTimeline() {
   const canInteract = Boolean(reduceMotion || panelVisible);
   const score = Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length);
   const seconds = Math.floor(time).toString().padStart(2, "0");
-
-  function rate(amount: number) {
-    setScores((values) => values.map((value, index) =>
-      index === selected ? Math.max(5, Math.min(99, value + amount)) : value));
-  }
 
   return (
     <section ref={sectionRef} className={styles.section} aria-labelledby="taste-timeline-title">
@@ -224,7 +217,7 @@ export default function TasteTimeline() {
                 aria-label={`${clip.label}: ${clip.title}`}
                 aria-pressed={index === selected}
               >
-                <Thumbnail src={CLIP_IMAGES[(gallery * SCENES.length + index) % CLIP_IMAGES.length]} />
+                <Thumbnail src={CLIP_IMAGES[index % CLIP_IMAGES.length]} />
                 <span className={styles.clipScore}>{(scores[index] / 10).toFixed(1)}</span>
                 <span className={styles.platform}>{clip.platform}</span>
                 <span className={styles.clipLabel}>{clip.label}</span>
@@ -234,11 +227,6 @@ export default function TasteTimeline() {
           </div>
           <div className={styles.below}>
             <div className={styles.caption}><small>{scene.label} · Hook strength {scores[selected]}</small>{scene.title}</div>
-            <div className={styles.feedback}>
-              <button type="button" onClick={() => rate(5)}><ThumbsUp size={14} /> More like this</button>
-              <button type="button" onClick={() => rate(-7)}><ThumbsDown size={14} /> Less like this</button>
-              <button type="button" onClick={() => { setGallery((value) => (value + 1) % PAGE_COUNT); setTime(0); }}>Next clips <ArrowRight size={14} /></button>
-            </div>
           </div>
         </motion.div>
 
