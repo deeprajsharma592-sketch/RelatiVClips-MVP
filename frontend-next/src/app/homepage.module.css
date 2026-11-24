@@ -15,9 +15,16 @@
   position: fixed;
   inset: 0;
   display: block;
-  width: 100%;
+  width: min(100%, 1080px);
   height: 100%;
+  margin-inline: auto;
   object-fit: cover;
+}
+
+@media (min-width: 1080px) {
+  .backdropImage {
+    mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+  }
 }
 
 .roadmap {
