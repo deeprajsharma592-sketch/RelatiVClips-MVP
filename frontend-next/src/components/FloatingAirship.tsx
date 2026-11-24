@@ -1,7 +1,14 @@
+"use client";
+
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import styles from "./FloatingAirship.module.css";
 
 export default function FloatingAirship() {
+  const pathname = usePathname();
+  const segments = pathname?.split("/") ?? [];
+  if (segments.includes("dashboard") || segments[1] === "onboarding") return null;
+
   return (
     <div className={styles.flight}>
       <Image
