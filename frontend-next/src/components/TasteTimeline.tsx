@@ -232,11 +232,6 @@ export default function TasteTimeline() {
             ))}
             <div className={styles.playhead} style={{ left: `${time / 30 * 100}%` }} aria-hidden="true" />
           </div>
-          <div className={styles.waveform} aria-hidden="true">
-            {Array.from({ length: 64 }, (_, index) => (
-              <i key={index} data-played={index / 64 < time / 30} style={{ height: `${20 + ((index * 17 + index * index * 7) % 75)}%` }} />
-            ))}
-          </div>
           <div className={styles.below}>
             <div className={styles.caption}><small>{scene.label} · Hook strength {scores[selected]}</small>{scene.title}</div>
             <div className={styles.feedback}>

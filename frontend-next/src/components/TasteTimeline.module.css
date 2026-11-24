@@ -114,9 +114,6 @@
 .platform { right: 7px; background: #000c; color: #fff; }
 .clipLabel { bottom: 7px; left: 50%; transform: translateX(-50%); border-radius: 6px; padding: 2px 6px; background: #fff; color: #111; }
 .playhead { position: absolute; top: -4px; bottom: -4px; z-index: 1; width: 2px; background: #22d38a; box-shadow: 0 0 12px #22d38a; pointer-events: none; }
-.waveform { height: 30px; display: flex; align-items: center; gap: 2px; margin-top: 12px; }
-.waveform i { flex: 1; border-radius: 2px; background: #2a2a33; }
-.waveform i[data-played="true"] { background: #22d38a; }
 .below { flex-wrap: wrap; margin-top: 14px; }
 .caption { font-size: clamp(15px, 2vw, 20px); font-weight: 600; }
 .caption small { display: block; color: #a1a1aa; font-size: 12px; font-weight: 500; }
@@ -200,7 +197,6 @@
   .toolbarControls, .toolbar { gap: 6px; font-size: 10px; }
   .platform { display: none; }
   .clipScore { top: 4px; left: 4px; }
-  .waveform { height: 20px; }
   .portal { gap: 8px; font-size: 12px; }
   .sourceLabel { font-size: 9px; }
 }
