@@ -149,9 +149,9 @@ export default function HeroStudio() {
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDrop}
-                className="flex min-h-14 w-full min-w-0 items-center gap-2.5 rounded-full bg-[#f2f2f4] py-1.5 pl-4 pr-1.5 text-left text-zinc-950 shadow-[0_8px_30px_#0003] focus-within:ring-2 focus-within:ring-sky-400 sm:w-auto sm:flex-1 sm:gap-3 sm:pl-5"
+                className="flex min-h-14 w-full min-w-0 items-center gap-2.5 rounded-full bg-black py-1.5 pl-4 pr-1.5 text-left text-white ring-1 ring-inset ring-white/20 shadow-[0_8px_30px_#0003] focus-within:ring-2 focus-within:ring-sky-400 sm:w-auto sm:flex-1 sm:gap-3 sm:pl-5"
               >
-                <Link2 className="size-5 shrink-0 text-slate-600" aria-hidden="true" />
+                <Link2 className="size-5 shrink-0 text-zinc-300" aria-hidden="true" />
                 <input
                   type="text"
                   inputMode="url"
@@ -159,12 +159,12 @@ export default function HeroStudio() {
                   value={url}
                   onChange={(event) => setUrl(event.target.value)}
                   placeholder="Paste a YouTube link"
-                  className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm placeholder:text-slate-500 focus:outline-none sm:text-base"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm placeholder:text-zinc-400 focus:outline-none sm:text-base"
                 />
                 <button
                   type="submit"
                   disabled={pending !== null}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-black px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:cursor-wait sm:px-7"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:cursor-wait sm:px-7"
                 >
                   {pending === "link" ? "Starting…" : "Get clips"}
                 </button>
@@ -186,7 +186,7 @@ export default function HeroStudio() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={pending !== null}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#f2f2f4] px-6 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 disabled:cursor-wait sm:min-h-14 sm:px-7"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-black px-6 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 transition hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 disabled:cursor-wait sm:min-h-14 sm:px-7"
               >
                 {pending === "upload" ? "Uploading…" : "Upload"}
               </button>
