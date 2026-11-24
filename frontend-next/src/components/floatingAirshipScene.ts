@@ -59,11 +59,7 @@ for (const side of [-1, 1]) {
 
 const random = (low: number, high: number) => low + Math.random() * (high - low);
 const ease = (t: number) => t * t * (3 - 2 * t);
-type Pass = { y: number; from: number; to: number; direction: number; duration: number; maxScale: number; retreat?: { at: number; x: number; scale: number } };
-const protectedContent = [
-  "header", "footer", "h1,h2,h3,h4,h5,h6,p,li", "a,button,input,textarea,select",
-  "img,svg,video,canvas", "[data-taste-redesign]",
-].join(",");
+type Pass = { altitude: number; direction: number; duration: number };
 
 export function mountFloatingAirship(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
@@ -85,10 +81,7 @@ export function mountFloatingAirship(canvas: HTMLCanvasElement) {
   observer.observe(canvas);
   resize();
 
-  let obstacles: DOMRect[] = [];
-  let lastScan = -Infinity;
   const hero = document.querySelector('[aria-label="Hero message"]');
-  const reservedLane = document.querySelector('[data-airship-lane]');
   const pause = (now: number, delay: number) => {
     pass = null;
     start = now + delay;
@@ -108,78 +101,21 @@ export function mountFloatingAirship(canvas: HTMLCanvasElement) {
       return;
     }
 
-    const defaultScale = Math.min(91,Math.max(39,width*.068));
-    if (now-lastScan>90) {
-      obstacles = Array.from(document.querySelectorAll(protectedContent))
-        .filter(element => element !== canvas && !element.closest('[aria-hidden="true"]:not(canvas):not(svg):not(img):not(video)'))
-        .map(element => element.getBoundingClientRect())
-        .filter(rect => rect.width > 2 && rect.height > 2 && rect.right > 0 && rect.left < width && rect.bottom > 0 && rect.top < height);
-      lastScan = now;
-    }
-    const intersects = (x: number, y: number, halfWidth: number, halfHeight: number) =>
-      obstacles.some(rect => rect.left < x+halfWidth && rect.right > x-halfWidth && rect.top < y+halfHeight && rect.bottom > y-halfHeight);
     if (!pass) {
-      const lane = reservedLane?.getBoundingClientRect();
-      const top = lane ? Math.max(lane.top, 64) : 0;
-      const bottom = lane ? Math.min(lane.bottom, height - 90) : 0;
-      const laneHeight = bottom - top;
-      const laneScale = Math.min(defaultScale, (laneHeight / 2 - 12) / .77);
-      const laneY = (top + bottom) / 2;
-      const preferred = laneScale >= 36 && !intersects(width/2,laneY,width/2,laneScale*.77+10);
-      const maxScale = preferred ? laneScale : defaultScale;
-      const lanes = preferred ? [laneY] : Array.from({length:14},(_,i)=>height*(.13+i*.052));
-      const clearance = maxScale*.77+(preferred?10:12);
-      const corridors = lanes.flatMap(y => {
-        const intervals = obstacles.filter(rect=>rect.top<y+clearance && rect.bottom>y-clearance)
-          .sort((a,b)=>a.left-b.left);
-        const gaps: { y: number; left: number; right: number }[] = [];
-        let cursor = 0;
-        for (const rect of intervals) {
-          if (rect.left-cursor>maxScale*6) gaps.push({y,left:cursor,right:rect.left});
-          cursor = Math.max(cursor,rect.right);
-        }
-        if (width-cursor>maxScale*6) gaps.push({y,left:cursor,right:width});
-        return gaps;
-      });
-      if (!corridors.length) {
-        pause(now,600);
-        return;
-      }
-      const {y,left,right} = corridors[Math.floor(random(0,corridors.length))];
-      const fromLeft = Math.random()<.5;
-      const first = left===0 ? -maxScale : left+maxScale*2.35+12;
-      const last = right===width ? width+maxScale : right-maxScale*2.35-12;
-      pass = {y,from:fromLeft?first:last,to:fromLeft?last:first,direction:fromLeft?1:-1,duration:random(10000,14500),maxScale};
+      pass = { altitude: random(.18,.76), direction: Math.random()<.5 ? -1 : 1, duration: random(10000,14500) };
       start = now;
     }
     const progress = (now-start)/pass.duration;
-    if (progress >= 1 && !pass.retreat) {
+    if (progress >= 1) {
       pause(now,random(18000,34000));
       return;
     }
-    const y = pass.y;
-    let x = pass.from + (pass.to-pass.from)*progress;
-    const approach = Math.sin(Math.PI*Math.min(1,progress))**.75;
-    let scale = pass.maxScale*(.25+.75*approach);
-    let opacity = ease(Math.min(1,approach*2.1))*.82;
-    if (!pass.retreat && intersects(x,y,scale*2.35+12,scale*.77+10)) {
-      pass.retreat = { at:now, x, scale };
-    }
-    if (pass.retreat) {
-      const elapsed = (now-pass.retreat.at)/480;
-      if (elapsed >= 1) {
-        pause(now,random(18000,34000));
-        return;
-      }
-      const retreat = ease(elapsed);
-      x = pass.retreat.x - pass.direction * pass.retreat.scale * retreat;
-      scale = pass.retreat.scale*(1-.78*retreat);
-      opacity *= (1-retreat)**2;
-      if (intersects(x,y,scale*2.35+4,scale*.77+4)) {
-        frame = requestAnimationFrame(render);
-        return;
-      }
-    }
+    const y = height*pass.altitude;
+    const maxScale = Math.min(91,Math.max(39,width*.068));
+    const x = width/2 + pass.direction*(width+maxScale*4.8)*(progress-.5);
+    const approach = Math.sin(Math.PI*progress)**.75;
+    const scale = maxScale*(.25+.75*approach);
+    const opacity = ease(Math.min(1,approach*2.1))*.82;
     const yaw = (pass.direction>0?Math.PI:0) + .16*Math.sin(progress*Math.PI*2);
     const roll = .035*Math.sin(progress*Math.PI*2);
     const pitch = .13;
