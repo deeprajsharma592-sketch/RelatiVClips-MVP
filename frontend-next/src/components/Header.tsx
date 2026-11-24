@@ -31,7 +31,7 @@ export default function Header() {
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [mobileSolutionsOpen, setMobileSolutionsOpen] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     setSolutionsOpen(false);
@@ -178,8 +178,7 @@ export default function Header() {
 
         {/* Right Action Section */}
         <div className="flex items-center gap-3">
-          {/* Auth State */}
-          {!loading && !user && (
+          {!user ? (
             <>
               <Link
                 href="/dashboard"
@@ -194,9 +193,7 @@ export default function Header() {
                 Get started
               </Link>
             </>
-          )}
-
-          {!loading && user && (
+          ) : (
             <>
               <Link
                 href="/dashboard"
