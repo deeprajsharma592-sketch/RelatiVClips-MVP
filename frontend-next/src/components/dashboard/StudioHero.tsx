@@ -9,7 +9,6 @@ import {
   Scissors,
   Wand2,
   Loader2,
-  Zap,
 } from "lucide-react";
 import PreGenConfigModal, { RecipeConfig } from "./PreGenConfigModal";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
@@ -127,31 +126,26 @@ export default function StudioHero({
 
   return (
     <div className="w-full min-w-0 font-sans">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-white/[0.1] bg-[#17181a] shadow-[0_24px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/30">
-        {/* Tabs Bar */}
-        <div className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-4 py-2">
-          <div className="flex items-center gap-1 rounded-xl border border-white/[0.06] bg-black/20 p-1">
+      <div className="mx-auto max-w-5xl">
+        <div className="flex flex-wrap items-end justify-between gap-x-3">
+          <div className="flex flex-wrap items-end gap-1">
             <button
+              type="button"
+              aria-pressed={activeTab === "clip"}
               onClick={() => setActiveTab("clip")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                activeTab === "clip"
-                ? "bg-[#292a2d] text-white shadow-sm ring-1 ring-white/[0.06]"
-                  : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
-              }`}
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-xl px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[#242527] aria-pressed:text-white sm:px-5 sm:text-sm"
             >
-              <Film size={14} className="text-[#A8FF4F]" />
+              <Film size={16} className="text-[#A8FF4F]" aria-hidden="true" />
               <span>Clip long video</span>
             </button>
 
             <button
+              type="button"
+              aria-pressed={activeTab === "auto-edit"}
               onClick={() => setActiveTab("auto-edit")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                activeTab === "auto-edit"
-                ? "bg-[#292a2d] text-white shadow-sm ring-1 ring-white/[0.06]"
-                  : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
-              }`}
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-xl px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[#242527] aria-pressed:text-white sm:px-5 sm:text-sm"
             >
-              <Wand2 size={13} className="text-zinc-400" />
+              <Wand2 size={16} className="text-[#a69afb]" aria-hidden="true" />
               <span>Auto-edit footage</span>
             </button>
           </div>
@@ -161,132 +155,131 @@ export default function StudioHero({
             onClick={onOpenEditor}
             disabled={!hasEditableClip || !onOpenEditor}
             title={hasEditableClip ? "Open the newest generated clip in Studio" : "Generate a clip before opening Studio"}
-            className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-2 text-xs transition enabled:border-[#4FD1C5]/25 enabled:bg-[#4FD1C5]/[0.07] enabled:text-[#9CEAE2] enabled:hover:border-[#4FD1C5]/55 enabled:hover:bg-[#4FD1C5]/[0.12] disabled:cursor-not-allowed disabled:text-zinc-600"
+            className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-xs transition enabled:cursor-pointer enabled:text-[#9CEAE2] enabled:hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:text-zinc-500 sm:text-sm"
           >
-            <Scissors size={13} />
+            <Scissors size={15} aria-hidden="true" />
             <span>{hasEditableClip ? "Edit newest clip" : "Open editor"}</span>
           </button>
         </div>
 
-        {/* Input Bar */}
-        <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4 sm:px-5 sm:pt-5">
-          <div className="relative flex flex-col gap-2 rounded-xl border border-white/[0.11] bg-[#101113] p-2 transition focus-within:border-[#E7B84B]/55 focus-within:shadow-[0_0_0_3px_rgba(231,184,75,0.08)] sm:flex-row sm:items-center">
-            <div className="flex min-w-0 flex-1 items-center px-1.5">
-              <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
-              <input
-                ref={urlInputRef}
-                type="text"
-                inputMode="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                autoComplete="url"
-                spellCheck={false}
-                maxLength={2048}
-                aria-label="YouTube video URL"
-                disabled={isGenerating}
-                value={inputText}
-                onPaste={(event) => {
-                  if (isGenerating) return;
-                  const pasted = event.clipboardData.getData("text");
-                  if (!pasted) return;
-                  event.preventDefault();
-                  setInputText(pasted.trim());
-                  setError(null);
-                }}
-                onChange={(e) => {
-                  setInputText(e.target.value);
-                  if (error) setError(null);
-                }}
-                placeholder={
-                  isGenerating
-                    ? "Clip generation in progress... please wait for completion"
-                    : "Paste a YouTube link"
-                }
-                className="min-w-0 w-full bg-transparent py-3 text-sm text-white placeholder-[#77787d] focus:outline-none disabled:opacity-50"
-              />
+        <div className="overflow-hidden rounded-b-2xl rounded-tr-2xl bg-[#242527] shadow-[0_14px_42px_rgba(0,0,0,0.2)]">
+          {/* Input Bar */}
+          <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4 sm:px-5 sm:pt-5">
+            <div className="relative flex flex-col gap-2 rounded-xl border border-white/[0.11] bg-[#18191b] p-2 transition focus-within:border-white/45 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-center px-1.5">
+                <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
+                <input
+                  ref={urlInputRef}
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="url"
+                  spellCheck={false}
+                  maxLength={2048}
+                  aria-label="YouTube video URL"
+                  disabled={isGenerating}
+                  value={inputText}
+                  onPaste={(event) => {
+                    if (isGenerating) return;
+                    const pasted = event.clipboardData.getData("text");
+                    if (!pasted) return;
+                    event.preventDefault();
+                    setInputText(pasted.trim());
+                    setError(null);
+                  }}
+                  onChange={(e) => {
+                    setInputText(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  placeholder={
+                    isGenerating
+                      ? "Clip generation in progress... please wait for completion"
+                      : "Drop a YouTube link"
+                  }
+                  className="min-w-0 w-full bg-transparent py-3 text-sm text-white placeholder-[#77787d] focus:outline-none disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={pasteFromClipboard}
+                  disabled={isGenerating}
+                  className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40 cursor-pointer"
+                >
+                  Paste
+                </button>
+              </div>
               <button
-                type="button"
-                onClick={pasteFromClipboard}
-                disabled={isGenerating}
-                className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40 cursor-pointer"
+                type="submit"
+                disabled={!inputText.trim() || isGenerating}
+                className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-zinc-50 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition enabled:hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-700 sm:w-auto"
               >
-                Paste
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  "Get clips in 1 click"
+                )}
               </button>
             </div>
+
+            {error && <p className="text-xs text-rose-400">{error}</p>}
+          </form>
+
+          {/* Secondary Upload Actions Row */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 pb-5 pt-3 text-xs text-[#a1a2a7]">
             <button
-              type="submit"
-              disabled={!inputText.trim() || isGenerating}
-              className="w-full shrink-0 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold px-5 py-3 text-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer sm:w-auto shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
+              onClick={() => {
+                if (isGenerating) {
+                  setError("A video is currently being clipped. Please wait for it to finish.");
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
+              disabled={isGenerating}
+              className="flex items-center gap-1.5 hover:text-white transition cursor-pointer disabled:opacity-40"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 size={13} className="animate-spin text-black" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <Zap size={13} className="fill-black text-black" />
-                  <span>Clip Now</span>
-                </>
-              )}
+              <Upload size={14} className="text-zinc-500" />
+              <span>Upload</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              disabled={isGenerating}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            <button
+              onClick={() => alert("Google Drive integration available on Pro.")}
+              disabled={isGenerating}
+              className="flex items-center gap-1.5 hover:text-white transition cursor-pointer disabled:opacity-40"
+            >
+              <FolderOpen size={14} className="text-zinc-500" />
+              <span>Google Drive</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (isGenerating) {
+                  setError("A video is currently being clipped. Please wait for it to finish.");
+                  return;
+                }
+                setIsConfigModalOpen(true);
+              }}
+              disabled={isGenerating}
+              className="ml-auto text-[#d0d0d3] transition hover:text-white disabled:opacity-40 cursor-pointer"
+            >
+              Tune captions &amp; framing
             </button>
           </div>
 
-          {error && <p className="text-xs text-rose-400">{error}</p>}
-        </form>
-
-        {/* Secondary Upload Actions Row */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 pb-5 pt-3 text-xs text-[#a1a2a7]">
-          <button
-            onClick={() => {
-              if (isGenerating) {
-                setError("A video is currently being clipped. Please wait for it to finish.");
-                return;
-              }
-              fileInputRef.current?.click();
-            }}
-            disabled={isGenerating}
-            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer disabled:opacity-40"
-          >
-            <Upload size={14} className="text-zinc-500" />
-            <span>Upload</span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            disabled={isGenerating}
-            onChange={handleFileChange}
-            className="hidden"
-          />
-
-          <button
-            onClick={() => alert("Google Drive integration available on Pro.")}
-            disabled={isGenerating}
-            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer disabled:opacity-40"
-          >
-            <FolderOpen size={14} className="text-zinc-500" />
-            <span>Google Drive</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (isGenerating) {
-                setError("A video is currently being clipped. Please wait for it to finish.");
-                return;
-              }
-              setIsConfigModalOpen(true);
-            }}
-            disabled={isGenerating}
-            className="ml-auto text-[#d0d0d3] transition hover:text-white disabled:opacity-40 cursor-pointer"
-          >
-            Tune captions &amp; framing
-          </button>
+          {uploadStatus && (
+            <p className="px-5 pb-4 text-xs text-zinc-300 animate-pulse">{uploadStatus}</p>
+          )}
         </div>
-
-        {uploadStatus && (
-          <p className="px-5 pb-4 text-xs text-zinc-300 animate-pulse">{uploadStatus}</p>
-        )}
       </div>
 
       {/* Pre-generation Recipe Configuration Modal */}
