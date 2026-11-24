@@ -14,7 +14,7 @@ export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
         <div className="flex items-center gap-3 lg:hidden"><BrandLogo iconWidth={28} wordmarkClassName="text-sm font-semibold text-white" /></div>
         <div className="mx-auto hidden w-full min-w-0 max-w-3xl flex-1 items-center gap-3 px-2 text-xs text-[#c6c6ca] sm:flex">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[#E7B84B]" />
-          <span className="min-w-0 flex-1 truncate">Export without watermarks and keep every clip on-brand.</span>
+          <span className="min-w-0 flex-1 truncate text-sm lg:text-base">Export without watermarks and keep every clip on-brand.</span>
           <button
             type="button"
             onClick={onOpenUpgrade}
