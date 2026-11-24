@@ -23,6 +23,12 @@ const DASHBOARD_HREF: Record<UserRole, string> = {
   clipper: "/clippers/dashboard",
 };
 
+const navPillClass = (active: boolean) =>
+  `inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${active
+    ? "bg-white/12 text-white ring-1 ring-inset ring-white/15"
+    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+  }`;
+
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
@@ -74,7 +80,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#08080A]/95 backdrop-blur-md border-b border-white/[0.08]">
-      <div className="w-full px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between">
+      <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-10">
         {/* Brand Logo (Clean, crisp white) */}
         <div className="flex items-center gap-3">
           <Link href="/" className="group" onClick={closeMenu} aria-label="RelatiV home">
@@ -83,28 +89,23 @@ export default function Header() {
         </div>
 
         {/* Center Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8 lg:gap-10">
+        <nav className="relative hidden items-center gap-0.5 rounded-full border border-white/10 bg-[#141419] p-1 shadow-[inset_0_1px_0_#ffffff0d,0_3px_12px_#0007] lg:flex">
           <Link
             href="/"
             aria-current={pathname === "/" ? "page" : undefined}
-            className={`text-base font-medium transition-colors ${
-              pathname === "/" ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
-            }`}
+            className={navPillClass(pathname === "/")}
           >
             Home
           </Link>
 
-          {/* Solutions Dropdown Menu (Exact match to uploaded image) */}
+          {/* Solutions dropdown */}
           <div
-            className="relative"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
             <button
               onClick={() => setSolutionsOpen((v) => !v)}
-              className={`inline-flex items-center gap-1.5 text-base font-medium transition-colors cursor-pointer py-2 ${
-                solutionsOpen ? "text-white" : "text-zinc-400 hover:text-white"
-              }`}
+              className={`${navPillClass(solutionsOpen || SOLUTIONS_LIST.some(({ href }) => isActive(href)))} cursor-pointer`}
               aria-expanded={solutionsOpen}
             >
               <span>Solutions</span>
@@ -122,7 +123,7 @@ export default function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.99 }}
                   transition={{ duration: 0.16, ease: "easeOut" }}
-                  className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[820px] rounded-2xl border border-white/10 bg-[#0B0B0F]/98 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 text-left"
+                  className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[min(820px,calc(100vw-3rem))] rounded-2xl border border-white/10 bg-[#0B0B0F]/98 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 text-left"
                 >
                   <div className="grid grid-cols-3 gap-6">
                     {SOLUTIONS_COLUMNS.map((col, colIdx) => (
@@ -152,43 +153,40 @@ export default function Header() {
 
           <Link
             href="/plans"
-            className={`text-base font-medium transition-colors ${
-              pathname?.startsWith("/plans") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
-            }`}
+            aria-current={isActive("/plans") ? "page" : undefined}
+            className={navPillClass(isActive("/plans"))}
           >
             Pricing
           </Link>
           <Link
             href="/blog"
-            className={`text-base font-medium transition-colors ${
-              pathname?.startsWith("/blog") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
-            }`}
+            aria-current={isActive("/blog") ? "page" : undefined}
+            className={navPillClass(isActive("/blog"))}
           >
             Blog
           </Link>
           <Link
             href="/about"
-            className={`text-base font-medium transition-colors ${
-              pathname?.startsWith("/about") ? "text-white font-semibold" : "text-zinc-400 hover:text-white"
-            }`}
+            aria-current={isActive("/about") ? "page" : undefined}
+            className={navPillClass(isActive("/about"))}
           >
             About
           </Link>
         </nav>
 
         {/* Right Action Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end gap-2 sm:gap-3 lg:justify-self-end">
           {!user ? (
             <>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
+                className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full whitespace-nowrap border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
               >
                 My dashboard
               </Link>
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold text-black bg-white hover:bg-zinc-200 transition shadow-sm"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-white px-4 py-2 text-xs font-bold text-black shadow-[0_4px_18px_#ff5d821c] transition hover:bg-zinc-200"
               >
                 Get started
               </Link>
@@ -197,7 +195,7 @@ export default function Header() {
             <>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full whitespace-nowrap border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition"
               >
                 Open Studio
               </Link>
@@ -261,7 +259,7 @@ export default function Header() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+            className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
             aria-label="Toggle menu"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,7 +280,7 @@ export default function Header() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-white/5 bg-[#08080A] px-6 py-4 space-y-3 text-sm"
+            className="lg:hidden border-t border-white/5 bg-[#08080A] px-6 py-4 space-y-3 text-sm"
           >
             <Link
               href="/"
