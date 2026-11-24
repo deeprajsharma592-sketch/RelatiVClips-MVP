@@ -133,7 +133,7 @@ export default function StudioHero({
               type="button"
               aria-pressed={activeTab === "clip"}
               onClick={() => setActiveTab("clip")}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-xl px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[#242527] aria-pressed:text-white sm:px-5 sm:text-sm"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-2xl px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[#242527] aria-pressed:text-white sm:px-5 sm:text-sm"
             >
               <Film size={16} className="text-[#A8FF4F]" aria-hidden="true" />
               <span>Clip long video</span>
@@ -143,7 +143,7 @@ export default function StudioHero({
               type="button"
               aria-pressed={activeTab === "auto-edit"}
               onClick={() => setActiveTab("auto-edit")}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-xl px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[#242527] aria-pressed:text-white sm:px-5 sm:text-sm"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-2xl px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[#242527] aria-pressed:text-white sm:px-5 sm:text-sm"
             >
               <Wand2 size={16} className="text-[#a69afb]" aria-hidden="true" />
               <span>Auto-edit footage</span>
@@ -162,10 +162,10 @@ export default function StudioHero({
           </button>
         </div>
 
-        <div className="overflow-hidden rounded-b-2xl rounded-tr-2xl bg-[#242527] shadow-[0_14px_42px_rgba(0,0,0,0.2)]">
+        <div className="overflow-hidden rounded-b-3xl rounded-tr-3xl bg-[#242527] shadow-[0_14px_42px_rgba(0,0,0,0.2)]">
           {/* Input Bar */}
           <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4 sm:px-5 sm:pt-5">
-            <div className="relative flex flex-col gap-2 rounded-xl border border-white/[0.11] bg-[#18191b] p-2 transition focus-within:border-white/45 sm:flex-row sm:items-center">
+            <div className="relative flex flex-col gap-2 rounded-2xl border border-white/[0.11] bg-[#18191b] p-2 transition focus-within:border-white/45 sm:flex-row sm:items-center">
               <div className="flex min-w-0 flex-1 items-center px-1.5">
                 <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
                 <input
@@ -211,7 +211,7 @@ export default function StudioHero({
               <button
                 type="submit"
                 disabled={!inputText.trim() || isGenerating}
-                className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-zinc-50 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition enabled:hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-700 sm:w-auto"
+                className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-50 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition enabled:hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-700 sm:w-auto"
               >
                 {isGenerating ? (
                   <>
