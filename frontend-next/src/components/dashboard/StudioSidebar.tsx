@@ -62,7 +62,7 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
           className="mt-2 flex h-9 w-full items-center gap-2 rounded-md border border-white/[0.07] px-3 text-xs text-[#c8c8cc] hover:bg-white/[0.04]"
         >
           <Zap size={14} aria-hidden="true" />
-          Get Clip Credits
+          Get Free Credits
         </Link>
       </div>
 
