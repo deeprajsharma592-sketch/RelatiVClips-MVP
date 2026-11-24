@@ -80,7 +80,9 @@ export function mountAudienceWeb(canvas, reducedMotion) {
   function web(card,end,spread,energy,t,grip,driftX,driftY,floatTime) {
     if(end < 2) return;
     const scale=Math.min(30,4+end*.054)*spread;
-    const handOffset=Math.sign(card.ux)*Math.min(98,end*.72);
+    const fromLowerHand=card.label==='SaaS';
+    const handSide=fromLowerHand?1:Math.sign(card.ux);
+    const handOffset=handSide*Math.min(98,end*.72);
     const driftBend=Math.hypot(driftX,driftY)*.42;
     const roll=.34+Math.sin(floatTime+card.ux*2)*.16;
     const onSide=card.w*.5*Math.abs(card.uy)<halfH*Math.abs(card.ux);
@@ -105,7 +107,8 @@ export function mountAudienceWeb(canvas, reducedMotion) {
         const curve=Math.sin(along*Math.PI)*(energy*8*Math.sin(t*14+card.uy*4+along*5)
           + driftBend*Math.sin(floatTime+along*4));
         const cross=(y+z*roll)*scale+curve;
-        let x=cx+axis*card.ux-cross*card.uy+driftX*along+handOffset*(1-clamp(along));
+        const handTaper=1-Math.pow(clamp(along),fromLowerHand?1.65:1);
+        let x=cx+axis*card.ux-cross*card.uy+driftX*along+handOffset*handTaper;
         let py=cy+axis*card.uy+cross*card.ux+driftY*along;
         let radius=r;
         if(anchored && grip>0) {
