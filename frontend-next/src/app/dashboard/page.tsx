@@ -123,7 +123,20 @@ function DashboardContent() {
 
   // Handle incoming taskId or url from VideoIntake redirect
   useEffect(() => {
-    if (!taskIdParam && !urlParam) return;
+    if (!taskIdParam && !urlParam) {
+      // Re-attach background active job if user clicked back in browser or refreshed
+      try {
+        const saved = JSON.parse(window.localStorage.getItem("relativ:active-job") || "null") as
+          | { taskId?: string; url?: string; savedAt?: number }
+          | null;
+        const fresh = Boolean(saved?.taskId && saved?.savedAt && Date.now() - saved.savedAt < 30 * 60 * 1000);
+        if (fresh && saved?.taskId) {
+          router.replace(`/dashboard?taskId=${encodeURIComponent(saved.taskId)}`);
+          return;
+        }
+      } catch {}
+      return;
+    }
 
     // Check if we already have a stored project for this task that is already completed
     const existing = getStoredProjects().find(
@@ -355,6 +368,7 @@ function DashboardContent() {
               </div>
               {/* Studio Central Hero Intake Station */}
               <StudioHero
+                isGenerating={isGenerating}
                 onStartProcess={(tid) => {
                   router.push(`/dashboard?taskId=${tid}`);
                 }}

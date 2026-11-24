@@ -8,6 +8,8 @@ import {
   Film,
   Scissors,
   Wand2,
+  Loader2,
+  Zap,
 } from "lucide-react";
 import PreGenConfigModal, { RecipeConfig } from "./PreGenConfigModal";
 import { uploadVideoFile, submitLocalVideo } from "@/lib/api";
@@ -35,6 +37,7 @@ interface StudioHeroProps {
   onOpenUpgrade?: () => void;
   onOpenEditor?: () => void;
   hasEditableClip?: boolean;
+  isGenerating?: boolean;
 }
 
 export default function StudioHero({
@@ -43,6 +46,7 @@ export default function StudioHero({
   onOpenUpgrade,
   onOpenEditor,
   hasEditableClip = false,
+  isGenerating = false,
 }: StudioHeroProps) {
   const [activeTab, setActiveTab] = useState<"clip" | "auto-edit">("clip");
   const [inputText, setInputText] = useState("");
@@ -55,6 +59,10 @@ export default function StudioHero({
 
   const handleUrlSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (isGenerating) {
+      setError("A video is currently being clipped. Please wait for it to finish.");
+      return;
+    }
     const normalized = normalizeYouTubeUrl(inputText);
     if (!inputText.trim()) return;
 
@@ -69,6 +77,7 @@ export default function StudioHero({
   };
 
   const pasteFromClipboard = async () => {
+    if (isGenerating) return;
     try {
       const clipboardText = await navigator.clipboard.readText();
       if (!clipboardText.trim()) {
@@ -87,6 +96,10 @@ export default function StudioHero({
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isGenerating) {
+      setError("A video is currently being clipped. Please wait for it to finish.");
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -170,8 +183,10 @@ export default function StudioHero({
                 spellCheck={false}
                 maxLength={2048}
                 aria-label="YouTube video URL"
+                disabled={isGenerating}
                 value={inputText}
                 onPaste={(event) => {
+                  if (isGenerating) return;
                   const pasted = event.clipboardData.getData("text");
                   if (!pasted) return;
                   event.preventDefault();
@@ -182,23 +197,38 @@ export default function StudioHero({
                   setInputText(e.target.value);
                   if (error) setError(null);
                 }}
-                placeholder="Paste a YouTube link"
-                className="min-w-0 w-full bg-transparent py-3 text-sm text-white placeholder-[#77787d] focus:outline-none"
+                placeholder={
+                  isGenerating
+                    ? "Clip generation in progress... please wait for completion"
+                    : "Paste a YouTube link"
+                }
+                className="min-w-0 w-full bg-transparent py-3 text-sm text-white placeholder-[#77787d] focus:outline-none disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={pasteFromClipboard}
-                className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+                disabled={isGenerating}
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40 cursor-pointer"
               >
                 Paste
               </button>
             </div>
             <button
               type="submit"
-              disabled={!inputText.trim()}
-              className="w-full shrink-0 rounded-lg bg-[#F4F1E8] px-5 py-3 text-xs font-semibold text-[#151515] transition hover:bg-white disabled:opacity-35 cursor-pointer sm:w-auto"
+              disabled={!inputText.trim() || isGenerating}
+              className="w-full shrink-0 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold px-5 py-3 text-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer sm:w-auto shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
             >
-              Get clips in 1 click
+              {isGenerating ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-black" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <Zap size={13} className="fill-black text-black" />
+                  <span>Clip Now</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -208,8 +238,15 @@ export default function StudioHero({
         {/* Secondary Upload Actions Row */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 pb-5 pt-3 text-xs text-[#a1a2a7]">
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
+            onClick={() => {
+              if (isGenerating) {
+                setError("A video is currently being clipped. Please wait for it to finish.");
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer disabled:opacity-40"
           >
             <Upload size={14} className="text-zinc-500" />
             <span>Upload</span>
@@ -218,19 +255,33 @@ export default function StudioHero({
             ref={fileInputRef}
             type="file"
             accept="video/*"
+            disabled={isGenerating}
             onChange={handleFileChange}
             className="hidden"
           />
 
           <button
             onClick={() => alert("Google Drive integration available on Pro.")}
-            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 hover:text-white transition cursor-pointer disabled:opacity-40"
           >
             <FolderOpen size={14} className="text-zinc-500" />
             <span>Google Drive</span>
           </button>
 
-          <button onClick={() => setIsConfigModalOpen(true)} className="ml-auto text-[#d0d0d3] transition hover:text-white">Tune captions & framing</button>
+          <button
+            onClick={() => {
+              if (isGenerating) {
+                setError("A video is currently being clipped. Please wait for it to finish.");
+                return;
+              }
+              setIsConfigModalOpen(true);
+            }}
+            disabled={isGenerating}
+            className="ml-auto text-[#d0d0d3] transition hover:text-white disabled:opacity-40 cursor-pointer"
+          >
+            Tune captions &amp; framing
+          </button>
         </div>
 
         {uploadStatus && (
