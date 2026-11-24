@@ -5,6 +5,7 @@ import HeroStudio from "@/components/HeroStudio";
 import TasteTimeline from "@/components/TasteTimeline";
 import StickyInputBar from "@/components/StickyInputBar";
 import SolutionsSection from "@/components/SolutionsSection";
+import StudioTower from "@/components/StudioTower";
 import styles from "./homepage.module.css";
 
 export default function HomePage() {
@@ -30,7 +31,7 @@ export default function HomePage() {
 
       <TasteTimeline />
 
-      {/* StudioTower is temporarily hidden. Its component and assets are retained. */}
+      <StudioTower />
 
       {/* ── SECTION: SOLUTIONS FOR EVERY CREATOR & TEAM ── */}
       <SolutionsSection />
