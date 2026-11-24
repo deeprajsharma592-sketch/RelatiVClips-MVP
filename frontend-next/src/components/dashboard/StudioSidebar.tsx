@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
-  Key, Layers, ChevronsLeft, BookOpen,
+  Key, Layers, ChevronDown, ChevronsLeft, BookOpen,
   Clapperboard,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -59,11 +59,31 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
       </div>
 
       <div className="px-3 pb-3">
-        <button type="button" className="flex w-full items-center gap-2.5 rounded-lg border border-white/[0.07] bg-[#1a1b1e] p-2 text-left">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#39465f] text-sm font-semibold text-white">{initial}</span>
-          <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium text-white">{name}</span><span className="mt-0.5 block text-[10px] text-[#8d8e93]">Personal workspace · Free</span></span>
-          <span className="h-1.5 w-1.5 rounded-full bg-[#A8FF4F]" />
-        </button>
+        <details className="group/profile">
+          <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl border border-white/[0.07] bg-[#232428] px-2.5 py-2 text-left hover:bg-[#2b2c30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B] [&::-webkit-details-marker]:hidden">
+            <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-[#111214] text-sm font-semibold text-white">{initial}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-white">{name}</span>
+              <span className="block text-xs text-zinc-400">{user?.credit_balance ?? 0} credits</span>
+            </span>
+            <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-zinc-400 transition-transform group-open/profile:rotate-180" />
+          </summary>
+          <div className="mt-1 space-y-0.5 rounded-xl border border-white/[0.07] bg-[#1a1b1e] p-1.5">
+            {[
+              { Icon: Key, label: "API access", href: "/api-access" },
+              { Icon: BookOpen, label: "Learning center", href: "/learning-center" },
+              { Icon: HelpCircle, label: "Help center", href: "/help-center" },
+            ].map(({ Icon, label, href }) => (
+              <Link
+                key={label}
+                href={href}
+                className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12px] text-[#8f9095] hover:bg-white/[0.04] hover:text-white transition-colors"
+              >
+                <Icon size={14} />{label}
+              </Link>
+            ))}
+          </div>
+        </details>
         <Link
           href="/contact?intent=clip-credits"
           className="mt-2 flex h-9 w-full items-center gap-2 rounded-md border border-white/[0.07] px-3 text-xs text-[#c8c8cc] hover:bg-white/[0.04]"
@@ -78,21 +98,7 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
         {group("Publish", PUBLISH)}
       </nav>
 
-      <div className="space-y-1 border-t border-white/[0.06] p-3">
-        {[
-          { Icon: Key, label: "API access", href: "/api-access" },
-          { Icon: BookOpen, label: "Learning center", href: "/learning-center" },
-          { Icon: HelpCircle, label: "Help center", href: "/help-center" },
-        ].map(({ Icon, label, href }) => (
-          <Link
-            key={label}
-            href={href}
-            className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12px] text-[#8f9095] hover:bg-white/[0.04] hover:text-white transition-colors"
-          >
-            <Icon size={14} />{label}
-          </Link>
-        ))}
-      </div>
+
     </aside>
     <nav className="fixed inset-x-3 bottom-3 z-40 flex h-14 items-center justify-around rounded-xl border border-white/[0.1] bg-[#17181a]/95 px-2 shadow-2xl backdrop-blur-xl lg:hidden">
       {[...CREATE.slice(0, 2), ...PUBLISH.slice(0, 2)].map(({ id, label, icon: Icon }) => (
