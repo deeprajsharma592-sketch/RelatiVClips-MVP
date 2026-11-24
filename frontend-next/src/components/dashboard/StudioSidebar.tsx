@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
-  Key, Layers, ChevronDown, ChevronsLeft, BookOpen,
+  Key, Layers, ChevronDown, ChevronsLeft, BookOpen, LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BrandLogo from "@/components/BrandLogo";
@@ -29,7 +29,7 @@ const PUBLISH: NavItem[] = [
 ];
 
 export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const name = user?.name || "Creator";
   const initial = name.charAt(0).toUpperCase();
 
@@ -95,6 +95,14 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
                 <Icon size={14} />{label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-left text-[12px] text-rose-300 transition-colors hover:bg-rose-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-300"
+            >
+              <LogOut size={14} aria-hidden="true" />
+              Log out
+            </button>
           </div>
         </details>
       </div>
