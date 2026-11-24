@@ -11,17 +11,22 @@
   pointer-events: none;
 }
 
+.filterDefinitions {
+  position: absolute;
+}
+
 .backdropImage {
   position: fixed;
   inset: 0;
   display: block;
-  width: min(100%, 1080px);
+  width: min(100%, 864px);
   height: 100%;
   margin-inline: auto;
   object-fit: cover;
+  filter: url("#homepage-night-sky-sharpen");
 }
 
-@media (min-width: 1080px) {
+@media (min-width: 865px) {
   .backdropImage {
     mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
   }

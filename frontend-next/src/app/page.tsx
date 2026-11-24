@@ -12,6 +12,18 @@ export default function HomePage() {
   return (
     <div className={`${styles.page} relative min-h-screen w-full overflow-x-clip text-white selection:bg-amber-400 selection:text-black`}>
       <div className={styles.backdrop} aria-hidden="true">
+        <svg className={styles.filterDefinitions} width="0" height="0" focusable="false">
+          <defs>
+            <filter id="homepage-night-sky-sharpen" colorInterpolationFilters="sRGB">
+              <feConvolveMatrix
+                order="3"
+                kernelMatrix="0 -0.15 0 -0.15 1.6 -0.15 0 -0.15 0"
+                edgeMode="duplicate"
+                preserveAlpha="true"
+              />
+            </filter>
+          </defs>
+        </svg>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className={styles.backdropImage} src="/homepage-night-sky.png" alt="" fetchPriority="high" />
       </div>
