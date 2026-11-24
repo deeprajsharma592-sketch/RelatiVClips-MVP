@@ -63,34 +63,13 @@ export default function Footer() {
   if (isAppOrAuthRoute) return null;
 
   return (
-    <footer
-      className="relative z-[1] overflow-hidden"
-      style={{
-        background:
-          "linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-deep) 100%)",
-        borderTop: "1px solid var(--color-border)",
-      }}
-    >
-      {/* Decorative orbs */}
+    <footer className="relative z-[1] px-4 py-10 sm:px-8 lg:py-16" style={{ background: "var(--color-bg-deep)" }}>
       <div
-        className="absolute -top-40 left-1/4 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(217, 70, 239, 0.10) 0%, transparent 70%)",
-        }}
-      />
-      <div
-        className="absolute -bottom-40 right-1/4 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%)",
-        }}
-      />
-
-      <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-10">
-        {/* Top — brand + tagline + newsletter */}
-        <div className="grid lg:grid-cols-12 gap-12 pb-16" style={{ borderBottom: "1px solid var(--color-border)" }}>
-          <div className="lg:col-span-5">
+        className="mx-auto max-w-7xl overflow-hidden rounded-[28px] border px-6 py-9 sm:px-10 sm:py-12 lg:px-16"
+        style={{ background: "var(--color-surface-2)", borderColor: "var(--color-border)" }}
+      >
+        <div className="grid gap-9 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,2.85fr)] lg:gap-12">
+          <div>
             <Link href="/" className="inline-flex items-center group" aria-label="RelatiV home">
               <BrandLogo
                 iconWidth={48}
@@ -150,16 +129,16 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-4">
             {FOOTER_COLS.map((col) => (
               <div key={col.title}>
                 <p
-                  className="text-[11px] font-sans font-semibold uppercase tracking-wider mb-4"
-                  style={{ color: "var(--color-text-muted)" }}
+                  className="mb-4 text-sm font-semibold"
+                  style={{ color: "var(--color-text-primary)" }}
                 >
                   {col.title}
                 </p>
-                <ul className="space-y-2.5">
+                <ul className="space-y-3">
                   {col.links.map((link) => (
                     <li key={link.label}>
                       <Link
@@ -180,8 +159,9 @@ export default function Footer() {
         </div>
 
         {/* Bottom — copyright + socials */}
-        <div className="pt-8 flex flex-col-reverse md:flex-row items-center justify-between gap-6">
-          <div className="flex flex-col items-center md:items-start gap-1">
+        <div className="mt-9 flex flex-col gap-5 border-t pt-6 sm:flex-row sm:items-center sm:justify-between"
+          style={{ borderColor: "var(--color-border)" }}>
+          <div className="flex flex-col gap-1">
             <p
               className="text-[12px]"
               style={{ color: "var(--color-text-muted)" }}
@@ -196,7 +176,7 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {SOCIAL.map((s) => (
               <Link
                 key={s.label}
@@ -228,12 +208,12 @@ export default function Footer() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="mt-20 text-center"
+          className="mt-10 text-center sm:mt-14"
         >
           <p
             className="footer-wordmark font-display font-semibold tracking-tight select-none"
             style={{
-              fontSize: "clamp(4rem, 18vw, 14rem)",
+              fontSize: "clamp(3rem, 14vw, 11rem)",
               lineHeight: 0.85,
             }}
           >
