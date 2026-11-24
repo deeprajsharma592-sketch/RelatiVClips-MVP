@@ -374,10 +374,14 @@ def build_ffmpeg_command(
     """
     cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"]
 
+    coarse_seek = max(0.0, float(clip_start) - 5.0)
+    fine_seek = max(0.0, float(clip_start) - coarse_seek)
     cmd.extend([
-        "-ss", str(clip_start),
+        "-ss", f"{coarse_seek:.3f}",
         "-i", video_path,
-        "-t", str(clip_end - clip_start)
+        "-ss", f"{fine_seek:.3f}",
+        "-t", f"{max(0.1, float(clip_end) - float(clip_start)):.3f}",
+        "-avoid_negative_ts", "make_zero",
     ])
 
     import cv2

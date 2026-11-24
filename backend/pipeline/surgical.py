@@ -60,9 +60,8 @@ def _ytdlp_section_url(
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
     e = end + pad
-    from datetime import timedelta
-    s_str = str(timedelta(seconds=int(s)))
-    e_str = str(timedelta(seconds=int(e)))
+    s_str = f"{int(s // 3600):02d}:{int((s % 3600) // 60):02d}:{s % 60:06.3f}"
+    e_str = f"{int(e // 3600):02d}:{int((e % 3600) // 60):02d}:{e % 60:06.3f}"
     
     # yt-dlp requires .%(ext)s template when merging streams
     out_template = "-"
@@ -112,9 +111,8 @@ def _ytdlp_video_section_url(
     pad = SURGICAL_BUFFER_SECONDS
     s = max(0.0, start - pad)
     e = end + pad
-    from datetime import timedelta
-    s_str = str(timedelta(seconds=int(s)))
-    e_str = str(timedelta(seconds=int(e)))
+    s_str = f"{int(s // 3600):02d}:{int((s % 3600) // 60):02d}:{s % 60:06.3f}"
+    e_str = f"{int(e // 3600):02d}:{int((e % 3600) // 60):02d}:{e % 60:06.3f}"
 
     # yt-dlp requires .%(ext)s template when merging video+audio streams
     out_template = "-"

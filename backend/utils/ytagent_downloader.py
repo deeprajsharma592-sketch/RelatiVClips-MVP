@@ -202,15 +202,28 @@ def download_segment(
     source = download_high_quality_source(url, log=log)
     destination.parent.mkdir(parents=True, exist_ok=True)
     duration = end - start
+    # Input-side `-ss` with `-c copy` snaps to a preceding keyframe (often 2-8s
+    # earlier), shifting the clip timeline relative to Whisper word timestamps
+    # and causing video to play ahead of caption highlights. Use hybrid seek
+    # (coarse input seek + fine output seek) with fast re-encode so t=0.000
+    # matches `start` to the frame.
+    coarse = max(0.0, start - 5.0)
+    fine = max(0.0, start - coarse)
     command = [
         FFMPEG_PATH,
         "-y",
-        "-ss", f"{start:.3f}",
+        "-ss", f"{coarse:.3f}",
         "-i", source["path"],
+        "-ss", f"{fine:.3f}",
         "-t", f"{duration:.3f}",
         "-map", "0:v:0",
         "-map", "0:a:0?",
-        "-c", "copy",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "192k",
         "-avoid_negative_ts", "make_zero",
         "-movflags", "+faststart",
         str(destination),
