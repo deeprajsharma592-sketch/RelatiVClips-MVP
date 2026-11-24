@@ -239,6 +239,87 @@ def download_segment(
     return {**source, **segment_meta, "path": str(destination)}
 
 
+def extract_captions(
+    url: str,
+    dest_dir: Path,
+    task_id: str,
+    log: Optional[Callable[[str], None]] = None,
+) -> dict:
+    """Extract YouTube subtitles/auto-captions using ytagent + BGutil PO-token provider.
+
+    Runs before direct yt-dlp or audio/video downloads so caption extraction
+    benefits from BGutil PO-tokens and ytagent's multi-client strategy.
+    Returns {"files": [Path, ...], "method": str}.
+    """
+    if not YTAGENT_ENABLED:
+        raise YtAgentError("ytagent is disabled")
+
+    try:
+        from ytagent.bootstrap import ensure_bgutil_ready
+        from ytagent.utils.ids import to_video_id
+    except ImportError as exc:
+        raise YtAgentError("ytagent-cli is not installed; run pip install -r backend/requirements.txt") from exc
+
+    from .config import BGUTIL_POT_BASE_URL, YTDLP_PATH, ytdlp_supports_js_runtimes
+
+    video_id = to_video_id(url)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    subs_base = dest_dir / f"{task_id}_ytagent_subs"
+    for existing in dest_dir.glob(f"{task_id}_ytagent_subs*"):
+        existing.unlink(missing_ok=True)
+
+    bgutil_ready = ensure_bgutil_ready(auto_install=False, auto_start=True)
+    if log:
+        log(f"ytagent: extracting captions for {video_id} (bgutil_ready={bgutil_ready})")
+
+    # Try ytagent's safe client strategies in order: default (with JS/PO-token), jsless (android_vr), ios
+    client_strategies = [
+        ("ytdlp_default", []),
+        ("ytdlp_jsless", ["--extractor-args", "youtube:player_client=android_vr,mweb"]),
+        ("ytdlp_ios", ["--extractor-args", "youtube:player_client=ios"]),
+    ]
+
+    reasons = []
+    for method_name, extra_args in client_strategies:
+        cmd = [
+            YTDLP_PATH,
+            "--write-subs",
+            "--write-auto-subs",
+            "--sub-langs", "en.*,en,en-orig,en-US,en-GB",
+            "--sub-format", "vtt/srt/best",
+            "--skip-download",
+            "-o", f"{subs_base}.%(ext)s",
+            "--no-warnings",
+            "--no-check-certificates",
+            *extra_args,
+        ]
+        if method_name == "ytdlp_default" and ytdlp_supports_js_runtimes():
+            cmd.extend(["--js-runtimes", "node"])
+        pot_url = BGUTIL_POT_BASE_URL or ("http://127.0.0.1:4416" if bgutil_ready else "")
+        if pot_url:
+            cmd.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={pot_url}"])
+        if YT_PROXY:
+            cmd.extend(["--proxy", YT_PROXY])
+        cmd.extend(["--", url])
+
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            files = [
+                p for p in dest_dir.glob(f"{task_id}_ytagent_subs*")
+                if p.suffix.lower() in {".vtt", ".srt"} and p.stat().st_size > 50
+            ]
+            if files:
+                if log:
+                    log(f"ytagent: captions extracted via {method_name} ({len(files)} file(s))")
+                return {"files": files, "method": method_name, "video_id": video_id}
+            err = (res.stderr or "").strip()[:140].replace("\n", " ")
+            reasons.append(f"{method_name}: {err or 'no subtitle file produced'}")
+        except Exception as exc:
+            reasons.append(f"{method_name}: {str(exc)[:120]}")
+
+    raise YtAgentError(f"ytagent could not extract captions: {'; '.join(reasons[-3:])}")
+
+
 def status() -> dict:
     try:
         import ytagent

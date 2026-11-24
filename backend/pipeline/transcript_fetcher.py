@@ -194,13 +194,44 @@ def _try_innertube_transcript(url: str, log: Callable) -> Optional[dict]:
 
 def _try_ytdlp_transcript(url: str, task_id: str, log: Callable) -> Optional[dict]:
     """
-    Try to get transcript via InnerTube API or yt-dlp auto-generated subtitles.
-    Routes through Deepraj's laptop (residential IP) first, then falls back
-    to direct server download.
+    Try to get transcript via ytagent (with BGutil PO-token), InnerTube API,
+    laptop residential proxy, or direct yt-dlp auto-generated subtitles.
 
     Returns segments dict or None if unavailable.
     """
-    # --- Step 0: Try InnerTube transcript API (fastest, ~1s, immune to yt-dlp 429) ---
+    cookie_args = get_cookie_args()
+
+    # --- Step 0: Try ytagent caption extraction first (with BGutil PO-token + multi-client) ---
+    if not cookie_args:
+        try:
+            from ..utils.ytagent_downloader import extract_captions as ytagent_extract_captions
+            yt_res = ytagent_extract_captions(url, TEMP_DIR, task_id, log=lambda m: log(f"  {m}"))
+            files = yt_res.get("files") or []
+            en_vtts = sorted([p for p in files if p.suffix.lower() == ".vtt" and ".en" in p.name], key=lambda p: p.stat().st_size, reverse=True)
+            en_srts = sorted([p for p in files if p.suffix.lower() == ".srt" and ".en" in p.name], key=lambda p: p.stat().st_size, reverse=True)
+            other_vtts = sorted([p for p in files if p.suffix.lower() == ".vtt"], key=lambda p: p.stat().st_size, reverse=True)
+            other_srts = sorted([p for p in files if p.suffix.lower() == ".srt"], key=lambda p: p.stat().st_size, reverse=True)
+            chosen = None
+            segments = []
+            source_tag = None
+            if en_vtts:
+                chosen = en_vtts[0]; segments = _parse_vtt(str(chosen)); source_tag = "ytagent_vtt"
+            elif en_srts:
+                chosen = en_srts[0]; segments = _parse_srt(str(chosen)); source_tag = "ytagent_srt"
+            elif other_vtts:
+                chosen = other_vtts[0]; segments = _parse_vtt(str(chosen)); source_tag = "ytagent_vtt"
+            elif other_srts:
+                chosen = other_srts[0]; segments = _parse_srt(str(chosen)); source_tag = "ytagent_srt"
+            if segments:
+                lang = "en"
+                if chosen and len(chosen.name.split(".")) >= 3:
+                    lang = chosen.name.split(".")[-2]
+                log(f"  ytagent captions: {len(segments)} segments ({lang}, via {yt_res.get('method')})")
+                return {"segments": segments, "language": lang, "source": source_tag}
+        except Exception as exc:
+            log(f"  ytagent captions unavailable ({str(exc)[:160]}); trying InnerTube/yt-dlp fallback...")
+
+    # --- Step 1: Try InnerTube transcript API (fastest, ~1s, immune to yt-dlp 429) ---
     innertube_res = _try_innertube_transcript(url, log)
     if innertube_res and innertube_res.get("segments"):
         return innertube_res

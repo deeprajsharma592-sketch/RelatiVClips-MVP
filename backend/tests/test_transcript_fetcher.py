@@ -222,3 +222,36 @@ class TestYouTubeAudioFallback:
 
         assert result.returncode == 1
         assert len(calls) == 1
+
+    def test_ytagent_captions_runs_before_innertube_and_ytdlp(self, monkeypatch, tmp_path):
+        from backend.pipeline import transcript_fetcher as fetcher
+        from backend.utils import ytagent_downloader
+
+        vtt_path = tmp_path / "cap_task_ytagent_subs.en.vtt"
+        vtt_path.write_text(
+            "WEBVTT\n\n00:00:01.000 --> 00:00:03.500\nHello from ytagent\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(fetcher, "TEMP_DIR", tmp_path)
+        monkeypatch.setattr(fetcher, "get_cookie_args", lambda: [])
+        monkeypatch.setattr(
+            ytagent_downloader,
+            "extract_captions",
+            lambda url, dest_dir, task_id, log=None: {"files": [vtt_path], "method": "ytdlp_default"},
+        )
+        monkeypatch.setattr(
+            fetcher,
+            "_try_innertube_transcript",
+            lambda *args, **kwargs: pytest.fail("InnerTube should not run when ytagent captions succeed"),
+        )
+        monkeypatch.setattr(
+            fetcher.subprocess,
+            "run",
+            lambda *args, **kwargs: pytest.fail("direct yt-dlp should not run when ytagent captions succeed"),
+        )
+
+        res = fetcher._try_ytdlp_transcript("https://youtu.be/abc", "cap_task", lambda _: None)
+        assert res is not None
+        assert res["source"] == "ytagent_vtt"
+        assert res["language"] == "en"
+        assert res["segments"][0]["text"] == "Hello from ytagent"
