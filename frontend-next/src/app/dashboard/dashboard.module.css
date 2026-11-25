@@ -1,0 +1,6 @@
+.typography {
+  --font-body: Georgia, serif;
+  --font-display: Georgia, serif;
+  --font-sans: Georgia, serif;
+  font-family: var(--font-body);
+}
