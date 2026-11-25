@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, type ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
-  Key, Layers, ChevronDown, ChevronsLeft, ChevronsRight, BookOpen, LogOut,
+  Key, Layers, ChevronDown, ChevronsLeft, ChevronsRight, BookOpen, LogOut, UserRound,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BrandLogo from "@/components/BrandLogo";
@@ -94,6 +94,7 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
           </summary>
           <div className={`absolute z-10 space-y-0.5 rounded-xl border border-white/[0.07] bg-[#1a1b1e] p-1.5 ${collapsed ? "bottom-0 left-full ml-3 w-52" : "inset-x-0 bottom-full mb-2"}`}>
             {[
+              { Icon: UserRound, label: "Profile", href: "/account" },
               { Icon: Key, label: "API access", href: "/api-access" },
               { Icon: BookOpen, label: "Learning center", href: "/learning-center" },
               { Icon: HelpCircle, label: "Help center", href: "/help-center" },
