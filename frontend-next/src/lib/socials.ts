@@ -110,6 +110,7 @@ export async function connectSocialAccount(payload: {
   channel_id?: string;
   api_key?: string;
   access_token?: string;
+  refresh_token?: string;
   auto_publish?: boolean;
 }): Promise<{ success: boolean; account: ConnectedAccount; message: string }> {
   const res = await fetch(apiPath("/api/v1/socials/accounts/connect"), {

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .ass_builder import normalize_words
+from .hinglish import convert_words_to_hinglish
 
 log = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def _transcribe_wav_words(wav_path: Path, clip_duration: float) -> Optional[list
                     "end": we,
                     "emph": _word_emphasis(text),
                 })
-        return words or None
+        return convert_words_to_hinglish(words) if words else None
     except ImportError:
         return None
     except Exception as exc:

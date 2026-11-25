@@ -19,6 +19,7 @@ import {
   ConnectedAccount,
   ScheduledPost,
   SocialPlatform,
+  connectSocialAccount,
   createScheduledPost,
   deleteScheduledPost,
   fetchScheduledPosts,
@@ -74,6 +75,15 @@ export default function CalendarView({
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [postBusy, setPostBusy] = useState(false);
+
+  // YouTube Auto-Upload modal state
+  const [isYtUploadModalOpen, setIsYtUploadModalOpen] = useState(false);
+  const [ytUploadChannelId, setYtUploadChannelId] = useState("");
+  const [ytUploadAccessToken, setYtUploadAccessToken] = useState("");
+  const [ytUploadRefreshToken, setYtUploadRefreshToken] = useState("");
+  const [connectingYtUpload, setConnectingYtUpload] = useState(false);
+  const [ytUploadError, setYtUploadError] = useState<string | null>(null);
+  const [ytUploadSuccess, setYtUploadSuccess] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -248,6 +258,34 @@ export default function CalendarView({
     }
   };
 
+  const handleConnectYtUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setYtUploadError(null);
+    setYtUploadSuccess(null);
+    setConnectingYtUpload(true);
+    try {
+      const res = await connectSocialAccount({
+        platform: "youtube",
+        channel_id: ytUploadChannelId.trim() || undefined,
+        access_token: ytUploadAccessToken.trim() || undefined,
+        refresh_token: ytUploadRefreshToken.trim() || undefined,
+        auto_publish: true,
+      });
+      setYtUploadSuccess(res.message || "Connected YouTube Auto-Upload successfully!");
+      await loadData();
+      setTimeout(() => {
+        setIsYtUploadModalOpen(false);
+        setYtUploadSuccess(null);
+        setYtUploadAccessToken("");
+        setYtUploadRefreshToken("");
+      }, 1200);
+    } catch (err) {
+      setYtUploadError(err instanceof Error ? err.message : "Failed to connect YouTube for Auto-Upload.");
+    } finally {
+      setConnectingYtUpload(false);
+    }
+  };
+
   return (
     <div className="space-y-5 pb-16">
       {/* Header */}
@@ -262,6 +300,21 @@ export default function CalendarView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {!ytAccount && (
+            <button
+              type="button"
+              onClick={() => {
+                setYtUploadError(null);
+                setYtUploadSuccess(null);
+                setIsYtUploadModalOpen(true);
+              }}
+              className="flex h-9 items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 text-xs text-red-200 hover:bg-red-500/20 cursor-pointer"
+            >
+              <YoutubeIcon className="w-3.5 h-3.5 text-red-400" />
+              <span>Connect YouTube Auto-Upload</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onOpenSocials}
@@ -283,10 +336,33 @@ export default function CalendarView({
             className="flex h-9 items-center gap-2 rounded-md bg-[#F4F1E8] px-4 text-xs font-semibold text-[#151515] hover:bg-white transition cursor-pointer"
           >
             <Plus size={14} />
-            Schedule post
+            <span>Schedule post</span>
           </button>
         </div>
       </div>
+
+      {/* Auto-upload prompt when YouTube is not connected */}
+      {!loading && !ytAccount && (
+        <div className="flex flex-col gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5 text-xs text-red-200">
+            <YoutubeIcon className="w-4 h-4 shrink-0 text-red-400" />
+            <span>
+              Connect YouTube to auto-upload and schedule clips directly as YouTube Shorts.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setYtUploadError(null);
+              setYtUploadSuccess(null);
+              setIsYtUploadModalOpen(true);
+            }}
+            className="h-8 shrink-0 rounded-md bg-[#F4F1E8] px-3 text-xs font-semibold text-[#151515] hover:bg-white cursor-pointer"
+          >
+            Connect Auto-Upload
+          </button>
+        </div>
+      )}
 
       {/* Prompt if neither YouTube nor Instagram is connected */}
       {!loading && !anyConnected && (
@@ -756,6 +832,134 @@ export default function CalendarView({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* YouTube Auto-Upload Direct Connect Modal */}
+      {isYtUploadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border border-white/[0.1] bg-[#141517] p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3.5">
+              <div className="flex items-center gap-2">
+                <YoutubeIcon className="w-4 h-4 text-red-500" />
+                <h3 className="text-sm font-semibold text-white">Connect YouTube Auto-Upload</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsYtUploadModalOpen(false)}
+                className="rounded-md p-1 text-[#85868b] hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-white/[0.1] bg-white/[0.04] p-3 text-[11px] leading-relaxed text-[#b6b7bc] space-y-2">
+              <p className="font-semibold text-white/90">How to get your OAuth Upload Token (2 minutes):</p>
+              <ol className="list-decimal pl-4 space-y-1.5 text-[#9c9da3]">
+                <li>
+                  Open{" "}
+                  <a
+                    href="https://developers.google.com/oauthplayground/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-white underline decoration-white/40 hover:text-red-400"
+                  >
+                    Google OAuth 2.0 Playground <ExternalLink size={11} className="inline ml-0.5" />
+                  </a>
+                </li>
+                <li>
+                  In <strong>Step 1</strong> (&quot;Select &amp; authorize APIs&quot;), scroll down and expand <strong>YouTube Data API v3</strong>.
+                </li>
+                <li>
+                  Check: <code className="text-emerald-400 font-mono text-[10px]">https://www.googleapis.com/auth/youtube.upload</code>
+                </li>
+                <li>
+                  Click the blue <strong>Authorize APIs</strong> button and select your Google / YouTube account.
+                </li>
+                <li>
+                  In <strong>Step 2</strong> (&quot;Exchange authorization code for tokens&quot;), click <strong>Exchange authorization code for tokens</strong>.
+                </li>
+                <li>
+                  Copy the generated <strong>Access token</strong> (starts with <code className="text-white font-mono text-[10px]">ya29...</code>) and paste it below.
+                </li>
+              </ol>
+            </div>
+
+            <form onSubmit={handleConnectYtUpload} className="mt-4 space-y-3.5" autoComplete="off">
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                  YouTube Channel ID or @Handle
+                </label>
+                <input
+                  type="text"
+                  value={ytUploadChannelId}
+                  onChange={(e) => setYtUploadChannelId(e.target.value)}
+                  placeholder="e.g. UCfitaW1RjKzcXd6Y_MT_72Q or @mychannel"
+                  required
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                  OAuth Access Token <span className="text-emerald-400">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={ytUploadAccessToken}
+                  onChange={(e) => setYtUploadAccessToken(e.target.value)}
+                  placeholder="ya29.a0..."
+                  required
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                />
+                <p className="mt-1 text-[10px] text-[#71727a]">
+                  Access token with youtube.upload permission from OAuth 2.0 Playground.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                  Refresh Token <span className="text-[#6f7075]">(optional, enables automatic token renewals)</span>
+                </label>
+                <input
+                  type="password"
+                  value={ytUploadRefreshToken}
+                  onChange={(e) => setYtUploadRefreshToken(e.target.value)}
+                  placeholder="1//04..."
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                />
+              </div>
+
+              {ytUploadError && (
+                <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                  {ytUploadError}
+                </p>
+              )}
+
+              {ytUploadSuccess && (
+                <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-300">
+                  {ytUploadSuccess}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setIsYtUploadModalOpen(false)}
+                  className="h-9 rounded-md border border-white/[0.08] px-3.5 text-xs text-[#a5a6aa] hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={connectingYtUpload}
+                  className="inline-flex h-9 items-center gap-2 rounded-md bg-[#F4F1E8] px-4 text-xs font-semibold text-[#151515] hover:bg-white disabled:opacity-50 cursor-pointer"
+                >
+                  {connectingYtUpload && <Loader2 size={13} className="animate-spin" />}
+                  <span>Connect Auto-Upload</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

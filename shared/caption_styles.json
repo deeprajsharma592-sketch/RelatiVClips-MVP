@@ -21,6 +21,15 @@
       "position": { "x": 540, "y_percent": 0.62 }, "max_words_per_group": 3, "max_chars_per_line": 20,
       "animation": { "type": "pop", "in_ms": 90, "out_ms": 150 }, "lines_max": 2
     },
+    "viral_punch": {
+      "id": "viral_punch", "label": "Viral Punch", "font": { "family": "Montserrat ExtraBold", "weight": 800, "fallback": "Noto Sans Devanagari Bold", "file": "Montserrat-ExtraBold.ttf" },
+      "sizes": { "small": 64, "normal": 86, "big": 112 }, "case": "upper",
+      "colors": { "primary": "#FFFFFF", "accent": "#FFFFFF", "accent2": "#FFD60A", "outline": "#000000", "shadow": "#000000" },
+      "colorways": { "white": "#FFFFFF", "yellow": "#FFD60A", "green": "#39FF14", "red": "#E8202A" },
+      "outline_px": 8, "shadow_px": 2, "blur": 1, "letter_spacing": 0,
+      "position": { "x": 540, "y_percent": 0.62 }, "max_words_per_group": 2, "max_chars_per_line": 15,
+      "animation": { "type": "motion_pop", "in_ms": 70, "settle_ms": 130 }, "lines_max": 2
+    },
     "stack": {
       "id": "stack", "label": "Stack", "font": { "family": "Inter ExtraBold", "weight": 800, "fallback": "Noto Sans Devanagari Bold", "file": "Inter-ExtraBold.ttf" },
       "sizes": { "small": 45, "normal": 78, "big": 132 }, "case": "as_is",

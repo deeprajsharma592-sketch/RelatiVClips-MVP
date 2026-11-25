@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .hinglish import convert_words_to_hinglish
 from .placement import choose_layout
 from .registry import FONT_DIR, merge_style
 
@@ -60,7 +61,7 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
                 if word_end <= 0 or word_start >= duration:
                     continue
                 result.append({"w": text, "start": max(0.0, word_start), "end": min(duration, max(word_start + 0.04, word_end)), "emph": int(word.get("emph", 0))})
-        return sorted(result, key=lambda item: item["start"])
+        return convert_words_to_hinglish(sorted(result, key=lambda item: item["start"]))
     for segment in (clip.get("transcript") or {}).get("segments", []):
         words = segment.get("words") or []
         if words:
@@ -91,7 +92,7 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
             if word_start >= duration:
                 break
             result.append({"w": text, "start": word_start, "end": min(duration, word_start + step), "emph": 0})
-    return sorted(result, key=lambda item: item["start"])
+    return convert_words_to_hinglish(sorted(result, key=lambda item: item["start"]))
 
 
 def _groups(words: list[dict], style: dict) -> list[dict]:
@@ -196,7 +197,12 @@ def build_ass(clip: dict, output_path: Path, style_payload: object = None) -> di
                 rendered_lines.append(" ".join(rendered))
             prefix = rf"{{\an5\pos({int(pos['x'])},{int(pos['y'])})}}"
             if active == 0:
-                prefix = rf"{{\an5\pos({int(pos['x'])},{int(pos['y'])})\fscx82\fscy82\t(0,90,\fscx108\fscy108)\t(90,160,\fscx100\fscy100)}}"
+                anim = style.get("animation", {})
+                if anim.get("type") == "motion_pop":
+                    blur_val = style.get("blur", 1)
+                    prefix = rf"{{\an5\pos({int(pos['x'])},{int(pos['y'])})\fscx88\fscy88\blur3.5\t(0,70,\fscx106\fscy106\blur1.8)\t(70,130,\fscx100\fscy100\blur{blur_val})}}"
+                else:
+                    prefix = rf"{{\an5\pos({int(pos['x'])},{int(pos['y'])})\fscx82\fscy82\t(0,90,\fscx108\fscy108)\t(90,160,\fscx100\fscy100)}}"
             events.append(f"Dialogue: 0,{_ts(ev_start)},{_ts(ev_end)},Default,,0,0,0,,{prefix}" + r"\N".join(rendered_lines))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(header + "\n".join(events) + "\n", encoding="utf-8")

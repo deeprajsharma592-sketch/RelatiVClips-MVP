@@ -128,7 +128,9 @@ async def fetch_youtube_channel_info(
     if access_token and api_key and channel_identifier:
         resp = await _query_channels(use_oauth=True)
         if resp.status_code == 403 and "insufficient" in resp.text.lower():
-            resp = await _query_channels(use_oauth=False)
+            fallback_resp = await _query_channels(use_oauth=False)
+            if fallback_resp.status_code == 200:
+                resp = fallback_resp
     elif access_token:
         resp = await _query_channels(use_oauth=True)
     elif api_key:
@@ -137,6 +139,35 @@ async def fetch_youtube_channel_info(
         raise ValueError("Provide either a YouTube API key + Channel ID or an OAuth access token.")
 
     if resp.status_code != 200:
+        # If /channels returned 403 (insufficient scopes), check if access_token has youtube.upload scope
+        # via Google's tokeninfo. If valid, accept the connection for direct Shorts publishing!
+        if resp.status_code == 403 and access_token:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as check_client:
+                    t_resp = await check_client.get(
+                        "https://oauth2.googleapis.com/tokeninfo",
+                        params={"access_token": access_token},
+                    )
+                    if t_resp.status_code == 200:
+                        t_data = t_resp.json()
+                        scope_str = t_data.get("scope", "")
+                        if "youtube" in scope_str:
+                            cid = (channel_identifier or "").strip() or "me"
+                            handle = cid if cid.startswith("@") else (f"@{cid}" if cid else "@youtube")
+                            return {
+                                "platform_account_id": cid,
+                                "account_name": f"YouTube Channel ({handle})",
+                                "account_handle": handle,
+                                "avatar_url": None,
+                                "followers_text": "Direct Upload Ready",
+                                "subscriber_count": 0,
+                                "view_count": 0,
+                                "video_count": 0,
+                                "uploads_playlist_id": None,
+                            }
+            except Exception:
+                pass
+
         err_msg = _extract_google_error(resp)
         raise ValueError(f"YouTube API error ({resp.status_code}): {err_msg}")
     items = resp.json().get("items") or []

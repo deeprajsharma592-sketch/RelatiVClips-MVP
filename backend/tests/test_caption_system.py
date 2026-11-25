@@ -8,7 +8,7 @@ from backend.captioning.registry import get_registry, validate_fonts
 
 def test_registry_fonts_exist():
     assert validate_fonts(strict=False) == []
-    assert set(get_registry()["presets"]) == {"impact", "stack", "hookcard"}
+    assert set(get_registry()["presets"]) == {"impact", "stack", "hookcard", "viral_punch"}
 
 
 def test_word_events_are_contiguous_and_stable(tmp_path: Path):

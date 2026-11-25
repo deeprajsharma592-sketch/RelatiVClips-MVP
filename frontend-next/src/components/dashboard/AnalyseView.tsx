@@ -45,6 +45,7 @@ export default function AnalyseView({
 
   // YouTube Analytics API entry modal
   const [isYtModalOpen, setIsYtModalOpen] = useState(false);
+  const [ytModalTab, setYtModalTab] = useState<"option1" | "option2">("option1");
   const [ytApiKey, setYtApiKey] = useState("");
   const [ytChannelId, setYtChannelId] = useState("");
   const [ytOAuthToken, setYtOAuthToken] = useState("");
@@ -403,78 +404,146 @@ export default function AnalyseView({
               </button>
             </div>
 
+            {/* Option Tabs */}
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-lg border border-white/[0.08] bg-[#0d0e10] p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setYtModalTab("option1");
+                  setYtError(null);
+                }}
+                className={`rounded-md py-1.5 text-xs font-medium transition cursor-pointer ${
+                  ytModalTab === "option1"
+                    ? "bg-[#1f2024] text-white shadow"
+                    : "text-[#85868b] hover:text-white"
+                }`}
+              >
+                Option 1: API Key (Stats)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setYtModalTab("option2");
+                  setYtError(null);
+                }}
+                className={`rounded-md py-1.5 text-xs font-medium transition cursor-pointer ${
+                  ytModalTab === "option2"
+                    ? "bg-[#1f2024] text-white shadow"
+                    : "text-[#85868b] hover:text-white"
+                }`}
+              >
+                Option 2: OAuth (Retention)
+              </button>
+            </div>
+
             <form onSubmit={handleSaveYouTubeApi} className="mt-4 space-y-3.5" autoComplete="off">
-              <div className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-[#b6b7bc] space-y-1">
-                <p className="font-medium text-white/90">Where to get these credentials:</p>
-                <ul className="list-disc pl-4 space-y-0.5 text-[#9c9da3]">
-                  <li>
-                    <span className="text-white/80">API Key:</span>{" "}
-                    <a
-                      href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline decoration-white/30 hover:text-white"
-                    >
-                      Google Cloud Console
-                    </a>{" "}
-                    → enable <strong>YouTube Data API v3</strong> &amp; <strong>YouTube Analytics API</strong> → Credentials → Create API Key.
-                  </li>
-                  <li>
-                    <span className="text-white/80">Channel ID / @Handle:</span> YouTube Studio → Settings → Channel → Advanced settings (or your <code className="text-white/75">@handle</code>).
-                  </li>
-                  <li>
-                    <span className="text-white/80">OAuth Access Token:</span>{" "}
-                    <a
-                      href="https://developers.google.com/oauthplayground/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline decoration-white/30 hover:text-white"
-                    >
-                      OAuth Playground
-                    </a>{" "}
-                    with <code className="text-white/75">yt-analytics.readonly</code> &amp; <code className="text-white/75">youtube.readonly</code> scopes (for watch-time &amp; retention).
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
-                  YouTube Data / Analytics API Key
-                </label>
-                <input
-                  type="password"
-                  value={ytApiKey}
-                  onChange={(e) => setYtApiKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
-                />
-              </div>
+              {ytModalTab === "option1" ? (
+                <>
+                  <div className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-[#b6b7bc] space-y-1">
+                    <p className="font-medium text-white/90">Option 1 — Quick YouTube Channel Stats:</p>
+                    <ul className="list-disc pl-4 space-y-1 text-[#9c9da3]">
+                      <li>
+                        <span className="text-white/80">API Key:</span> In{" "}
+                        <a
+                          href="https://console.cloud.google.com/apis/credentials"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-white/30 hover:text-white"
+                        >
+                          Google Cloud Credentials
+                        </a>
+                        , click <strong>Show key</strong> next to your API key (starts with <code className="text-white/75">AIzaSy...</code>) and copy it.
+                      </li>
+                      <li>
+                        <span className="text-white/80">Channel ID / @Handle:</span> Your YouTube channel ID (e.g. <code className="text-white/75">UCfitaW1RjKzcXd6Y_MT_72Q</code>) or <code className="text-white/75">@handle</code>.
+                      </li>
+                    </ul>
+                  </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
-                  Channel ID or @Handle
-                </label>
-                <input
-                  type="text"
-                  value={ytChannelId}
-                  onChange={(e) => setYtChannelId(e.target.value)}
-                  placeholder="UC... or @yourchannel"
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
-                />
-              </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                      YouTube API Key
+                    </label>
+                    <input
+                      type="password"
+                      value={ytApiKey}
+                      onChange={(e) => setYtApiKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      required
+                      className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                    />
+                    <p className="mt-1 text-[10px] text-[#71727a]">
+                      Ensure you copy the full key string starting with AIzaSy... from Google Cloud.
+                    </p>
+                  </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
-                  OAuth Access Token{" "}
-                  <span className="text-[#6f7075]">(optional, unlocks watch-time &amp; retention)</span>
-                </label>
-                <input
-                  type="password"
-                  value={ytOAuthToken}
-                  onChange={(e) => setYtOAuthToken(e.target.value)}
-                  placeholder="ya29...."
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
-                />
-              </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                      Channel ID or @Handle
+                    </label>
+                    <input
+                      type="text"
+                      value={ytChannelId}
+                      onChange={(e) => setYtChannelId(e.target.value)}
+                      placeholder="UCfitaW1RjKzcXd6Y_MT_72Q or @yourchannel"
+                      required
+                      className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-[#b6b7bc] space-y-1">
+                    <p className="font-medium text-white/90">Option 2 — Deep Analytics &amp; Retention (OAuth):</p>
+                    <ul className="list-disc pl-4 space-y-1 text-[#9c9da3]">
+                      <li>
+                        Open{" "}
+                        <a
+                          href="https://developers.google.com/oauthplayground/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-white/30 hover:text-white"
+                        >
+                          OAuth 2.0 Playground
+                        </a>.
+                      </li>
+                      <li>
+                        In Step 1, select <code className="text-white/75">yt-analytics.readonly</code> &amp; <code className="text-white/75">youtube.readonly</code>.
+                      </li>
+                      <li>
+                        Click <strong>Authorize APIs</strong>, sign in with your channel, and in Step 2 click <strong>Exchange authorization code for tokens</strong>.
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                      Channel ID or @Handle
+                    </label>
+                    <input
+                      type="text"
+                      value={ytChannelId}
+                      onChange={(e) => setYtChannelId(e.target.value)}
+                      placeholder="UC... or @yourchannel"
+                      className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
+                      OAuth Access Token
+                    </label>
+                    <input
+                      type="password"
+                      value={ytOAuthToken}
+                      onChange={(e) => setYtOAuthToken(e.target.value)}
+                      placeholder="ya29...."
+                      required
+                      className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                    />
+                  </div>
+                </>
+              )}
 
               {ytError && (
                 <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">

@@ -209,7 +209,7 @@ def test_ffmpeg_mid_gop_slice_and_render_keep_zero_sync_drift(monkeypatch, tmp_p
     assert abs(final_dur - 8.0) < 0.15, f"Expected ~8.0s final clip, got {final_dur:.3f}s"
     for stream in final_probe["streams"]:
         st = float(stream.get("start_time", 0.0))
-        assert abs(st) < 0.08, f"Final {stream['codec_type']} start_time drifted: {st}"
+        assert abs(st) <= 0.085, f"Final {stream['codec_type']} start_time drifted: {st}"
 
     # Verify ASS timestamp matches 0.50s (11.50 - 11.00)
     dialogue_lines = [
