@@ -1,30 +1,38 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Bell, CircleAlert, CircleCheck, Clock3, Zap } from "lucide-react";
+import { Bell, ExternalLink, Zap } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "@/lib/AuthContext";
 
-import type { StoredProject } from "@/lib/projectStorage";
 
-interface StudioHeaderProps {
-  onOpenUpgrade: () => void;
-  projects: StoredProject[];
-}
+interface StudioHeaderProps { onOpenUpgrade: () => void }
 
-const projectStatus = {
-  ready: { Icon: CircleCheck, label: "Clips ready", color: "text-emerald-300" },
-  failed: { Icon: CircleAlert, label: "Processing failed", color: "text-rose-300" },
-  processing: { Icon: Clock3, label: "Processing video", color: "text-amber-300" },
-};
+const updates = [
+  {
+    title: "Auto Headlines just got a glow up with new styles",
+    description: "Turn on Auto Headline and every clip opens with a stronger line, in whatever style you pick.",
+  },
+  {
+    title: "Bring in your audio from a file or a link",
+    description: "Open Audio and click Upload to bring in a track, however you have it.",
+  },
+  {
+    title: "Now publish to Pinterest, Threads, and Bluesky",
+    description: "Connect your Pinterest, Threads, or Bluesky account and publish directly from RelatiV.",
+  },
+  {
+    title: "Generate animated video assets in one prompt",
+    description: "Create B-Rolls, intro/outros, or any motion assets you want in Motion Studio.",
+  },
+];
 
-export default function StudioHeader({ onOpenUpgrade, projects }: StudioHeaderProps) {
+export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
   const { user } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const panelId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
-  const activity = notificationsOpen ? [...projects].sort((a, b) => b.createdAt - a.createdAt) : [];
 
   useEffect(() => {
     if (!notificationsOpen) return;
@@ -77,38 +85,21 @@ export default function StudioHeader({ onOpenUpgrade, projects }: StudioHeaderPr
           <section
             ref={panelRef}
             id={panelId}
-            aria-label="Notifications"
+            aria-label="What's new"
             hidden={!notificationsOpen}
-            className="absolute right-0 top-full z-30 mt-3 w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#18191c] text-left shadow-2xl shadow-black/60"
+            className="absolute right-0 top-full z-30 mt-3 max-h-[min(80vh,700px)] w-[min(40rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-white/[0.08] bg-[#18181b] p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:p-8"
           >
-            <h2 className="border-b border-white/10 px-5 py-4 text-base font-semibold text-white">Notifications</h2>
-            {user?.subscription_notice || activity.length ? (
-              <ul className="max-h-[min(60dvh,28rem)] divide-y divide-white/8 overflow-y-auto overscroll-contain">
-                {user?.subscription_notice && (
-                  <li className="px-5 py-4">
-                    <p className="text-sm font-semibold text-white">Subscription update</p>
-                    <p className="mt-1 text-sm text-zinc-300">{user.subscription_notice}</p>
-                  </li>
-                )}
-                {activity.map((project) => {
-                  const { Icon, label, color } = projectStatus[project.status];
-                  return (
-                    <li key={project.id} className="flex items-start gap-3 px-5 py-4">
-                      <span className={`grid size-9 shrink-0 place-items-center rounded-xl bg-white/5 ${color}`}>
-                        <Icon size={17} aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white">{label}</p>
-                        <p className="mt-0.5 wrap-break-word text-sm text-zinc-300">{project.title}</p>
-                        <p className="mt-1.5 text-xs text-zinc-400">Started {new Date(project.createdAt).toLocaleDateString()}</p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="px-5 py-10 text-center text-sm text-zinc-400">No notifications yet. Your clip activity will appear here.</p>
-            )}
+            <div className="space-y-7 sm:space-y-8">
+              {updates.map((update) => (
+                <article key={update.title} className="grid grid-cols-[1fr_24px] items-start gap-4">
+                  <div>
+                    <h2 className="text-base font-medium leading-6 text-[#f4f4f5] sm:text-[17px]">{update.title}</h2>
+                    <p className="mt-1 text-sm leading-[1.55] text-[#a1a1aa] sm:text-base">{update.description}</p>
+                  </div>
+                  <ExternalLink size={20} aria-hidden="true" className="mt-1 text-[#a1a1aa]" />
+                </article>
+              ))}
+            </div>
           </section>
           <span className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-white"><Zap size={13} className="fill-[#E7B84B] text-[#E7B84B]" />{user && !user.profile_pending ? user.credit_balance : "—"}</span>
           <button onClick={onOpenUpgrade} className="h-8 rounded-md border border-white/[0.08] bg-[#242529] px-3 text-xs font-medium text-white hover:bg-[#2d2e32]">Add credits</button>
