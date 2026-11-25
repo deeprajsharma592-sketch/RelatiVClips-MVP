@@ -58,3 +58,28 @@ def test_probe_rejects_low_resolution_fallback(monkeypatch, tmp_path):
 
     with pytest.raises(adapter.YtAgentError, match="minimum accepted quality"):
         adapter._probe_video(tmp_path / "low.mp4")
+
+
+def test_single_attempt_extract_captions_tries_only_once(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import sys
+
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        if "--help" in cmd:
+            return SimpleNamespace(returncode=0, stdout="--js-runtimes", stderr="")
+        calls.append((cmd, kwargs.get("timeout")))
+        return SimpleNamespace(returncode=1, stdout="", stderr="no subs")
+
+    monkeypatch.setattr(adapter, "YTAGENT_SINGLE_ATTEMPT", True)
+    monkeypatch.setattr(adapter, "YTAGENT_CAPTION_TIMEOUT", 20)
+    monkeypatch.setattr(adapter.subprocess, "run", fake_run)
+    monkeypatch.setitem(sys.modules, "ytagent.bootstrap", SimpleNamespace(ensure_bgutil_ready=lambda **kw: True))
+    monkeypatch.setitem(sys.modules, "ytagent.utils.ids", SimpleNamespace(to_video_id=lambda u: "abc123"))
+
+    with pytest.raises(adapter.YtAgentError, match="could not extract captions"):
+        adapter.extract_captions("https://youtu.be/abc123", tmp_path, "t1")
+
+    assert len(calls) == 1
+    assert calls[0][1] == 20

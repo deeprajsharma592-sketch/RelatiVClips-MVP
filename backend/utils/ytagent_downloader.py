@@ -22,7 +22,9 @@ YTAGENT_BGUTIL_HOME = Path(
 ).expanduser()
 os.environ.setdefault("YTAGENT_BGUTIL_HOME", str(YTAGENT_BGUTIL_HOME))
 YTAGENT_ENABLED = os.getenv("YTAGENT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
-YTAGENT_TIMEOUT_SECONDS = int(os.getenv("YTAGENT_TIMEOUT_SECONDS", "240"))
+YTAGENT_SINGLE_ATTEMPT = os.getenv("YTAGENT_SINGLE_ATTEMPT", "1").strip().lower() in {"1", "true", "yes", "on"}
+YTAGENT_TIMEOUT_SECONDS = int(os.getenv("YTAGENT_TIMEOUT_SECONDS", "60"))
+YTAGENT_CAPTION_TIMEOUT = int(os.getenv("YTAGENT_CAPTION_TIMEOUT", "20"))
 YTAGENT_MAX_HEIGHT = int(os.getenv("YTAGENT_MAX_HEIGHT", "1080"))
 YTAGENT_MIN_HEIGHT = int(os.getenv("YTAGENT_MIN_HEIGHT", "720"))
 _DEFAULT_FORMAT = (
@@ -146,6 +148,10 @@ def download_high_quality_source(url: str, log: Optional[Callable[[str], None]] 
         }
         if not safe_methods:
             raise YtAgentError("ytagent has no approved direct download methods")
+
+        if YTAGENT_SINGLE_ATTEMPT:
+            primary = "ytdlp_default" if "ytdlp_default" in safe_methods else next(iter(safe_methods))
+            safe_methods = {primary: safe_methods[primary]}
 
         bgutil_ready = ensure_bgutil_ready(auto_install=False, auto_start=True)
         if log and not bgutil_ready:
@@ -278,6 +284,8 @@ def extract_captions(
         ("ytdlp_jsless", ["--extractor-args", "youtube:player_client=android_vr,mweb"]),
         ("ytdlp_ios", ["--extractor-args", "youtube:player_client=ios"]),
     ]
+    if YTAGENT_SINGLE_ATTEMPT:
+        client_strategies = client_strategies[:1]
 
     reasons = []
     for method_name, extra_args in client_strategies:
@@ -303,7 +311,7 @@ def extract_captions(
         cmd.extend(["--", url])
 
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=YTAGENT_CAPTION_TIMEOUT)
             files = [
                 p for p in dest_dir.glob(f"{task_id}_ytagent_subs*")
                 if p.suffix.lower() in {".vtt", ".srt"} and p.stat().st_size > 50
