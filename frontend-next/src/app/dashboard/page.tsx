@@ -403,7 +403,7 @@ function DashboardContent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 py-2 sm:gap-3 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,132px),176px))] justify-start gap-x-3 gap-y-4 py-2 sm:gap-x-4">
         {(project.clips || []).map((clip, index) => (
           <ClipCard
             key={clip.clip_id || index}
@@ -520,9 +520,9 @@ function DashboardContent() {
                 <button
                   type="button"
                   onClick={() => setVaultProjectId(null)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 hover:text-white"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5 hover:text-white"
                 >
-                  <ArrowLeft size={16} aria-hidden="true" />
+                  <ArrowLeft size={14} aria-hidden="true" />
                   Back to Clip Vault
                 </button>
                 {vaultProject.clips?.length ? renderProjectClips(vaultProject, true) : (
