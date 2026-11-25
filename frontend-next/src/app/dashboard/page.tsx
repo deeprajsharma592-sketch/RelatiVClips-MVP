@@ -25,6 +25,7 @@ import {
   Calendar,
   Pencil,
   ArrowLeft,
+  EllipsisVertical,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
@@ -379,7 +380,7 @@ function DashboardContent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,128px),184px))] gap-x-4 gap-y-6 py-2">
+      <div className="grid grid-cols-2 gap-2 py-2 sm:gap-3 lg:grid-cols-3 2xl:grid-cols-4">
         {(project.clips || []).map((clip, index) => (
           <ClipCard
             key={clip.clip_id || index}
@@ -657,8 +658,6 @@ function ClipCard({
   onSchedule: () => void;
   onEdit?: () => void;
 }) {
-  const [isHovered, setIsHovered] = useState(false);
-
   const score =
     typeof clip.hook_score === "number" && clip.hook_score > 0
       ? clip.hook_score
@@ -671,99 +670,86 @@ function ClipCard({
   const mins = Math.floor(durationSec / 60);
   const secs = Math.floor(durationSec % 60).toString().padStart(2, "0");
 
+  const title = clip.viral_title || `Clip #${index + 1}`;
+  const actions = [
+    { label: "Schedule clip", icon: Calendar, run: onSchedule },
+    { label: "Download clip", icon: Download, run: onRequestDownload },
+    ...(onEdit ? [{ label: "Edit clip", icon: Pencil, run: onEdit }] : []),
+  ];
+
   return (
-    <div
-      onClick={onSelect}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="group relative flex flex-col justify-between rounded-xl overflow-hidden cursor-pointer transition-all duration-300 font-sans"
-    >
-      {/* 9:16 Aspect Frame */}
-      <div className="relative aspect-[9/16] w-full bg-[#0d0e12] rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
-        <div className="absolute inset-0 z-0 flex items-center justify-center bg-[#141418] text-zinc-600">
-          <Video className="h-8 w-8" />
+    <article className="relative min-w-0 rounded-2xl border border-transparent p-2 transition-colors hover:border-amber-300/15 hover:bg-amber-300/5 focus-within:border-amber-300/15 focus-within:bg-amber-300/5 sm:p-3">
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-label={`Preview ${title}`}
+        className="group relative block aspect-[2/3] w-full cursor-pointer overflow-hidden rounded-xl bg-[#141418] text-zinc-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+      >
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Video className="h-8 w-8" aria-hidden="true" />
         </div>
         <ClipThumbnail
           clip={clip}
-          alt={clip.viral_title || "Clip thumbnail"}
-          className="relative z-10 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          alt=""
+          className="relative h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]"
         />
-
-        {/* Play Icon Overlay on Hover */}
-        <div
-          className={`absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center transition-opacity duration-200 ${
-            isHovered ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <div className="w-12 h-12 rounded-full bg-white/90 text-black flex items-center justify-center shadow-2xl pl-1 group-hover:scale-110 transition-transform">
-            <Play className="w-5 h-5 fill-black" />
-          </div>
-        </div>
-
-        {/* Clip duration */}
-        <div className="absolute bottom-2.5 right-2.5 z-20 pointer-events-none">
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-black/85 text-zinc-200 backdrop-blur-md border border-white/10">
-            {mins}:{secs}
+        <span className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-black">
+            <Play className="ml-0.5 h-4 w-4 fill-current" />
           </span>
-        </div>
-      </div>
+        </span>
+        <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] text-white">
+          {mins}:{secs}
+        </span>
+      </button>
 
-      {/* Metadata Row below card (Score + Schedule + Download) */}
-      <div className="pt-2.5 pb-1 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          {/* Neon Virality Score */}
-          <span className="font-mono text-xl font-bold text-[#22c55e] tracking-tight leading-none drop-shadow-[0_0_8px_rgba(34,197,94,0.35)]">
-            {score}
-          </span>
-
-          {/* Quick Action Icons: Schedule & Download matching reference */}
-          <div className="flex items-center gap-1.5">
-            {/* Calendar / Schedule Icon */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSchedule();
-              }}
-              title="Schedule to YouTube Shorts"
-              className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
-            >
-              <Calendar className="w-4 h-4" />
-            </button>
-
-            {/* Download Icon */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRequestDownload();
-              }}
-              title="Download clip"
-              className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {onEdit && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit();
-            }}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-teal-400/30 bg-teal-400/[0.06] px-3 py-2 text-xs font-medium text-teal-200 transition hover:border-teal-300/50 hover:bg-teal-400/[0.12]"
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-            Edit clip
-          </button>
-        )}
-
-        {/* Title */}
-        <h3 className="font-medium text-xs text-zinc-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
-          {clip.viral_title || `Clip #${index + 1}`}
+      <div className="mt-2 flex items-start justify-between gap-1">
+        <h3 className="min-w-0 text-sm font-semibold leading-snug text-zinc-100 sm:text-base" title={title}>
+          <span className="line-clamp-2">{title}</span>
         </h3>
+        <details
+          className="relative shrink-0 open:z-10"
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && event.currentTarget.open) {
+              event.stopPropagation();
+              event.currentTarget.open = false;
+              event.currentTarget.querySelector("summary")?.focus();
+            }
+          }}
+        >
+          <summary
+            aria-label={`Actions for ${title}`}
+            className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg text-zinc-300 hover:bg-white/10 hover:text-white [&::-webkit-details-marker]:hidden"
+          >
+            <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
+          </summary>
+          <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-white/10 bg-[#1b1c20] p-1 shadow-xl">
+            {actions.map(({ label, icon: Icon, run }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={(event) => {
+                  const menu = event.currentTarget.closest("details");
+                  if (menu) {
+                    menu.open = false;
+                    menu.querySelector("summary")?.focus();
+                  }
+                  run();
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-zinc-200 hover:bg-white/10 focus-visible:bg-white/10"
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </details>
       </div>
-    </div>
+      <div className="mt-1 text-xs font-medium text-zinc-400">Clip score <span className="text-amber-300">{score}</span></div>
+    </article>
   );
 }
 
