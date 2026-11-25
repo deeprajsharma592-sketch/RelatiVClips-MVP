@@ -204,7 +204,7 @@ export default function StudioHero({
                     <span>Processing...</span>
                   </>
                 ) : (
-                  "Get clips in 1 click"
+                  "Get clips"
                 )}
               </button>
             </div>
