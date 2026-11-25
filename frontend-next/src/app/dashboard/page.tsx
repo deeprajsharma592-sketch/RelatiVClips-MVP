@@ -26,6 +26,7 @@ import {
   Pencil,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
+import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import StudioHeader from "@/components/dashboard/StudioHeader";
 import StudioHero from "@/components/dashboard/StudioHero";
 import UpgradeModal from "@/components/dashboard/UpgradeModal";
@@ -321,7 +322,7 @@ function DashboardContent() {
   if (!mounted) {
     return (
       <div className="flex min-h-screen bg-[#09090C] text-white items-center justify-center font-sans">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+        <DashboardLoading />
       </div>
     );
   }
@@ -350,7 +351,7 @@ function DashboardContent() {
           {/* TAB 1: HOME STUDIO */}
           {activeTab === "home" && (
             <div className="mx-auto max-w-[1120px] space-y-6 sm:space-y-7">
-              <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-tight tracking-[-0.045em] text-[#F4F1E8]">Make a clip from any long video.</h1>
+              <h1 className="mx-auto text-center text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-tight tracking-[-0.045em] text-[#F4F1E8]">Make a clip from any long video.</h1>
               {/* Studio Central Hero Intake Station */}
               <StudioHero
                 isGenerating={isGenerating}
@@ -805,13 +806,13 @@ function DashboardEntry() {
     router.replace(`${authPageHref("/login", next)}&auth_error=session`);
   }, [loading, user, router, searchParams]);
 
-  return user ? <DashboardContent /> : <div className="min-h-screen bg-[#09090C]" />;
+  return user ? <DashboardContent /> : <DashboardLoading />;
 }
 
 export default function DashboardPage() {
   return (
     <DashboardErrorBoundary>
-      <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
+      <Suspense fallback={<DashboardLoading />}>
         <DashboardEntry />
       </Suspense>
     </DashboardErrorBoundary>

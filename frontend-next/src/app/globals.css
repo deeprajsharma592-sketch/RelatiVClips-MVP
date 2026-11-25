@@ -1,5 +1,36 @@
 @import "tailwindcss";
 
+@keyframes relativ-logo-wave {
+  0%, 100% { transform: scaleY(.62); opacity: .72; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+.dashboard-loading__glow {
+  position: absolute;
+  width: min(70vw, 620px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(239, 67, 170, .09), rgba(255, 118, 95, .035) 35%, transparent 70%);
+  filter: blur(12px);
+}
+
+.dashboard-loading__mark {
+  width: 112px;
+  filter: drop-shadow(0 0 24px rgba(239, 67, 170, .2));
+}
+
+.dashboard-loading__mark svg { display: block; width: 100%; overflow: visible; }
+.dashboard-loading__bar { transform-box: fill-box; transform-origin: center; animation: relativ-logo-wave 1.05s ease-in-out infinite; }
+.dashboard-loading__bar--1 { fill: #FFBE4C; animation-delay: -0.82s; }
+.dashboard-loading__bar--2 { fill: #FF9554; animation-delay: -0.66s; }
+.dashboard-loading__bar--3 { fill: #FF765F; animation-delay: -0.5s; }
+.dashboard-loading__bar--4 { fill: #FF5E79; animation-delay: -0.34s; }
+.dashboard-loading__bar--5 { fill: #F94D91; animation-delay: -0.18s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-loading__bar { animation: none; }
+}
+
 @font-face { font-family: "Montserrat ExtraBold"; src: url("/fonts/Montserrat-ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: swap; }
 @font-face { font-family: "Montserrat Black"; src: url("/fonts/Montserrat-Black.woff2") format("woff2"); font-weight: 900; font-display: swap; }
 @font-face { font-family: "Inter Bold"; src: url("/fonts/Inter-Bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
