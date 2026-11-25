@@ -10,15 +10,14 @@ export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
   const { user } = useAuth();
   return (
     <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/55 backdrop-blur-xl">
-      <div className="flex h-14 items-center px-4 lg:px-7">
+      <div className="flex min-h-14 items-center gap-3 px-4 py-2 lg:px-7">
         <div className="flex items-center gap-3 lg:hidden"><BrandLogo iconWidth={28} wordmarkClassName="text-sm font-semibold text-white" /></div>
-        <div className="mx-auto hidden w-full min-w-0 max-w-3xl flex-1 items-center gap-3 px-2 text-xs text-[#c6c6ca] sm:flex">
-          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[#E7B84B]" />
-          <span className="min-w-0 flex-1 truncate text-sm lg:text-base">Export without watermarks and keep every clip on-brand.</span>
+        <div className="hidden min-w-0 flex-1 items-center justify-center gap-3 px-2 text-center sm:flex lg:gap-5">
+          <span className="min-w-0 text-base font-medium leading-snug text-zinc-200 lg:text-lg">Export without watermarks and keep every clip on-brand.</span>
           <button
             type="button"
             onClick={onOpenUpgrade}
-            className="shrink-0 rounded-full bg-linear-to-r from-amber-300 via-orange-300 to-pink-400 px-4 py-1.5 font-semibold text-zinc-950 transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B]"
+            className="shrink-0 rounded-full bg-linear-to-r from-amber-300 via-orange-300 to-pink-400 px-4 py-1.5 text-sm font-semibold text-zinc-950 transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B]"
           >
             View plans
           </button>
