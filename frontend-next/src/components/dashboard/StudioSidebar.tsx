@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import {
   Home, FolderOpen, Calendar, BarChart2, Share2, Zap, HelpCircle,
-  Key, Layers, ChevronDown, ChevronsLeft, BookOpen, LogOut,
+  Key, Layers, ChevronDown, ChevronsLeft, ChevronsRight, BookOpen, LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BrandLogo from "@/components/BrandLogo";
@@ -30,18 +30,20 @@ const PUBLISH: NavItem[] = [
 
 export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarProps) {
   const { user, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+  const ToggleIcon = collapsed ? ChevronsRight : ChevronsLeft;
   const name = user?.name || "Creator";
   const initial = name.charAt(0).toUpperCase();
 
   const group = (label: string, items: NavItem[]) => (
     <section className="space-y-1">
-      <p className="px-3 pb-1 text-[11px] font-medium text-white">{label}</p>
+      <p className={collapsed ? "sr-only" : "px-3 pb-1 text-[11px] font-medium text-white"}>{label}</p>
       {items.map(({ id, label: itemLabel, icon: Icon }) => {
         const selected = activeTab === id;
         return (
-          <button key={id} type="button" onClick={() => onSelectTab(id)}
-            className={`group flex h-9 w-full items-center justify-between rounded-md px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E7B84B]/70 ${selected ? "bg-[#27282b] text-white" : "text-white hover:bg-white/[0.045]"}`}>
-            <span className="flex items-center gap-2.5"><Icon size={15} className={selected ? "text-[#E7B84B]" : "text-[#8b8c91] group-hover:text-[#d7d7da]"} />{itemLabel}</span>
+          <button key={id} type="button" onClick={() => onSelectTab(id)} title={collapsed ? itemLabel : undefined}
+            className={`group flex h-9 w-full items-center rounded-md text-[13px] ${collapsed ? "justify-center" : "px-3"} transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E7B84B]/70 ${selected ? "bg-[#27282b] text-white" : "text-white hover:bg-white/[0.045]"}`}>
+            <span className="flex items-center gap-2.5"><Icon size={15} className={selected ? "text-[#E7B84B]" : "text-[#8b8c91] group-hover:text-[#d7d7da]"} /><span className={collapsed ? "sr-only" : undefined}>{itemLabel}</span></span>
           </button>
         );
       })}
@@ -50,38 +52,48 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
 
   return (
     <>
-    <aside className="sticky top-0 z-30 hidden h-screen w-[244px] shrink-0 select-none flex-col border-r border-white/[0.07] bg-[#141517] lg:flex">
-      <div className="flex h-16 items-center justify-between px-4">
-        <Link href="/" aria-label="RelatiV home"><BrandLogo iconWidth={30} wordmarkClassName="text-sm font-semibold text-white" /></Link>
-        <button type="button" aria-label="Collapse navigation" className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.07] text-[#85868b] hover:text-white"><ChevronsLeft size={15} /></button>
+    <aside className={`sticky top-0 z-30 hidden h-screen shrink-0 select-none flex-col border-r border-white/[0.07] bg-[#141517] lg:flex ${collapsed ? "w-16" : "w-[244px]"}`}>
+      <div className={`flex h-16 shrink-0 items-center px-4 ${collapsed ? "justify-center" : "justify-between"}`}>
+        {!collapsed && <Link href="/" aria-label="RelatiV home"><BrandLogo iconWidth={30} wordmarkClassName="text-sm font-semibold text-white" /></Link>}
+        <button
+          type="button"
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-expanded={!collapsed}
+          aria-controls="studio-desktop-navigation"
+          onClick={() => setCollapsed(value => !value)}
+          className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md border border-white/[0.07] text-[#85868b] hover:text-white focus-visible:outline-2 focus-visible:outline-[#E7B84B]"
+        >
+          <ToggleIcon size={15} aria-hidden="true" />
+        </button>
       </div>
 
       <div className="px-3 pb-3">
         <Link
           href="/contact?intent=clip-credits"
-          className="mt-2 flex h-9 w-full items-center gap-2 rounded-md border border-white/[0.07] px-3 text-xs text-[#c8c8cc] hover:bg-white/[0.04]"
+          title={collapsed ? "Get Free Credits" : undefined}
+          className={`mt-2 flex h-9 w-full items-center gap-2 rounded-md border border-white/[0.07] text-xs text-[#c8c8cc] hover:bg-white/[0.04] ${collapsed ? "justify-center" : "px-3"}`}
         >
           <Zap size={14} aria-hidden="true" />
-          <span className="text-white">Get Free Credits</span>
+          <span className={collapsed ? "sr-only" : "text-white"}>Get Free Credits</span>
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-2">
+      <nav id="studio-desktop-navigation" aria-label="Studio navigation" className="flex-1 space-y-6 overflow-y-auto px-3 py-2">
         {group("Create", CREATE)}
         {group("Publish", PUBLISH)}
       </nav>
 
       <div className="shrink-0 border-t border-white/[0.06] p-3">
         <details className="group/profile relative">
-          <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl border border-white/[0.07] bg-[#232428] px-2.5 py-2 text-left hover:bg-[#2b2c30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B] [&::-webkit-details-marker]:hidden">
+          <summary aria-label={collapsed ? `${name} profile menu` : undefined} className={`flex cursor-pointer list-none items-center gap-2.5 rounded-xl border border-white/[0.07] bg-[#232428] px-2.5 py-2 text-left hover:bg-[#2b2c30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B] [&::-webkit-details-marker]:hidden ${collapsed ? "justify-center !px-0" : ""}`}>
             <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-[#111214] text-sm font-semibold text-white">{initial}</span>
-            <span className="min-w-0 flex-1">
+            <span className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
               <span className="block truncate text-sm font-medium text-white">{name}</span>
               <span className="block text-xs text-white">{user?.credit_balance ?? 0} credits</span>
             </span>
-            <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-zinc-400 rotate-180 transition-transform group-open/profile:rotate-0" />
+            {!collapsed && <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-zinc-400 rotate-180 transition-transform group-open/profile:rotate-0" />}
           </summary>
-          <div className="absolute inset-x-0 bottom-full z-10 mb-2 space-y-0.5 rounded-xl border border-white/[0.07] bg-[#1a1b1e] p-1.5">
+          <div className={`absolute z-10 space-y-0.5 rounded-xl border border-white/[0.07] bg-[#1a1b1e] p-1.5 ${collapsed ? "bottom-0 left-full ml-3 w-52" : "inset-x-0 bottom-full mb-2"}`}>
             {[
               { Icon: Key, label: "API access", href: "/api-access" },
               { Icon: BookOpen, label: "Learning center", href: "/learning-center" },
