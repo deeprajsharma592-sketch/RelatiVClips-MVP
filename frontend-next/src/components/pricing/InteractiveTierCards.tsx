@@ -13,6 +13,7 @@ export interface TierConfig {
   image: string;
   imagePosition: string;
   monthlyPrice: string;
+  originalMonthlyPrice?: string;
   yearlyPrice: string;
   yearlyBilled: string;
   clipsCount: string;
