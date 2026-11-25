@@ -87,16 +87,16 @@ export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
             id={panelId}
             aria-label="What's new"
             hidden={!notificationsOpen}
-            className="absolute right-0 top-full z-30 mt-3 max-h-[min(80vh,700px)] w-[min(40rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-white/[0.08] bg-[#18181b] p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:p-8"
+            className="absolute right-0 top-full z-30 mt-2 max-h-[min(50dvh,22rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-xl border border-white/[0.08] bg-[#18181b] p-3 text-left shadow-xl"
           >
-            <div className="space-y-7 sm:space-y-8">
+            <div className="divide-y divide-white/10">
               {updates.map((update) => (
-                <article key={update.title} className="grid grid-cols-[1fr_24px] items-start gap-4">
+                <article key={update.title} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-2.5 first:pt-0 last:pb-0">
                   <div>
-                    <h2 className="text-base font-medium leading-6 text-[#f4f4f5] sm:text-[17px]">{update.title}</h2>
-                    <p className="mt-1 text-sm leading-[1.55] text-[#a1a1aa] sm:text-base">{update.description}</p>
+                    <h2 className="text-sm font-medium leading-snug text-[#f4f4f5]">{update.title}</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-[#a1a1aa]">{update.description}</p>
                   </div>
-                  <ExternalLink size={20} aria-hidden="true" className="mt-1 text-[#a1a1aa]" />
+                  <ExternalLink size={14} aria-hidden="true" className="mt-1 text-[#a1a1aa]" />
                 </article>
               ))}
             </div>
