@@ -126,7 +126,7 @@ export default function AnalyseView({
           <button
             type="button"
             onClick={() => setIsYtModalOpen(true)}
-            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3 text-xs text-white hover:bg-[#222428] cursor-pointer"
+            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white hover:bg-[#222428] cursor-pointer"
           >
             <KeyRound size={13} className="text-[#E7B84B]" />
             <span>YouTube Analytics API</span>
@@ -134,7 +134,7 @@ export default function AnalyseView({
           <button
             type="button"
             onClick={cycleDays}
-            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3 text-xs text-[#c2c3c6] hover:text-white cursor-pointer"
+            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-black px-3 text-xs text-[#c2c3c6] hover:text-white cursor-pointer"
           >
             <CalendarDays size={14} />
             <span>Last {days} days</span>
@@ -142,7 +142,7 @@ export default function AnalyseView({
           <button
             type="button"
             onClick={cyclePlatform}
-            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3 text-xs text-[#c2c3c6] hover:text-white cursor-pointer capitalize"
+            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-black px-3 text-xs text-[#c2c3c6] hover:text-white cursor-pointer capitalize"
           >
             <Filter size={14} />
             <span>{platform === "all" ? "All platforms" : platform}</span>
@@ -151,7 +151,7 @@ export default function AnalyseView({
             type="button"
             onClick={loadAnalytics}
             disabled={loading}
-            className="grid h-9 w-9 place-items-center rounded-md border border-white/[0.08] bg-[#18191b] text-[#c2c3c6] hover:text-white cursor-pointer"
+            className="grid h-9 w-9 place-items-center rounded-md border border-white/[0.08] bg-black text-[#c2c3c6] hover:text-white cursor-pointer"
             title="Refresh analytics"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -167,7 +167,7 @@ export default function AnalyseView({
 
       {/* Not Connected Empty State */}
       {!loading && (!data || !data.connected) ? (
-        <div className="relative min-h-[480px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#151618]">
+        <div className="relative min-h-[480px] overflow-hidden rounded-xl border border-white/[0.06] bg-black">
           <div className="absolute inset-x-0 top-0 grid grid-cols-4 border-b border-white/[0.05] opacity-45">
             {["Views", "Watch time", "Retention", "Published"].map((label) => (
               <div key={label} className="border-r border-white/[0.05] p-5 last:border-r-0">
@@ -185,7 +185,7 @@ export default function AnalyseView({
             }}
           />
           <div className="relative z-10 mx-auto flex min-h-[480px] max-w-md flex-col items-center justify-center px-6 text-center">
-            <span className="grid h-11 w-11 place-items-center rounded-full border border-white/[0.08] bg-[#202124] text-[#E7B84B]">
+            <span className="grid h-11 w-11 place-items-center rounded-full border border-white/[0.08] bg-black text-[#E7B84B]">
               <Link2 size={18} />
             </span>
             <h2 className="mt-4 text-base font-medium text-white">Connect where you publish</h2>
@@ -205,7 +205,7 @@ export default function AnalyseView({
                 <button
                   type="button"
                   onClick={onConnectAccount}
-                  className="flex h-9 items-center gap-2 rounded-md border border-white/[0.1] bg-[#1e2024] px-4 text-xs font-medium text-white hover:bg-[#26282d] cursor-pointer"
+                  className="flex h-9 items-center gap-2 rounded-md border border-white/[0.1] bg-black px-4 text-xs font-medium text-white hover:bg-[#26282d] cursor-pointer"
                 >
                   <span>Social accounts</span>
                   <MoveUpRight size={13} />
@@ -218,20 +218,20 @@ export default function AnalyseView({
         <div className="space-y-5">
           {/* API Notes */}
           {data?.notes && data.notes.length > 0 && (
-            <div className="rounded-lg border border-white/[0.07] bg-[#161719] px-4 py-2.5 text-[11px] text-[#a5a6aa]">
+            <div className="rounded-lg border border-white/[0.07] bg-black px-4 py-2.5 text-[11px] text-[#a5a6aa]">
               {data.notes[0]}
             </div>
           )}
 
           {/* KPI Strip */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-white/[0.07] bg-[#151618] p-4">
+            <div className="rounded-xl border border-white/[0.07] bg-black p-4">
               <p className="text-[11px] text-[#73747a]">Views ({days}d)</p>
               <p className="mt-2 text-2xl font-semibold text-white">
                 {loading ? "—" : formatNumber(summary?.views)}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-[#151618] p-4">
+            <div className="rounded-xl border border-white/[0.07] bg-black p-4">
               <p className="text-[11px] text-[#73747a]">
                 {summary?.watch_time_minutes != null ? "Watch time" : "Total likes"}
               </p>
@@ -243,7 +243,7 @@ export default function AnalyseView({
                   : formatNumber(summary?.likes)}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-[#151618] p-4">
+            <div className="rounded-xl border border-white/[0.07] bg-black p-4">
               <p className="text-[11px] text-[#73747a]">
                 {summary?.avg_retention_pct != null ? "Avg retention" : "Subscribers"}
               </p>
@@ -255,7 +255,7 @@ export default function AnalyseView({
                   : formatNumber(summary?.subscribers)}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-[#151618] p-4">
+            <div className="rounded-xl border border-white/[0.07] bg-black p-4">
               <p className="text-[11px] text-[#73747a]">Published videos</p>
               <p className="mt-2 text-2xl font-semibold text-white">
                 {loading ? "—" : formatNumber(summary?.published_count)}
@@ -264,7 +264,7 @@ export default function AnalyseView({
           </div>
 
           {/* Chart */}
-          <div className="rounded-xl border border-white/[0.07] bg-[#151618] p-5">
+          <div className="rounded-xl border border-white/[0.07] bg-black p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xs font-medium text-white">
                 {data?.daily && data.daily.length > 0
@@ -310,7 +310,7 @@ export default function AnalyseView({
           </div>
 
           {/* Video Breakdown Table */}
-          <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151618]">
+          <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-black">
             <div className="border-b border-white/[0.06] px-5 py-3.5">
               <h2 className="text-xs font-medium text-white">Recent published content</h2>
             </div>
@@ -388,7 +388,7 @@ export default function AnalyseView({
       {/* YouTube Analytics API Modal */}
       {isYtModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-[#141517] p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-black p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.07] pb-3.5">
               <div className="flex items-center gap-2">
                 <YoutubeIcon className="w-4 h-4 text-red-500" />
@@ -413,7 +413,7 @@ export default function AnalyseView({
                   value={ytApiKey}
                   onChange={(e) => setYtApiKey(e.target.value)}
                   placeholder="AIzaSy..."
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                 />
               </div>
 
@@ -426,7 +426,7 @@ export default function AnalyseView({
                   value={ytChannelId}
                   onChange={(e) => setYtChannelId(e.target.value)}
                   placeholder="UC... or @yourchannel"
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
                 />
               </div>
 
@@ -440,7 +440,7 @@ export default function AnalyseView({
                   value={ytOAuthToken}
                   onChange={(e) => setYtOAuthToken(e.target.value)}
                   placeholder="ya29...."
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                 />
               </div>
 

@@ -66,11 +66,11 @@ export default function EditableClips({
           <p className="mt-1.5 max-w-lg text-xs leading-5 text-[#85868b]">Choose a generated cut to adjust its timing, transcript, captions and framing.</p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
-          <label className="flex h-9 min-w-0 flex-1 items-center gap-2 border border-white/[0.09] bg-[#17181A] px-3 sm:w-64">
+          <label className="flex h-9 min-w-0 flex-1 items-center gap-2 border border-white/[0.09] bg-black px-3 sm:w-64">
             <Search size={14} className="shrink-0 text-[#73747a]" />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search editable clips" className="min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-[#66676c]" />
           </label>
-          <select value={sort} onChange={(event) => setSort(event.target.value as "newest" | "longest")} className="h-9 border border-white/[0.09] bg-[#17181A] px-3 text-xs text-[#B9BABE] outline-none">
+          <select value={sort} onChange={(event) => setSort(event.target.value as "newest" | "longest")} className="h-9 border border-white/[0.09] bg-black px-3 text-xs text-[#B9BABE] outline-none">
             <option value="newest">Newest</option>
             <option value="longest">Longest</option>
           </select>
@@ -83,7 +83,7 @@ export default function EditableClips({
             const poster = posterUrl(clip);
             return (
               <article key={`${projectId}-${clip.clip_id}`} className="group grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/[0.07] py-3 last:border-b-0 sm:grid-cols-[116px_minmax(0,1fr)_auto] sm:gap-5 sm:py-4">
-                <button type="button" onClick={() => onEdit(clip, index, projectId)} className="relative aspect-video overflow-hidden border border-white/[0.08] bg-[#1B1C20] text-[#5F6168]">
+                <button type="button" onClick={() => onEdit(clip, index, projectId)} className="relative aspect-video overflow-hidden border border-white/[0.08] bg-black text-[#5F6168]">
                   {poster ? <Image src={poster} alt="" fill unoptimized className="object-cover transition duration-300 group-hover:scale-[1.03]" /> : <span className="grid h-full place-items-center"><Video className="size-5" /></span>}
                   <span className="absolute right-1.5 bottom-1 bg-black/80 px-1.5 py-0.5 font-mono text-[9px] text-white">{timecode(clip.duration_s || 0)}</span>
                 </button>
@@ -108,7 +108,7 @@ export default function EditableClips({
           })}
         </section>
       ) : (
-        <section className="mt-8 border border-dashed border-white/[0.12] bg-[#151618] px-6 py-14 text-center">
+        <section className="mt-8 border border-dashed border-white/[0.12] bg-black px-6 py-14 text-center">
           <Clapperboard className="mx-auto size-7 text-[#55575D]" />
           <h2 className="mt-4 text-sm font-medium text-[#E6E3DB]">{query ? "No clips match that search" : "No editable clips yet"}</h2>
           <p className="mx-auto mt-1.5 max-w-sm text-xs leading-5 text-[#777980]">{query ? "Try another title, caption, or project name." : "Generate a clip first. Every completed cut will appear here automatically."}</p>

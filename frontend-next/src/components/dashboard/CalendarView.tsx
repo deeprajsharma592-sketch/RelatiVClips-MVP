@@ -265,7 +265,7 @@ export default function CalendarView({
           <button
             type="button"
             onClick={onOpenSocials}
-            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3 text-xs text-[#c2c3c6] hover:text-white cursor-pointer"
+            className="flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-black px-3 text-xs text-[#c2c3c6] hover:text-white cursor-pointer"
           >
             <span
               className={`h-2 w-2 rounded-full ${ytAccount ? "bg-emerald-400" : "bg-zinc-600"}`}
@@ -314,7 +314,7 @@ export default function CalendarView({
       )}
 
       {/* Calendar Grid */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#161719]">
+      <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-black">
         <div className="flex h-14 items-center justify-between border-b border-white/[0.06] px-4">
           <button
             type="button"
@@ -429,7 +429,7 @@ export default function CalendarView({
       {/* Schedule New Post Modal */}
       {isScheduleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-xl border border-white/[0.1] bg-[#141517] p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-xl border border-white/[0.1] bg-black p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-white/[0.07] pb-3.5">
               <h3 className="text-sm font-semibold text-white">Schedule post</h3>
               <button
@@ -515,7 +515,7 @@ export default function CalendarView({
                   <select
                     value={selectedClipId}
                     onChange={(e) => handleClipSelect(e.target.value)}
-                    className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white focus:border-white/25 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white focus:border-white/25 focus:outline-none"
                   >
                     <option value="">Custom video URL...</option>
                     {availableClips.map((c) => (
@@ -538,7 +538,7 @@ export default function CalendarView({
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     placeholder="https://..."
-                    className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] pl-8 pr-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-white/[0.08] bg-black pl-8 pr-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
                   />
                 </div>
               </div>
@@ -552,7 +552,7 @@ export default function CalendarView({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Clip title for YouTube Shorts..."
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
                 />
               </div>
 
@@ -565,7 +565,7 @@ export default function CalendarView({
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="Post description..."
-                  className="w-full rounded-md border border-white/[0.08] bg-[#0e0f11] p-2.5 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none resize-none"
+                  className="w-full rounded-md border border-white/[0.08] bg-black p-2.5 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none resize-none"
                 />
               </div>
 
@@ -578,7 +578,7 @@ export default function CalendarView({
                     type="date"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
-                    className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white focus:border-white/25 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white focus:border-white/25 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -589,7 +589,7 @@ export default function CalendarView({
                     type="time"
                     value={scheduleTime}
                     onChange={(e) => setScheduleTime(e.target.value)}
-                    className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white focus:border-white/25 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white focus:border-white/25 focus:outline-none"
                   />
                 </div>
               </div>
@@ -602,7 +602,7 @@ export default function CalendarView({
                   type="text"
                   value={hashtags}
                   onChange={(e) => setHashtags(e.target.value)}
-                  className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white font-mono focus:border-white/25 focus:outline-none"
+                  className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white font-mono focus:border-white/25 focus:outline-none"
                 />
               </div>
 
@@ -640,7 +640,7 @@ export default function CalendarView({
       {/* Existing Post Detail Modal */}
       {activePost && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-[#141517] p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-black p-6 shadow-2xl space-y-4">
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] pb-3.5">
               <div className="min-w-0">
                 <span className="text-[10px] uppercase tracking-wider text-[#85868b]">
@@ -712,13 +712,13 @@ export default function CalendarView({
                   type="date"
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="h-9 rounded-md border border-white/[0.08] bg-[#0e0f11] px-2.5 text-xs text-white"
+                  className="h-9 rounded-md border border-white/[0.08] bg-black px-2.5 text-xs text-white"
                 />
                 <input
                   type="time"
                   value={rescheduleTime}
                   onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="h-9 rounded-md border border-white/[0.08] bg-[#0e0f11] px-2.5 text-xs text-white"
+                  className="h-9 rounded-md border border-white/[0.08] bg-black px-2.5 text-xs text-white"
                 />
               </div>
             )}

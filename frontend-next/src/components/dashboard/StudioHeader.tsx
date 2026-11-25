@@ -9,7 +9,7 @@ interface StudioHeaderProps { onOpenUpgrade: () => void }
 export default function StudioHeader({ onOpenUpgrade }: StudioHeaderProps) {
   const { user } = useAuth();
   return (
-    <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/55 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black">
       <div className="flex h-14 items-center px-4 lg:px-7">
         <div className="flex items-center gap-3 lg:hidden"><BrandLogo iconWidth={28} wordmarkClassName="text-sm font-semibold text-white" /></div>
         <div className="mx-auto hidden w-full min-w-0 max-w-3xl flex-1 items-center gap-3 px-2 text-xs text-[#c6c6ca] sm:flex">
