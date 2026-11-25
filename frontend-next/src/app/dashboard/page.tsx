@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Calendar,
   Pencil,
+  ArrowLeft,
 } from "lucide-react";
 import StudioSidebar, { StudioTab } from "@/components/dashboard/StudioSidebar";
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
@@ -88,6 +89,7 @@ function DashboardContent() {
   // Projects State
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [vaultProjectId, setVaultProjectId] = useState<string | null>(null);
 
   // Active generation state (triggered by genuine URL or file intake)
   const [isGenerating, setIsGenerating] = useState(false);
@@ -289,6 +291,8 @@ function DashboardContent() {
   // Active genuine project
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || null;
 
+  const vaultProject = projects.find((project) => project.id === vaultProjectId);
+
   // Whenever the active project is ready or has completed clips, ensure generation state is dismissed
   useEffect(() => {
     if (activeProject && activeProject.status === "ready" && (activeProject.clips?.length || 0) > 0) {
@@ -316,6 +320,57 @@ function DashboardContent() {
     a.click();
     document.body.removeChild(a);
   };
+
+  const renderProjectClips = (project: StoredProject) => (
+    <div className="space-y-4 pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+        <div>
+          <h2 className="text-base sm:text-lg font-medium text-zinc-200">
+            {project.title && project.title !== "My Clips Project"
+              ? project.title
+              : "Give me highlight compilations of all the exciting moments in this video"}{" "}
+            <span className="text-zinc-400 font-normal">({project.clips?.length || 0})</span>
+          </h2>
+          <span suppressHydrationWarning className="text-xs text-zinc-500 mt-0.5 block">
+            Generated {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : "Today"} · 1080×1920 Vertical HD
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setActiveTab("socials")}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 bg-white/5 hover:bg-white/10 text-white transition cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Publish to Socials</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (project.clips?.[0]) handleRequestDownload(project.clips[0]);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download All</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,128px),184px))] gap-x-4 gap-y-6 py-2">
+        {(project.clips || []).map((clip, index) => (
+          <ClipCard
+            key={clip.clip_id || index}
+            clip={clip}
+            index={index}
+            onSelect={() => setInspectedClip({ clip, index })}
+            onRequestDownload={() => handleRequestDownload(clip)}
+            onSchedule={() => setInspectedClip({ clip, index })}
+          />
+        ))}
+      </div>
+    </div>
+  );
 
   if (!mounted) {
     return (
@@ -394,57 +449,7 @@ function DashboardContent() {
                 </div>
               )}
 
-              {/* ── GENUINE CLIPS VAULT ── */}
-              {activeProject && activeProject.status === "ready" && (activeProject.clips?.length || 0) > 0 && (
-                <div className="space-y-4 pt-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-                    <div>
-                      <h2 className="text-base sm:text-lg font-medium text-zinc-200">
-                        {activeProject.title && activeProject.title !== "My Clips Project"
-                          ? activeProject.title
-                          : "Give me highlight compilations of all the exciting moments in this video"}{" "}
-                        <span className="text-zinc-400 font-normal">({activeProject.clips?.length || 0})</span>
-                      </h2>
-                      <span suppressHydrationWarning className="text-xs text-zinc-500 mt-0.5 block">
-                        Generated {activeProject.createdAt ? new Date(activeProject.createdAt).toLocaleDateString() : "Today"} · 1080×1920 Vertical HD
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2.5">
-                      <button
-                        onClick={() => setActiveTab("socials")}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 bg-white/5 hover:bg-white/10 text-white transition cursor-pointer"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>Publish to Socials</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          if (activeProject.clips?.[0]) handleRequestDownload(activeProject.clips[0]);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download All</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,128px),184px))] gap-x-4 gap-y-6 py-2">
-                    {(activeProject.clips || []).map((clip, index) => (
-                      <ClipCard
-                        key={clip.clip_id || index}
-                        clip={clip}
-                        index={index}
-                        onSelect={() => setInspectedClip({ clip, index })}
-                        onRequestDownload={() => handleRequestDownload(clip)}
-                        onSchedule={() => setInspectedClip({ clip, index })}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+              {activeProject?.status === "ready" && !!activeProject.clips?.length && renderProjectClips(activeProject)}
 
               {/* ── Empty Vault ── */}
               {!isGenerating && (!activeProject || (activeProject.clips?.length || 0) === 0) && (
@@ -463,14 +468,29 @@ function DashboardContent() {
           )}
 
           {activeTab === "projects" && (
-            <>
+            vaultProject ? (
+              <section className="space-y-5">
+                <button
+                  type="button"
+                  onClick={() => setVaultProjectId(null)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 hover:text-white"
+                >
+                  <ArrowLeft size={16} aria-hidden="true" />
+                  Back to Clip Vault
+                </button>
+                {vaultProject.clips?.length ? renderProjectClips(vaultProject) : (
+                  <div className="rounded-xl border border-white/10 px-5 py-8">
+                    <h2 className="text-lg font-medium">{vaultProject.title}</h2>
+                    <p className="mt-2 text-sm text-zinc-400">
+                      {vaultProject.status === "processing" ? "This project is still generating clips." : "There are no clips in this folder yet."}
+                    </p>
+                  </div>
+                )}
+              </section>
+            ) : <>
               <ProjectsView
                 projects={projects}
-                onSelectProject={(id) => {
-                  setActiveProjectId(id);
-                  setIsGenerating(false);
-                  setActiveTab("home");
-                }}
+                onSelectProject={setVaultProjectId}
                 onRefresh={refreshProjects}
                 onNewClip={() => {
                   setIsGenerating(false);

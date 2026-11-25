@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, type CSSProperties, type DragEvent, type F
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
-import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile, type ProcessInitResponse } from "@/lib/api";
+import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
+import type { ProcessInitResponse } from "@/types";
 import ShatterPhrase from "./ShatterPhrase";
 import { animateHeroThumbnails } from "./hero-thumbnail-transfers";
 import styles from "./HeroStudio.module.css";
