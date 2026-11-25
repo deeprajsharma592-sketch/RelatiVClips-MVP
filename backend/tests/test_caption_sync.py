@@ -135,3 +135,13 @@ def test_build_ffmpeg_command_trims_before_ass_filter():
     assert vf.startswith("trim=start=5.000:duration=60.000,setpts=PTS-STARTPTS,")
     assert vf.index("setpts=PTS-STARTPTS") < vf.index("ass='")
     assert af.startswith("atrim=start=5.000:duration=60.000,asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0,")
+
+
+def test_infer_clip_language_locks_hindi_and_english():
+    from backend.captioning.sync import _infer_clip_language
+
+    assert _infer_clip_language({"caption": "तो यह ओलेड है"}) == "hi"
+    assert _infer_clip_language({"language": "hi-IN", "caption": "hello"}) == "hi"
+    assert _infer_clip_language({"language": "en-US", "caption": "hello"}) == "en"
+    assert _infer_clip_language({"transcript": {"language": "hi"}}) == "hi"
+    assert _infer_clip_language({"caption": "plain english"}) is None

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .ass_builder import normalize_words
-from .hinglish import convert_words_to_hinglish
+from .hinglish import convert_words_to_hinglish, has_devanagari
 
 log = logging.getLogger(__name__)
 
@@ -89,25 +89,66 @@ def _word_emphasis(text: str) -> int:
     return 0
 
 
-def _transcribe_wav_words(wav_path: Path, clip_duration: float) -> Optional[list[dict[str, Any]]]:
+def _infer_clip_language(clip: dict[str, Any]) -> Optional[str]:
+    """Infer consistent Whisper language ('hi', 'en', etc.) from clip metadata or Devanagari text."""
+    # Check text/words/transcript for Devanagari first so Hindi/Hinglish clips never mis-detect as English.
+    for key in ("caption", "text", "viral_title"):
+        val = clip.get(key)
+        if isinstance(val, str) and has_devanagari(val):
+            return "hi"
+    for w in clip.get("words") or []:
+        if isinstance(w, dict) and has_devanagari(str(w.get("w") or w.get("word") or "")):
+            return "hi"
+    transcript = clip.get("transcript") or {}
+    if isinstance(transcript, dict):
+        for seg in transcript.get("segments") or []:
+            if isinstance(seg, dict) and has_devanagari(str(seg.get("text") or "")):
+                return "hi"
+
+    raw_lang = str(
+        clip.get("language")
+        or (transcript.get("language") if isinstance(transcript, dict) else "")
+        or ""
+    ).strip().lower()
+    if not raw_lang:
+        return None
+    if raw_lang.startswith("hi") or "hindi" in raw_lang:
+        return "hi"
+    if raw_lang.startswith("en") or "english" in raw_lang:
+        return "en"
+    code = raw_lang.split("-")[0].split("_")[0]
+    return code if len(code) == 2 and code.isalpha() else None
+
+
+def _transcribe_wav_words(
+    wav_path: Path,
+    clip_duration: float,
+    language: Optional[str] = None,
+) -> Optional[list[dict[str, Any]]]:
     """Transcribe trimmed 16kHz WAV with faster-whisper word_timestamps=True."""
     try:
         model = _get_whisper_model()
+        transcribe_kwargs: dict[str, Any] = {
+            "beam_size": 5,
+            "word_timestamps": True,
+        }
+        if language:
+            transcribe_kwargs["language"] = language
+            transcribe_kwargs["task"] = "transcribe"
+
         with _WHISPER_LOCK:
             try:
-                segments, _ = model.transcribe(
+                segments, transcribe_info = model.transcribe(
                     str(wav_path),
-                    beam_size=5,
-                    word_timestamps=True,
                     vad_filter=True,
                     vad_parameters=dict(min_silence_duration_ms=300),
+                    **transcribe_kwargs,
                 )
             except Exception:
-                segments, _ = model.transcribe(
+                segments, transcribe_info = model.transcribe(
                     str(wav_path),
-                    beam_size=5,
-                    word_timestamps=True,
                     vad_filter=False,
+                    **transcribe_kwargs,
                 )
             seg_list = list(segments)
 
@@ -261,7 +302,8 @@ def sync_clip_captions_to_audio(
             return "original"
 
         # 1. Best: transcribe the exact trimmed clip audio with word-level timestamps
-        whisper_words = _transcribe_wav_words(extracted, clip_duration)
+        clip_lang = _infer_clip_language(clip)
+        whisper_words = _transcribe_wav_words(extracted, clip_duration, language=clip_lang)
         if whisper_words:
             # Whisper reports times against the extracted WAV. The final
             # subtitle file can target either a pretrimmed clip (offset 0) or

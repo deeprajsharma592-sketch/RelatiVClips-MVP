@@ -1496,6 +1496,9 @@ def _run_moment_pipeline(
             render_clip["url"] = url
             if "transcript" in clip:
                 render_clip["transcript"] = clip["transcript"]
+            source_lang = (info.get("language") or (info.get("transcript") or {}).get("language") or "").strip().lower()
+            if source_lang and not render_clip.get("language"):
+                render_clip["language"] = source_lang
             out = renderer_module.render_clip(
                 video_path=source_for_renderer,
                 clip=render_clip,
