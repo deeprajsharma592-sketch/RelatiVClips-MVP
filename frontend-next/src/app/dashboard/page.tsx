@@ -391,7 +391,7 @@ function DashboardContent() {
       {/* ── Main Studio Stage ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Header & Upgrade Banner */}
-        <StudioHeader onOpenUpgrade={() => setIsUpgradeModalOpen(true)} />
+        <StudioHeader projects={projects} onOpenUpgrade={() => setIsUpgradeModalOpen(true)} />
 
         {/* Content Pane */}
         <main className="flex-1 w-full min-w-0 max-w-[1480px] mx-auto p-5 pb-24 sm:p-8 sm:pb-24 lg:pb-10 xl:px-12 xl:py-10 space-y-8">
