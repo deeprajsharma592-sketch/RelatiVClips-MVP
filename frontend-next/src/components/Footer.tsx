@@ -62,7 +62,7 @@ export default function Footer() {
   if (isAppOrAuthRoute) return null;
 
   return (
-    <footer className="relative z-[1] px-4 py-6 sm:px-8 lg:py-8" style={{ background: "var(--color-bg-deep)" }}>
+    <footer className="relative z-[1] px-4 py-6 sm:px-8 lg:py-8">
       <div
         className="mx-auto max-w-7xl overflow-hidden rounded-[28px] border px-6 py-6 sm:px-10 sm:py-8 lg:px-16"
         style={{ background: "var(--color-surface-2)", borderColor: "var(--color-border)" }}
