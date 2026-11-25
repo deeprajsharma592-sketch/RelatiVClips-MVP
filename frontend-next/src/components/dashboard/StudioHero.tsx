@@ -86,9 +86,9 @@ export default function StudioHero({
     setUploadStatus("Uploading footage to Studio...");
 
     try {
-      const { filePath } = await uploadVideoFile(file);
+      const { filePath, fileName } = await uploadVideoFile(file);
       setUploadStatus("Starting AI virality pipeline...");
-      const init = await submitLocalVideo(filePath);
+      const init = await submitLocalVideo(filePath, fileName);
       if (onStartProcess) {
         onStartProcess(init.taskId, "podcast");
       }

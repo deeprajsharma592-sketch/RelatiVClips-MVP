@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import ProcessResponse, TaskStatus
 from ..utils.task_store import task_store
-from ..utils.config import PIPELINE_VERSION
+from ..utils.config import PIPELINE_VERSION, OUTPUTS_DIR
 from ..database.models import TaskModel, UserModel
 from ..database.session import get_session
 from ..database.repository import TaskRepository
@@ -50,6 +50,28 @@ def _release_user_task(user_id: str, task_id: str) -> None:
 
 class LocalProcessRequest(BaseModel):
     file_path: str
+    file_name: str | None = None
+
+
+def _create_source_thumbnail(task_id: str, file_path: str) -> None:
+    """Save a small cover image from the original uploaded video."""
+    try:
+        import cv2
+        capture = cv2.VideoCapture(file_path)
+        capture.set(cv2.CAP_PROP_POS_MSEC, 500)
+        ok, frame = capture.read()
+        if not ok:
+            capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ok, frame = capture.read()
+        capture.release()
+        if ok and frame is not None:
+            height, width = frame.shape[:2]
+            scale = min(1.0, 1280 / max(width, height))
+            if scale < 1:
+                frame = cv2.resize(frame, (int(width * scale), int(height * scale)))
+            cv2.imwrite(str(OUTPUTS_DIR / f"{task_id}_source.jpg"), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+    except Exception as exc:
+        print(f"[LocalPipeline:{task_id}] Source thumbnail unavailable: {exc}")
 
 
 def create_progress_callback(task_id: str):
@@ -373,6 +395,12 @@ async def process_local_video(
         raise HTTPException(409, f"Your plan allows {plan_concurrency} active processing task(s) at a time.")
 
     task = task_store.create_task(f"Local: {Path(request.file_path).name}", user_id=user.id, persist=False)
+    task_store.update_task(
+        task["task_id"],
+        source_name=Path(request.file_name or request.file_path).stem,
+        source_thumbnail_url=f"/source-thumbnail/{task['task_id']}",
+    )
+    await asyncio.to_thread(_create_source_thumbnail, task["task_id"], request.file_path)
     _track_user_task(user.id, task["task_id"])
     try:
         await TaskRepository.create(

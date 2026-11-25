@@ -1867,6 +1867,13 @@ async def process_youtube_url(
         )
 
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}", user_id=user.id, persist=False)
+    from ..pipeline.transcript_fetcher import _extract_video_id
+    video_id = _extract_video_id(url)
+    task_store.update_task(
+        task["task_id"],
+        source_name=f"YouTube video · {video_id}" if video_id else "YouTube video",
+        source_thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg" if video_id else None,
+    )
     _active_user_tasks.setdefault(user.id, set()).add(task["task_id"])
 
     try:

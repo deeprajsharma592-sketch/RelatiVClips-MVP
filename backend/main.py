@@ -937,6 +937,22 @@ async def download_clip(clip_id: str, request: Request, download: bool = False):
     raise HTTPException(status_code=404, detail="Clip not found")
 
 
+async def get_source_thumbnail(task_id: str):
+    """Serve a still frame captured from an uploaded source video."""
+    if not SAFE_CLIP_ID_REGEX.match(task_id):
+        raise HTTPException(status_code=400, detail="Invalid task identifier")
+    thumb_path = OUTPUTS_DIR / f"{task_id}_source.jpg"
+    if not thumb_path.is_file():
+        raise HTTPException(status_code=404, detail="Source thumbnail not found")
+    return FileResponse(path=thumb_path, media_type="image/jpeg")
+
+
+@app.api_route("/source-thumbnail/{task_id}", methods=["GET", "HEAD"])
+@app.api_route("/api/v1/source-thumbnail/{task_id}", methods=["GET", "HEAD"])
+async def source_thumbnail_route(task_id: str):
+    return await get_source_thumbnail(task_id)
+
+
 @app.api_route("/thumbnail/{clip_id}", methods=["GET", "HEAD"])
 @app.api_route("/api/v1/thumbnail/{clip_id}", methods=["GET", "HEAD"])
 async def get_clip_thumbnail(clip_id: str, request: Request):

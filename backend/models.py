@@ -103,6 +103,8 @@ class ProcessResponse(BaseModel):
 
 class StatusResponse(BaseModel):
     task_id: str
+    source_name: Optional[str] = None
+    source_thumbnail_url: Optional[str] = None
     status: TaskStatus
     current_step: Optional[str] = None
     progress: Optional[int] = None

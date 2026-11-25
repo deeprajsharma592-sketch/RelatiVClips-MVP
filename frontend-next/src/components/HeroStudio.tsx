@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, type CSSProperties, type DragEvent, type F
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
-import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
+import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile, type ProcessInitResponse } from "@/lib/api";
 import ShatterPhrase from "./ShatterPhrase";
 import { animateHeroThumbnails } from "./hero-thumbnail-transfers";
 import styles from "./HeroStudio.module.css";
@@ -36,9 +36,13 @@ export default function HeroStudio() {
     setPending(typeof source === "string" ? "link" : "upload");
     setError(null);
     try {
-      const job = typeof source === "string"
-        ? await submitYouTubeUrl(source)
-        : await submitLocalVideo((await uploadVideoFile(source)).filePath);
+      let job: ProcessInitResponse;
+      if (typeof source === "string") {
+        job = await submitYouTubeUrl(source);
+      } else {
+        const uploaded = await uploadVideoFile(source);
+        job = await submitLocalVideo(uploaded.filePath, uploaded.fileName);
+      }
       if (!job.taskId) throw new Error("The processing service did not return a clip job.");
       router.push(`/process?${new URLSearchParams({ taskId: job.taskId })}`);
     } catch (cause) {

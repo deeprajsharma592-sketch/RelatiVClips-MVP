@@ -286,6 +286,8 @@ class TaskStore:
 
         return {
             "task_id": task["task_id"],
+            "source_name": task.get("source_name"),
+            "source_thumbnail_url": task.get("source_thumbnail_url"),
             "status": task["status"],
             "current_step": task.get("current_step"),
             "progress": progress,

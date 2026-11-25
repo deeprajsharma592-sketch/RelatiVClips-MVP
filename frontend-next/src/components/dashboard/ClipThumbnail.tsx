@@ -12,21 +12,23 @@ function normalizeThumbnailUrl(value: string) {
 
 export default function ClipThumbnail({
   clip,
+  sourceUrl,
   alt = "",
   className,
 }: {
   clip: Clip | null | undefined;
+  sourceUrl?: string;
   alt?: string;
   className: string;
 }) {
   const candidates = useMemo(() => {
-    if (!clip) return [];
     const urls = [
-      clip.thumbnail_url ? normalizeThumbnailUrl(clip.thumbnail_url) : "",
-      clip.clip_id ? apiPath(`/thumbnail/${encodeURIComponent(clip.clip_id)}`) : "",
+      sourceUrl ? normalizeThumbnailUrl(sourceUrl) : "",
+      clip?.thumbnail_url ? normalizeThumbnailUrl(clip.thumbnail_url) : "",
+      clip?.clip_id ? apiPath(`/thumbnail/${encodeURIComponent(clip.clip_id)}`) : "",
     ];
     return [...new Set(urls.filter(Boolean))];
-  }, [clip?.thumbnail_url, clip?.clip_id]);
+  }, [sourceUrl, clip?.thumbnail_url, clip?.clip_id]);
   const [candidateIndex, setCandidateIndex] = useState(0);
 
   useEffect(() => setCandidateIndex(0), [candidates]);

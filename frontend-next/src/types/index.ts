@@ -49,6 +49,8 @@ export interface ProcessInitResponse {
 
 export interface StatusResponse {
   task_id: string;
+  source_name?: string | null;
+  source_thumbnail_url?: string | null;
   status: TaskStatus;
   current_step?: string | null;
   progress?: number | null;

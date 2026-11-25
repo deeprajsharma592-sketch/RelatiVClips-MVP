@@ -8,6 +8,7 @@ export interface StoredProject {
   status: "processing" | "ready" | "failed";
   progress?: number;
   taskId?: string;
+  sourceThumbnailUrl?: string;
   clips: Clip[];
 }
 
@@ -43,13 +44,14 @@ export function getStoredProjects(): StoredProject[] {
           status,
           progress,
           taskId: typeof p.taskId === "string" ? p.taskId : undefined,
+          sourceThumbnailUrl: typeof p.sourceThumbnailUrl === "string" ? p.sourceThumbnailUrl : undefined,
           clips,
         };
       })
       .filter(
         (p) =>
           p.expiresAt > now &&
-          !(p.status === "processing" && !p.taskId && p.clips.length === 0 && now - p.createdAt > 5 * 60 * 1000) &&
+          (p.clips.length > 0 || (p.status === "processing" && now - p.createdAt < 30 * 60 * 1000)) &&
           !p.id.startsWith("proj-demo-") &&
           !p.title.toLowerCase().includes("joe rogan") &&
           !p.title.toLowerCase().includes("huberman")
@@ -115,6 +117,21 @@ export function updateProjectTaskId(id: string, taskId: string): void {
   if (typeof window === "undefined" || !id || !taskId) return;
   const project = getStoredProjects().find((item) => item.id === id);
   if (project) saveProject({ ...project, taskId });
+}
+
+export function updateProjectSource(
+  id: string,
+  sourceName?: string | null,
+  sourceThumbnailUrl?: string | null,
+): void {
+  if (typeof window === "undefined" || !id) return;
+  const project = getStoredProjects().find((item) => item.id === id);
+  if (!project) return;
+  saveProject({
+    ...project,
+    title: sourceName?.trim() || project.title,
+    sourceThumbnailUrl: sourceThumbnailUrl || project.sourceThumbnailUrl,
+  });
 }
 
 export function updateProjectStatus(

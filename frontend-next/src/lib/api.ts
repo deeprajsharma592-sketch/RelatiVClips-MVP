@@ -107,7 +107,7 @@ export async function fetchCredits(): Promise<CreditSummary> {
 export async function uploadVideoFile(
   file: File,
   onProgress?: (percent: number) => void
-): Promise<{ filePath: string; taskId: string }> {
+): Promise<{ filePath: string; taskId: string; fileName: string }> {
   // Resolve direct upload endpoint to bypass Vercel's 4.5MB serverless limit
   let targetEndpoint = apiPath("/upload");
   try {
@@ -135,7 +135,7 @@ export async function uploadVideoFile(
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const data = JSON.parse(xhr.responseText);
-          resolve({ filePath: data.file_path, taskId: data.task_id });
+          resolve({ filePath: data.file_path, taskId: data.task_id, fileName: file.name });
         } catch {
           reject(new Error("Invalid server response format"));
         }
@@ -156,11 +156,11 @@ export async function uploadVideoFile(
   });
 }
 
-export async function submitLocalVideo(filePath: string): Promise<ProcessInitResponse> {
+export async function submitLocalVideo(filePath: string, fileName?: string): Promise<ProcessInitResponse> {
   const res = await fetch(apiPath("/api/v1/process/local"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file_path: filePath }),
+    body: JSON.stringify({ file_path: filePath, file_name: fileName }),
   });
 
   if (!res.ok) {

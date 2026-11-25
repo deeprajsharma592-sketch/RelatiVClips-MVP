@@ -56,14 +56,14 @@ export default function VideoIntake({
 
       try {
         // Step 1: Upload file
-        const { filePath } = await uploadVideoFile(file, (pct) => {
+        const { filePath, fileName } = await uploadVideoFile(file, (pct) => {
           setUploadProgress(pct);
           setUploadStatus(`Uploading: ${pct}%`);
         });
 
         setUploadStatus("Starting AI virality pipeline...");
         // Step 2: Kick off local pipeline
-        const init = await submitLocalVideo(filePath);
+        const init = await submitLocalVideo(filePath, fileName);
 
         if (onStartProcess) {
           onStartProcess(init.taskId);

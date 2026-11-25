@@ -50,6 +50,7 @@ import {
   createNewProject,
   updateProjectStatus,
   updateProjectTaskId,
+  updateProjectSource,
   clearAllStoredProjects,
   type StoredProject,
 } from "@/lib/projectStorage";
@@ -190,6 +191,7 @@ function DashboardContent() {
           const status = await checkProcessingStatus(tid);
           if (!isMounted) return;
           consecutiveErrors = 0;
+          updateProjectSource(newProj.id, status.source_name, status.source_thumbnail_url);
 
           if (status.status === "complete" && status.clips && status.clips.length > 0) {
             if (pollInterval) clearInterval(pollInterval);
