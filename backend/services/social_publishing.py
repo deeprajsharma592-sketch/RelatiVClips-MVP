@@ -96,58 +96,73 @@ async def fetch_youtube_channel_info(
     channel_identifier: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Verify and fetch real YouTube channel metadata via YouTube Data API v3."""
-    params: Dict[str, str] = {"part": "snippet,statistics,contentDetails"}
-    headers: Dict[str, str] = {}
+    async def _query_channels(use_oauth: bool) -> httpx.Response:
+        params: Dict[str, str] = {"part": "snippet,statistics,contentDetails"}
+        headers: Dict[str, str] = {}
+        if use_oauth and access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+            if channel_identifier and channel_identifier.startswith("UC"):
+                params["id"] = channel_identifier
+            elif channel_identifier and channel_identifier.startswith("@"):
+                params["forHandle"] = channel_identifier
+            else:
+                params["mine"] = "true"
+        elif api_key:
+            params["key"] = api_key
+            ident = (channel_identifier or "").strip()
+            if not ident:
+                raise ValueError("Channel ID (UC...) or @handle is required when connecting with an API key.")
+            if ident.startswith("UC") and len(ident) >= 20:
+                params["id"] = ident
+            else:
+                params["forHandle"] = ident if ident.startswith("@") else f"@{ident}"
+        else:
+            raise ValueError("Provide either a YouTube API key + Channel ID or an OAuth access token.")
 
-    if access_token:
-        headers["Authorization"] = f"Bearer {access_token}"
-        if channel_identifier and channel_identifier.startswith("UC"):
-            params["id"] = channel_identifier
-        elif channel_identifier and channel_identifier.startswith("@"):
-            params["forHandle"] = channel_identifier
-        else:
-            params["mine"] = "true"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            return await client.get(f"{YOUTUBE_DATA_BASE}/channels", params=params, headers=headers)
+
+    # If both access_token and api_key are provided, try access_token first.
+    # If access_token fails with 403 (e.g. insufficient scopes because token has youtube.upload
+    # but not youtube.readonly), gracefully fall back to api_key for channel metadata.
+    if access_token and api_key and channel_identifier:
+        resp = await _query_channels(use_oauth=True)
+        if resp.status_code == 403 and "insufficient" in resp.text.lower():
+            resp = await _query_channels(use_oauth=False)
+    elif access_token:
+        resp = await _query_channels(use_oauth=True)
     elif api_key:
-        params["key"] = api_key
-        ident = (channel_identifier or "").strip()
-        if not ident:
-            raise ValueError("Channel ID (UC...) or @handle is required when connecting with an API key.")
-        if ident.startswith("UC") and len(ident) >= 20:
-            params["id"] = ident
-        else:
-            params["forHandle"] = ident if ident.startswith("@") else f"@{ident}"
+        resp = await _query_channels(use_oauth=False)
     else:
         raise ValueError("Provide either a YouTube API key + Channel ID or an OAuth access token.")
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(f"{YOUTUBE_DATA_BASE}/channels", params=params, headers=headers)
-        if resp.status_code != 200:
-            err_msg = _extract_google_error(resp)
-            raise ValueError(f"YouTube API error ({resp.status_code}): {err_msg}")
-        items = resp.json().get("items") or []
-        if not items:
-            raise ValueError("No YouTube channel found for the provided credentials / Channel ID.")
+    if resp.status_code != 200:
+        err_msg = _extract_google_error(resp)
+        raise ValueError(f"YouTube API error ({resp.status_code}): {err_msg}")
+    items = resp.json().get("items") or []
+    if not items:
+        raise ValueError("No YouTube channel found for the provided credentials / Channel ID.")
 
-        ch = items[0]
-        snippet = ch.get("snippet") or {}
-        stats = ch.get("statistics") or {}
-        content = ch.get("contentDetails") or {}
-        thumbs = snippet.get("thumbnails") or {}
-        avatar = (thumbs.get("medium") or thumbs.get("default") or {}).get("url")
-        custom_url = snippet.get("customUrl") or ""
-        handle = custom_url if custom_url.startswith("@") else (f"@{custom_url}" if custom_url else ch["id"])
-        subs = int(stats.get("subscriberCount") or 0)
-        return {
-            "platform_account_id": ch["id"],
-            "account_name": snippet.get("title") or "YouTube Channel",
-            "account_handle": handle,
-            "avatar_url": avatar,
-            "followers_text": format_compact_count(subs, " subscribers"),
-            "subscriber_count": subs,
-            "view_count": int(stats.get("viewCount") or 0),
-            "video_count": int(stats.get("videoCount") or 0),
-            "uploads_playlist_id": (content.get("relatedPlaylists") or {}).get("uploads"),
-        }
+    ch = items[0]
+    snippet = ch.get("snippet") or {}
+    stats = ch.get("statistics") or {}
+    content = ch.get("contentDetails") or {}
+    thumbs = snippet.get("thumbnails") or {}
+    avatar = (thumbs.get("medium") or thumbs.get("default") or {}).get("url")
+    custom_url = snippet.get("customUrl") or ""
+    handle = custom_url if custom_url.startswith("@") else (f"@{custom_url}" if custom_url else ch["id"])
+    subs = int(stats.get("subscriberCount") or 0)
+    return {
+        "platform_account_id": ch["id"],
+        "account_name": snippet.get("title") or "YouTube Channel",
+        "account_handle": handle,
+        "avatar_url": avatar,
+        "followers_text": format_compact_count(subs, " subscribers"),
+        "subscriber_count": subs,
+        "view_count": int(stats.get("viewCount") or 0),
+        "video_count": int(stats.get("videoCount") or 0),
+        "uploads_playlist_id": (content.get("relatedPlaylists") or {}).get("uploads"),
+    }
 
 
 async def fetch_youtube_analytics(account: Any, days: int = 7) -> Dict[str, Any]:

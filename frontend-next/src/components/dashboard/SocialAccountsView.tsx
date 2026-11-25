@@ -457,7 +457,7 @@ export default function SocialAccountsView({
                           >
                             OAuth Playground
                           </a>{" "}
-                          with <code className="text-white/75">youtube.upload</code> scope (only needed for direct Shorts publishing).
+                          with <code className="text-white/75">youtube.upload</code> &amp; <code className="text-white/75">youtube.readonly</code> scopes (optional, only needed for direct Shorts publishing).
                         </li>
                       </ul>
                     </div>
@@ -499,6 +499,9 @@ export default function SocialAccountsView({
                         placeholder="ya29...."
                         className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                       />
+                      <p className="mt-1 text-[10px] text-[#71727a]">
+                        Optional. Leave empty if you only want channel stats &amp; metrics.
+                      </p>
                     </div>
                   </>
                 ) : (
