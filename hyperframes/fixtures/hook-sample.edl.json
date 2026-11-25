@@ -1,0 +1,24 @@
+{
+  "duration": 2.5,
+  "story_roles": [
+    { "role": "hook", "start": 0.0, "end": 2.0 },
+    { "role": "info", "start": 2.0, "end": 2.5 }
+  ],
+  "words": [
+    { "word": "WAIT", "start": 0.0, "end": 0.28 },
+    { "word": "DID", "start": 0.3, "end": 0.5 },
+    { "word": "YOU", "start": 0.52, "end": 0.72 },
+    { "word": "JUST", "start": 0.74, "end": 1.05 },
+    { "word": "SEE", "start": 1.08, "end": 1.42 },
+    { "word": "THAT?!", "start": 1.45, "end": 1.95 },
+    { "word": "Watch", "start": 2.0, "end": 2.5 }
+  ],
+  "beats": [
+    { "type": "zoom_punch", "variant": "A", "intensity": "high", "start": 0.0, "end": 0.5, "params": { "scale": 1.18 } },
+    { "type": "punchy_bounce", "variant": "A", "start": 0.0, "end": 0.72, "text": "WAIT DID YOU" },
+    { "type": "shake", "variant": "A", "intensity": "high", "start": 0.74, "end": 1.05, "params": { "amplitude": 10 } },
+    { "type": "highlight_word", "variant": "A", "start": 0.74, "end": 1.95, "words": ["JUST", "SEE", "THAT?!"], "activeIndex": 2 },
+    { "type": "emoji_reaction", "variant": "A", "start": 1.08, "end": 1.95, "emoji": "🤯" },
+    { "type": "lower_third", "variant": "A", "start": 0.3, "end": 2.5, "title": "LIVESTREAM HOOK", "subtitle": "Variant A · RelatiV Gold" }
+  ]
+}

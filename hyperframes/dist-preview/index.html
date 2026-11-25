@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0C0A09; }
+    #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+    #stage { position: absolute; inset: 0; transform-origin: 50% 42%; }
+    .demo-bg {
+      width: 100%; height: 100%;
+      background: radial-gradient(circle at 50% 35%, rgba(73,103,232,0.28), rgba(17,19,24,0.96) 65%), #0C0A09;
+    }
+    .caption-box {
+      position: absolute; left: 72px; right: 72px; bottom: 340px;
+      text-align: center; line-height: 1.15; z-index: 20; opacity: 0;
+    }
+    .popup-card {
+      position: absolute; top: 260px; left: 50%; transform: translateX(-50%);
+      width: 680px; min-height: 220px; display: flex; align-items: center; justify-content: center;
+      z-index: 15; opacity: 0;
+    }
+    .emoji-pop { position: absolute; top: 520px; right: 110px; z-index: 25; opacity: 0; }
+    .lower-third {
+      position: absolute; left: 64px; bottom: 180px; padding: 20px 28px;
+      border-radius: 14px; backdrop-filter: blur(12px); z-index: 18; opacity: 0;
+    }
+    .callback-flash { position: absolute; inset: 0; pointer-events: none; z-index: 30; opacity: 0; }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main" data-start="0" data-duration="2.5" data-width="1080" data-height="1920">
+    <div id="stage" class="clip" data-start="0" data-duration="2.5" data-track-index="0">
+      <div class="demo-bg"></div>
+    </div>
+    <div id="beat-1" class="clip caption-box" data-start="0" data-duration="0.72" data-track-index="2" style="font-family:'Montserrat Black', 'Montserrat', sans-serif;font-size:68px;color:#FFFFFF;-webkit-text-stroke:2px #0C0A09;text-shadow:0 8px 24px rgba(0,0,0,0.65);">WAIT DID YOU</div>
+    <div id="beat-3" class="clip caption-box" data-start="0.74" data-duration="1.21" data-track-index="2" style="font-family:'Montserrat ExtraBold', 'Montserrat', sans-serif;font-size:62px;"><span style="color:rgba(255, 255, 255, 0.72);margin:0 8px;">JUST</span><span style="color:rgba(255, 255, 255, 0.72);margin:0 8px;">SEE</span><span class="hw-active" style="background:#FFCC00;color:#111318;padding:4px 16px;border-radius:12px;margin:0 6px;display:inline-block;">THAT?!</span></div>
+    <div id="beat-4" class="clip emoji-pop" data-start="1.08" data-duration="0.87" data-track-index="3" style="font-size:84px;">🤯</div>
+    <div id="beat-5" class="clip lower-third" data-start="0.3" data-duration="2.2" data-track-index="3" style="background:rgba(17, 19, 24, 0.82);border-left:5px solid #FFCC00;font-family:'Montserrat ExtraBold', sans-serif;"><div style="font-size:32px;color:#fff;font-weight:800;">LIVESTREAM HOOK</div><div style="font-size:20px;color:#FFCC00;font-family:monospace;margin-top:4px;">Variant A · RelatiV Gold</div></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.to("#stage", { scale: 1.18, rotation: 0, duration: 0.09, ease: "power4.out" }, 0);
+    tl.to("#stage", { scale: 1, rotation: 0, duration: 0.26, ease: "power2.inOut" }, 0.27);
+    tl.fromTo("#beat-1", {"opacity":0,"scale":0.72,"y":12}, {"opacity":1,"scale":1,"y":0,"duration":0.18,"ease":"back.out(2.4)"}, 0);
+    tl.to("#beat-1", { opacity: 0, duration: 0.08 }, 0.64);
+    tl.to("#stage", { x: 10, y: 6, rotation: 1.5, duration: 0.047, ease: "power1.out" }, 0.74);
+    tl.to("#stage", { x: -8, y: -5, rotation: -1.25, duration: 0.047, ease: "power1.out" }, 0.787);
+    tl.to("#stage", { x: 7, y: -4, rotation: 1, duration: 0.047, ease: "power1.out" }, 0.834);
+    tl.to("#stage", { x: -5, y: 3, rotation: -0.75, duration: 0.047, ease: "power1.out" }, 0.881);
+    tl.to("#stage", { x: 3, y: -2, rotation: 0.5, duration: 0.047, ease: "power1.out" }, 0.928);
+    tl.to("#stage", { x: -2, y: -1, rotation: -0.25, duration: 0.047, ease: "power1.out" }, 0.975);
+    tl.to("#stage", { x: 0, y: 0, rotation: 0, duration: 0.05 }, 1.024);
+    tl.fromTo("#beat-3", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.11, ease: "power2.out" }, 0.74);
+    tl.fromTo("#beat-3 .hw-active", { scale: 0.88 }, { scale: 1.08, duration: 0.11, ease: "power2.out" }, 0.74);
+    tl.to("#beat-3", { opacity: 0, duration: 0.08 }, 1.8699999999999999);
+    tl.fromTo("#beat-4", { opacity: 0, scale: 0, y: 20 }, { opacity: 1, scale: 1.15, y: -10, duration: 0.2, ease: "back.out(2.6)" }, 1.08);
+    tl.to("#beat-4", { opacity: 0, y: -36, scale: 0.9, duration: 0.18 }, 1.77);
+    tl.fromTo("#beat-5", { opacity: 0, x: -48 }, { opacity: 1, x: 0, duration: 0.22, ease: "power3.out" }, 0.3);
+    tl.to("#beat-5", { opacity: 0, x: -24, duration: 0.15 }, 2.35);
+    window.__timelines = window.__timelines || {};
+    window.__timelines["main"] = tl;
+    tl.seek(0);
+  </script>
+</body>
+</html>
