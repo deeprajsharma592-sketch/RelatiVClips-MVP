@@ -7,7 +7,7 @@ ADMIN_EMAILS = frozenset(
     email.strip().lower()
     for email in os.getenv(
         "ADMIN_EMAILS",
-        "siddharth@relativclips.com,deepraj@relativclips.com",
+        "siddharth@relativclips.com,deepraj@relativclips.com,deeprajsharma@relativclips.com",
     ).split(",")
     if email.strip() and email.strip().lower().endswith(f"@{ALLOWED_ADMIN_DOMAIN}")
 )
