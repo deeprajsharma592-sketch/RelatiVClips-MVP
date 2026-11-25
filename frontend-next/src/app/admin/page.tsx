@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
 import { login, logout } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminApiError, fetchAdminOverview, fetchAdminRecords, sendSmtpTest, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
+import { AdminApiError, fetchAdminOverview, fetchAdminRecords, requestAdmin2faChallenge, sendSmtpTest, verifyAdmin2faChallenge, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
 import styles from "./admin.module.css";
 
 function number(value: number) {
@@ -17,21 +17,50 @@ function timeLabel(value: string | null) {
   return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-function SignIn({ onSignedIn, statusMessage }: { onSignedIn: () => Promise<void>; statusMessage?: string }) {
+function SignIn({
+  onSignedIn,
+  statusMessage,
+  initialNeeds2fa = false,
+}: {
+  onSignedIn: () => Promise<void>;
+  statusMessage?: string;
+  initialNeeds2fa?: boolean;
+}) {
   const { refresh: refreshAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!initialNeeds2fa || challengeId) return;
+    let active = true;
+    setBusy(true);
+    void requestAdmin2faChallenge()
+      .then((res) => {
+        if (active) setChallengeId(res.challenge_id);
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : "Could not send 2FA code.");
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+    return () => { active = false; };
+  }, [initialNeeds2fa, challengeId]);
+
+  async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
     try {
       await login({ email: email.trim().toLowerCase(), password });
       await refreshAuth();
-      await onSignedIn();
+      const challenge = await requestAdmin2faChallenge();
+      setChallengeId(challenge.challenge_id);
+      setCode("");
     } catch (err) {
       try { await logout(); } catch {}
       await refreshAuth();
@@ -41,25 +70,98 @@ function SignIn({ onSignedIn, statusMessage }: { onSignedIn: () => Promise<void>
     }
   }
 
+  async function submit2fa(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!challengeId) return;
+    setBusy(true);
+    setError("");
+    try {
+      await verifyAdmin2faChallenge(challengeId, code);
+      await onSignedIn();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid verification code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendCode() {
+    setBusy(true);
+    setError("");
+    try {
+      const challenge = await requestAdmin2faChallenge();
+      setChallengeId(challenge.challenge_id);
+      setCode("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend verification code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetToPassword() {
+    try { await logout(); } catch {}
+    await refreshAuth();
+    setChallengeId(null);
+    setCode("");
+    setError("");
+  }
+
   return (
     <main className={styles.loginShell}>
       <section className={styles.loginCard} aria-labelledby="admin-login-heading">
         <div className={styles.loginBrand}><span className={styles.logoMark}>R</span><span>RelatiV <i>Control room</i></span></div>
         <div className={styles.lockBadge}><LockKeyhole size={18} /></div>
-        <p className={styles.eyebrow}>Private workspace</p>
-        <h1 id="admin-login-heading">Good to have you back.</h1>
-        <p className={styles.loginCopy}>Sign in with an authorized founder account to view platform operations.</p>
-        <form className={styles.loginForm} onSubmit={submit}>
-          {statusMessage && <p className={styles.formError} role="status">{statusMessage}</p>}
-          <label htmlFor="admin-email">Email address</label>
-          <input id="admin-email" type="email" autoComplete="username" placeholder="you@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <label htmlFor="admin-password">Password</label>
-          <input id="admin-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-          {error && <p className={styles.formError} role="alert">{error}</p>}
-          <button className={styles.primaryButton} disabled={busy} type="submit">{busy ? "Checking access…" : "Sign in securely"}<ArrowUpRight size={17} /></button>
-        </form>
-        <p className={styles.setupLink}>First time here? <Link href="/admin/setup">Create your verified creator account</Link></p>
-        <div className={styles.loginFoot}><ShieldCheck size={15} /> Verified email and an active account are required.</div>
+        <p className={styles.eyebrow}>{challengeId ? "Two-factor verification" : "Private workspace"}</p>
+        <h1 id="admin-login-heading">{challengeId ? "Check your email." : "Good to have you back."}</h1>
+        <p className={styles.loginCopy}>
+          {challengeId
+            ? "Enter the 6-digit verification token sent to your email."
+            : "Sign in with your email and password to continue."}
+        </p>
+
+        {challengeId ? (
+          <form className={styles.loginForm} onSubmit={submit2fa}>
+            {statusMessage && <p className={styles.formError} role="status">{statusMessage}</p>}
+            <label htmlFor="admin-2fa-code">Verification token</label>
+            <input
+              id="admin-2fa-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="000000"
+              maxLength={6}
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D+/g, "").slice(0, 6))}
+            />
+            {error && <p className={styles.formError} role="alert">{error}</p>}
+            <button className={styles.primaryButton} disabled={busy || code.length < 6} type="submit">
+              {busy ? "Verifying…" : "Verify & enter"}<ArrowUpRight size={17} />
+            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
+              <button type="button" className={styles.textButton} disabled={busy} onClick={() => void resendCode()}>
+                Resend token
+              </button>
+              <button type="button" className={styles.textButton} disabled={busy} onClick={() => void resetToPassword()}>
+                Use another account
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form className={styles.loginForm} onSubmit={submitPassword}>
+            {statusMessage && <p className={styles.formError} role="status">{statusMessage}</p>}
+            <label htmlFor="admin-email">Email address</label>
+            <input id="admin-email" type="email" autoComplete="username" placeholder="you@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label htmlFor="admin-password">Password</label>
+            <input id="admin-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            {error && <p className={styles.formError} role="alert">{error}</p>}
+            <button className={styles.primaryButton} disabled={busy} type="submit">{busy ? "Checking access…" : "Continue"}<ArrowUpRight size={17} /></button>
+          </form>
+        )}
+
+        <p className={styles.setupLink}>First time here? <Link href="/admin/setup">Create your verified account</Link></p>
+        <div className={styles.loginFoot}><ShieldCheck size={15} /> Email 2FA and verified session required.</div>
       </section>
       <div className={styles.loginAside} aria-hidden="true">
         <div className={styles.asideGrid} />
@@ -267,6 +369,7 @@ export default function AdminPage() {
   const [updatedAt, setUpdatedAt] = useState(new Date());
   const [accessError, setAccessError] = useState("");
   const [signedOut, setSignedOut] = useState(false);
+  const [needs2fa, setNeeds2fa] = useState(false);
   const [activeView, setActiveView] = useState<AdminCollection | "overview">("overview");
 
   const load = useCallback(async (manual = false) => {
@@ -276,16 +379,24 @@ export default function AdminPage() {
       setData(overview);
       setAccessError("");
       setSignedOut(false);
+      setNeeds2fa(false);
       setUpdatedAt(new Date());
     } catch (error) {
       if (error instanceof AdminApiError && error.status === 401) {
         setData(null);
         setAccessError("");
         setSignedOut(false);
+        setNeeds2fa(false);
+      } else if (error instanceof AdminApiError && error.status === 403 && error.message.toLowerCase().includes("2fa")) {
+        setData(null);
+        setAccessError("");
+        setSignedOut(false);
+        setNeeds2fa(true);
       } else if (error instanceof AdminApiError && error.status === 403) {
         setData(null);
         setAccessError(error.message);
         setSignedOut(true);
+        setNeeds2fa(false);
       } else {
         setAccessError(error instanceof Error ? error.message : "The admin API is unavailable.");
       }
@@ -314,8 +425,8 @@ export default function AdminPage() {
 
   if (loading) return <main className={styles.loadingShell}><span className={styles.loadingMark}>R</span><p>Securing the control room…</p></main>;
   if (!data) {
-    if (signedOut) return <main className={styles.denied}><div className={styles.deniedMark}><ShieldCheck size={23} /></div><p className={styles.eyebrow}>Access restricted</p><h1>This account can’t enter the control room.</h1><p>{accessError || "Only verified founder accounts are authorized."}</p><button className={styles.primaryButton} onClick={signOut}>Sign out and switch account <ArrowUpRight size={17} /></button></main>;
-    return <SignIn statusMessage={accessError} onSignedIn={async () => { await load(true); }} />;
+    if (signedOut) return <main className={styles.denied}><div className={styles.deniedMark}><ShieldCheck size={23} /></div><p className={styles.eyebrow}>Access restricted</p><h1>This account can’t enter the control room.</h1><p>{accessError || "Only verified authorized accounts are permitted."}</p><button className={styles.primaryButton} onClick={signOut}>Sign out and switch account <ArrowUpRight size={17} /></button></main>;
+    return <SignIn statusMessage={accessError} initialNeeds2fa={needs2fa} onSignedIn={async () => { await load(true); }} />;
   }
   return <Dashboard data={data} updatedAt={updatedAt} refreshing={refreshing} onRefresh={() => void load(true)} onLogout={() => void signOut()} activeView={activeView} onView={setActiveView} />;
 }

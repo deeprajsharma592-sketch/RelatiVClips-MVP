@@ -540,4 +540,19 @@ class AuditLogModel(Base):
     details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
+class AdminTwoFactorChallengeModel(Base):
+    """Short-lived email OTP challenges for admin portal 2FA."""
+
+    __tablename__ = "admin_2fa_challenges"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    consumed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 

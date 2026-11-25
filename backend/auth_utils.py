@@ -141,10 +141,66 @@ def set_session_cookie(response: Response, token: str, ttl_days: Optional[int] =
 
 def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(COOKIE_NAME, path="/")
+    response.delete_cookie(ADMIN_2FA_COOKIE_NAME, path="/")
 
 
 def get_session_cookie(request: Request) -> Optional[str]:
     return request.cookies.get(COOKIE_NAME)
+
+
+ADMIN_2FA_COOKIE_NAME = "relativ_admin_2fa"
+ADMIN_2FA_TTL_HOURS = 12
+
+
+def create_admin_2fa_token(*, user_id: str, email: str) -> str:
+    """Issue a signed 12-hour JWT proving admin email 2FA verification."""
+    secret = ensure_secret()
+    now = datetime.utcnow()
+    exp = now + timedelta(hours=ADMIN_2FA_TTL_HOURS)
+    payload = {
+        "sub": user_id,
+        "email": email.strip().lower(),
+        "purpose": "admin_2fa",
+        "iat": int(now.replace(tzinfo=timezone.utc).timestamp()),
+        "exp": int(exp.replace(tzinfo=timezone.utc).timestamp()),
+    }
+    return jwt.encode(payload, secret, algorithm=JWT_ALGORITHM)
+
+
+def verify_admin_2fa_token(token: Optional[str], *, user_id: str, email: str) -> bool:
+    """Verify the admin 2FA cookie matches the authenticated user."""
+    if not token:
+        return False
+    secret = ensure_secret()
+    try:
+        payload = jwt.decode(token, secret, algorithms=[JWT_ALGORITHM])
+    except jwt.InvalidTokenError:
+        return False
+    return (
+        payload.get("purpose") == "admin_2fa"
+        and payload.get("sub") == user_id
+        and str(payload.get("email", "")).lower() == email.strip().lower()
+    )
+
+
+def set_admin_2fa_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=ADMIN_2FA_COOKIE_NAME,
+        value=token,
+        max_age=ADMIN_2FA_TTL_HOURS * 3600,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        path="/",
+    )
+
+
+def clear_admin_2fa_cookie(response: Response) -> None:
+    response.delete_cookie(ADMIN_2FA_COOKIE_NAME, path="/")
+
+
+def get_admin_2fa_cookie(request: Request) -> Optional[str]:
+    return request.cookies.get(ADMIN_2FA_COOKIE_NAME)
 
 
 # ─── IP hashing (privacy) ──────────────────────────────────────────────────

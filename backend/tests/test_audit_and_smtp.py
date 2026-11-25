@@ -72,3 +72,20 @@ async def test_send_via_smtp_sends_with_starttls():
         mock_smtp.starttls.assert_called_once()
         mock_smtp.login.assert_called_once_with("mailer@relativclips.com", "secret")
         mock_smtp.send_message.assert_called_once()
+
+
+def test_admin_domain_lock_and_2fa_token():
+    import backend.auth_utils as auth_utils
+    from backend.utils.admin_access import is_admin_email, is_allowed_admin_domain
+
+    assert is_allowed_admin_domain("deepraj@relativclips.com") is True
+    assert is_allowed_admin_domain("siddharth@relativclips.com") is True
+    assert is_allowed_admin_domain("deeprajsharma592@gmail.com") is False
+    assert is_admin_email("deepraj@relativclips.com") is True
+    assert is_admin_email("deeprajsharma592@gmail.com") is False
+
+    with patch.object(auth_utils, "JWT_SECRET", "test-secret-for-2fa-at-least-32-bytes-long"):
+        token = auth_utils.create_admin_2fa_token(user_id="u_1", email="deepraj@relativclips.com")
+        assert auth_utils.verify_admin_2fa_token(token, user_id="u_1", email="deepraj@relativclips.com") is True
+        assert auth_utils.verify_admin_2fa_token(token, user_id="u_2", email="deepraj@relativclips.com") is False
+        assert auth_utils.verify_admin_2fa_token(token, user_id="u_1", email="other@relativclips.com") is False

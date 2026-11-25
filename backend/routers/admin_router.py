@@ -2,14 +2,25 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import hashlib
+import hmac
+import os
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from ..auth_utils import (
+    create_admin_2fa_token,
+    get_admin_2fa_cookie,
+    set_admin_2fa_cookie,
+    verify_admin_2fa_token,
+)
 from ..database.models import (
+    AdminTwoFactorChallengeModel,
     AuditLogModel,
     CampaignClipModel,
     CampaignModel,
@@ -19,22 +30,33 @@ from ..database.models import (
 )
 from ..database.session import get_session
 from ..routers.auth_router import get_current_user
-from ..services.email_service import OutgoingEmail, send_via_smtp
+from ..services.email_service import OutgoingEmail, send as send_email, send_via_smtp
+from ..utils.admin_access import is_admin_email, is_allowed_admin_domain
 from ..utils.audit import record_audit_event
 from ..utils.task_store import task_store
-from ..utils.admin_access import ADMIN_EMAILS
 from ..store import intake
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-async def require_admin(
-    user: UserModel = Depends(get_current_user),
-) -> UserModel:
-    """Require a live session, an allowlisted identity, and verified email."""
-    if not user.is_admin and user.email.lower() not in ADMIN_EMAILS:
+
+def _require_admin_identity(user: UserModel) -> None:
+    if not is_allowed_admin_domain(user.email):
+        raise HTTPException(status_code=403, detail="Admin access is restricted to relativclips.com accounts")
+    if not user.is_admin and not is_admin_email(user.email):
         raise HTTPException(status_code=403, detail="Admin access is not enabled for this account")
     if not user.is_verified or not user.email_verified_at:
         raise HTTPException(status_code=403, detail="Verify this email before using the admin workspace")
+
+
+async def require_admin(
+    request: Request,
+    user: UserModel = Depends(get_current_user),
+) -> UserModel:
+    """Require a live session, @relativclips.com identity, verified email, and 2FA."""
+    _require_admin_identity(user)
+    token = get_admin_2fa_cookie(request)
+    if not verify_admin_2fa_token(token, user_id=user.id, email=user.email):
+        raise HTTPException(status_code=403, detail="Admin 2FA verification required")
     return user
 
 
@@ -334,3 +356,150 @@ async def admin_smtp_test(
     if not ok:
         raise HTTPException(status_code=502, detail=f"SMTP test failed: {detail}")
     return {"ok": True, "to": to_email, "detail": detail}
+
+
+def _hash_2fa_code(challenge_id: str, code: str) -> str:
+    return hashlib.sha256(f"{challenge_id}:{code.strip()}".encode("utf-8")).hexdigest()
+
+
+@router.post("/2fa/challenge")
+async def request_admin_2fa_challenge(
+    request: Request,
+    user: UserModel = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Send a 6-digit 2FA token to the admin's @relativclips.com email."""
+    _require_admin_identity(user)
+
+    challenge_id = secrets.token_urlsafe(24)
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    now = datetime.utcnow()
+    expires_at = now + timedelta(minutes=10)
+
+    session.add(
+        AdminTwoFactorChallengeModel(
+            id=challenge_id,
+            user_id=user.id,
+            email=user.email.lower(),
+            code_hash=_hash_2fa_code(challenge_id, code),
+            attempts=0,
+            expires_at=expires_at,
+            created_at=now,
+        )
+    )
+    await session.commit()
+
+    email_msg = OutgoingEmail(
+        to=user.email,
+        subject="RelatiV Control Room — Your 2FA Code",
+        html=(
+            "<div style='font-family:sans-serif;padding:24px;background:#111318;color:#fff;border-radius:12px;'>"
+            "<h2 style='color:#FFCC00;margin-top:0;'>Admin Verification Code</h2>"
+            "<p>Enter this 6-digit code to finish signing in to the RelatiV Control Room:</p>"
+            f"<div style='font-size:32px;font-weight:800;letter-spacing:6px;color:#FFCC00;margin:16px 0;'>{code}</div>"
+            "<p style='color:#9AA2B1;font-size:12px;'>Expires in 10 minutes. If you did not request this, secure your account.</p>"
+            "</div>"
+        ),
+        text=f"Your RelatiV Control Room 2FA code is: {code} (expires in 10 minutes).",
+    )
+    if (os.getenv("SMTP_HOST") or "").strip():
+        sent, detail = await send_via_smtp(email_msg)
+    else:
+        sent = await send_email(email_msg)
+        detail = "sent via email_service"
+
+    await record_audit_event(
+        session,
+        action="admin.2fa_requested",
+        actor_user_id=user.id,
+        actor_email=user.email,
+        resource_type="admin_2fa",
+        resource_id=challenge_id,
+        status="success" if sent else "failure",
+        ip_address=request.client.host if request.client else None,
+        details={"detail": detail},
+    )
+    if not sent:
+        raise HTTPException(status_code=502, detail="Could not deliver 2FA verification email")
+
+    return {"ok": True, "challenge_id": challenge_id, "expires_in_seconds": 600}
+
+
+class AdminTwoFactorVerifyRequest(BaseModel):
+    challenge_id: str = Field(..., min_length=8, max_length=128)
+    code: str = Field(..., min_length=6, max_length=12)
+
+
+@router.post("/2fa/verify")
+async def verify_admin_2fa_challenge(
+    body: AdminTwoFactorVerifyRequest,
+    request: Request,
+    response: Response,
+    user: UserModel = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Verify the emailed 6-digit 2FA token and issue the HttpOnly admin 2FA cookie."""
+    _require_admin_identity(user)
+
+    challenge = (
+        await session.execute(
+            select(AdminTwoFactorChallengeModel).where(
+                AdminTwoFactorChallengeModel.id == body.challenge_id,
+                AdminTwoFactorChallengeModel.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    ip = request.client.host if request.client else None
+    now = datetime.utcnow()
+    if not challenge or challenge.consumed_at is not None or challenge.expires_at < now:
+        await record_audit_event(
+            session,
+            action="admin.2fa_failed",
+            actor_user_id=user.id,
+            actor_email=user.email,
+            resource_type="admin_2fa",
+            resource_id=body.challenge_id,
+            status="failure",
+            ip_address=ip,
+            details={"reason": "expired_or_missing"},
+        )
+        raise HTTPException(status_code=401, detail="Verification code expired or invalid")
+
+    if challenge.attempts >= 5:
+        raise HTTPException(status_code=429, detail="Too many failed verification attempts. Request a new code.")
+
+    expected = challenge.code_hash
+    actual = _hash_2fa_code(challenge.id, body.code)
+    if not hmac.compare_digest(expected, actual):
+        challenge.attempts += 1
+        await session.commit()
+        await record_audit_event(
+            session,
+            action="admin.2fa_failed",
+            actor_user_id=user.id,
+            actor_email=user.email,
+            resource_type="admin_2fa",
+            resource_id=challenge.id,
+            status="failure",
+            ip_address=ip,
+            details={"attempts": challenge.attempts},
+        )
+        raise HTTPException(status_code=401, detail="Invalid verification code")
+
+    challenge.consumed_at = now
+    await session.commit()
+
+    token = create_admin_2fa_token(user_id=user.id, email=user.email)
+    set_admin_2fa_cookie(response, token)
+    await record_audit_event(
+        session,
+        action="admin.2fa_verified",
+        actor_user_id=user.id,
+        actor_email=user.email,
+        resource_type="admin_2fa",
+        resource_id=challenge.id,
+        status="success",
+        ip_address=ip,
+    )
+    return {"ok": True}

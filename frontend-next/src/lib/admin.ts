@@ -94,3 +94,31 @@ export async function sendSmtpTest(to = "deepraj@relativclips.com"): Promise<{ o
   }
   return response.json();
 }
+
+export async function requestAdmin2faChallenge(): Promise<{ ok: boolean; challenge_id: string; expires_in_seconds: number }> {
+  const response = await fetch(apiPath("/api/v1/admin/2fa/challenge"), {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    let message = "Could not send 2FA verification code.";
+    try { message = (await response.json()).detail || message; } catch {}
+    throw new AdminApiError(message, response.status);
+  }
+  return response.json();
+}
+
+export async function verifyAdmin2faChallenge(challengeId: string, code: string): Promise<{ ok: boolean }> {
+  const response = await fetch(apiPath("/api/v1/admin/2fa/verify"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge_id: challengeId, code: code.trim() }),
+  });
+  if (!response.ok) {
+    let message = "Invalid verification code.";
+    try { message = (await response.json()).detail || message; } catch {}
+    throw new AdminApiError(message, response.status);
+  }
+  return response.json();
+}
