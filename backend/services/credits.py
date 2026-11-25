@@ -151,3 +151,41 @@ async def settle_job(
     ))
     await session.commit()
     return user.credit_balance
+
+
+async def remove_polar_plan_credits(user: UserModel, session: AsyncSession) -> None:
+    subscription_id = user.polar_subscription_id
+    if not subscription_id:
+        return
+
+    transactions = (await session.execute(
+        select(CreditTransactionModel)
+        .where(
+            CreditTransactionModel.user_id == user.id,
+            CreditTransactionModel.kind.in_(("polar_subscription_credit_grant", "polar_subscription_credit_removal")),
+        )
+        .order_by(CreditTransactionModel.created_at, CreditTransactionModel.id)
+    )).scalars()
+    grants = []
+    for transaction in transactions:
+        if (transaction.details or {}).get("polar_subscription_id") != subscription_id:
+            continue
+        if transaction.kind == "polar_subscription_credit_removal":
+            grants.clear()
+        else:
+            grants.append(transaction)
+    if not grants:
+        return
+
+    first_grant = grants[0]
+    free_balance = max(0, first_grant.balance_after - first_grant.amount)
+    removed = min(sum(grant.amount for grant in grants), max(0, user.credit_balance - free_balance))
+    user.credit_balance -= removed
+    session.add(CreditTransactionModel(
+        user_id=user.id,
+        amount=-removed,
+        balance_after=user.credit_balance,
+        kind="polar_subscription_credit_removal",
+        reference_id=f"polar:remove:{first_grant.id}",
+        details={"polar_subscription_id": subscription_id, "free_balance": free_balance},
+    ))

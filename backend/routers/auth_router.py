@@ -31,6 +31,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..services.credits import remove_polar_plan_credits
 from ..services.entitlements import effective_plan_tier
 from ..auth_utils import (
     clear_session_cookie,
@@ -474,6 +475,21 @@ async def me(
     if not get_session_cookie(request) and not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
     user = await get_current_user(request, session)
+    if user.polar_subscription_id and (
+        user.polar_subscription_status in {"canceled", "revoked"} or user.polar_cancel_at_period_end
+    ):
+        user = (await session.execute(
+            select(UserModel).where(UserModel.id == user.id)
+            .with_for_update().execution_options(populate_existing=True)
+        )).scalar_one()
+        if user.polar_subscription_status in {"canceled", "revoked"} or user.polar_cancel_at_period_end:
+            user.plan_tier = "free"
+            await remove_polar_plan_credits(user, session)
+        await session.flush()
+        profile = await _get_profile_for_role(session, user.id, user.role)
+        response = AuthResponse(user=_user_to_response(user, profile))
+        await session.commit()
+        return response
     profile = await _get_profile_for_role(session, user.id, user.role)
     return AuthResponse(user=_user_to_response(user, profile))
 

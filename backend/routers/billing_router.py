@@ -47,6 +47,7 @@ from ..database.models import (
     UserModel,
 )
 from ..database.session import get_session
+from ..services.credits import remove_polar_plan_credits
 from ..services.entitlements import effective_plan_tier, PLAN_CATALOG, normalize_plan_key
 from .auth_router import get_current_user
 
@@ -287,44 +288,6 @@ async def _grant_polar_plan(
     ))
 
 
-async def _remove_polar_plan_credits(user: UserModel, session: AsyncSession) -> None:
-    subscription_id = user.polar_subscription_id
-    if not subscription_id:
-        return
-
-    transactions = (await session.execute(
-        select(CreditTransactionModel)
-        .where(
-            CreditTransactionModel.user_id == user.id,
-            CreditTransactionModel.kind.in_(("polar_subscription_credit_grant", "polar_subscription_credit_removal")),
-        )
-        .order_by(CreditTransactionModel.created_at, CreditTransactionModel.id)
-    )).scalars()
-    grants = []
-    for transaction in transactions:
-        if (transaction.details or {}).get("polar_subscription_id") != subscription_id:
-            continue
-        if transaction.kind == "polar_subscription_credit_removal":
-            grants.clear()
-        else:
-            grants.append(transaction)
-    if not grants:
-        return
-
-    first_grant = grants[0]
-    free_balance = max(0, first_grant.balance_after - first_grant.amount)
-    removed = min(sum(grant.amount for grant in grants), max(0, user.credit_balance - free_balance))
-    user.credit_balance -= removed
-    session.add(CreditTransactionModel(
-        user_id=user.id,
-        amount=-removed,
-        balance_after=user.credit_balance,
-        kind="polar_subscription_credit_removal",
-        reference_id=f"polar:remove:{first_grant.id}",
-        details={"polar_subscription_id": subscription_id, "free_balance": free_balance},
-    ))
-
-
 def _apply_polar_identity(user: UserModel, data: dict, event_type: str = "") -> None:
     customer = data.get("customer") if isinstance(data.get("customer"), dict) else {}
     subscription = data.get("subscription") if isinstance(data.get("subscription"), dict) else {}
@@ -389,7 +352,7 @@ async def polar_webhook(request: Request, session: AsyncSession = Depends(get_se
 
     user.plan_tier = effective_plan_tier(user)
     if user.polar_subscription_status in {"canceled", "revoked"} or user.polar_cancel_at_period_end:
-        await _remove_polar_plan_credits(user, session)
+        await remove_polar_plan_credits(user, session)
     await session.commit()
     return {"status": "ok"}
 
