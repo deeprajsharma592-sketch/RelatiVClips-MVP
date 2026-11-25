@@ -89,7 +89,6 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
             <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-[#111214] text-sm font-semibold text-white">{initial}</span>
             <span className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
               <span className="block truncate text-sm font-medium text-white">{name}</span>
-              <span className="block text-xs text-white">{user?.credit_balance ?? 0} credits</span>
             </span>
             {!collapsed && <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-zinc-400 rotate-180 transition-transform group-open/profile:rotate-0" />}
           </summary>
