@@ -1,4 +1,6 @@
-export async function mountStudioTower(root, signal) {
+import { mountTowerPosters } from "./studioTowerPosters";
+
+export async function mountStudioTower(root, signal, options = {}) {
   if (signal.aborted) return;
   let animationFrame = 0;
   let observer;
@@ -15,7 +17,7 @@ export async function mountStudioTower(root, signal) {
     if (!gl) throw new Error('WebGL 2 unavailable');
     const vertex = `#version 300 es
     in vec3 position; in vec3 normal; in vec2 uv;
-    uniform vec4 camera; uniform float aspect; uniform vec2 motion; uniform float plume; uniform vec4 flightPose;
+    uniform vec4 camera; uniform float aspect; uniform vec2 motion; uniform float plume; uniform vec4 flightPose; uniform vec3 cameraOffset;
     out vec3 n; out vec2 t;
     vec3 orbit(vec3 p) {
       vec3 q=vec3(camera.y*p.x+camera.x*p.z,p.y,camera.y*p.z-camera.x*p.x);
@@ -29,6 +31,7 @@ export async function mountStudioTower(root, signal) {
         p.y+=trail*.045*sin(motion.y*18.-p.y*9.);
       }
       vec3 q=orbit(p+vec3(0.,motion.x-3.79,0.));
+      q-=cameraOffset;
       float w=1.+(1.-flightPose.z)*.55-q.z/17.;
       float scale=.246*min(1.,aspect/.50);
       float c=cos(flightPose.w), s=sin(flightPose.w);
@@ -83,10 +86,11 @@ export async function mountStudioTower(root, signal) {
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
-    const uniforms=Object.fromEntries(['camera','aspect','textured','metal','motion','plume','flightPose'].map(key=>[key,gl.getUniformLocation(program,key)]));
-    const response=await fetch('/studio-tower/mesh.json', {signal});
-    if(!response.ok) throw new Error('Model data could not load');
-    const [mesh,images]=await response.json();
+    const uniforms=Object.fromEntries(['camera','aspect','textured','metal','motion','plume','flightPose','cameraOffset'].map(key=>[key,gl.getUniformLocation(program,key)]));
+    const [mesh,images]=options.modelData ?? await fetch('/studio-tower/mesh.json', {signal}).then(response=>{
+      if(!response.ok) throw new Error('Model data could not load');
+      return response.json();
+    });
     if(signal.aborted) return;
     const bytes = value => Uint8Array.from(atob(value),c=>c.charCodeAt(0));
     const textures=await Promise.all(images.map(async data=>{
@@ -130,7 +134,10 @@ export async function mountStudioTower(root, signal) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,gl.createBuffer());
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.STATIC_DRAW);
       const plume=color[2]>.9 && color[0]<.6 ? (color[0]>.5 ? 1 : color[0]>.02 ? .55 : .24) : 0;
-      return {vao,indexCount,color,texture,plume};
+      const posterGeometry=texture>=0 && texture<4
+        ? {positions:attributes[0][2], normals:attributes[1][2]}
+        : null;
+      return {vao,indexCount,color,texture,plume,posterGeometry};
     }));
     if(signal.aborted) return;
     gl.enable(gl.DEPTH_TEST);
@@ -154,6 +161,63 @@ export async function mountStudioTower(root, signal) {
     let flight=null;
     let flightPose=restPose;
     let gesture=null;
+    let hiddenPoster=-1;
+    const posterPanel=mountTowerPosters(root,canvas,signal,()=>{
+      hiddenPoster=-1;
+      queueReturn();
+      draw();
+    },options.interactiveLinks ?? true);
+
+    function visiblePosters(){
+      const rect=canvas.getBoundingClientRect();
+      if(!rect.width || !rect.height) return [];
+      const aspect=rect.width/rect.height;
+      const scale=.246*Math.min(1,aspect/.5);
+      const ca=Math.cos(azimuth), sa=Math.sin(azimuth);
+      const cp=Math.cos(pitch), sp=Math.sin(pitch);
+      const bob=.075*Math.sin(clock*tau/4.5)-3.79;
+      const results=[];
+      for(const {texture,posterGeometry} of meshes){
+        if(!posterGeometry) continue;
+        const {positions,normals}=posterGeometry;
+        let left=Infinity, right=-Infinity, top=Infinity, bottom=-Infinity;
+        let nearest=-Infinity, normalX=0, normalZ=0, count=0;
+        for(let i=0;i<positions.length;i+=3){
+          const nx=normals[i]/127, ny=normals[i+1]/127, nz=normals[i+2]/127;
+          const facing=sp*ny+cp*(ca*nz-sa*nx);
+          if(facing<.12) continue;
+          normalX+=ca*nx+sa*nz;
+          normalZ+=facing;
+          count++;
+          const x=positions[i]/4096, y=positions[i+1]/4096+bob, z=positions[i+2]/4096;
+          const orbitZ=ca*z-sa*x;
+          const depth=sp*y+cp*orbitZ;
+          const w=1-depth/17;
+          const px=rect.left+(1+(ca*x+sa*z)*scale/(aspect*w))*rect.width/2;
+          const py=rect.top+(1-(cp*y-sp*orbitZ)*scale/w)*rect.height/2;
+          left=Math.min(left,px);
+          right=Math.max(right,px);
+          top=Math.min(top,py);
+          bottom=Math.max(bottom,py);
+          nearest=Math.max(nearest,depth);
+        }
+        if(count && right-left>12 && bottom-top>8){
+          const tilt=Math.atan2(normalX,normalZ)*180/Math.PI;
+          results.push({texture,left,right,top,bottom,width:right-left,height:bottom-top,nearest,tilt});
+        }
+      }
+      return results.sort((a,b)=>b.nearest-a.nearest);
+    }
+
+    function openPoster(poster){
+      if(!poster || flight || posterPanel.active) return;
+      hiddenPoster=poster.texture;
+      returnView=null;
+      clearTimeout(resetTimer);
+      posterPanel.open(poster.texture,poster,images[poster.texture],reducedMotion);
+      draw();
+    }
+
     function draw(){
       const rect=canvas.getBoundingClientRect();
       const ratio=Math.min(window.devicePixelRatio||1,2);
@@ -162,11 +226,17 @@ export async function mountStudioTower(root, signal) {
       if(canvas.width!==width || canvas.height!==height){canvas.width=width;canvas.height=height;}
       gl.viewport(0,0,width,height);
       gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-      gl.uniform4f(uniforms.camera,Math.sin(azimuth),Math.cos(azimuth),Math.sin(pitch),Math.cos(pitch));
-      gl.uniform1f(uniforms.aspect,width/height);
+      const slide=reducedMotion ? 0 : posterPanel.cameraProgress;
+      const cameraAzimuth=azimuth+slide*.43;
+      const cameraPitch=pitch+slide*.07;
+      const aspect=width/height;
+      gl.uniform4f(uniforms.camera,Math.sin(cameraAzimuth),Math.cos(cameraAzimuth),Math.sin(cameraPitch),Math.cos(cameraPitch));
+      gl.uniform1f(uniforms.aspect,aspect);
+      gl.uniform3f(uniforms.cameraOffset,slide*aspect*2.2,slide*.08,slide*1.2);
       gl.uniform4fv(uniforms.flightPose,flightPose);
       gl.uniform2f(uniforms.motion,.075*Math.sin(clock*tau/4.5),clock);
       for(const mesh of meshes){
+        if(mesh.texture>=0 && mesh.texture===hiddenPoster) continue;
         if(mesh.plume){
           gl.enable(gl.BLEND);
           gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
@@ -187,7 +257,12 @@ export async function mountStudioTower(root, signal) {
     function animate(now){
       const elapsed=last ? Math.min(now-last,80) : 0;
       last=now;
-      clock+=elapsed/1000;
+      if(!posterPanel.active) clock+=elapsed/1000;
+      if(posterPanel.active) {
+        draw();
+        animationFrame=requestAnimationFrame(animate);
+        return;
+      }
       if(flight){
         const progress=Math.max(0,Math.min(1,(now-flight.start)/flightDuration));
         const eased=progress*progress*(3-2*progress);
@@ -222,18 +297,21 @@ export async function mountStudioTower(root, signal) {
       animationFrame=requestAnimationFrame(animate);
     }
     canvas.addEventListener('pointerdown',event=>{
-      if(drag||flight) return;
+      if(drag||flight||posterPanel.active||event.button!==0) return;
       gesture=null;
       clearTimeout(resetTimer);
       returnView=null;
-      drag={id:event.pointerId,x:event.clientX,y:event.clientY};
+      drag={id:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,moved:false};
       canvas.setPointerCapture(event.pointerId);
     }, {signal});
     canvas.addEventListener('pointermove',event=>{
       if(drag?.id!==event.pointerId)return;
+      if(!drag.moved && Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)<5) return;
+      drag.moved=true;
       azimuth+=(event.clientX-drag.x)*.011;
       pitch=Math.max(-1.1,Math.min(1.1,pitch+(event.clientY-drag.y)*.009));
-      drag={id:event.pointerId,x:event.clientX,y:event.clientY};
+      drag.x=event.clientX;
+      drag.y=event.clientY;
       draw();
     }, {signal});
     function queueReturn(delay=returnDelay){
@@ -254,13 +332,34 @@ export async function mountStudioTower(root, signal) {
         turn:Math.atan2(Math.sin(delta),Math.cos(delta)),
       };
     }
+    canvas.addEventListener('pointerup',event=>{
+      if(drag?.id!==event.pointerId || drag.moved) return;
+      const {clientX:x,clientY:y}=event;
+      const poster=visiblePosters().find(p=>x>=p.left && x<=p.right && y>=p.top && y<=p.bottom);
+      if(poster){
+        drag=null;
+        openPoster(poster);
+      }
+    }, {signal});
+    canvas.addEventListener('keydown',event=>{
+      if(flight || posterPanel.active) return;
+      if(event.key==='Enter' || event.key===' '){
+        event.preventDefault();
+        openPoster(visiblePosters()[0]);
+      } else if(event.key==='ArrowLeft' || event.key==='ArrowRight'){
+        event.preventDefault();
+        azimuth+=event.key==='ArrowLeft' ? -.5 : .5;
+        queueReturn();
+        draw();
+      }
+    }, {signal});
     canvas.addEventListener('lostpointercapture',event=>{
       if(drag?.id!==event.pointerId) return;
       drag=null;
       queueReturn(reducedMotion?0:returnDelay);
     }, {signal});
     canvas.addEventListener('wheel',event=>{
-      if(drag||event.ctrlKey) return;
+      if(drag||event.ctrlKey||posterPanel.active) return;
       const horizontal=Math.abs(event.deltaX)>Math.abs(event.deltaY);
       const delta=horizontal?event.deltaX:event.shiftKey?event.deltaY:0;
       if(!delta) return;

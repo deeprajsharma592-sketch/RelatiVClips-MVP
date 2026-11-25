@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Image from "next/image";
+import "./studioTowerPosters.css";
 
 export default function StudioTower() {
   const root = useRef<HTMLDivElement>(null);
@@ -36,8 +37,8 @@ export default function StudioTower() {
           className="object-contain sm:scale-[1.14] group-data-[live=true]:hidden"
         />
         <canvas
-          role="img"
-          aria-label="Interactive 3D model of the hovering studio tower"
+          tabIndex={0}
+          aria-label="Interactive 3D tower. Drag to rotate, or use the arrow keys and Enter to open a poster."
           className="invisible block h-full w-full touch-pan-y cursor-grab active:cursor-grabbing group-data-[live=true]:visible"
         />
         <span role="status" className="sr-only">Loading interactive model</span>

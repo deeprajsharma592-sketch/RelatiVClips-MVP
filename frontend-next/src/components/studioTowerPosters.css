@@ -1,0 +1,46 @@
+.tower-poster-panel {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #ffffff69;
+  border-radius: 18px;
+  background: var(--poster-color);
+  color: #101918;
+  transform-origin: 0 0;
+  box-shadow: 0 20px 58px #0009;
+}
+.tower-poster-panel::backdrop { background: transparent; }
+.tower-poster-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+.tower-poster-copy {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: auto;
+  padding: clamp(18px, 4vw, 45px);
+  font: 400 15px/1.5 system-ui, sans-serif;
+}
+.tower-poster-copy h2 { margin: 12px 0; font: 700 clamp(24px, 5vw, 46px)/1.1 system-ui, sans-serif; }
+.tower-poster-copy ul { margin: 20px 0; padding-left: 1.2em; list-style: disc; }
+.tower-poster-copy button {
+  float: right;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #10191852;
+  border-radius: 50%;
+  background: #101918;
+  color: #fff;
+  font: 400 25px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.tower-poster-copy a { color: inherit; text-decoration: underline; }

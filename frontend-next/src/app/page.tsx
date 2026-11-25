@@ -31,10 +31,10 @@ export default function HomePage() {
 
       <TasteTimeline />
 
-      <StudioTower />
-
       {/* ── SECTION: SOLUTIONS FOR EVERY CREATOR & TEAM ── */}
       <SolutionsSection />
+
+      <StudioTower />
 
     </div>
   );
