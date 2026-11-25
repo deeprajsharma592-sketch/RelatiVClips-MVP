@@ -44,7 +44,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { getPolarCheckoutUrl } from "@/lib/polar";
 import { authPageHref } from "@/lib/auth-destination";
 import { apiPath } from "@/lib/apiBase";
-import { checkProcessingStatus, submitYouTubeUrl } from "@/lib/api";
+import { checkProcessingStatus, getActiveProcessingTasks, submitYouTubeUrl } from "@/lib/api";
 import {
   getStoredProjects,
   createNewProject,
@@ -117,18 +117,23 @@ function DashboardContent() {
   // Handle incoming taskId or url from VideoIntake redirect
   useEffect(() => {
     if (!taskIdParam && !urlParam) {
-      // Re-attach background active job if user clicked back in browser or refreshed
-      try {
-        const saved = JSON.parse(window.localStorage.getItem("relativ:active-job") || "null") as
-          | { taskId?: string; url?: string; savedAt?: number }
-          | null;
-        const fresh = Boolean(saved?.taskId && saved?.savedAt && Date.now() - saved.savedAt < 30 * 60 * 1000);
-        if (fresh && saved?.taskId) {
-          router.replace(`/dashboard?taskId=${encodeURIComponent(saved.taskId)}`);
+      let cancelled = false;
+      void (async () => {
+        // Verify with backend first so stale localStorage never locks UI,
+        // and any real active backend job locks UI into "Processing..."
+        const live = await getActiveProcessingTasks();
+        if (cancelled) return;
+        if (live.active && live.tasks.length > 0) {
+          router.replace(`/dashboard?taskId=${encodeURIComponent(live.tasks[0].task_id)}`);
           return;
         }
-      } catch {}
-      return;
+        try {
+          window.localStorage.removeItem("relativ:active-job");
+        } catch {}
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
 
     let restoredTaskId = taskIdParam || undefined;
@@ -182,7 +187,7 @@ function DashboardContent() {
         router.replace(`/dashboard?taskId=${encodeURIComponent(tid)}`);
       }
       let consecutiveErrors = 0;
-      pollInterval = setInterval(async () => {
+      const pollOnce = async () => {
         try {
           const status = await checkProcessingStatus(tid);
           if (!isMounted) return;
@@ -192,6 +197,7 @@ function DashboardContent() {
           if (status.status === "complete" && status.clips && status.clips.length > 0) {
             if (pollInterval) clearInterval(pollInterval);
             setIsGenerating(false);
+            setGenerationError(null);
             setGenerationProgress(100);
             updateProjectStatus(newProj.id, "ready", status.clips, 100);
             setProjects(getStoredProjects());
@@ -230,7 +236,9 @@ function DashboardContent() {
             setProjects(getStoredProjects());
           }
         }
-      }, 2500);
+      };
+      void pollOnce();
+      pollInterval = setInterval(() => void pollOnce(), 2500);
     };
 
     if (restoredTaskId) {
@@ -238,12 +246,22 @@ function DashboardContent() {
     } else if (urlParam) {
       let captionStyle: Record<string, unknown> | undefined;
       try { captionStyle = captionStyleParam ? JSON.parse(captionStyleParam) : undefined; } catch { captionStyle = undefined; }
-      submitYouTubeUrl(urlParam, {
-        captionStyle,
-        tailBufferSeconds: tailBufferParam === "0" ? 0 : 5,
-        thumbnailOutroSeconds: thumbnailOutroParam === "0" ? 0 : 4,
-      })
-        .then((init) => {
+      void (async () => {
+        try {
+          // On page reload with ?url=..., check if this job is already running
+          // on the backend instead of submitting a duplicate job that hits the
+          // plan's active-task concurrency limit.
+          const live = await getActiveProcessingTasks();
+          if (!isMounted) return;
+          if (live.active && live.tasks.length > 0) {
+            startPolling(live.tasks[0].task_id);
+            return;
+          }
+          const init = await submitYouTubeUrl(urlParam, {
+            captionStyle,
+            tailBufferSeconds: tailBufferParam === "0" ? 0 : 5,
+            thumbnailOutroSeconds: thumbnailOutroParam === "0" ? 0 : 4,
+          });
           if (!isMounted) return;
           if (init.taskId) {
             startPolling(init.taskId);
@@ -256,14 +274,23 @@ function DashboardContent() {
               setProjects(getStoredProjects());
             }, 1000);
           }
-        })
-        .catch((err) => {
+        } catch (err: unknown) {
           if (!isMounted) return;
+          const msg = err instanceof Error ? err.message : "Service offline";
+          if (msg.toLowerCase().includes("active processing task")) {
+            const live = await getActiveProcessingTasks();
+            if (!isMounted) return;
+            if (live.active && live.tasks.length > 0) {
+              startPolling(live.tasks[0].task_id);
+              return;
+            }
+          }
           setIsGenerating(false);
-          setGenerationError(`Cannot connect to backend: ${err?.message || "Service offline"}.`);
+          setGenerationError(msg);
           updateProjectStatus(newProj.id, "failed", [], 0);
           setProjects(getStoredProjects());
-        });
+        }
+      })();
     }
 
     return () => {
