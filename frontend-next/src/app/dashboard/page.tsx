@@ -38,7 +38,6 @@ import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
 import CalendarView from "@/components/dashboard/CalendarView";
-import EditableClips from "@/components/dashboard/EditableClips";
 import ClipThumbnail from "@/components/dashboard/ClipThumbnail";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
@@ -321,7 +320,7 @@ function DashboardContent() {
     document.body.removeChild(a);
   };
 
-  const renderProjectClips = (project: StoredProject) => (
+  const renderProjectClips = (project: StoredProject, showEditAction = false) => (
     <div className="space-y-4 pt-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
         <div>
@@ -366,6 +365,7 @@ function DashboardContent() {
             onSelect={() => setInspectedClip({ clip, index })}
             onRequestDownload={() => handleRequestDownload(clip)}
             onSchedule={() => setInspectedClip({ clip, index })}
+            onEdit={showEditAction ? () => setSelectedEditClip({ clip, index, projectId: project.id }) : undefined}
           />
         ))}
       </div>
@@ -478,7 +478,7 @@ function DashboardContent() {
                   <ArrowLeft size={16} aria-hidden="true" />
                   Back to Clip Vault
                 </button>
-                {vaultProject.clips?.length ? renderProjectClips(vaultProject) : (
+                {vaultProject.clips?.length ? renderProjectClips(vaultProject, true) : (
                   <div className="rounded-xl border border-white/10 px-5 py-8">
                     <h2 className="text-lg font-medium">{vaultProject.title}</h2>
                     <p className="mt-2 text-sm text-zinc-400">
@@ -496,11 +496,6 @@ function DashboardContent() {
                   setIsGenerating(false);
                   setActiveTab("home");
                 }}
-              />
-              <EditableClips
-                projects={projects}
-                onEdit={(clip, index, projectId) => setSelectedEditClip({ clip, index, projectId })}
-                onCreateClip={() => setActiveTab("home")}
               />
             </>
           )}
@@ -630,12 +625,14 @@ function ClipCard({
   onSelect,
   onRequestDownload,
   onSchedule,
+  onEdit,
 }: {
   clip: Clip;
   index: number;
   onSelect: () => void;
   onRequestDownload: () => void;
   onSchedule: () => void;
+  onEdit?: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -723,6 +720,20 @@ function ClipCard({
             </button>
           </div>
         </div>
+
+        {onEdit && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-teal-400/30 bg-teal-400/[0.06] px-3 py-2 text-xs font-medium text-teal-200 transition hover:border-teal-300/50 hover:bg-teal-400/[0.12]"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            Edit clip
+          </button>
+        )}
 
         {/* Title */}
         <h3 className="font-medium text-xs text-zinc-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
