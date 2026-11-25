@@ -56,22 +56,43 @@ export function mountAudienceWeb(canvas, reducedMotion) {
 
   function tile(card,dist,driftX,driftY) {
     const x=cx+dist*card.ux+driftX,y=cy+dist*card.uy+driftY;
-    ctx.fillStyle='#111217';
-    ctx.strokeStyle='#e6e1df';
-    ctx.lineWidth=1.35;
+    const left=x-card.w/2, top=y-halfH;
+
+    // The offset base gives the front face a visible lower bevel.
+    ctx.fillStyle='#090e17';
     ctx.beginPath();
-    ctx.roundRect(x-card.w/2,y-halfH,card.w,halfH*2,8);
+    ctx.roundRect(left,top+4,card.w,halfH*2,10);
     ctx.fill();
+    ctx.strokeStyle='#344659';
+    ctx.lineWidth=1;
     ctx.stroke();
+
+    const face=ctx.createLinearGradient(0,top,0,top+halfH*2);
+    face.addColorStop(0,'#303d50');
+    face.addColorStop(.38,'#1c2636');
+    face.addColorStop(1,'#101620');
+    ctx.fillStyle=face;
+    ctx.beginPath();
+    ctx.roundRect(left,top,card.w,halfH*2,10);
+    ctx.fill();
+
+    const rim=ctx.createLinearGradient(0,top,0,top+halfH*2);
+    rim.addColorStop(0,'#b9d0e8');
+    rim.addColorStop(.45,'#6a829b');
+    rim.addColorStop(1,'#344659');
+    ctx.strokeStyle=rim;
+    ctx.stroke();
+
     ctx.save();
-    ctx.translate(x-card.w/2+12,y-12);
+    ctx.translate(left+12,y-12);
+    ctx.strokeStyle='#b7dcff';
     ctx.lineWidth=1.65;
     ctx.lineJoin='round';
     ctx.lineCap='round';
     ctx.stroke(icons[card.icon]);
     ctx.restore();
     ctx.fillStyle='#fff';
-    ctx.font='650 18px system-ui,sans-serif';
+    ctx.font='700 18px system-ui,sans-serif';
     ctx.textAlign='left';
     ctx.textBaseline='middle';
     ctx.fillText(card.label,x-card.w/2+46,y+.5);
@@ -148,7 +169,7 @@ export function mountAudienceWeb(canvas, reducedMotion) {
   }
 
   function draw(seconds, floating = true) {
-    ctx.setTransform(1.5,0,0,1.5,0,0);
+    ctx.setTransform(canvas.width/960,0,0,canvas.height/540,0,0);
     ctx.clearRect(0,0,960,540);
     ctx.lineCap='round';
 
@@ -223,12 +244,22 @@ export function mountAudienceWeb(canvas, reducedMotion) {
     else draw(0);
   };
   reducedMotion.addEventListener("change", onMotionChange);
-  draw(reducedMotion.matches ? 2.65 : 0, false);
+  function resizeCanvas() {
+    const cssWidth = canvas.getBoundingClientRect().width;
+    const pixelWidth = Math.min(3600, Math.max(16, Math.round(cssWidth * (window.devicePixelRatio || 1) / 16) * 16));
+    canvas.width = pixelWidth;
+    canvas.height = pixelWidth * 9 / 16;
+    draw(reducedMotion.matches ? 2.65 : seconds, !reducedMotion.matches);
+  }
+  const resizeObserver = new ResizeObserver(resizeCanvas);
+  resizeObserver.observe(canvas);
+  resizeCanvas();
 
   return {
     play,
     setVisible,
     dispose() {
+      resizeObserver.disconnect();
       setVisible(false);
       reducedMotion.removeEventListener("change", onMotionChange);
     },
