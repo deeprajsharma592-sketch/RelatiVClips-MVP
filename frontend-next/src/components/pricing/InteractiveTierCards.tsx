@@ -21,9 +21,9 @@ export interface TierConfig {
 }
 
 export const TIERS_CONFIG: TierConfig[] = [
-  { id: "creator_go", name: "RelatiV Go", image: "/images/pricing/go-mount-fuji.jpg", imagePosition: "50% 48%", monthlyPrice: "$7.99", yearlyPrice: "$5.99", yearlyBilled: "Billed $71.88 annually", clipsCount: "100 clips / month", accent: "#67D8DF", features: ["20,000 credits", "30–90 second clips", "30 minute source videos", "One active processing job"] },
-  { id: "creator_pro", name: "Pro Studio", image: "/images/pricing/pro-misty-ridges.jpg", imagePosition: "50% 55%", monthlyPrice: "$14.99", yearlyPrice: "$11.99", yearlyBilled: "Billed $143.88 annually", clipsCount: "300 clips / month", accent: "#E6B84A", features: ["60,000 credits", "Everything in Go", "60 minute source videos", "Priority processing"] },
-  { id: "creator_max", name: "RelatiV Max", image: "/images/pricing/max-tea-sunrise.jpg", imagePosition: "52% 50%", monthlyPrice: "$29.99", yearlyPrice: "$23.99", yearlyBilled: "Billed $287.88 annually", clipsCount: "1,000 clips / month", accent: "#B99AF7", features: ["200,000 credits", "Everything in Pro Studio", "90 minute source videos", "Two active jobs"] },
+  { id: "creator_go", name: "RelatiV Go", image: "/images/pricing/go-mount-fuji.jpg", imagePosition: "50% 48%", monthlyPrice: "$7.99", originalMonthlyPrice: "$11.99", yearlyPrice: "$5.99", yearlyBilled: "Billed $71.88 annually", clipsCount: "100 clips / month", accent: "#67D8DF", features: ["20,000 credits", "30–90 second clips", "30 minute source videos", "One active processing job"] },
+  { id: "creator_pro", name: "Pro Studio", image: "/images/pricing/pro-misty-ridges.jpg", imagePosition: "50% 55%", monthlyPrice: "$14.99", originalMonthlyPrice: "$24.99", yearlyPrice: "$11.99", yearlyBilled: "Billed $143.88 annually", clipsCount: "300 clips / month", accent: "#E6B84A", features: ["60,000 credits", "Everything in Go", "60 minute source videos", "Priority processing"] },
+  { id: "creator_max", name: "RelatiV Max", image: "/images/pricing/max-tea-sunrise.jpg", imagePosition: "52% 50%", monthlyPrice: "$29.99", originalMonthlyPrice: "$49.99", yearlyPrice: "$23.99", yearlyBilled: "Billed $287.88 annually", clipsCount: "1,000 clips / month", accent: "#B99AF7", features: ["200,000 credits", "Everything in Pro Studio", "90 minute source videos", "Two active jobs"] },
 ];
 
 interface InteractiveTierCardsProps { onSelectPlan?: (planId: string) => void; defaultBillingCycle?: "monthly" | "yearly"; className?: string; showBillingToggle?: boolean; }

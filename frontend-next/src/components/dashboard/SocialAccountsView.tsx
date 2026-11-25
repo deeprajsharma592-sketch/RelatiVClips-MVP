@@ -289,7 +289,7 @@ export default function SocialAccountsView({
                     </div>
                   ) : (
                     <p className="text-[#77787d] leading-relaxed">
-                      Link via {plat.id === "youtube" ? "Google OAuth or YouTube API Key" : "Meta OAuth or Graph Access Token"} to enable scheduling &amp; analytics.
+                      Link via {plat.id === "youtube" ? "Google OAuth or YouTube API Key" : "Meta OAuth or Graph Access Token"}{" "}to enable scheduling &amp; analytics.
                     </p>
                   )}
                   {acc && (
@@ -426,15 +426,48 @@ export default function SocialAccountsView({
                 </>
               )}
 
-              <form onSubmit={handleConnectSubmit} className="space-y-3">
+              <form onSubmit={handleConnectSubmit} className="space-y-3" autoComplete="off">
                 {modalPlatform === "youtube" ? (
                   <>
+                    <div className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-[#b6b7bc] space-y-1">
+                      <p className="font-medium text-white/90">Where to get these credentials:</p>
+                      <ul className="list-disc pl-4 space-y-0.5 text-[#9c9da3]">
+                        <li>
+                          <span className="text-white/80">API Key:</span>{" "}
+                          <a
+                            href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline decoration-white/30 hover:text-white"
+                          >
+                            Google Cloud Console
+                          </a>{" "}
+                          → enable <strong>YouTube Data API v3</strong> → Credentials → Create API Key.
+                        </li>
+                        <li>
+                          <span className="text-white/80">Channel ID / @Handle:</span> YouTube Studio → Settings → Channel → Advanced settings (or your <code className="text-white/75">@handle</code>).
+                        </li>
+                        <li>
+                          <span className="text-white/80">OAuth Access Token:</span>{" "}
+                          <a
+                            href="https://developers.google.com/oauthplayground/"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline decoration-white/30 hover:text-white"
+                          >
+                            OAuth Playground
+                          </a>{" "}
+                          with <code className="text-white/75">youtube.upload</code> scope (only needed for direct Shorts publishing).
+                        </li>
+                      </ul>
+                    </div>
                     <div>
                       <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
                         YouTube API Key (Data / Analytics)
                       </label>
                       <input
                         type="password"
+                        autoComplete="new-password"
                         value={apiKeyInput}
                         onChange={(e) => setApiKeyInput(e.target.value)}
                         placeholder="AIzaSy..."
@@ -460,6 +493,7 @@ export default function SocialAccountsView({
                       </label>
                       <input
                         type="password"
+                        autoComplete="new-password"
                         value={accessTokenInput}
                         onChange={(e) => setAccessTokenInput(e.target.value)}
                         placeholder="ya29...."
@@ -469,12 +503,30 @@ export default function SocialAccountsView({
                   </>
                 ) : (
                   <>
+                    <div className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-[#b6b7bc] space-y-1">
+                      <p className="font-medium text-white/90">Where to get this token:</p>
+                      <p className="text-[#9c9da3]">
+                        Open{" "}
+                        <a
+                          href="https://developers.facebook.com/tools/explorer/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-white/30 hover:text-white"
+                        >
+                          Meta Graph API Explorer
+                        </a>{" "}
+                        with a Business/Creator Instagram account linked to a Facebook Page and generate a token with{" "}
+                        <code className="text-white/75">instagram_basic</code> and{" "}
+                        <code className="text-white/75">instagram_content_publish</code>.
+                      </p>
+                    </div>
                     <div>
                       <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
                         Instagram Graph API Access Token
                       </label>
                       <input
                         type="password"
+                        autoComplete="new-password"
                         required
                         value={accessTokenInput}
                         onChange={(e) => setAccessTokenInput(e.target.value)}

@@ -403,7 +403,39 @@ export default function AnalyseView({
               </button>
             </div>
 
-            <form onSubmit={handleSaveYouTubeApi} className="mt-4 space-y-3.5">
+            <form onSubmit={handleSaveYouTubeApi} className="mt-4 space-y-3.5" autoComplete="off">
+              <div className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-[#b6b7bc] space-y-1">
+                <p className="font-medium text-white/90">Where to get these credentials:</p>
+                <ul className="list-disc pl-4 space-y-0.5 text-[#9c9da3]">
+                  <li>
+                    <span className="text-white/80">API Key:</span>{" "}
+                    <a
+                      href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline decoration-white/30 hover:text-white"
+                    >
+                      Google Cloud Console
+                    </a>{" "}
+                    → enable <strong>YouTube Data API v3</strong> &amp; <strong>YouTube Analytics API</strong> → Credentials → Create API Key.
+                  </li>
+                  <li>
+                    <span className="text-white/80">Channel ID / @Handle:</span> YouTube Studio → Settings → Channel → Advanced settings (or your <code className="text-white/75">@handle</code>).
+                  </li>
+                  <li>
+                    <span className="text-white/80">OAuth Access Token:</span>{" "}
+                    <a
+                      href="https://developers.google.com/oauthplayground/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline decoration-white/30 hover:text-white"
+                    >
+                      OAuth Playground
+                    </a>{" "}
+                    with <code className="text-white/75">yt-analytics.readonly</code> &amp; <code className="text-white/75">youtube.readonly</code> scopes (for watch-time &amp; retention).
+                  </li>
+                </ul>
+              </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-[#a5a6aa]">
                   YouTube Data / Analytics API Key
