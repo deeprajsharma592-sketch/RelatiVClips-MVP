@@ -22,6 +22,7 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
   const { scrollY } = useScroll();
   const [visible, setVisible] = useState(false);
   const [url, setUrl] = useState("");
+  const [clipCount, setClipCount] = useState(2);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
     e.preventDefault();
     if (isProcessing) return;
     const source = url.trim();
-    if (source) router.push(`/process?${new URLSearchParams({ url: source })}`);
+    if (source) router.push(`/process?${new URLSearchParams({ url: source, clipCount: String(clipCount) })}`);
   };
 
   return (
@@ -89,6 +90,19 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
                   className="w-full bg-transparent text-xs sm:text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0"
                   style={{ outline: "none", boxShadow: "none" }}
                 />
+                <select
+                  aria-label="Number of clips"
+                  value={clipCount}
+                  disabled={isProcessing}
+                  onChange={(e) => setClipCount(Number(e.target.value))}
+                  className="h-8 rounded-full border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10 px-2.5 text-[11px] font-medium text-zinc-800 dark:text-zinc-200 outline-none cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n} className="bg-zinc-900 text-white">
+                      {n} {n === 1 ? "clip" : "clips"}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="submit"
                   disabled={isProcessing}

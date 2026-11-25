@@ -224,7 +224,9 @@ function ProcessInner() {
     async (targetUrl: string) => {
       try {
         pushEvent("Submitting URL to pipeline…", undefined, "info");
-        const init = await submitYouTubeUrl(targetUrl);
+        const rawCount = Number(params.get("clipCount"));
+        const clipCount = rawCount >= 1 && rawCount <= 4 ? rawCount : undefined;
+        const init = await submitYouTubeUrl(targetUrl, clipCount ? { clipCount } : undefined);
         if (!init.taskId) throw new Error("The processing service did not return a clip job.");
         await startPollingTask(init.taskId);
       } catch (err) {
@@ -233,7 +235,7 @@ function ProcessInner() {
         pushEvent(err instanceof Error ? err.message : "Unexpected error", undefined, "error");
       }
     },
-    [pushEvent, startPollingTask]
+    [pushEvent, startPollingTask, params]
   );
 
   const initialized = useRef(false);

@@ -71,6 +71,7 @@ function DashboardContent() {
   const captionStyleParam = searchParams.get("captionStyle");
   const tailBufferParam = searchParams.get("tailBuffer");
   const thumbnailOutroParam = searchParams.get("thumbnailOutro");
+  const clipCountParam = searchParams.get("clipCount");
   const paymentSucceeded = searchParams.get("payment") === "success";
   const tabParam = searchParams.get("tab") as StudioTab | "edit-studio" | null;
 
@@ -278,7 +279,9 @@ function DashboardContent() {
             startPolling(live.tasks[0].task_id);
             return;
           }
+          const parsedClipCount = clipCountParam ? Math.min(4, Math.max(1, Number(clipCountParam) || 2)) : undefined;
           const init = await submitYouTubeUrl(urlParam, {
+            clipCount: parsedClipCount,
             captionStyle,
             tailBufferSeconds: tailBufferParam === "0" ? 0 : 5,
             thumbnailOutroSeconds: thumbnailOutroParam === "0" ? 0 : 4,
@@ -318,7 +321,7 @@ function DashboardContent() {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [router, taskIdParam, urlParam, captionStyleParam, tailBufferParam, thumbnailOutroParam]);
+  }, [router, taskIdParam, urlParam, captionStyleParam, tailBufferParam, thumbnailOutroParam, clipCountParam]);
 
   // Elapsed timer when generation is active
   useEffect(() => {
@@ -457,7 +460,7 @@ function DashboardContent() {
                 }}
                 onSubmitUrl={(u, config) => {
                   const styleQuery = config.captionStyle ? `&captionStyle=${encodeURIComponent(JSON.stringify(config.captionStyle))}` : "";
-                  const finishQuery = `&tailBuffer=${config.includeNaturalTail ? 5 : 0}&thumbnailOutro=${config.includeThumbnailOutro ? 4 : 0}`;
+                  const finishQuery = `&tailBuffer=${config.includeNaturalTail ? 5 : 0}&thumbnailOutro=${config.includeThumbnailOutro ? 4 : 0}&clipCount=${config.clipCount}`;
                   router.push(`/dashboard?url=${encodeURIComponent(u)}${styleQuery}${finishQuery}`);
                 }}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}

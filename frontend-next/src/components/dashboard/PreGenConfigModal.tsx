@@ -40,6 +40,7 @@ export interface RecipeConfig {
   enableAutoSfx: boolean;
   includeNaturalTail: boolean;
   includeThumbnailOutro: boolean;
+  clipCount: number;
   captionStyle: CaptionStyleValue;
 }
 
@@ -67,6 +68,13 @@ const CAPTION_PRESETS = [
   { id: "hookcard", label: "Hook Card (High-Contrast Boxed)", font: "Impact / Punchy" },
 ];
 
+const CAPTION_LANGUAGES: Array<{ value: "en" | "hi" | "hinglish" | "ur"; label: string }> = [
+  { value: "en", label: "English" },
+  { value: "hi", label: "Hindi" },
+  { value: "hinglish", label: "Hinglish" },
+  { value: "ur", label: "Urdu" },
+];
+
 const POSITION_OPTIONS = [
   { value: "auto", label: "Auto (Face Tracking & Avoidance)" },
   { value: "lower", label: "Lower Third (Standard 9:16)" },
@@ -91,7 +99,9 @@ export default function PreGenConfigModal({
   onOpenUpgrade,
 }: PreGenConfigModalProps) {
   const [template, setTemplate] = useState<RecipeConfig["template"]>("podcast");
+  const [clipCount, setClipCount] = useState<number>(2);
   const [captionPreset, setCaptionPreset] = useState<"impact" | "stack" | "hookcard">("impact");
+  const [captionLanguage, setCaptionLanguage] = useState<"en" | "hi" | "hinglish" | "ur">("en");
   const [captionPosition, setCaptionPosition] = useState<"auto" | "lower" | "middle" | "upper">("auto");
   const [colorway, setColorway] = useState<string>("yellow");
 
@@ -107,6 +117,7 @@ export default function PreGenConfigModal({
       overrides: {
         colorway,
         position_mode: captionPosition,
+        language: captionLanguage,
       },
     };
 
@@ -121,6 +132,7 @@ export default function PreGenConfigModal({
       enableAutoSfx: false,
       includeNaturalTail,
       includeThumbnailOutro,
+      clipCount,
       captionStyle,
     });
   };
@@ -196,26 +208,86 @@ export default function PreGenConfigModal({
               </div>
             </div>
 
-            {/* 2. Captions: Style Preset Dropdown */}
+            {/* 1b. Number of Clips Selector */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5">
-                <Type size={13} className="text-cyan-400" />
-                Caption Style
+              <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Film size={13} className="text-emerald-400" />
+                  Number of Clips
+                </span>
+                <span className="text-[10px] font-normal normal-case text-zinc-500">
+                  {clipCount * 200} credits total
+                </span>
               </label>
-              <div className="relative">
-                <select
-                  value={captionPreset}
-                  onChange={(e) => setCaptionPreset(e.target.value as "impact" | "stack" | "hookcard")}
-                  className="w-full appearance-none h-11 px-3.5 pr-10 rounded-xl bg-[#13141B] border border-white/10 text-xs font-medium text-white shadow-lg shadow-black/40 hover:border-white/20 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none transition cursor-pointer"
-                >
-                  {CAPTION_PRESETS.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-[#13141B] text-white py-1">
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-                  <ChevronDown size={14} />
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 3, 4].map((count) => {
+                  const isSelected = clipCount === count;
+                  return (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => setClipCount(count)}
+                      aria-pressed={isSelected}
+                      className={`h-10 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                        isSelected
+                          ? "bg-emerald-500/15 border-emerald-500/60 text-emerald-300 shadow-lg shadow-emerald-500/10"
+                          : "bg-[#13141B] border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
+                      }`}
+                    >
+                      {count} {count === 1 ? "Clip" : "Clips"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Captions: Style Preset & Language Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5">
+                  <Type size={13} className="text-cyan-400" />
+                  Caption Style
+                </label>
+                <div className="relative">
+                  <select
+                    value={captionPreset}
+                    onChange={(e) => setCaptionPreset(e.target.value as "impact" | "stack" | "hookcard")}
+                    className="w-full appearance-none h-11 px-3.5 pr-10 rounded-xl bg-[#13141B] border border-white/10 text-xs font-medium text-white shadow-lg shadow-black/40 hover:border-white/20 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none transition cursor-pointer"
+                  >
+                    {CAPTION_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#13141B] text-white py-1">
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                    <ChevronDown size={14} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
+                  Captions Language
+                </label>
+                <div className="relative">
+                  <select
+                    aria-label="Captions Language"
+                    value={captionLanguage}
+                    onChange={(e) =>
+                      setCaptionLanguage(e.target.value as "en" | "hi" | "hinglish" | "ur")
+                    }
+                    className="w-full appearance-none h-11 px-3.5 pr-10 rounded-xl bg-[#13141B] border border-white/10 text-xs font-medium text-white shadow-lg shadow-black/40 hover:border-white/20 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none transition cursor-pointer"
+                  >
+                    {CAPTION_LANGUAGES.map((lang) => (
+                      <option key={lang.value} value={lang.value} className="bg-[#13141B] text-white py-1">
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                    <ChevronDown size={14} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -349,7 +421,7 @@ export default function PreGenConfigModal({
             </button>
 
             <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono px-1">
-              <span>200 credits per generated clip</span>
+              <span>{clipCount * 200} credits ({clipCount} × 200)</span>
               <span>1080×1920 60FPS</span>
             </div>
           </div>
