@@ -53,10 +53,6 @@ export default function UpgradeModal({
 
           {/* Header */}
           <div className="text-center max-w-xl mx-auto mb-6 sm:mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold mb-3 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Smarter Version Launch Special · 40% OFF All Plans</span>
-            </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2 font-display">
               Upgrade your plan
             </h2>
