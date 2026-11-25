@@ -523,3 +523,21 @@ class CreatorPreferenceModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
+class AuditLogModel(Base):
+    """Durable security and operational audit trail for RelatiV."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    actor_user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+    actor_email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    resource_type: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
+    resource_id: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="success", nullable=False)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+

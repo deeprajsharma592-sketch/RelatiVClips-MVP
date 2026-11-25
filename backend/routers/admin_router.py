@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..database.models import (
+    AuditLogModel,
     CampaignClipModel,
     CampaignModel,
     ClipModel,
@@ -17,6 +19,8 @@ from ..database.models import (
 )
 from ..database.session import get_session
 from ..routers.auth_router import get_current_user
+from ..services.email_service import OutgoingEmail, send_via_smtp
+from ..utils.audit import record_audit_event
 from ..utils.task_store import task_store
 from ..utils.admin_access import ADMIN_EMAILS
 from ..store import intake
@@ -144,7 +148,7 @@ async def admin_records(
     """Browse paginated platform records. Sensitive auth material is never selected."""
     allowed = {
         "users", "jobs", "clips", "campaigns", "submissions",
-        "applications", "brand_contacts", "quotes", "system",
+        "applications", "brand_contacts", "quotes", "system", "audit_logs",
     }
     if collection not in allowed:
         raise HTTPException(status_code=400, detail="Unknown admin collection")
@@ -212,6 +216,39 @@ async def admin_records(
         total = int((await session.execute(count_query)).scalar_one() or 0)
         items = (await session.execute(query.order_by(CampaignClipModel.submitted_at.desc()).offset(offset).limit(page_size))).all()
         rows = [{"id": c.id, "campaign_id": c.campaign_id, "campaign_name": campaign_name, "clipper_user_id": c.clipper_user_id, "clipper_email": email, "title": c.title, "platform": c.platform, "status": c.status, "views": c.views, "earnings_cents": c.earnings_cents, "submitted_at": _iso(c.submitted_at), "verified_at": _iso(c.verified_at), "paid_at": _iso(c.paid_at)} for c, campaign_name, email in items]
+    elif collection == "audit_logs":
+        query = select(AuditLogModel)
+        count_query = select(func.count()).select_from(AuditLogModel)
+        if needle:
+            filt = or_(
+                AuditLogModel.action.ilike(f"%{needle}%"),
+                AuditLogModel.actor_email.ilike(f"%{needle}%"),
+                AuditLogModel.resource_type.ilike(f"%{needle}%"),
+                AuditLogModel.resource_id.ilike(f"%{needle}%"),
+                AuditLogModel.status.ilike(f"%{needle}%"),
+                AuditLogModel.details.ilike(f"%{needle}%"),
+            )
+            query, count_query = query.where(filt), count_query.where(filt)
+        total = int((await session.execute(count_query)).scalar_one() or 0)
+        items = (
+            await session.execute(
+                query.order_by(AuditLogModel.created_at.desc()).offset(offset).limit(page_size)
+            )
+        ).scalars().all()
+        rows = [
+            {
+                "id": row.id,
+                "created_at": _iso(row.created_at),
+                "actor_email": row.actor_email,
+                "action": row.action,
+                "resource_type": row.resource_type,
+                "resource_id": row.resource_id,
+                "status": row.status,
+                "ip_address": row.ip_address,
+                "details": row.details,
+            }
+            for row in items
+        ]
     elif collection == "system":
         from ..llm import cost_control
         from ..llm.chain import chain_status
@@ -252,3 +289,48 @@ async def admin_records(
         rows = source[offset:offset + page_size]
 
     return {"collection": collection, "records": rows, "total": total, "page": page, "page_size": page_size}
+
+
+class SmtpTestRequest(BaseModel):
+    to: str = Field(default="deepraj@relativclips.com", min_length=3, max_length=320)
+
+
+@router.post("/smtp-test")
+async def admin_smtp_test(
+    request: Request,
+    body: SmtpTestRequest = SmtpTestRequest(),
+    admin: UserModel = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Send an explicit SMTP test email and record the attempt in audit_logs."""
+    to_email = body.to.strip() or "deepraj@relativclips.com"
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    ok, detail = await send_via_smtp(
+        OutgoingEmail(
+            to=to_email,
+            subject="RelatiV SMTP Test",
+            html=(
+                "<div style='font-family:sans-serif;padding:20px;background:#111318;color:#fff;border-radius:12px;'>"
+                "<h2 style='color:#FFCC00;margin-top:0;'>RelatiV SMTP Test</h2>"
+                f"<p>This is a live SMTP delivery test triggered by <strong>{admin.email}</strong>.</p>"
+                f"<p style='color:#9AA2B1;font-size:12px;'>Timestamp: {now_iso}</p>"
+                "</div>"
+            ),
+            text=f"RelatiV SMTP Test triggered by {admin.email} at {now_iso}.",
+        )
+    )
+    ip = request.client.host if request.client else None
+    await record_audit_event(
+        session,
+        action="admin.smtp_test",
+        actor_user_id=admin.id,
+        actor_email=admin.email,
+        resource_type="email",
+        resource_id=to_email,
+        status="success" if ok else "failure",
+        ip_address=ip,
+        details={"detail": detail},
+    )
+    if not ok:
+        raise HTTPException(status_code=502, detail=f"SMTP test failed: {detail}")
+    return {"ok": True, "to": to_email, "detail": detail}

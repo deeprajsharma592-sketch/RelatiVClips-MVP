@@ -31,7 +31,7 @@ export interface AdminOverview {
   refresh_interval_seconds: number;
 }
 
-export type AdminCollection = "users" | "jobs" | "clips" | "campaigns" | "submissions" | "applications" | "brand_contacts" | "quotes" | "system";
+export type AdminCollection = "users" | "jobs" | "clips" | "campaigns" | "submissions" | "applications" | "brand_contacts" | "quotes" | "system" | "audit_logs";
 export interface AdminRecords {
   collection: AdminCollection;
   records: Array<Record<string, string | number | boolean | null>>;
@@ -74,6 +74,21 @@ export async function fetchAdminRecords(collection: AdminCollection, page: numbe
   });
   if (!response.ok) {
     let message = "Could not load platform records.";
+    try { message = (await response.json()).detail || message; } catch {}
+    throw new AdminApiError(message, response.status);
+  }
+  return response.json();
+}
+
+export async function sendSmtpTest(to = "deepraj@relativclips.com"): Promise<{ ok: boolean; to: string; detail: string }> {
+  const response = await fetch(apiPath("/api/v1/admin/smtp-test"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to }),
+  });
+  if (!response.ok) {
+    let message = "SMTP test failed.";
     try { message = (await response.json()).detail || message; } catch {}
     throw new AdminApiError(message, response.status);
   }

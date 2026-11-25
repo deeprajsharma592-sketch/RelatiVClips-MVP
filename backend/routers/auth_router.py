@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..services.credits import remove_polar_plan_credits
 from ..services.entitlements import effective_plan_tier
+from ..utils.audit import record_audit_event
 from ..auth_utils import (
     clear_session_cookie,
     create_access_token,
@@ -408,6 +409,16 @@ async def login(
         select(UserModel).where(UserModel.email == body.email.lower())
     )).scalar_one_or_none()
     if not user or not user.is_active or not verify_password(body.password, user.hashed_password):
+        await record_audit_event(
+            session,
+            action="auth.login_failed",
+            actor_user_id=user.id if user else None,
+            actor_email=body.email.lower(),
+            resource_type="user",
+            resource_id=user.id if user else None,
+            status="failure",
+            ip_address=request.client.host if request.client else None,
+        )
         # Generic error — don't leak whether email exists
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -431,6 +442,16 @@ async def login(
 
     set_session_cookie(response, token, ttl_days=session_ttl_days)
     log.info("user.login", extra={"user_id": user.id, "role": user.role})
+    await record_audit_event(
+        session,
+        action="auth.login",
+        actor_user_id=user.id,
+        actor_email=user.email,
+        resource_type="user",
+        resource_id=user.id,
+        status="success",
+        ip_address=request.client.host if request.client else None,
+    )
 
     profile = await _get_profile_for_role(session, user.id, user.role)
     return AuthResponse(user=_user_to_response(user, profile))

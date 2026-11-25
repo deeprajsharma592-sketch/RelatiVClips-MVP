@@ -116,6 +116,48 @@ async def _send_postmark(msg: OutgoingEmail, token: str) -> bool:
         return False
 
 
+async def send_via_smtp(msg: OutgoingEmail) -> tuple[bool, str]:
+    """Send an email explicitly via SMTP (no Resend/Postmark/console fallback)."""
+    host = (os.getenv("SMTP_HOST") or "").strip()
+    if not host:
+        return False, "SMTP_HOST is not configured"
+
+    import asyncio
+    import smtplib
+
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER")
+    pw = os.getenv("SMTP_PASSWORD")
+    from_addr = (os.getenv("EMAIL_FROM") or "").strip() or msg.from_addr
+    text_body = msg.text or _strip_html(msg.html)
+
+    def _send_sync() -> None:
+        m = PyEmailMessage()
+        m["From"] = from_addr
+        m["To"] = msg.to
+        m["Subject"] = msg.subject
+        m.set_content(text_body)
+        m.add_alternative(msg.html, subtype="html")
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as s:
+                if user and pw:
+                    s.login(user, pw)
+                s.send_message(m)
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as s:
+                s.starttls()
+                if user and pw:
+                    s.login(user, pw)
+                s.send_message(m)
+
+    try:
+        await asyncio.to_thread(_send_sync)
+        return True, f"Sent via {host}:{port}"
+    except Exception as e:
+        log.error(f"SMTP send error: {e}")
+        return False, str(e)
+
+
 async def _send_smtp(msg: OutgoingEmail, text_body: str) -> bool:
     """Generic SMTP via aiosmtplib (or stdlib smtplib as fallback)."""
     import asyncio

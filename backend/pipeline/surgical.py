@@ -38,6 +38,7 @@ from ..utils.config import (
     AUDIO_ONLY_BITRATE,
     PARALLEL_SURGICAL_WORKERS,
     BGUTIL_POT_BASE_URL,
+    ytdlp_supports_js_runtimes,
 )
 
 log = logging.getLogger(__name__)
@@ -69,7 +70,6 @@ def _ytdlp_section_url(
         p = Path(dest_path)
         out_template = str(p.parent / f"{p.stem}.%(ext)s")
 
-    from ..utils.config import ytdlp_supports_js_runtimes
     cmd = [
         YTDLP_PATH,
         "-f", "ba/140/251/b/best/18",

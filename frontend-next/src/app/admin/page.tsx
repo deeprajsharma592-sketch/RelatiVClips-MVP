@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
 import { login, logout } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminApiError, fetchAdminOverview, fetchAdminRecords, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
+import { AdminApiError, fetchAdminOverview, fetchAdminRecords, sendSmtpTest, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
 import styles from "./admin.module.css";
 
 function number(value: number) {
@@ -90,6 +90,37 @@ function WeekChart({ data }: { data: AdminOverview["daily_generated"] }) {
   </div>;
 }
 
+function SmtpTestButton() {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function handleTest() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await sendSmtpTest("deepraj@relativclips.com");
+      setStatus({ ok: true, text: `Sent to ${res.to}` });
+    } catch (err) {
+      setStatus({ ok: false, text: err instanceof Error ? err.message : "SMTP test failed" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <button type="button" className={styles.textButton} onClick={() => void handleTest()} disabled={busy}>
+        <Mail size={13} /> {busy ? "Sending SMTP test…" : "Send SMTP Test"}
+      </button>
+      {status && (
+        <small style={{ color: status.ok ? "#34D399" : "#FB7185", fontSize: "12px" }} role="status">
+          {status.text}
+        </small>
+      )}
+    </div>
+  );
+}
+
 const COLLECTIONS: Array<{ id: AdminCollection | "overview"; label: string; icon: typeof Gauge }> = [
   { id: "overview", label: "Overview", icon: Gauge },
   { id: "users", label: "Accounts", icon: Users },
@@ -101,6 +132,7 @@ const COLLECTIONS: Array<{ id: AdminCollection | "overview"; label: string; icon
   { id: "brand_contacts", label: "Brand contacts", icon: Mail },
   { id: "quotes", label: "Campaign quotes", icon: WalletCards },
   { id: "system", label: "System & spend", icon: Cpu },
+  { id: "audit_logs", label: "Audit logs", icon: ShieldCheck },
 ];
 
 function RecordsView({ collection }: { collection: AdminCollection }) {
@@ -181,7 +213,10 @@ function Dashboard({ data, onRefresh, onLogout, refreshing, updatedAt, activeVie
       {activeView === "overview" ? <div className={styles.content}>
         <section className={styles.welcomeRow}>
           <div><p className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p><h1>Your platform, at a glance.</h1><p className={styles.subhead}>The signal behind every short-form story.</p></div>
-          <div className={styles.livePill}><span />Systems reporting</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <SmtpTestButton />
+            <div className={styles.livePill}><span />Systems reporting</div>
+          </div>
         </section>
 
         <section className={styles.metricGrid} aria-label="Platform metrics">
