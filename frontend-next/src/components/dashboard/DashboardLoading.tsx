@@ -4,7 +4,7 @@ export default function DashboardLoading() {
     <main
       role="status"
       aria-label="Loading RelatiV dashboard"
-      className="dashboard-loading fixed inset-0 z-[100] grid min-h-screen place-items-center overflow-hidden bg-black text-white"
+      className="dashboard-loading fixed inset-0 z-[100] grid min-h-screen place-items-center overflow-hidden bg-[#09090C] text-white"
     >
       <div className="dashboard-loading__glow" aria-hidden="true" />
       <div className="relative flex flex-col items-center gap-5">

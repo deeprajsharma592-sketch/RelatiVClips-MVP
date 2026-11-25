@@ -202,7 +202,7 @@ export default function SocialAccountsView({
           <button
             type="button"
             onClick={onOpenCalendar}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-black px-3.5 text-xs font-medium text-white hover:bg-[#202226] transition cursor-pointer"
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.08] bg-[#18191b] px-3.5 text-xs font-medium text-white hover:bg-[#202226] transition cursor-pointer"
           >
             <Calendar size={14} />
             <span>Open calendar</span>
@@ -222,7 +222,7 @@ export default function SocialAccountsView({
           {[0, 1].map((i) => (
             <div
               key={i}
-              className="h-48 animate-pulse rounded-xl border border-white/[0.06] bg-black"
+              className="h-48 animate-pulse rounded-xl border border-white/[0.06] bg-[#141517]"
             />
           ))}
         </div>
@@ -235,7 +235,7 @@ export default function SocialAccountsView({
             return (
               <div
                 key={plat.id}
-                className="flex flex-col justify-between rounded-xl border border-white/[0.08] bg-black p-5 transition hover:border-white/[0.14]"
+                className="flex flex-col justify-between rounded-xl border border-white/[0.08] bg-[#141517] p-5 transition hover:border-white/[0.14]"
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-3">
@@ -366,7 +366,7 @@ export default function SocialAccountsView({
       {/* Connect / API Credentials Modal */}
       {modalPlatform && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-black p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-[#141517] p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.07] pb-4">
               <div className="flex items-center gap-2.5">
                 <div
@@ -438,7 +438,7 @@ export default function SocialAccountsView({
                         value={apiKeyInput}
                         onChange={(e) => setApiKeyInput(e.target.value)}
                         placeholder="AIzaSy..."
-                        className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                       />
                     </div>
                     <div>
@@ -450,7 +450,7 @@ export default function SocialAccountsView({
                         value={channelIdInput}
                         onChange={(e) => setChannelIdInput(e.target.value)}
                         placeholder="UC... or @yourchannel"
-                        className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none"
                       />
                     </div>
                     <div>
@@ -463,7 +463,7 @@ export default function SocialAccountsView({
                         value={accessTokenInput}
                         onChange={(e) => setAccessTokenInput(e.target.value)}
                         placeholder="ya29...."
-                        className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                       />
                     </div>
                   </>
@@ -479,7 +479,7 @@ export default function SocialAccountsView({
                         value={accessTokenInput}
                         onChange={(e) => setAccessTokenInput(e.target.value)}
                         placeholder="EAA..."
-                        className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                       />
                     </div>
                     <div>
@@ -492,7 +492,7 @@ export default function SocialAccountsView({
                         value={channelIdInput}
                         onChange={(e) => setChannelIdInput(e.target.value)}
                         placeholder="178414..."
-                        className="h-9 w-full rounded-md border border-white/[0.08] bg-black px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
+                        className="h-9 w-full rounded-md border border-white/[0.08] bg-[#0e0f11] px-3 text-xs text-white placeholder-[#5a5b60] focus:border-white/25 focus:outline-none font-mono"
                       />
                     </div>
                   </>

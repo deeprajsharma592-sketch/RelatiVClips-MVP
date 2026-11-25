@@ -317,7 +317,7 @@ function DashboardContent() {
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen bg-black text-white items-center justify-center font-sans">
+      <div className="flex min-h-screen bg-[#09090C] text-white items-center justify-center font-sans">
         <DashboardLoading />
       </div>
     );
@@ -364,7 +364,7 @@ function DashboardContent() {
 
               {/* ── ACTIVE GENERATION / WAITING STATE (Only when actively processing and project is not ready) ── */}
               {isGenerating && (!activeProject || (activeProject.status !== "ready" && (activeProject.clips?.length || 0) === 0)) && (
-                <div className="rounded-2xl border border-white/10 bg-black backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
+                <div className="rounded-2xl border border-white/10 bg-[#121215]/80 backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
                   <VideoProcessingView
                     thumbnailUrl={
                       getYouTubeThumbnail(urlParam) ||
@@ -446,7 +446,8 @@ function DashboardContent() {
 
               {/* ── Empty Vault ── */}
               {!isGenerating && (!activeProject || (activeProject.clips?.length || 0) === 0) && (
-                <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black px-5 py-8 sm:px-8 sm:py-9">
+                <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151619] px-5 py-8 sm:px-8 sm:py-9">
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,rgba(231,184,75,0.08),transparent_55%)]" />
                   <div className="relative mx-auto flex max-w-lg flex-col items-center text-center">
                     <div className="mb-4 grid size-12 place-items-center rounded-2xl border border-white/[0.1] bg-white/[0.04] text-[#d7d4ca] shadow-[inset_0_1px_rgba(255,255,255,.06)]">
                       <Video className="size-5" />
@@ -494,7 +495,7 @@ function DashboardContent() {
 
           {/* TAB 5: BRAND KIT (PRO GATED) */}
           {activeTab === "brand-kit" && (
-            <div className="rounded-xl border border-white/[0.08] bg-black p-10 text-center space-y-4">
+            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
               <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
                 <Palette className="w-5 h-5" />
               </div>
@@ -519,7 +520,7 @@ function DashboardContent() {
 
           {/* TAB 6: ASSET LIBRARY */}
           {activeTab === "assets" && (
-            <div className="rounded-xl border border-white/[0.08] bg-black p-10 text-center space-y-4">
+            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
               <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
                 <FolderOpen className="w-5 h-5" />
               </div>
@@ -636,8 +637,8 @@ function ClipCard({
       className="group relative flex flex-col justify-between rounded-xl overflow-hidden cursor-pointer transition-all duration-300 font-sans"
     >
       {/* 9:16 Aspect Frame */}
-      <div className="relative aspect-[9/16] w-full bg-black rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
-        <div className="absolute inset-0 z-0 flex items-center justify-center bg-black text-zinc-600">
+      <div className="relative aspect-[9/16] w-full bg-[#0d0e12] rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
+        <div className="absolute inset-0 z-0 flex items-center justify-center bg-[#141418] text-zinc-600">
           <Video className="h-8 w-8" />
         </div>
         <ClipThumbnail
@@ -730,8 +731,8 @@ class DashboardErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center text-white font-sans">
-          <div className="max-w-md space-y-4 rounded-2xl border border-white/10 bg-black p-8 shadow-2xl">
+        <div className="min-h-screen bg-[#09090C] flex flex-col items-center justify-center p-6 text-center text-white font-sans">
+          <div className="max-w-md space-y-4 rounded-2xl border border-white/10 bg-[#121216] p-8 shadow-2xl">
             <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>

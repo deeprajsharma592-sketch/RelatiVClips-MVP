@@ -52,7 +52,7 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
 
   return (
     <>
-    <aside className={`sticky top-0 z-30 hidden h-screen shrink-0 select-none flex-col border-r border-white/[0.07] bg-black lg:flex ${collapsed ? "w-16" : "w-[244px]"}`}>
+    <aside className={`sticky top-0 z-30 hidden h-screen shrink-0 select-none flex-col border-r border-white/[0.07] bg-black/45 backdrop-blur-xl lg:flex ${collapsed ? "w-16" : "w-[244px]"}`}>
       <div className={`flex h-16 shrink-0 items-center px-4 ${collapsed ? "justify-center" : "justify-between"}`}>
         {!collapsed && <Link href="/" aria-label="RelatiV home"><BrandLogo iconWidth={30} wordmarkClassName="text-base font-bold text-white" /></Link>}
         <button
@@ -86,13 +86,13 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
       <div className="shrink-0 border-t border-white/[0.06] p-3">
         <details className="group/profile relative">
           <summary aria-label={collapsed ? `${name} profile menu` : undefined} className={`flex cursor-pointer list-none items-center gap-2.5 rounded-xl border border-white/[0.07] bg-[#232428] px-2.5 py-2 text-left hover:bg-[#2b2c30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E7B84B] [&::-webkit-details-marker]:hidden ${collapsed ? "justify-center !px-0" : ""}`}>
-            <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-black text-base font-bold text-white">{initial}</span>
+            <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-[#111214] text-base font-bold text-white">{initial}</span>
             <span className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
               <span className="block truncate text-base font-bold text-white">{name}</span>
             </span>
             {!collapsed && <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-zinc-400 rotate-180 transition-transform group-open/profile:rotate-0" />}
           </summary>
-          <div className={`absolute z-10 space-y-0.5 rounded-xl border border-white/[0.07] bg-black p-1.5 ${collapsed ? "bottom-0 left-full ml-3 w-52" : "inset-x-0 bottom-full mb-2"}`}>
+          <div className={`absolute z-10 space-y-0.5 rounded-xl border border-white/[0.07] bg-[#1a1b1e] p-1.5 ${collapsed ? "bottom-0 left-full ml-3 w-52" : "inset-x-0 bottom-full mb-2"}`}>
             {[
               { Icon: UserRound, label: "Profile", href: "/account" },
               { Icon: Key, label: "API access", href: "/api-access" },
@@ -119,7 +119,7 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
         </details>
       </div>
     </aside>
-    <nav className="fixed inset-x-3 bottom-3 z-40 flex h-14 items-center justify-around rounded-xl border border-white/[0.1] bg-black px-2 shadow-2xl lg:hidden">
+    <nav className="fixed inset-x-3 bottom-3 z-40 flex h-14 items-center justify-around rounded-xl border border-white/[0.1] bg-[#17181a]/95 px-2 shadow-2xl backdrop-blur-xl lg:hidden">
       {[...CREATE.slice(0, 2), ...PUBLISH.slice(0, 2)].map(({ id, label, icon: Icon }) => (
         <button key={id} onClick={() => onSelectTab(id)} className={`flex min-w-16 flex-col items-center gap-1 text-[11px] font-bold ${activeTab === id ? "text-[#E7B84B]" : "text-[#8f9095]"}`}><Icon size={16} /><span className="text-white">{label.replace("My ", "")}</span></button>
       ))}

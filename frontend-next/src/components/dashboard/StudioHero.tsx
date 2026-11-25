@@ -108,7 +108,7 @@ export default function StudioHero({
               type="button"
               aria-pressed={activeTab === "clip"}
               onClick={() => setActiveTab("clip")}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-[24px] px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-black aria-pressed:ring-1 aria-pressed:ring-inset aria-pressed:ring-white/15 aria-pressed:text-white sm:px-5 sm:text-sm"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-[24px] px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[var(--dashboard-glass)] aria-pressed:text-white sm:px-5 sm:text-sm"
             >
               <Film size={16} className="text-[#A8FF4F]" aria-hidden="true" />
               <span>Clip long video</span>
@@ -118,7 +118,7 @@ export default function StudioHero({
               type="button"
               aria-pressed={activeTab === "auto-edit"}
               onClick={() => setActiveTab("auto-edit")}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-[24px] px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-black aria-pressed:ring-1 aria-pressed:ring-inset aria-pressed:ring-white/15 aria-pressed:text-white sm:px-5 sm:text-sm"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-t-[24px] px-3 text-xs font-medium text-zinc-300 transition hover:text-white aria-pressed:bg-[var(--dashboard-glass)] aria-pressed:text-white sm:px-5 sm:text-sm"
             >
               <Wand2 size={16} className="text-[#a69afb]" aria-hidden="true" />
               <span>Auto-edit footage</span>
@@ -127,10 +127,10 @@ export default function StudioHero({
 
         </div>
 
-        <div className="overflow-hidden rounded-b-[36px] rounded-tr-[36px] bg-black ring-1 ring-inset ring-white/10 shadow-[0_14px_42px_rgba(0,0,0,0.35)]">
+        <div className="overflow-hidden rounded-b-[36px] rounded-tr-[36px] bg-[var(--dashboard-glass)] ring-1 ring-inset ring-white/10 shadow-[0_14px_42px_rgba(0,0,0,0.35)] backdrop-blur-xl">
           {/* Input Bar */}
           <form onSubmit={handleUrlSubmit} className="space-y-3 px-4 pt-4 sm:px-5 sm:pt-5">
-            <div className="relative flex flex-col gap-2 rounded-[26px] border border-white/[0.11] bg-black p-2 transition focus-within:border-white/45 sm:flex-row sm:items-center">
+            <div className="relative flex flex-col gap-2 rounded-[26px] border border-white/[0.11] bg-black/50 p-2 transition focus-within:border-white/45 sm:flex-row sm:items-center">
               <div className="flex min-w-0 flex-1 items-center px-1.5">
                 <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
                 <input
