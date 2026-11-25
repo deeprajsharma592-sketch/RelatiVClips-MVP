@@ -289,6 +289,7 @@ class TaskStore:
             "source_name": task.get("source_name"),
             "source_thumbnail_url": task.get("source_thumbnail_url"),
             "status": task["status"],
+            "queue_position": task.get("position"),
             "current_step": task.get("current_step"),
             "progress": progress,
             "step_number": step_number,

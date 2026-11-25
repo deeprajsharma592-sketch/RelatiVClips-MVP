@@ -93,9 +93,15 @@ async def lifespan(app: FastAPI):
         print("[DB] Database tables initialized")
         # Store event loop for sync-to-async DB bridge from worker threads
         set_event_loop(asyncio.get_event_loop())
+        from .database.session import async_session
+        from .utils.task_queue import reconcile_stale_tasks
+        async with async_session() as startup_session:
+            await reconcile_stale_tasks(startup_session, user_id=None)
     except Exception as e:
         print(f"[DB] Database unavailable, running in memory-only mode: {e}")
 
+    from .utils.task_queue import fcfs_queue
+    fcfs_queue.start()
     start_cleanup_scheduler()
 
     async def _social_publish_loop():
@@ -153,6 +159,7 @@ async def lifespan(app: FastAPI):
             pass
 
     stop_cleanup_scheduler()
+    await fcfs_queue.stop()
     social_scheduler_task.cancel()
     set_event_loop(None)
     try:
@@ -760,6 +767,52 @@ async def debug_test_clip(url: str, client: str = "web_embedded", use_cookies: b
 
 
 SAFE_CLIP_ID_REGEX = re.compile(r'^[A-Za-z0-9_-]+$')
+
+
+@app.get("/process/active")
+@app.get("/api/v1/process/active")
+async def get_active_processing_tasks(request: Request):
+    """Return any genuinely active (queued/processing) tasks for the current user.
+    Reconciles orphaned DB rows first so crashed/restarted jobs never block the user.
+    """
+    from sqlalchemy import select
+    from .database.models import TaskModel
+    from .database.session import async_session, _DB_AVAILABLE
+    from .routers.auth_router import get_current_user
+    from .utils.task_queue import reconcile_stale_tasks
+
+    if not _DB_AVAILABLE:
+        return {"active": False, "tasks": []}
+
+    async with async_session() as session:
+        try:
+            user = await get_current_user(request, session)
+        except HTTPException:
+            return {"active": False, "tasks": []}
+
+        await reconcile_stale_tasks(session, user_id=user.id)
+        rows = (await session.execute(
+            select(TaskModel)
+            .where(
+                TaskModel.user_id == user.id,
+                TaskModel.status.in_(["queued", "processing"]),
+            )
+            .order_by(TaskModel.created_at.asc())
+        )).scalars().all()
+
+        tasks = []
+        for row in rows:
+            mem = task_store.get_task_status(row.task_id)
+            tasks.append({
+                "task_id": row.task_id,
+                "status": (mem or {}).get("status", row.status),
+                "queue_position": (mem or {}).get("queue_position"),
+                "progress": (mem or {}).get("progress", row.progress or 0),
+                "source_name": (mem or {}).get("source_name") or row.url,
+                "source_thumbnail_url": (mem or {}).get("source_thumbnail_url"),
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            })
+        return {"active": len(tasks) > 0, "tasks": tasks}
 
 
 @app.get("/status/{task_id}", response_model=StatusResponse)

@@ -19,10 +19,10 @@ faces:
   detector: yunet
   detect_fps: 5
   detect_width: 640
-  score_threshold: 0.7
+  score_threshold: 0.50
   min_face_height_frac: 0.03
   min_track_persistence_s: 0.5
-  max_gap_s: 1.0
+  max_gap_s: 2.5
   landmarks: mediapipe_facemesh
 
 speaker:

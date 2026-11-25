@@ -376,11 +376,14 @@ def build_ffmpeg_command(
 
     coarse_seek = max(0.0, float(clip_start) - 5.0)
     fine_seek = max(0.0, float(clip_start) - coarse_seek)
+    clip_dur = max(0.1, float(clip_end) - float(clip_start))
+    # Never use output-side `-ss` alongside `-vf ass=...`: FFmpeg runs `-vf`
+    # before output `-ss` discards frames, shifting burned captions early by
+    # `fine_seek` (typically 5.0s on surgical segments). Trim inside the video
+    # and audio filtergraphs before `ass=...` so PTS 0.000 == `clip_start`.
     cmd.extend([
         "-ss", f"{coarse_seek:.3f}",
         "-i", video_path,
-        "-ss", f"{fine_seek:.3f}",
-        "-t", f"{max(0.1, float(clip_end) - float(clip_start)):.3f}",
         "-avoid_negative_ts", "make_zero",
     ])
 
@@ -394,7 +397,10 @@ def build_ffmpeg_command(
     aspect_ratio = src_height / src_width if src_width > 0 else 0
     is_vertical = aspect_ratio > 1.0  # Height > Width means vertical
     
-    filters = []
+    filters = [
+        f"trim=start={fine_seek:.3f}:duration={clip_dur:.3f}",
+        "setpts=PTS-STARTPTS",
+    ]
     
     if is_vertical:
         filters.append("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
@@ -447,7 +453,12 @@ def build_ffmpeg_command(
         "-c:a", "aac",
         "-b:a", FFMPEG_AUDIO_BITRATE,
         "-ar", "44100",
-        "-af", f"afade=t=out:st={max(0.1, (clip_end - clip_start) - 0.20):.2f}:d=0.20",
+        "-af", (
+            f"atrim=start={fine_seek:.3f}:duration={clip_dur:.3f},"
+            "asetpts=PTS-STARTPTS,"
+            "aresample=async=1:first_pts=0,"
+            f"afade=t=out:st={max(0.1, clip_dur - 0.20):.2f}:d=0.20"
+        ),
     ])
 
     cmd.append(output_path)
@@ -537,18 +548,33 @@ def render_clip(
     if auto_typography:
         clip["caption_font_family"] = selected_font_family
 
-    # Generate viral dynamic captions
+    # Defer ASS generation until after pretrim/sync so word timestamps lock
+    # directly to the exact trimmed clip audio (eliminating keyframe-snap and
+    # YouTube-caption drift).
     subtitle_path = None
-    try:
-        sub_file = TEMP_DIR / f"{task_id}_{clip_index}_captions.ass"
-        if video_path and not clip.get("video_path"):
-            clip["video_path"] = str(video_path)
-        subtitle_path = generate_viral_ass_subtitles(clip, sub_file)
-        if subtitle_path and Path(subtitle_path).exists():
-            print(f"[Renderer] Dynamic captions generated: {subtitle_path}")
-    except Exception as e:
-        print(f"[Renderer] Captions generation skipped: {e}")
-        subtitle_path = None
+    sub_file = TEMP_DIR / f"{task_id}_{clip_index}_captions.ass"
+    if video_path and not clip.get("video_path"):
+        clip["video_path"] = str(video_path)
+
+    def _build_synced_subtitles(media_for_sync: str | Path, sync_start_s: float = 0.0) -> Optional[str]:
+        try:
+            from ..captioning.sync import sync_clip_captions_to_audio
+            sync_mode = sync_clip_captions_to_audio(
+                clip,
+                media_for_sync,
+                task_id=task_id,
+                clip_index=clip_index,
+                start_s=sync_start_s,
+                duration_s=duration,
+                subtitle_offset_s=0.0,
+            )
+            generated = generate_viral_ass_subtitles(clip, sub_file)
+            if generated and Path(generated).exists():
+                print(f"[Renderer] Audio-synced captions ({sync_mode}): {generated}")
+                return generated
+        except Exception as e:
+            print(f"[Renderer] Captions generation skipped: {e}")
+        return None
 
     if progress_callback:
         progress_callback(f"Rendering clip {clip_index} ({duration:.0f}s)...")
@@ -615,16 +641,24 @@ def render_clip(
             if ret:
                 print(f"[Renderer] Attempting RelatiV Dynamic Framing Engine for clip {clip_index}...")
                 pretrim_path = TEMP_DIR / f"pretrim_{task_id}_{clip_index}.mp4"
+                pre_coarse = max(0.0, float(rel_start) - 5.0)
+                pre_fine = max(0.0, float(rel_start) - pre_coarse)
                 trim_cmd = [
-                    FFMPEG_PATH, "-y", "-i", str(video_path),
-                    # Output-side seek is frame accurate. Input-side `-ss`
-                    # seeks to a preceding keyframe and can desync ASS events.
-                    "-ss", str(rel_start), "-t", str(duration),
+                    FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
+                    "-ss", f"{pre_coarse:.3f}",
+                    "-i", str(video_path),
+                    "-vf", f"trim=start={pre_fine:.3f}:duration={duration:.3f},setpts=PTS-STARTPTS",
+                    "-af", f"atrim=start={pre_fine:.3f}:duration={duration:.3f},asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0",
                     "-avoid_negative_ts", "make_zero",
                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-c:a", "aac", str(pretrim_path)
                 ]
                 subprocess.run(trim_cmd, capture_output=True, timeout=120)
-                input_for_framing = str(pretrim_path) if (pretrim_path.exists() and pretrim_path.stat().st_size > 1024) else str(video_path)
+                used_pretrim = pretrim_path.exists() and pretrim_path.stat().st_size > 1024
+                input_for_framing = str(pretrim_path) if used_pretrim else str(video_path)
+                subtitle_path = _build_synced_subtitles(
+                    input_for_framing,
+                    sync_start_s=0.0 if used_pretrim else rel_start,
+                )
 
                 from framing.run import run_pipeline
                 framing_workdir = TEMP_DIR / f"framing_{task_id}_{clip_index}"
@@ -653,6 +687,8 @@ def render_clip(
             dynamic_rendered = False
 
     if not dynamic_rendered:
+        if subtitle_path is None:
+            subtitle_path = _build_synced_subtitles(video_path, sync_start_s=rel_start)
         if ffmpeg_cmd is None:
             ffmpeg_cmd = build_ffmpeg_command(
                 video_path,
@@ -677,7 +713,7 @@ def render_clip(
                 ffmpeg_cmd,
                 capture_output=True,
                 text=True,
-                timeout=90
+                timeout=240
             )
 
             # Always print stderr for debugging (ffmpeg can return 0 but write 0 bytes)
@@ -711,7 +747,7 @@ def render_clip(
                     simpler_cmd,
                     capture_output=True,
                     text=True,
-                    timeout=90
+                    timeout=240
                 )
                 
                 if result.stderr:

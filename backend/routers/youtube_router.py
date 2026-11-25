@@ -764,6 +764,7 @@ async def run_youtube_orchestrator(
             target_clip_count=target_clip_count,
             tail_buffer_seconds=tail_buffer_seconds,
             thumbnail_outro_seconds=thumbnail_outro_seconds,
+            llm_provider_preference=llm_provider_preference,
         ),
     )
     return final_clips
@@ -785,6 +786,7 @@ def _run_moment_pipeline(
     target_clip_count: int = 2,
     tail_buffer_seconds: float = 5.0,
     thumbnail_outro_seconds: float = 4.0,
+    llm_provider_preference: Optional[str] = None,
 ) -> dict:
     """Run the surgical download + LLM select + render in a thread.
 
@@ -1854,6 +1856,8 @@ async def process_youtube_url(
     # Serialize admission per user across backend workers. The task row is
     # committed before the advisory lock is released by TaskRepository.create.
     await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"), {"user_id": user.id})
+    from ..utils.task_queue import fcfs_queue, reconcile_stale_tasks
+    await reconcile_stale_tasks(session, user_id=user.id)
     active_count = (await session.execute(
         select(func.count(TaskModel.task_id)).where(
             TaskModel.user_id == user.id,
@@ -1904,9 +1908,15 @@ async def process_youtube_url(
         )
         raise
 
-    loop = asyncio.get_event_loop()
-    _active_tasks[task["task_id"]] = loop.create_task(
-        run_youtube_pipeline_async(
+    max_dur = source_limit_seconds(
+        user.plan_tier,
+        is_admin=user.is_admin or is_admin_email(user.email),
+    )
+    llm_pref = "claude" if user.plan_tier in {"go", "creator_go"} else None
+    await fcfs_queue.enqueue(
+        task["task_id"],
+        task["created_at"],
+        lambda: run_youtube_pipeline_async(
             task["task_id"],
             url,
             create_progress_callback(task["task_id"]),
@@ -1916,14 +1926,11 @@ async def process_youtube_url(
             requested_clip_count=requested_clip_count,
             credit_reservation=reservation,
             is_remake=is_remake,
-            max_source_duration_s=source_limit_seconds(
-                user.plan_tier,
-                is_admin=user.is_admin or is_admin_email(user.email),
-            ),
-            llm_provider_preference="claude" if user.plan_tier in {"go", "creator_go"} else None,
+            max_source_duration_s=max_dur,
+            llm_provider_preference=llm_pref,
             tail_buffer_seconds=tail_buffer_seconds,
             thumbnail_outro_seconds=thumbnail_outro_seconds,
-        )
+        ),
     )
 
     return ProcessResponse(

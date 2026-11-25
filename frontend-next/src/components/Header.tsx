@@ -24,9 +24,9 @@ const DASHBOARD_HREF: Record<UserRole, string> = {
 };
 
 const navPillClass = (active: boolean) =>
-  `inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${active
-    ? "bg-white/12 text-white ring-1 ring-inset ring-white/15"
-    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+  `inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${active
+    ? "bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/30"
+    : "text-white/85 hover:bg-white/12 hover:text-white"
   }`;
 
 export default function Header() {
@@ -89,7 +89,7 @@ export default function Header() {
         </div>
 
         {/* Center Desktop Navigation */}
-        <nav className="relative hidden items-center gap-0.5 rounded-full border border-white/10 bg-[#141419] p-1 shadow-[inset_0_1px_0_#ffffff0d,0_3px_12px_#0007] lg:flex">
+        <nav className="relative hidden items-center gap-0.5 rounded-full border border-white/25 bg-gradient-to-b from-white/[0.15] via-white/[0.08] to-white/[0.06] p-1 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),inset_0_-1px_0_rgba(255,255,255,0.12),0_8px_32px_rgba(0,0,0,0.28)] lg:flex">
           <Link
             href="/"
             aria-current={pathname === "/" ? "page" : undefined}
@@ -111,7 +111,7 @@ export default function Header() {
               <span>Solutions</span>
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                  solutionsOpen ? "rotate-180 text-white" : "text-zinc-500"
+                  solutionsOpen ? "rotate-180 text-white" : "text-white/75"
                 }`}
               />
             </button>

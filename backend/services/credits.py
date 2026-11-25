@@ -71,6 +71,21 @@ async def reserve_for_job(
     # ``users.is_admin``. The server-owned allowlist is authoritative too.
     if user.is_admin or is_admin_email(user.email):
         return CreditReservation(user.id, task_id, 0, clip_count, is_remake, user.credit_balance)
+    # Keep paid credits auditable after cancellation, but do not let an ended
+    # paid subscription continue consuming them. Free/onboarding users have a
+    # null Polar status and are intentionally unaffected by this guard.
+    if (
+        user.plan_tier == "free"
+        and str(user.polar_subscription_status or "").lower() in {"canceled", "revoked", "ended"}
+    ):
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "SUBSCRIPTION_INACTIVE",
+                "message": "Your subscription has ended. Upgrade to continue processing clips.",
+                "balance": user.credit_balance,
+            },
+        )
     if user.credit_balance < cost:
         raise HTTPException(
             status_code=402,

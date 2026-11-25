@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, type CSSProperties, type DragEvent, type F
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Link2 } from "lucide-react";
-import { submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
+import { getActiveProcessingTasks, submitLocalVideo, submitYouTubeUrl, uploadVideoFile } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
 import type { ProcessInitResponse } from "@/types";
 import ShatterPhrase from "./ShatterPhrase";
 import { animateHeroThumbnails } from "./hero-thumbnail-transfers";
@@ -19,8 +20,28 @@ const HERO_PHRASES = ["personalized short clips", "more views in less time", "re
 
 export default function HeroStudio() {
   const router = useRouter();
+  const { user } = useAuth();
   const [url, setUrl] = useState("");
   const [pending, setPending] = useState<"upload" | "link" | null>(null);
+  const [hasActiveBackendJob, setHasActiveBackendJob] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setHasActiveBackendJob(false);
+      return;
+    }
+    let cancelled = false;
+    const sync = async () => {
+      const res = await getActiveProcessingTasks();
+      if (!cancelled) setHasActiveBackendJob(res.active);
+    };
+    void sync();
+    window.addEventListener("focus", sync);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", sync);
+    };
+  }, [user]);
   const submitting = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,10 +188,10 @@ export default function HeroStudio() {
                 />
                 <button
                   type="submit"
-                  disabled={pending !== null}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:cursor-wait sm:px-7"
+                  disabled={pending !== null || hasActiveBackendJob}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:cursor-not-allowed disabled:opacity-60 sm:px-7"
                 >
-                  {pending === "link" ? "Starting…" : "Get clips"}
+                  {pending === "link" ? "Starting…" : hasActiveBackendJob ? "Processing..." : "Get clips"}
                 </button>
               </div>
 

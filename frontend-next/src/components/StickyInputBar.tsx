@@ -5,10 +5,12 @@
  * Replaces the buggy top bar that was covering section headings on scroll.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { getActiveProcessingTasks } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
 
 interface StickyInputBarProps {
   threshold?: number;
@@ -16,9 +18,29 @@ interface StickyInputBarProps {
 
 export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const { scrollY } = useScroll();
   const [visible, setVisible] = useState(false);
   const [url, setUrl] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setIsProcessing(false);
+      return;
+    }
+    let cancelled = false;
+    const sync = async () => {
+      const res = await getActiveProcessingTasks();
+      if (!cancelled) setIsProcessing(res.active);
+    };
+    void sync();
+    window.addEventListener("focus", sync);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", sync);
+    };
+  }, [user]);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const hero = document.getElementById("homepage-hero");
@@ -31,6 +53,7 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProcessing) return;
     const source = url.trim();
     if (source) router.push(`/process?${new URLSearchParams({ url: source })}`);
   };
@@ -68,10 +91,20 @@ export default function StickyInputBar({ threshold = 500 }: StickyInputBarProps)
                 />
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1 px-4 py-2 rounded-[20px] text-xs font-semibold bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition-all duration-200 active:scale-95 shrink-0 cursor-pointer shadow-sm hover:shadow-md"
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-xs font-semibold bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition-all duration-200 active:scale-95 shrink-0 cursor-pointer shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <span>Clip now</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Clip now</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </button>
               </form>
             </div>

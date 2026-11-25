@@ -230,7 +230,6 @@ def plan_panel_camera_path(
             else:
                 face_boxes.append(None)
                 is_offscreen_list.append(True)
-                face_boxes.append(None)
     else:
         # Default center framing when no face samples exist
         def_h = float(src_h)
@@ -358,7 +357,8 @@ def plan_camera_stack_shot(
     fps: float,
     src_w: int,
     src_h: int,
-    config: Dict[str, Any]
+    config: Dict[str, Any],
+    allow_single_fallback: bool = True,
 ) -> List[Dict[str, Any]]:
     """Computes smooth camera paths for STACK panels (9:8 aspect ratio each)."""
     cam_cfg = config.get("camera", {})
@@ -401,10 +401,11 @@ def plan_camera_stack_shot(
         p1_off = p1.get("is_offscreen", False)
         p2_off = p2.get("is_offscreen", False)
         single_fallback = None
-        if p1_off and not p2_off:
-            single_fallback = "P2"
-        elif p2_off and not p1_off:
-            single_fallback = "P1"
+        if allow_single_fallback:
+            if p1_off and not p2_off:
+                single_fallback = "P2"
+            elif p2_off and not p1_off:
+                single_fallback = "P1"
 
         stack_plans.append({
             "frame_idx": p1["frame_idx"],

@@ -385,6 +385,8 @@ async def process_local_video(
         raise HTTPException(413, f"This plan accepts source videos up to {limit_s // 60} minutes.")
     plan_concurrency = concurrency_limit(user.plan_tier)
     await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"), {"user_id": user.id})
+    from ..utils.task_queue import fcfs_queue, reconcile_stale_tasks
+    await reconcile_stale_tasks(session, user_id=user.id)
     active_count = (await session.execute(
         select(func.count(TaskModel.task_id)).where(
             TaskModel.user_id == user.id,
@@ -422,9 +424,10 @@ async def process_local_video(
         task_store.update_task(task["task_id"], status=TaskStatus.FAILED, error="Credit reservation failed")
         raise
 
-    loop = asyncio.get_event_loop()
-    _active_tasks[task["task_id"]] = loop.create_task(
-        run_local_pipeline(task["task_id"], request.file_path, reservation, user.id)
+    await fcfs_queue.enqueue(
+        task["task_id"],
+        task["created_at"],
+        lambda: run_local_pipeline(task["task_id"], request.file_path, reservation, user.id),
     )
 
     return ProcessResponse(

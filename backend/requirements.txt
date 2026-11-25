@@ -35,11 +35,16 @@ email-validator>=2.0.0
 chromadb>=0.5.0
 transformers<4.49.0
 sentence-transformers>=3.0.0
-# RelatiV Dynamic Framing (spec-0.1)
-mediapipe>=0.10.0
-scenedetect>=0.6.0
+# RelatiV Dynamic Framing & Speaker Diarization (S2 PySceneDetect -> S4 Silero VAD)
+mediapipe>=0.10.14,<0.10.20
+scenedetect[opencv]>=0.6.0
 pyyaml>=6.0
 scipy>=1.10.0
+torch>=2.2.0
+torchaudio>=2.2.0
+silero-vad>=5.1
+onnxruntime>=1.16.0
+packaging>=23.0
 
 razorpay==2.0.1
 # Caption line measurement must match the static fonts used by libass.

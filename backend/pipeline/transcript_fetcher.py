@@ -152,7 +152,10 @@ def _parse_srt(srt_path: str) -> list:
         end = parts[4] * 3600 + parts[5] * 60 + parts[6] + parts[7] / 1000
         text = re.sub(r"<[^>]+>", "", " ".join(lines[2:]).strip())
         if text:
-            segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
+            import html as _html
+            text = _html.unescape(text).replace(">>", "").strip()
+            if text:
+                segments.append({"start": round(start, 3), "end": round(end, 3), "text": text})
     return segments
 
 
@@ -171,12 +174,13 @@ def _try_innertube_transcript(url: str, log: Callable) -> Optional[dict]:
         else:
             return None
 
+        import html as _html
         segments = []
         for s in fetched:
             text = getattr(s, "text", None) if not isinstance(s, dict) else s.get("text")
             start = getattr(s, "start", None) if not isinstance(s, dict) else s.get("start")
             duration = getattr(s, "duration", None) if not isinstance(s, dict) else s.get("duration")
-            txt = str(text or "").strip()
+            txt = _html.unescape(str(text or "")).replace(">>", "").strip()
             if txt and txt != "[Music]":
                 segments.append({
                     "start": round(float(start or 0), 3),

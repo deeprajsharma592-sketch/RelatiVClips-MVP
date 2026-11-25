@@ -14,6 +14,32 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export interface ActiveProcessingTask {
+  task_id: string;
+  status: string;
+  queue_position?: number | null;
+  progress: number;
+  source_name?: string;
+  source_thumbnail_url?: string | null;
+  created_at?: string | null;
+}
+
+export async function getActiveProcessingTasks(): Promise<{
+  active: boolean;
+  tasks: ActiveProcessingTask[];
+}> {
+  try {
+    const res = await fetch(apiPath("/api/v1/process/active"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!res.ok) return { active: false, tasks: [] };
+    return await res.json();
+  } catch {
+    return { active: false, tasks: [] };
+  }
+}
+
 export async function remakeClip(clipId: string, payload: ClipRemakePayload) {
   const response = await fetch(apiPath(`/api/v1/clips/${encodeURIComponent(clipId)}/remake`), {
     method: "POST",

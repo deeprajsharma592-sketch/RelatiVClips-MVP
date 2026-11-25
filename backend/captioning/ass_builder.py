@@ -42,7 +42,7 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
         # value as relative (which delayed captions by the source clip start).
         supplied_starts = [float(w.get("start", 0)) for w in supplied]
         supplied_ends = [float(w.get("end", w.get("start", 0))) for w in supplied]
-        absolute_timeline = bool(
+        absolute_timeline = False if clip.get("caption_words_relative") else bool(
             start > 0.5
             and supplied_starts
             and (
@@ -75,9 +75,14 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
         else:
             text_words = _clean(segment.get("text")).split()
             s, e = max(start, float(segment.get("start", start))), min(end, float(segment.get("end", end)))
-            step = max(0.12, (e - s) / max(1, len(text_words)))
-            for idx, text in enumerate(text_words):
-                result.append({"w": text, "start": s - start + idx * step, "end": s - start + (idx + 1) * step, "emph": 0})
+            weights = [max(2, len(t)) for t in text_words]
+            total_w = max(1, sum(weights))
+            seg_dur = max(0.12 * len(text_words), e - s)
+            cursor_t = s - start
+            for text, w in zip(text_words, weights):
+                wdur = seg_dur * (w / total_w)
+                result.append({"w": text, "start": cursor_t, "end": cursor_t + wdur, "emph": 0})
+                cursor_t += wdur
     if not result:
         fallback = _clean(clip.get("caption") or clip.get("viral_title")).split()
         step = min(0.45, max(0.22, (duration - 0.4) / max(1, len(fallback))))
@@ -156,9 +161,23 @@ def build_ass(clip: dict, output_path: Path, style_payload: object = None) -> di
     for index, group in enumerate(fitted):
         pos = layout[index]
         flat = group["words"]
-        boundaries = [max(flat[i]["start"], flat[i - 1]["start"] if i else 0) for i in range(len(flat))]
-        boundaries.append(max(group["end"], boundaries[-1] + 0.08))
+        next_group_start = (
+            fitted[index + 1]["words"][0]["start"]
+            if index + 1 < len(fitted) and fitted[index + 1].get("words")
+            else None
+        )
+        boundaries = [max(flat[i]["start"], flat[i - 1]["start"] if i else 0.0) for i in range(len(flat))]
+        tail_end = max(group["end"], boundaries[-1] + 0.08)
+        if next_group_start is not None:
+            tail_end = min(tail_end, next_group_start)
+        boundaries.append(max(boundaries[-1], tail_end))
         for active, word in enumerate(flat):
+            ev_start = boundaries[active]
+            ev_end = boundaries[active + 1]
+            if next_group_start is not None:
+                ev_end = min(ev_end, next_group_start)
+            if ev_end <= ev_start + 0.01:
+                continue
             rendered_lines = []
             cursor = 0
             for line in group["lines"]:
@@ -178,7 +197,7 @@ def build_ass(clip: dict, output_path: Path, style_payload: object = None) -> di
             prefix = rf"{{\an5\pos({int(pos['x'])},{int(pos['y'])})}}"
             if active == 0:
                 prefix = rf"{{\an5\pos({int(pos['x'])},{int(pos['y'])})\fscx82\fscy82\t(0,90,\fscx108\fscy108)\t(90,160,\fscx100\fscy100)}}"
-            events.append(f"Dialogue: 0,{_ts(boundaries[active])},{_ts(boundaries[active + 1])},Default,,0,0,0,,{prefix}" + r"\N".join(rendered_lines))
+            events.append(f"Dialogue: 0,{_ts(ev_start)},{_ts(ev_end)},Default,,0,0,0,,{prefix}" + r"\N".join(rendered_lines))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(header + "\n".join(events) + "\n", encoding="utf-8")
     return {"path": str(output_path), "groups": fitted, "layout": layout, "words": words, "style": style}

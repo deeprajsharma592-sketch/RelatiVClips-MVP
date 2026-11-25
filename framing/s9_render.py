@@ -189,6 +189,18 @@ def render_video(
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    # Prefer exact rational fps_str from norm.json if present beside norm_video_path
+    fps_arg = f"{fps:.6f}"
+    norm_json_path = norm_video_path.parent / "norm.json"
+    if norm_json_path.exists():
+        try:
+            import json as _json
+            norm_meta = _json.loads(norm_json_path.read_text(encoding="utf-8"))
+            if norm_meta.get("fps_str"):
+                fps_arg = str(norm_meta["fps_str"])
+        except Exception:
+            pass
+
     out_cfg = config.get("output", {})
     target_w = int(out_cfg.get("width", 1080))
     target_h = int(out_cfg.get("height", 1920))
@@ -198,10 +210,11 @@ def render_video(
     # Spawn FFmpeg receiver process reading rawvideo from stdin pipe
     ffmpeg_cmd = [
         bins["ffmpeg"], "-y",
+        "-hide_banner", "-loglevel", "error",
         "-f", "rawvideo",
         "-pix_fmt", "bgr24",
         "-s", f"{target_w}x{target_h}",
-        "-r", str(fps),
+        "-r", fps_arg,
         "-i", "-",
         "-i", str(norm_video_path),
         "-map", "0:v",
@@ -362,7 +375,7 @@ def render_video(
     if proc.returncode != 0:
         if stderr_log_path.exists():
             stderr_output = stderr_log_path.read_text(encoding="utf-8", errors="replace")
-        raise RuntimeError(f"FFmpeg render pipeline failed (rc={proc.returncode}): {stderr_output[:1000]}")
+        raise RuntimeError(f"FFmpeg render pipeline failed (rc={proc.returncode}): {stderr_output[-1000:]}")
     else:
         stderr_log_path.unlink(missing_ok=True)
 

@@ -125,13 +125,17 @@ def normalize_media(
     orig_h = int(video_stream.get("height", 0))
     rotation = extract_rotation(video_stream)
 
-    # Determine input FPS
-    r_fps = video_stream.get("r_frame_rate", "30/1")
+    # Determine input FPS — preserve exact rational rate (e.g. 30000/1001)
+    # instead of rounding 29.97 -> 30.0, which causes progressive A/V drift.
+    r_fps = video_stream.get("avg_frame_rate") or video_stream.get("r_frame_rate") or "30/1"
+    if r_fps in ("0/0", "0", ""):
+        r_fps = video_stream.get("r_frame_rate") or "30/1"
     try:
         num, den = map(float, r_fps.split("/"))
         raw_fps = num / den if den != 0 else 30.0
     except Exception:
         raw_fps = 30.0
+        r_fps = "30/1"
 
     norm_cfg = config.get("normalize", {})
     min_fps = float(norm_cfg.get("target_fps_min", 24))
@@ -140,9 +144,16 @@ def normalize_media(
 
     if raw_fps <= 0 or not (1 <= raw_fps <= 240):
         target_fps = default_fps
+        target_fps_str = str(int(default_fps))
+    elif raw_fps < min_fps:
+        target_fps = min_fps
+        target_fps_str = str(int(min_fps))
+    elif raw_fps > max_fps:
+        target_fps = max_fps
+        target_fps_str = str(int(max_fps))
     else:
-        target_fps = float(round(raw_fps))
-        target_fps = max(min_fps, min(max_fps, target_fps))
+        target_fps = raw_fps
+        target_fps_str = r_fps if "/" in str(r_fps) else f"{raw_fps:.6f}"
 
     norm_video_path = workdir / "norm.mp4"
     audio_wav_path = workdir / "audio_16k.wav"
@@ -160,7 +171,8 @@ def normalize_media(
         bins["ffmpeg"], "-y",
         "-i", str(clip_path),
         "-vf", ",".join(vf_filters),
-        "-r", str(target_fps),
+        "-r", target_fps_str,
+        "-vsync", "cfr",
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "18",
@@ -168,7 +180,7 @@ def normalize_media(
     ]
 
     if has_audio:
-        ffmpeg_cmd.extend(["-c:a", "aac", "-b:a", "160k", "-ar", "48000"])
+        ffmpeg_cmd.extend(["-af", "aresample=async=1:first_pts=0", "-c:a", "aac", "-b:a", "160k", "-ar", "48000"])
     else:
         ffmpeg_cmd.extend(["-an"])
 
@@ -211,6 +223,7 @@ def normalize_media(
         "width": norm_w,
         "height": norm_h,
         "fps": target_fps,
+        "fps_str": target_fps_str,
         "duration_s": duration_s,
         "has_audio": has_audio,
         "is_portrait": is_portrait,

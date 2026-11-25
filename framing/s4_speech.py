@@ -9,10 +9,18 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 import json
 import math
+import threading
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 from .config import compute_config_hash, get_library_versions
+
+_SILERO_LOCK = threading.Lock()
+_SILERO_CACHE: Optional[Tuple[Any, Any]] = None
 
 
 def estimate_av_offset(
@@ -119,6 +127,31 @@ def compute_rolling_activity(mar_series: np.ndarray, window_size: int) -> np.nda
     return activity
 
 
+def _load_silero_vad():
+    """Load and cache Silero VAD (preferring the pip package over GitHub torch.hub)."""
+    global _SILERO_CACHE
+    with _SILERO_LOCK:
+        if _SILERO_CACHE is not None:
+            return _SILERO_CACHE
+        try:
+            from silero_vad import load_silero_vad, get_speech_timestamps
+            _SILERO_CACHE = (load_silero_vad(), get_speech_timestamps)
+            return _SILERO_CACHE
+        except Exception:
+            pass
+        if torch is not None:
+            model, utils = torch.hub.load(
+                repo_or_dir="snakers4/silero-vad",
+                model="silero_vad",
+                onnx=False,
+                trust_repo=True,
+            )
+            get_speech_timestamps, _, _, _, _ = utils
+            _SILERO_CACHE = (model, get_speech_timestamps)
+            return _SILERO_CACHE
+        raise RuntimeError("Neither silero_vad nor torch is available")
+
+
 def run_silero_vad(
     wav_path: Optional[Path],
     total_frames: int,
@@ -145,37 +178,46 @@ def run_silero_vad(
         else:
             audio_float = audio_data.astype(np.float32)
 
-        wav_tensor = torch.from_numpy(audio_float)
-
-        model, utils = torch.hub.load(
-            repo_or_dir="snakers4/silero-vad",
-            model="silero_vad",
-            onnx=False,
-            trust_repo=True
-        )
-        get_speech_timestamps, _, _, _, _ = utils
-
-        min_speech_ms = int(min_speech_s * 1000)
-        min_silence_ms = int(min_silence_s * 1000)
-
-        speech_timestamps = get_speech_timestamps(
-            wav_tensor,
-            model,
-            sampling_rate=sr,
-            threshold=threshold,
-            min_speech_duration_ms=min_speech_ms,
-            min_silence_duration_ms=min_silence_ms,
-        )
-
-        for ts in speech_timestamps:
-            start_s = ts["start"] / float(sr)
-            end_s = ts["end"] / float(sr)
-            f_start = max(0, int(round(start_s * fps)))
-            f_end = min(total_frames, int(round(end_s * fps)))
-            vad_mask[f_start:f_end] = 1.0
-
+        if torch is not None:
+            wav_tensor = torch.from_numpy(audio_float)
+            model, get_speech_timestamps = _load_silero_vad()
+            min_speech_ms = int(min_speech_s * 1000)
+            min_silence_ms = int(min_silence_s * 1000)
+            speech_timestamps = get_speech_timestamps(
+                wav_tensor,
+                model,
+                sampling_rate=sr,
+                threshold=threshold,
+                min_speech_duration_ms=min_speech_ms,
+                min_silence_duration_ms=min_silence_ms,
+            )
+            for ts in speech_timestamps:
+                start_s = ts["start"] / float(sr)
+                end_s = ts["end"] / float(sr)
+                f_start = max(0, int(round(start_s * fps)))
+                f_end = min(total_frames, int(round(end_s * fps)))
+                vad_mask[f_start:f_end] = 1.0
+            return vad_mask
     except Exception as e:
-        print(f"[Warning] Silero VAD failed: {e}")
+        print(f"[Warning] Silero VAD failed, using RMS energy fallback: {e}")
+
+    # RMS energy VAD fallback when torch/silero_vad is unavailable
+    try:
+        import scipy.io.wavfile as wavfile
+        sr, audio_data = wavfile.read(str(wav_path))
+        if audio_data.ndim > 1:
+            audio_data = audio_data.mean(axis=1)
+        audio_float = audio_data.astype(np.float32) / (32768.0 if audio_data.dtype == np.int16 else 1.0)
+        hop = max(1, int(sr / max(1.0, fps)))
+        frame_rms = np.array([
+            float(np.sqrt(np.mean(audio_float[i * hop : (i + 1) * hop] ** 2)))
+            for i in range(min(total_frames, len(audio_float) // hop))
+        ])
+        if len(frame_rms) > 0:
+            thresh = max(0.01, float(np.percentile(frame_rms, 25)) + 0.15 * float(np.percentile(frame_rms, 95)))
+            vad_mask[: len(frame_rms)] = (frame_rms > thresh).astype(np.float64)
+    except Exception:
+        pass
 
     return vad_mask
 

@@ -261,7 +261,17 @@ def run_pipeline(
     
     # STACK is possible if both P1 and P2 exist AND either layout_decision is conversation OR a layout segment called for STACK
     has_two_distinct_subjects = bool(p1_samples and p2_samples and (layout_decision.mode == "conversation" or any(seg.get("state") == "STACK" for seg in layout_segments)))
-    stack_plan = plan_camera_stack_shot(p1_samples, p2_samples, 0, total_frames, fps, src_w, src_h, config) if has_two_distinct_subjects else []
+    stack_plan = plan_camera_stack_shot(
+        p1_samples,
+        p2_samples,
+        0,
+        total_frames,
+        fps,
+        src_w,
+        src_h,
+        config,
+        allow_single_fallback=(layout_decision.mode != "conversation"),
+    ) if has_two_distinct_subjects else []
 
     # ── Stage 8: Zoom Planner
     impact_candidates = []
@@ -312,6 +322,9 @@ def run_pipeline(
             # Podcast/interview clips keep both participants visible. Speaker
             # detection still drives emphasis, but does not hide the listener.
             state = "STACK"
+        elif layout_decision.mode == "portrait" and state == "FIT_BLUR" and (single_p1_plan or single_p2_plan):
+            # Avoid flashing full-frame FIT_BLUR mid-clip on brief face-track gaps
+            state = "SINGLE"
 
         if state == "SINGLE" and layout_decision.mode == "context" and context_plan:
             item = context_plan[f_idx] if f_idx < len(context_plan) else None
