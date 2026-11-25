@@ -1808,13 +1808,46 @@ async def run_youtube_pipeline_async(
 
 
 import re
+import urllib.request
+import json
 
 YOUTUBE_URL_REGEX = re.compile(
     r'^(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/|youtube\.com/embed/)[A-Za-z0-9_-]{11}',
     re.IGNORECASE
 )
 
+
+def _get_youtube_video_title(video_id: str) -> Optional[str]:
+    """Fetch official YouTube video title using YouTube oEmbed (fast, unauthenticated, zero-quota)."""
+    if not video_id:
+        return None
+    try:
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+        req = urllib.request.Request(
+            oembed_url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            title = (data.get("title") or "").strip()
+            return title or None
+    except Exception:
+        return None
+
+
 router = APIRouter(prefix="/process/youtube", tags=["YouTube"])
+
+
+@router.get("/title")
+async def get_youtube_title_endpoint(video_id: Optional[str] = None, url: Optional[str] = None):
+    """Return formatted YouTube video title."""
+    from ..pipeline.transcript_fetcher import _extract_video_id
+    vid = video_id or (_extract_video_id(url) if url else None)
+    if not vid:
+        raise HTTPException(400, "Missing video_id or url parameter")
+    title = _get_youtube_video_title(vid)
+    formatted = f'Youtube Video : "{title}"' if title else f'Youtube Video : "{vid}"'
+    return {"video_id": vid, "title": title, "formatted": formatted}
 
 
 @router.post("", response_model=ProcessResponse)
@@ -1876,9 +1909,17 @@ async def process_youtube_url(
     task = task_store.create_task(f"YouTube [{platform}]: {url[:50]}", user_id=user.id, persist=False)
     from ..pipeline.transcript_fetcher import _extract_video_id
     video_id = _extract_video_id(url)
+    video_title = _get_youtube_video_title(video_id) if video_id else None
+    if video_title:
+        source_name = f'Youtube Video : "{video_title}"'
+    elif video_id:
+        source_name = f'Youtube Video : "{video_id}"'
+    else:
+        source_name = "Youtube Video"
+
     task_store.update_task(
         task["task_id"],
-        source_name=f"YouTube video · {video_id}" if video_id else "YouTube video",
+        source_name=source_name,
         source_thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg" if video_id else None,
     )
     _active_user_tasks.setdefault(user.id, set()).add(task["task_id"])

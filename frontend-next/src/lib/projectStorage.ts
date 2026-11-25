@@ -15,6 +15,23 @@ export interface StoredProject {
 const STORAGE_KEY = "relativ_studio_projects_v2";
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
+export function formatProjectTitle(title?: string): string {
+  if (!title || !title.trim() || title === "My Clips Project") {
+    return "Youtube Video";
+  }
+  const clean = title.trim();
+  // If already in Youtube Video : "..." format
+  if (/^Youtube Video\s*:\s*".*"/i.test(clean)) {
+    return clean;
+  }
+  // Matches "YouTube video · <ID>" or "YouTube video - <ID>"
+  const match = clean.match(/^YouTube video\s*[·•-]\s*([A-Za-z0-9_-]{11})$/i);
+  if (match) {
+    return `Youtube Video : "${match[1]}"`;
+  }
+  return clean;
+}
+
 export function getStoredProjects(): StoredProject[] {
   if (typeof window === "undefined") return [];
   try {
@@ -29,7 +46,8 @@ export function getStoredProjects(): StoredProject[] {
       .filter((p): p is Record<string, any> => Boolean(p && typeof p === "object"))
       .map((p) => {
         const id = typeof p.id === "string" && p.id.trim() ? p.id : `proj-${Math.random().toString(36).slice(2, 9)}`;
-        const title = typeof p.title === "string" && p.title.trim() ? p.title : "Short Form Video";
+        const rawTitle = typeof p.title === "string" && p.title.trim() ? p.title : "Short Form Video";
+        const title = formatProjectTitle(rawTitle);
         const createdAt = typeof p.createdAt === "number" && !isNaN(p.createdAt) ? p.createdAt : now;
         const expiresAt = typeof p.expiresAt === "number" && !isNaN(p.expiresAt) ? p.expiresAt : now + RETENTION_MS;
         const status = p.status === "ready" || p.status === "failed" ? p.status : "processing";
@@ -178,4 +196,42 @@ export function getRemainingTimeFormatted(expiresAt: number): string {
     return `${days}d ${hours}h`;
   }
   return `${Math.max(1, hours)}h`;
+}
+
+export async function resolveYouTubeVideoTitles(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return false;
+
+    let updated = false;
+    for (const proj of list) {
+      if (!proj || typeof proj.title !== "string") continue;
+      // If title is Youtube Video : "3CzfMXQs0rA" or YouTube video · 3CzfMXQs0rA (raw 11-char ID)
+      const match =
+        proj.title.match(/^Youtube Video\s*:\s*"([A-Za-z0-9_-]{11})"$/i) ||
+        proj.title.match(/^YouTube video\s*[·•-]\s*([A-Za-z0-9_-]{11})$/i);
+      if (match) {
+        const videoId = match[1];
+        try {
+          const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.title) {
+              proj.title = `Youtube Video : "${data.title.trim()}"`;
+              updated = true;
+            }
+          }
+        } catch {}
+      }
+    }
+    if (updated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+    return updated;
+  } catch {
+    return false;
+  }
 }

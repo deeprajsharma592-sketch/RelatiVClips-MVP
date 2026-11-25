@@ -53,6 +53,8 @@ import {
   updateProjectTaskId,
   updateProjectSource,
   clearAllStoredProjects,
+  formatProjectTitle,
+  resolveYouTubeVideoTitles,
   type StoredProject,
 } from "@/lib/projectStorage";
 import { getYouTubeThumbnail } from "@/lib/youtube";
@@ -111,6 +113,9 @@ function DashboardContent() {
 
   useEffect(() => {
     setProjects(getStoredProjects());
+    void resolveYouTubeVideoTitles().then((updated) => {
+      if (updated) setProjects(getStoredProjects());
+    });
   }, []);
 
   const refreshProjects = () => setProjects(getStoredProjects());
@@ -163,8 +168,23 @@ function DashboardContent() {
     }
 
     setActiveTab("home");
-    const sourceName = urlParam ? "YouTube Video" : "Uploaded Video";
+    const videoIdMatch = urlParam ? urlParam.match(/(?:watch\?v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/i) : null;
+    const initialYtId = videoIdMatch ? videoIdMatch[1] : null;
+    const sourceName = urlParam
+      ? (initialYtId ? `Youtube Video : "${initialYtId}"` : "Youtube Video")
+      : "Uploaded Video";
     const newProj = existing || createNewProject(sourceName, restoredTaskId);
+    if (initialYtId && (!existing || existing.title.includes(initialYtId))) {
+      fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${initialYtId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.title) {
+            updateProjectSource(newProj.id, `Youtube Video : "${data.title.trim()}"`);
+            setProjects(getStoredProjects());
+          }
+        })
+        .catch(() => {});
+    }
     setProjects(getStoredProjects());
     setActiveProjectId(newProj.id);
     setIsGenerating(true);
@@ -350,7 +370,7 @@ function DashboardContent() {
         <div>
           <h2 className="text-base sm:text-lg font-medium text-zinc-200">
             {project.title && project.title !== "My Clips Project"
-              ? project.title
+              ? formatProjectTitle(project.title)
               : "Give me highlight compilations of all the exciting moments in this video"}{" "}
             <span className="text-zinc-400 font-normal">({project.clips?.length || 0})</span>
           </h2>
