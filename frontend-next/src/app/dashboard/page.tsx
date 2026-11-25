@@ -108,22 +108,11 @@ function DashboardContent() {
     return () => window.clearTimeout(timer);
   }, [paymentSucceeded, refreshUser]);
 
-  // Load genuine projects from storage on mount
   useEffect(() => {
-    const list = getStoredProjects();
-    setProjects(list);
-    if (list.length > 0 && !activeProjectId) {
-      setActiveProjectId(list[0].id);
-    }
-  }, [activeProjectId]);
+    setProjects(getStoredProjects());
+  }, []);
 
-  const refreshProjects = () => {
-    const list = getStoredProjects();
-    setProjects(list);
-    if (list.length > 0 && !activeProjectId) {
-      setActiveProjectId(list[0].id);
-    }
-  };
+  const refreshProjects = () => setProjects(getStoredProjects());
 
   // Handle incoming taskId or url from VideoIntake redirect
   useEffect(() => {
@@ -155,7 +144,13 @@ function DashboardContent() {
 
     const existing = getStoredProjects().find((project) => restoredTaskId && project.taskId === restoredTaskId);
     if (existing && existing.status === "ready" && existing.clips.length > 0) {
-      setActiveProjectId(existing.id);
+      try {
+        const pendingJob = JSON.parse(window.localStorage.getItem("relativ:active-job") || "null");
+        if (pendingJob?.taskId === restoredTaskId) {
+          setActiveProjectId(existing.id);
+          window.localStorage.removeItem("relativ:active-job");
+        }
+      } catch {}
       setIsGenerating(false);
       router.replace("/dashboard");
       return;
@@ -288,7 +283,7 @@ function DashboardContent() {
   }, [isGenerating]);
 
   // Active genuine project
-  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || null;
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
 
   const vaultProject = projects.find((project) => project.id === vaultProjectId);
 
@@ -296,8 +291,9 @@ function DashboardContent() {
   useEffect(() => {
     if (activeProject && activeProject.status === "ready" && (activeProject.clips?.length || 0) > 0) {
       setIsGenerating(false);
+      if (activeTab !== "home") setActiveProjectId(null);
     }
-  }, [activeProject?.id, activeProject?.status, activeProject?.clips?.length]);
+  }, [activeTab, activeProject?.id, activeProject?.status, activeProject?.clips?.length]);
 
   // Real download handler
   const handleRequestDownload = (clip: Clip) => {
