@@ -328,7 +328,7 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#111214] text-white selection:bg-[#E7B84B] selection:text-black font-sans">
+    <div className="flex min-h-screen text-white selection:bg-[#E7B84B] selection:text-black font-sans">
       {/* ── Studio Sidebar (Flush to top, sharp edges) ── */}
       <StudioSidebar
         activeTab={activeTab}

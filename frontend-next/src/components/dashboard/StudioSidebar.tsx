@@ -52,7 +52,7 @@ export default function StudioSidebar({ activeTab, onSelectTab }: StudioSidebarP
 
   return (
     <>
-    <aside className={`sticky top-0 z-30 hidden h-screen shrink-0 select-none flex-col border-r border-white/[0.07] bg-[#141517] lg:flex ${collapsed ? "w-16" : "w-[244px]"}`}>
+    <aside className={`sticky top-0 z-30 hidden h-screen shrink-0 select-none flex-col border-r border-white/[0.07] bg-black/45 backdrop-blur-xl lg:flex ${collapsed ? "w-16" : "w-[244px]"}`}>
       <div className={`flex h-16 shrink-0 items-center px-4 ${collapsed ? "justify-center" : "justify-between"}`}>
         {!collapsed && <Link href="/" aria-label="RelatiV home"><BrandLogo iconWidth={30} wordmarkClassName="text-sm font-semibold text-white" /></Link>}
         <button

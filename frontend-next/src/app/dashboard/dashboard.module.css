@@ -2,5 +2,11 @@
   --font-body: Georgia, serif;
   --font-display: Georgia, serif;
   --font-sans: Georgia, serif;
+  --dashboard-glass: rgb(29 31 35 / 76%);
+  min-height: 100svh;
+  background:
+    radial-gradient(ellipse at 22% 0%, #1b1e24 0%, transparent 58%),
+    radial-gradient(ellipse at 100% 54%, #15171c 0%, transparent 53%),
+    #050506;
   font-family: var(--font-body);
 }
