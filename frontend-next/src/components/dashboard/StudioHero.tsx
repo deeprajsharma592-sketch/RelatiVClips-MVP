@@ -49,7 +49,6 @@ export default function StudioHero({
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const urlInputRef = useRef<HTMLInputElement>(null);
 
   const handleUrlSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -68,25 +67,6 @@ export default function StudioHero({
     setInputText(normalized);
     setError(null);
     setIsConfigModalOpen(true);
-  };
-
-  const pasteFromClipboard = async () => {
-    if (isGenerating) return;
-    try {
-      const clipboardText = await navigator.clipboard.readText();
-      if (!clipboardText.trim()) {
-        setError("Your clipboard does not contain a link.");
-        return;
-      }
-      setInputText(clipboardText.trim());
-      setError(null);
-      requestAnimationFrame(() => {
-        urlInputRef.current?.focus();
-        urlInputRef.current?.setSelectionRange(clipboardText.trim().length, clipboardText.trim().length);
-      });
-    } catch {
-      setError("Clipboard access was blocked. Use Ctrl+V or Cmd+V to paste the link.");
-    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +134,6 @@ export default function StudioHero({
               <div className="flex min-w-0 flex-1 items-center px-1.5">
                 <Link2 className="w-4 h-4 text-zinc-500 mr-2.5 shrink-0" />
                 <input
-                  ref={urlInputRef}
                   type="text"
                   inputMode="url"
                   autoCapitalize="none"
@@ -184,14 +163,6 @@ export default function StudioHero({
                   }
                   className="min-w-0 w-full bg-transparent py-3 text-sm text-white placeholder-[#77787d] focus:outline-none disabled:opacity-50"
                 />
-                <button
-                  type="button"
-                  onClick={pasteFromClipboard}
-                  disabled={isGenerating}
-                  className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40 cursor-pointer"
-                >
-                  Paste
-                </button>
               </div>
               <button
                 type="submit"
