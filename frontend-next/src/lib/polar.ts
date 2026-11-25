@@ -2,11 +2,10 @@ export const POLAR_LINKS = {
   creator_go:
     process.env.NEXT_PUBLIC_POLAR_GO_URL ||
     "https://buy.polar.sh/polar_cl_SkTRBMl0h4Y1isEZS3tiIozkfGWjGytLEjh7o2p7FA7",
+  // Keep these links tied to the verified Polar products for each tier.
   creator_pro:
-    process.env.NEXT_PUBLIC_POLAR_PRO_URL ||
     "https://buy.polar.sh/polar_cl_kqxzP1N2PZLr5lj3PAPNFKy3h6Y4VhqUz4mfG1hnp7D",
   creator_max:
-    process.env.NEXT_PUBLIC_POLAR_MAX_URL ||
     "https://buy.polar.sh/polar_cl_2RCkBlYrrYGvXY0s9zq09iMOK8mZYR9vAGVEZ2kGhZL",
 } as const;
 

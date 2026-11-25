@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, Film, ImageIcon, Music, Upload } from "lucide-react";
+import { Download, Film, ImageIcon, Music, Pause, Play, Trash2, Upload } from "lucide-react";
 
 type Asset = { id: string; owner: string; file: File; addedAt: number };
 const maxFileSize = 100 * 1024 * 1024;
@@ -30,7 +30,11 @@ async function accessAssets<T>(
   }
 }
 
-function AssetCard({ asset }: { asset: Asset }) {
+function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: (asset: Asset) => Promise<void> }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { file } = asset;
   const [url, setUrl] = useState("");
   useEffect(() => {
@@ -47,12 +51,41 @@ function AssetCard({ asset }: { asset: Asset }) {
   const isVideo = file.type.startsWith("video/");
   return (
     <article className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[#121215]">
-      <div className="grid aspect-video place-items-center bg-black/40 text-zinc-400">
+      <div className="relative grid aspect-video shrink-0 place-items-center overflow-hidden bg-black/40 text-zinc-400">
         {url && isImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="" className="h-full w-full object-contain" />
+          <img src={url} alt="" className="absolute inset-0 h-full w-full object-contain" />
         ) : url && isVideo ? (
-          <video src={url} controls preload="metadata" aria-label={file.name} className="h-full w-full object-contain" />
+          <>
+            <video
+              ref={video}
+              src={url}
+              playsInline
+              preload="metadata"
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onEnded={() => setPlaying(false)}
+              onError={() => setPreviewError(true)}
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+            {previewError ? (
+              <span role="status" className="relative rounded bg-black/80 px-3 py-1 text-xs text-white">Preview unavailable</span>
+            ) : (
+              <button
+                type="button"
+                aria-label={`${playing ? "Pause" : "Play"} ${file.name}`}
+                onClick={() => {
+                  const player = video.current;
+                  if (!player) return;
+                  if (player.paused) void player.play().catch(() => setPreviewError(true));
+                  else player.pause();
+                }}
+                className={`absolute bottom-2 left-2 grid size-9 place-items-center rounded-full bg-black/75 text-white hover:bg-black focus-visible:outline-2 focus-visible:outline-amber-300 ${playing ? "opacity-70 hover:opacity-100" : ""}`}
+              >
+                {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+              </button>
+            )}
+          </>
         ) : url && file.type.startsWith("audio/") ? (
           <audio src={url} controls preload="none" aria-label={file.name} className="w-11/12" />
         ) : <Film aria-hidden="true" />}
@@ -64,6 +97,21 @@ function AssetCard({ asset }: { asset: Asset }) {
             <Download className="h-4 w-4" aria-hidden="true" />
           </a>
         )}
+        <button
+          type="button"
+          title="Delete asset"
+          aria-label={`Delete ${file.name}`}
+          disabled={deleting}
+          onClick={async () => {
+            if (!window.confirm(`Delete “${file.name}” from this library?`)) return;
+            setDeleting(true);
+            await onDelete(asset);
+            setDeleting(false);
+          }}
+          className="rounded-lg p-2 text-zinc-300 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
     </article>
   );
@@ -87,6 +135,16 @@ export default function AssetLibrary({ owner }: { owner: string }) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [owner]);
+
+  async function deleteAsset(asset: Asset) {
+    try {
+      await accessAssets("readwrite", (store) => store.delete(asset.id));
+      setAssets((current) => current.filter((item) => item.id !== asset.id));
+      setNotice(`Deleted ${asset.file.name}.`);
+    } catch {
+      setNotice(`Couldn’t delete ${asset.file.name}. Try again.`);
+    }
+  }
 
   async function addFiles(files: File[]) {
     if (loading || saving || !files.length) return;
@@ -159,7 +217,7 @@ export default function AssetLibrary({ owner }: { owner: string }) {
       <p role="status" className="break-words text-sm text-zinc-300 empty:hidden">{notice}</p>
       {assets.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {assets.map((asset) => <AssetCard key={asset.id} asset={asset} />)}
+          {assets.map((asset) => <AssetCard key={asset.id} asset={asset} onDelete={deleteAsset} />)}
         </div>
       )}
     </section>
