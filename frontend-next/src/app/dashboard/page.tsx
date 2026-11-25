@@ -38,6 +38,7 @@ import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
 import CalendarView from "@/components/dashboard/CalendarView";
 import EditableClips from "@/components/dashboard/EditableClips";
+import ClipThumbnail from "@/components/dashboard/ClipThumbnail";
 import AuthExportModal from "@/components/AuthExportModal";
 import { useAuth } from "@/lib/AuthContext";
 import { getPolarCheckoutUrl } from "@/lib/polar";
@@ -48,6 +49,7 @@ import {
   getStoredProjects,
   createNewProject,
   updateProjectStatus,
+  updateProjectTaskId,
   clearAllStoredProjects,
   type StoredProject,
 } from "@/lib/projectStorage";
@@ -138,11 +140,19 @@ function DashboardContent() {
       return;
     }
 
-    // Check if we already have a stored project for this task that is already completed
-    const existing = getStoredProjects().find(
-      (p) => taskIdParam && p.taskId === taskIdParam
-    );
-    if (existing && existing.status === "ready" && (existing.clips?.length || 0) > 0) {
+    let restoredTaskId = taskIdParam || undefined;
+    if (!restoredTaskId && urlParam) {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem("relativ:active-job") || "null") as
+          | { taskId?: string; url?: string; savedAt?: number }
+          | null;
+        const fresh = saved?.savedAt && Date.now() - saved.savedAt < 24 * 60 * 60 * 1000;
+        if (saved?.taskId && saved.url === urlParam && fresh) restoredTaskId = saved.taskId;
+      } catch {}
+    }
+
+    const existing = getStoredProjects().find((project) => restoredTaskId && project.taskId === restoredTaskId);
+    if (existing && existing.status === "ready" && existing.clips.length > 0) {
       setActiveProjectId(existing.id);
       setIsGenerating(false);
       router.replace("/dashboard");
@@ -151,7 +161,7 @@ function DashboardContent() {
 
     setActiveTab("home");
     const sourceName = urlParam ? "YouTube Video" : "Uploaded Video";
-    const newProj = createNewProject(sourceName, taskIdParam || undefined);
+    const newProj = existing || createNewProject(sourceName, restoredTaskId);
     setProjects(getStoredProjects());
     setActiveProjectId(newProj.id);
     setIsGenerating(true);
@@ -162,6 +172,7 @@ function DashboardContent() {
     let pollInterval: NodeJS.Timeout | null = null;
 
     const startPolling = (tid: string) => {
+      updateProjectTaskId(newProj.id, tid);
       try {
         window.localStorage.setItem(
           "relativ:active-job",
@@ -224,24 +235,9 @@ function DashboardContent() {
       }, 2500);
     };
 
-    if (taskIdParam) {
-      startPolling(taskIdParam);
+    if (restoredTaskId) {
+      startPolling(restoredTaskId);
     } else if (urlParam) {
-      try {
-        const saved = JSON.parse(window.localStorage.getItem("relativ:active-job") || "null") as
-          | { taskId?: string; url?: string; savedAt?: number }
-          | null;
-        const fresh = saved?.savedAt && Date.now() - saved.savedAt < 24 * 60 * 60 * 1000;
-        if (saved?.taskId && saved.url === urlParam && fresh) {
-          startPolling(saved.taskId);
-          return () => {
-            isMounted = false;
-            if (pollInterval) clearInterval(pollInterval);
-          };
-        }
-      } catch {
-        // Invalid storage should never block a legitimate new submission.
-      }
       let captionStyle: Record<string, unknown> | undefined;
       try { captionStyle = captionStyleParam ? JSON.parse(captionStyleParam) : undefined; } catch { captionStyle = undefined; }
       submitYouTubeUrl(urlParam, {
@@ -618,16 +614,7 @@ function ClipCard({
   onRequestDownload: () => void;
   onSchedule: () => void;
 }) {
-  const [videoError, setVideoError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-
-  const posterUrl = clip.thumbnail_url
-    ? clip.thumbnail_url.startsWith("http")
-      ? clip.thumbnail_url
-      : apiPath(clip.thumbnail_url)
-    : clip.clip_id
-    ? apiPath(`/thumbnail/${clip.clip_id}`)
-    : undefined;
 
   const score =
     typeof clip.hook_score === "number" && clip.hook_score > 0
@@ -650,26 +637,14 @@ function ClipCard({
     >
       {/* 9:16 Aspect Frame */}
       <div className="relative aspect-[9/16] w-full bg-black rounded-xl overflow-hidden border border-white/10 group-hover:border-emerald-500/50 shadow-md group-hover:shadow-[0_8px_30px_rgba(16,185,129,0.18)] transition-all">
-        {posterUrl && (
-          <img
-            src={posterUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-125 pointer-events-none"
-          />
-        )}
-        {posterUrl && !videoError ? (
-          <img
-            src={posterUrl}
-            alt={clip.viral_title || "Clip thumbnail"}
-            className="relative z-10 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-            onError={() => setVideoError(true)}
-          />
-        ) : (
-          <div className="relative z-10 w-full h-full bg-black flex items-center justify-center">
-            <Video className="w-8 h-8 text-zinc-600" />
-          </div>
-        )}
+        <div className="absolute inset-0 z-0 flex items-center justify-center bg-black text-zinc-600">
+          <Video className="h-8 w-8" />
+        </div>
+        <ClipThumbnail
+          clip={clip}
+          alt={clip.viral_title || "Clip thumbnail"}
+          className="relative z-10 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
 
         {/* Play Icon Overlay on Hover */}
         <div

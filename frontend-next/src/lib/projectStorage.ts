@@ -49,15 +49,30 @@ export function getStoredProjects(): StoredProject[] {
       .filter(
         (p) =>
           p.expiresAt > now &&
+          !(p.status === "processing" && !p.taskId && p.clips.length === 0 && now - p.createdAt > 5 * 60 * 1000) &&
           !p.id.startsWith("proj-demo-") &&
           !p.title.toLowerCase().includes("joe rogan") &&
           !p.title.toLowerCase().includes("huberman")
       );
 
-    if (valid.length !== list.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+    const byTaskId = new Map<string, StoredProject>();
+    const withoutTaskId: StoredProject[] = [];
+    for (const project of valid) {
+      if (!project.taskId) {
+        withoutTaskId.push(project);
+        continue;
+      }
+      const previous = byTaskId.get(project.taskId);
+      if (!previous || project.clips.length > previous.clips.length ||
+        (project.clips.length === previous.clips.length && project.createdAt > previous.createdAt)) {
+        byTaskId.set(project.taskId, project);
+      }
     }
-    return valid;
+    const unique = [...byTaskId.values(), ...withoutTaskId].sort((a, b) => b.createdAt - a.createdAt);
+    if (unique.length !== list.length || valid.length !== list.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
+    }
+    return unique;
   } catch (e) {
     console.warn("Could not read stored projects:", e);
     return [];
@@ -94,6 +109,12 @@ export function createNewProject(title: string, taskId?: string): StoredProject 
   };
   saveProject(project);
   return project;
+}
+
+export function updateProjectTaskId(id: string, taskId: string): void {
+  if (typeof window === "undefined" || !id || !taskId) return;
+  const project = getStoredProjects().find((item) => item.id === id);
+  if (project) saveProject({ ...project, taskId });
 }
 
 export function updateProjectStatus(

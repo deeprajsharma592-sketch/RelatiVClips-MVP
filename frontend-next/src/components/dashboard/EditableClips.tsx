@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { Clapperboard, Clock3, Pencil, Search, Video } from "lucide-react";
 import type { Clip } from "@/types";
 import type { StoredProject } from "@/lib/projectStorage";
-import { apiPath } from "@/lib/apiBase";
+import ClipThumbnail from "@/components/dashboard/ClipThumbnail";
 
 type EditableClip = {
   clip: Clip;
@@ -19,11 +18,6 @@ function timecode(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remaining = Math.floor(seconds % 60);
   return `${minutes}:${remaining.toString().padStart(2, "0")}`;
-}
-
-function posterUrl(clip: Clip) {
-  if (clip.thumbnail_url) return clip.thumbnail_url.startsWith("http") ? clip.thumbnail_url : apiPath(clip.thumbnail_url);
-  return clip.clip_id ? apiPath(`/thumbnail/${clip.clip_id}`) : "";
 }
 
 export default function EditableClips({
@@ -80,11 +74,11 @@ export default function EditableClips({
       {clips.length > 0 ? (
         <section className="mt-6 border-y border-white/[0.07]">
           {clips.map(({ clip, index, projectId, projectTitle, createdAt }) => {
-            const poster = posterUrl(clip);
             return (
               <article key={`${projectId}-${clip.clip_id}`} className="group grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/[0.07] py-3 last:border-b-0 sm:grid-cols-[116px_minmax(0,1fr)_auto] sm:gap-5 sm:py-4">
                 <button type="button" onClick={() => onEdit(clip, index, projectId)} className="relative aspect-video overflow-hidden border border-white/[0.08] bg-black text-[#5F6168]">
-                  {poster ? <Image src={poster} alt="" fill unoptimized className="object-cover transition duration-300 group-hover:scale-[1.03]" /> : <span className="grid h-full place-items-center"><Video className="size-5" /></span>}
+                  <span className="grid h-full place-items-center"><Video className="size-5" /></span>
+                  <ClipThumbnail clip={clip} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
                   <span className="absolute right-1.5 bottom-1 bg-black/80 px-1.5 py-0.5 font-mono text-[9px] text-white">{timecode(clip.duration_s || 0)}</span>
                 </button>
 

@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
-import { FolderHeart, Plus, Search, Trash2, Clock3, CircleCheck, CircleAlert } from "lucide-react";
+import { Plus, Search, Trash2, Clock3, CircleCheck, CircleAlert, Video } from "lucide-react";
 import { type StoredProject, deleteProject } from "@/lib/projectStorage";
-import { apiPath } from "@/lib/apiBase";
+import ClipThumbnail from "@/components/dashboard/ClipThumbnail";
 
 interface Props { projects: StoredProject[]; onSelectProject: (id: string) => void; onRefresh: () => void; onNewClip: () => void }
 
@@ -35,14 +34,6 @@ export default function ProjectsView({ projects, onSelectProject, onRefresh, onN
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-[#a9aaae]">Collections</h2>
-        <div className="flex flex-wrap gap-3">
-          <button className="flex h-16 min-w-52 items-center gap-3 rounded-lg border border-dashed border-white/[0.13] px-4 text-xs text-[#8b8c91] hover:border-white/25 hover:text-white"><Plus size={17} />Add collection</button>
-          <button className="flex h-16 min-w-52 items-center gap-3 rounded-lg border border-white/[0.07] bg-black px-4 text-left"><FolderHeart size={18} className="text-[#E7B84B]" /><span><b className="block text-xs font-medium text-white">Saved cuts</b><small className="text-[10px] text-[#77787d]">0 clips</small></span></button>
-        </div>
-      </section>
-
-      <section className="space-y-3">
         <div className="flex items-center justify-between"><h2 className="text-sm font-medium text-[#a9aaae]">Projects <span className="text-[#65666b]">{visible.length}</span></h2><span className="text-[11px] text-[#65666b]">7-day media vault</span></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <button onClick={onNewClip} className="grid min-h-52 place-items-center rounded-xl border border-dashed border-white/[0.13] bg-black text-[#85868b] hover:border-[#E7B84B]/45 hover:text-white">
@@ -50,11 +41,10 @@ export default function ProjectsView({ projects, onSelectProject, onRefresh, onN
           </button>
           {visible.map((project) => {
             const first = project.clips?.[0];
-            const thumb = first?.thumbnail_url ? (first.thumbnail_url.startsWith("http") ? first.thumbnail_url : apiPath(first.thumbnail_url)) : undefined;
             const StateIcon = project.status === "ready" ? CircleCheck : project.status === "failed" ? CircleAlert : Clock3;
             return (
               <article key={project.id} onClick={() => onSelectProject(project.id)} className="group cursor-pointer overflow-hidden rounded-xl border border-white/[0.07] bg-black hover:border-white/[0.18]">
-                <div className="relative aspect-video overflow-hidden bg-black">{thumb ? <Image src={thumb} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center text-[#4f5055]"><FolderHeart size={28} /></div>}<span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-[10px] text-white"><StateIcon size={11} />{project.status}</span></div>
+                <div className="relative aspect-video overflow-hidden bg-black"><div className="grid h-full place-items-center text-[#4f5055]"><Video size={28} /></div><ClipThumbnail clip={first} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /><span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-[10px] text-white"><StateIcon size={11} />{project.status}</span></div>
                 <div className="flex items-start justify-between gap-3 p-3"><div className="min-w-0"><h3 className="truncate text-xs font-medium text-white">{project.title}</h3><p className="mt-1 text-[10px] text-[#77787d]">{project.clips?.length || 0} clips · {new Date(project.createdAt).toLocaleDateString()}</p></div><button onClick={(event) => remove(event, project.id)} aria-label="Delete project" className="text-[#66676c] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"><Trash2 size={14} /></button></div>
               </article>
             );
