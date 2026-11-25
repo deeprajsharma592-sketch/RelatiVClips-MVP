@@ -78,3 +78,8 @@ def normalize_plan_key(value: str | None) -> str | None:
     }
     return aliases.get((value or "").strip().lower())
 
+
+def effective_plan_tier(user) -> str:
+    if user.polar_subscription_status in {"canceled", "revoked"} or user.polar_cancel_at_period_end:
+        return "free"
+    return user.plan_tier

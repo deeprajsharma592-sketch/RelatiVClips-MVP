@@ -12,6 +12,7 @@ export interface User {
   can_access_creator_workspace?: boolean;
   is_verified: boolean;
   credit_balance: number;
+  subscription_notice?: string | null;
   plan_tier: string;
   is_admin: boolean;
   created_at: string;

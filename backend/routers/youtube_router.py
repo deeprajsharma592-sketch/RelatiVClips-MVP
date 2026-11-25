@@ -33,7 +33,7 @@ from ..database.session import get_session
 from ..database.repository import TaskRepository
 from .auth_router import get_current_user
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
-from ..services.entitlements import concurrency_limit, source_limit_seconds
+from ..services.entitlements import concurrency_limit, effective_plan_tier, source_limit_seconds
 from ..utils.admin_access import is_admin_email
 
 progress_logs = {}
@@ -1888,7 +1888,7 @@ async def process_youtube_url(
         if requested_clip_count < 1 or requested_clip_count > 4:
             raise HTTPException(status_code=422, detail="clip_count must be between 1 and 4")
 
-    plan_concurrency = concurrency_limit(user.plan_tier)
+    plan_concurrency = concurrency_limit(effective_plan_tier(user))
     # Serialize admission per user across backend workers. The task row is
     # committed before the advisory lock is released by TaskRepository.create.
     await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"), {"user_id": user.id})
@@ -1953,10 +1953,10 @@ async def process_youtube_url(
         raise
 
     max_dur = source_limit_seconds(
-        user.plan_tier,
+        effective_plan_tier(user),
         is_admin=user.is_admin or is_admin_email(user.email),
     )
-    llm_pref = "claude" if user.plan_tier in {"go", "creator_go"} else None
+    llm_pref = "claude" if effective_plan_tier(user) in {"go", "creator_go"} else None
     await fcfs_queue.enqueue(
         task["task_id"],
         task["created_at"],

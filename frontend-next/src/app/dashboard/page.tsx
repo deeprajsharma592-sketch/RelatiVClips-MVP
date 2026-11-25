@@ -20,7 +20,6 @@ import {
   Sparkles,
   Crown,
   Palette,
-  FolderOpen,
   RefreshCw,
   Calendar,
   Pencil,
@@ -38,6 +37,7 @@ import VideoProcessingView from "@/components/VideoProcessingView";
 import AnalyseView from "@/components/dashboard/AnalyseView";
 import SocialAccountsView from "@/components/dashboard/SocialAccountsView";
 import ProjectsView from "@/components/dashboard/ProjectsView";
+import AssetLibrary from "@/components/dashboard/AssetLibrary";
 import CalendarView from "@/components/dashboard/CalendarView";
 import ClipThumbnail from "@/components/dashboard/ClipThumbnail";
 import AuthExportModal from "@/components/AuthExportModal";
@@ -580,25 +580,7 @@ function DashboardContent() {
           )}
 
           {/* TAB 6: ASSET LIBRARY */}
-          {activeTab === "assets" && (
-            <div className="rounded-xl border border-white/[0.08] bg-[#121215] p-10 text-center space-y-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-zinc-400 flex items-center justify-center mx-auto">
-                <FolderOpen className="w-5 h-5" />
-              </div>
-              <div className="max-w-sm mx-auto space-y-1.5">
-                <h2 className="text-base font-bold text-white">Asset & B-roll Library</h2>
-                <p className="text-xs text-zinc-400">
-                  Store custom audio stingers, overlay memes, and video assets for your clips.
-                </p>
-              </div>
-              <button
-                onClick={() => setActiveTab("home")}
-                className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white font-medium text-xs transition cursor-pointer"
-              >
-                <span>Back to Home Studio</span>
-              </button>
-            </div>
-          )}
+          {activeTab === "assets" && user && <AssetLibrary key={user.id} owner={user.id} />}
 
           {/* TAB 7: CALENDAR */}
           {activeTab === "calendar" && (

@@ -26,7 +26,7 @@ from ..database.models import TaskModel, UserModel
 from ..database.session import get_session
 from ..database.repository import TaskRepository
 from ..services.credits import CreditReservation, reserve_for_job, settle_job
-from ..services.entitlements import concurrency_limit, source_limit_seconds
+from ..services.entitlements import concurrency_limit, effective_plan_tier, source_limit_seconds
 from ..utils.admin_access import is_admin_email
 from .auth_router import get_current_user
 
@@ -378,12 +378,12 @@ async def process_local_video(
     from ..pipeline.ingestion import get_video_duration
     duration_s = await asyncio.to_thread(get_video_duration, request.file_path)
     limit_s = source_limit_seconds(
-        user.plan_tier,
+        effective_plan_tier(user),
         is_admin=user.is_admin or is_admin_email(user.email),
     )
     if limit_s and duration_s > limit_s:
         raise HTTPException(413, f"This plan accepts source videos up to {limit_s // 60} minutes.")
-    plan_concurrency = concurrency_limit(user.plan_tier)
+    plan_concurrency = concurrency_limit(effective_plan_tier(user))
     await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"), {"user_id": user.id})
     from ..utils.task_queue import fcfs_queue, reconcile_stale_tasks
     await reconcile_stale_tasks(session, user_id=user.id)

@@ -82,8 +82,14 @@ export default function StudioHeader({ onOpenUpgrade, projects }: StudioHeaderPr
             className="absolute right-0 top-full z-30 mt-3 w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#18191c] text-left shadow-2xl shadow-black/60"
           >
             <h2 className="border-b border-white/10 px-5 py-4 text-base font-semibold text-white">Notifications</h2>
-            {activity.length ? (
+            {user?.subscription_notice || activity.length ? (
               <ul className="max-h-[min(60dvh,28rem)] divide-y divide-white/8 overflow-y-auto overscroll-contain">
+                {user?.subscription_notice && (
+                  <li className="px-5 py-4">
+                    <p className="text-sm font-semibold text-white">Subscription update</p>
+                    <p className="mt-1 text-sm text-zinc-300">{user.subscription_notice}</p>
+                  </li>
+                )}
                 {activity.map((project) => {
                   const { Icon, label, color } = projectStatus[project.status];
                   return (

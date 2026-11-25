@@ -31,6 +31,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..services.entitlements import effective_plan_tier
 from ..auth_utils import (
     clear_session_cookie,
     create_access_token,
@@ -97,6 +98,7 @@ class UserResponse(BaseModel):
     is_verified: bool
     credit_balance: int
     plan_tier: str = "free"
+    subscription_notice: Optional[str] = None
     is_admin: bool = False
     created_at: str
     last_login_at: Optional[str] = None
@@ -132,7 +134,12 @@ def _user_to_response(user: UserModel, profile_row) -> UserResponse:
         ),
         is_verified=user.is_verified,
         credit_balance=user.credit_balance,
-        plan_tier=user.plan_tier,
+        plan_tier=effective_plan_tier(user),
+        subscription_notice=(
+            "Your subscription was canceled. Your account is now on the Free plan."
+            if user.polar_subscription_status in {"canceled", "revoked"} or user.polar_cancel_at_period_end
+            else None
+        ),
         is_admin=user.is_admin or is_admin_email(user.email),
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
