@@ -1,7 +1,4 @@
 .typography {
-  --font-body: Georgia, serif;
-  --font-display: Georgia, serif;
-  --font-sans: Georgia, serif;
   --dashboard-glass: rgb(29 31 35 / 76%);
   min-height: 100svh;
   background:
