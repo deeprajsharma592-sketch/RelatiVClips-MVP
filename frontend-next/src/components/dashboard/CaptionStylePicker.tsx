@@ -12,6 +12,7 @@ export interface CaptionStyleValue {
     case?: "upper" | "as_is";
     position_mode?: "auto" | "lower" | "middle" | "upper" | "custom";
     position?: { y_percent?: number };
+    language?: "en" | "hi" | "hinglish" | "ur";
   };
 }
 

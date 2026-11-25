@@ -76,3 +76,16 @@ def test_zero_faces_landscape_uses_fit_blur():
 def test_explicit_layout_override_wins():
     decision = choose_layout("portrait", "bottom", "gaming", _signals())
     assert decision.mode == "portrait"
+
+
+def test_motion_graphics_and_gameplay_stack_face_even_with_secondary_face():
+    for hint in ("motion_graphics", "gameplay", "gaming", "broll", "explainer"):
+        decision = choose_layout("auto", "top", hint, _signals(face_count=2))
+        assert decision.mode == "context"
+
+    # Auto visual signal without hint catches motion graphics / gameplay HUDs
+    auto_mg = choose_layout(
+        "auto", "bottom", None, _signals(edge_density=0.085, face_coverage=0.13)
+    )
+    assert auto_mg.mode == "context"
+    assert auto_mg.context_position == "bottom"

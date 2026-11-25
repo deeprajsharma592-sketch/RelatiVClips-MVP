@@ -89,8 +89,32 @@ def _word_emphasis(text: str) -> int:
     return 0
 
 
+def _explicit_caption_language(clip: dict[str, Any]) -> Optional[str]:
+    """Extract user-selected caption language ('en', 'hi', 'hinglish', 'ur') if set."""
+    for container_key in ("style", "caption_style"):
+        container = clip.get(container_key)
+        if isinstance(container, dict):
+            overrides = container.get("overrides")
+            if isinstance(overrides, dict) and overrides.get("language"):
+                return str(overrides["language"]).strip().lower()
+            if container.get("language"):
+                return str(container["language"]).strip().lower()
+    if clip.get("caption_language"):
+        return str(clip["caption_language"]).strip().lower()
+    return None
+
+
 def _infer_clip_language(clip: dict[str, Any]) -> Optional[str]:
-    """Infer consistent Whisper language ('hi', 'en', etc.) from clip metadata or Devanagari text."""
+    """Infer consistent Whisper language ('hi', 'en', 'ur', etc.) from explicit selection or clip metadata."""
+    explicit = _explicit_caption_language(clip)
+    if explicit:
+        if explicit in ("hinglish", "hi", "hindi"):
+            return "hi"
+        if explicit in ("en", "english"):
+            return "en"
+        if explicit in ("ur", "urdu"):
+            return "ur"
+
     # Check text/words/transcript for Devanagari first so Hindi/Hinglish clips never mis-detect as English.
     for key in ("caption", "text", "viral_title"):
         val = clip.get(key)
@@ -124,6 +148,7 @@ def _transcribe_wav_words(
     wav_path: Path,
     clip_duration: float,
     language: Optional[str] = None,
+    convert_hinglish: bool = True,
 ) -> Optional[list[dict[str, Any]]]:
     """Transcribe trimmed 16kHz WAV with faster-whisper word_timestamps=True."""
     try:
@@ -168,7 +193,9 @@ def _transcribe_wav_words(
                     "end": we,
                     "emph": _word_emphasis(text),
                 })
-        return convert_words_to_hinglish(words) if words else None
+        if not words:
+            return None
+        return convert_words_to_hinglish(words) if convert_hinglish else words
     except ImportError:
         return None
     except Exception as exc:
@@ -303,7 +330,14 @@ def sync_clip_captions_to_audio(
 
         # 1. Best: transcribe the exact trimmed clip audio with word-level timestamps
         clip_lang = _infer_clip_language(clip)
-        whisper_words = _transcribe_wav_words(extracted, clip_duration, language=clip_lang)
+        explicit_lang = _explicit_caption_language(clip)
+        use_hinglish = explicit_lang in (None, "", "hinglish")
+        whisper_words = _transcribe_wav_words(
+            extracted,
+            clip_duration,
+            language=clip_lang,
+            convert_hinglish=use_hinglish,
+        )
         if whisper_words:
             # Whisper reports times against the extracted WAV. The final
             # subtitle file can target either a pretrimmed clip (offset 0) or

@@ -30,7 +30,7 @@ def merge_style(style: object = None) -> dict[str, Any]:
     preset_id = normalize_preset(raw.get("preset"))
     base = json.loads(json.dumps(get_registry()["presets"][preset_id]))
     overrides = raw.get("overrides") if isinstance(raw.get("overrides"), dict) else {}
-    for key in ("case", "outline_px", "shadow_px", "letter_spacing", "max_words_per_group"):
+    for key in ("case", "outline_px", "shadow_px", "letter_spacing", "max_words_per_group", "language"):
         if key in overrides:
             base[key] = overrides[key]
     for key in ("colors", "position", "sizes", "font"):

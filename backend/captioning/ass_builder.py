@@ -31,7 +31,7 @@ def _ass_color(hex_color: str, alpha: str = "00") -> str:
     return f"&H{alpha}{value[4:6]}{value[2:4]}{value[0:2]}"
 
 
-def normalize_words(clip: dict) -> list[dict[str, Any]]:
+def normalize_words(clip: dict, target_language: str | None = None) -> list[dict[str, Any]]:
     start, end = float(clip.get("start", 0)), float(clip.get("end", 30))
     duration = max(0.5, end - start)
     supplied = clip.get("words") or (clip.get("edit") or {}).get("words")
@@ -61,7 +61,9 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
                 if word_end <= 0 or word_start >= duration:
                     continue
                 result.append({"w": text, "start": max(0.0, word_start), "end": min(duration, max(word_start + 0.04, word_end)), "emph": int(word.get("emph", 0))})
-        return convert_words_to_hinglish(sorted(result, key=lambda item: item["start"]))
+        sorted_res = sorted(result, key=lambda item: item["start"])
+        lang = (target_language or (clip.get("style") or {}).get("overrides", {}).get("language") or "").strip().lower()
+        return convert_words_to_hinglish(sorted_res) if lang in ("", "hinglish") else sorted_res
     for segment in (clip.get("transcript") or {}).get("segments", []):
         words = segment.get("words") or []
         if words:
@@ -92,7 +94,9 @@ def normalize_words(clip: dict) -> list[dict[str, Any]]:
             if word_start >= duration:
                 break
             result.append({"w": text, "start": word_start, "end": min(duration, word_start + step), "emph": 0})
-    return convert_words_to_hinglish(sorted(result, key=lambda item: item["start"]))
+    sorted_res = sorted(result, key=lambda item: item["start"])
+    lang = (target_language or (clip.get("style") or {}).get("overrides", {}).get("language") or "").strip().lower()
+    return convert_words_to_hinglish(sorted_res) if lang in ("", "hinglish") else sorted_res
 
 
 def _groups(words: list[dict], style: dict) -> list[dict]:
@@ -138,7 +142,7 @@ def _fit_lines(group: dict, style: dict) -> tuple[list[list[dict]], int, tuple[i
 def build_ass(clip: dict, output_path: Path, style_payload: object = None) -> dict:
     style_payload = style_payload or clip.get("style") or {"preset": clip.get("caption_font")}
     style = merge_style(style_payload)
-    words = normalize_words(clip)
+    words = normalize_words(clip, target_language=style.get("language"))
     if not words:
         return {"path": None, "groups": [], "layout": []}
     if style["case"] == "upper":

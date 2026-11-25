@@ -145,3 +145,20 @@ def test_infer_clip_language_locks_hindi_and_english():
     assert _infer_clip_language({"language": "en-US", "caption": "hello"}) == "en"
     assert _infer_clip_language({"transcript": {"language": "hi"}}) == "hi"
     assert _infer_clip_language({"caption": "plain english"}) is None
+
+
+def test_explicit_caption_language_dropdown_overrides():
+    from backend.captioning.ass_builder import normalize_words
+    from backend.captioning.sync import _infer_clip_language
+
+    assert _infer_clip_language({"style": {"overrides": {"language": "hinglish"}}}) == "hi"
+    assert _infer_clip_language({"style": {"overrides": {"language": "hi"}}}) == "hi"
+    assert _infer_clip_language({"style": {"overrides": {"language": "en"}}}) == "en"
+    assert _infer_clip_language({"style": {"overrides": {"language": "ur"}}}) == "ur"
+
+    sample_words = [{"w": "आज", "start": 0.1, "end": 0.4}]
+    hinglish_res = normalize_words({"start": 0, "end": 2, "words": sample_words}, target_language="hinglish")
+    assert hinglish_res[0]["w"] == "aaj"
+
+    hindi_res = normalize_words({"start": 0, "end": 2, "words": sample_words}, target_language="hi")
+    assert hindi_res[0]["w"] == "आज"

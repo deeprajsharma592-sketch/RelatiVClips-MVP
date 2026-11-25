@@ -19,8 +19,10 @@ import numpy as np
 
 
 CONTEXT_HINTS = {
-    "gaming", "gameplay", "irl", "stream", "streamer", "sports",
-    "tutorial", "screen", "screencast", "presentation", "education",
+    "gaming", "gameplay", "game", "esports", "irl", "stream", "streamer",
+    "sports", "tutorial", "screen", "screencast", "presentation", "education",
+    "motion_graphics", "motion", "graphics", "animation", "broll", "b_roll",
+    "reaction", "explainer", "video_essay", "review",
 }
 CONVERSATION_HINTS = {"podcast", "interview", "conversation", "panel"}
 
@@ -133,25 +135,29 @@ def choose_layout(
     if requested in {"portrait", "context", "conversation", "fit"}:
         return LayoutDecision(requested, position, "explicit layout request", signal_dict)
 
-    # 1. Multi-person conversation / podcast (2+ distinct tracked faces in landscape)
-    if signals.landscape and signals.face_count >= 2:
-        return LayoutDecision("conversation", position, "two-person conversation", signal_dict)
+    # 1. Explicit conversation hint with 2+ faces -> conversation stack
     if any(token in hint for token in CONVERSATION_HINTS) and signals.face_count >= 2:
         return LayoutDecision("conversation", position, "two-person conversation", signal_dict)
 
-    # 2. Zero faces detected in landscape (gameplay, screencast, b-roll, demo) -> fullframe fit/blur
+    # 2. Content explicitly flagged as context (gaming, gameplay, motion graphics, tutorial, slides)
+    #    When at least 1 face is present in landscape, stack tracked face with gameplay/graphics
+    #    even if a secondary face (NPC/character/graphic) appears in the scene.
+    if any(token in hint for token in CONTEXT_HINTS) and signals.landscape and signals.face_count >= 1:
+        return LayoutDecision("context", position, f"content hint: {hint}", signal_dict)
+
+    # 3. Multi-person conversation / podcast (2+ distinct tracked faces in landscape)
+    if signals.landscape and signals.face_count >= 2:
+        return LayoutDecision("conversation", position, "two-person conversation", signal_dict)
+
+    # 4. Zero faces detected in landscape (gameplay, screencast, b-roll, demo) -> fullframe fit/blur
     if signals.landscape and signals.face_count == 0:
         return LayoutDecision("fit", position, "no face detected — preserving fullframe with blur backdrop", signal_dict)
 
-    # 3. Content explicitly flagged as context (gaming, tutorial, slides)
-    if any(token in hint for token in CONTEXT_HINTS) and signals.landscape:
-        return LayoutDecision("context", position, f"content hint: {hint}", signal_dict)
-
-    # UI/text-heavy frames tend to exceed ~9% Canny edge coverage. Fast IRL or
-    # gameplay footage produces a larger inter-sample luminance delta. Require a
-    # persistent face so the second panel has a meaningful tracked subject.
-    context_rich = signals.edge_density >= 0.09 or signals.scene_change >= 0.105
-    face_is_not_already_dominant = 0 < signals.face_coverage < 0.12
+    # 5. UI/motion-graphics/text-heavy frames tend to exceed ~8% Canny edge coverage.
+    #    Fast IRL or gameplay footage produces a larger inter-sample luminance delta.
+    #    Require a persistent face so the second panel has a meaningful tracked subject.
+    context_rich = signals.edge_density >= 0.08 or signals.scene_change >= 0.095
+    face_is_not_already_dominant = 0 < signals.face_coverage < 0.14
     if signals.landscape and signals.face_count == 1 and context_rich and face_is_not_already_dominant:
         return LayoutDecision("context", position, "visual context would be lost by portrait crop", signal_dict)
     return LayoutDecision("portrait", position, "single-subject portrait crop", signal_dict)

@@ -318,6 +318,10 @@ def run_pipeline(
 
         if layout_decision.mode == "fit":
             state = "FIT_BLUR"
+        elif layout_decision.mode == "context" and context_plan:
+            # Gameplay, motion graphics, and screen-context clips keep the tracked face
+            # stacked with the scene panel continuously without flashing FIT_BLUR or STACK.
+            state = "CONTEXT_STACK"
         elif layout_decision.mode == "conversation" and stack_plan:
             # Podcast/interview clips keep both participants visible. Speaker
             # detection still drives emphasis, but does not hide the listener.
@@ -326,7 +330,7 @@ def run_pipeline(
             # Avoid flashing full-frame FIT_BLUR mid-clip on brief face-track gaps
             state = "SINGLE"
 
-        if state == "SINGLE" and layout_decision.mode == "context" and context_plan:
+        if state == "CONTEXT_STACK" and context_plan:
             item = context_plan[f_idx] if f_idx < len(context_plan) else None
             crop = item["crop"] if item else [0, 0, src_w, src_h]
             plan_frames.append({
