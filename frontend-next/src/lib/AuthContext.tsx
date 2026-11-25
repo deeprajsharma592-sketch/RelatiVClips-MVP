@@ -16,7 +16,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (silent?: boolean) => Promise<void>;
   logout: (redirectTo?: string) => Promise<void>;
 }
 
@@ -34,7 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const response = await getCurrentUser();
-      setUser(response?.user || null);
+      const nextUser = response?.user || null;
+      setUser((current) =>
+        nextUser?.profile_pending && current?.id === nextUser.id && !current.profile_pending
+          ? current
+          : nextUser
+      );
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Could not check your account session.");
       // Keep existing signed-in user on transient network/backend errors instead of logging them out
@@ -117,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh, ensureFreshSession]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, refresh: () => refresh(false), logout }}>
+    <AuthContext.Provider value={{ user, loading, error, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );

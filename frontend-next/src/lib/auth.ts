@@ -12,6 +12,7 @@ export interface User {
   can_access_creator_workspace?: boolean;
   is_verified: boolean;
   credit_balance: number;
+  profile_pending?: boolean;
   subscription_notice?: string | null;
   plan_tier: string;
   is_admin: boolean;
@@ -38,6 +39,7 @@ function toAppUser(user: SupabaseUser): User {
     can_access_creator_workspace: true,
     is_verified: Boolean(user.email_confirmed_at),
     credit_balance: 400,
+    profile_pending: true,
     plan_tier: "free",
     is_admin: false,
     created_at: user.created_at,

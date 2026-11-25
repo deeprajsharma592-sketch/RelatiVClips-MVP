@@ -110,7 +110,7 @@ export default function StudioHeader({ onOpenUpgrade, projects }: StudioHeaderPr
               <p className="px-5 py-10 text-center text-sm text-zinc-400">No notifications yet. Your clip activity will appear here.</p>
             )}
           </section>
-          <span className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-white"><Zap size={13} className="fill-[#E7B84B] text-[#E7B84B]" />{user?.credit_balance ?? 0}</span>
+          <span className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-white"><Zap size={13} className="fill-[#E7B84B] text-[#E7B84B]" />{user && !user.profile_pending ? user.credit_balance : "—"}</span>
           <button onClick={onOpenUpgrade} className="h-8 rounded-md border border-white/[0.08] bg-[#242529] px-3 text-xs font-medium text-white hover:bg-[#2d2e32]">Add credits</button>
         </div>
       </div>

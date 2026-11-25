@@ -107,8 +107,8 @@ function DashboardContent() {
 
   useEffect(() => {
     if (!paymentSucceeded) return;
-    void refreshUser();
-    const timer = window.setTimeout(() => void refreshUser(), 2500);
+    void refreshUser(true);
+    const timer = window.setTimeout(() => void refreshUser(true), 2500);
     return () => window.clearTimeout(timer);
   }, [paymentSucceeded, refreshUser]);
 
@@ -445,7 +445,7 @@ function DashboardContent() {
           {paymentSucceeded && (
             <div role="status" className="mx-auto flex max-w-5xl items-center gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              <div><span className="font-semibold">Upgrade confirmed.</span> Your plan and credit balance are refreshing now.</div>
+              <div><span className="font-semibold">Checkout complete.</span> Your balance updates once RelatiV receives the payment confirmation.</div>
             </div>
           )}
           {/* TAB 1: HOME STUDIO */}
