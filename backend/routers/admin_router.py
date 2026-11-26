@@ -212,14 +212,78 @@ async def admin_records(
                     profile[f"profile_{column.name}"] = _iso(getattr(profile_row, column.name))
             rows.append({"id": u.id, "email": u.email, "name": u.name, "role": u.role, "active": u.is_active, "verified": u.is_verified, "created_at": _iso(u.created_at), "last_login_at": _iso(u.last_login_at), **profile})
     elif collection == "jobs":
-        query = select(TaskModel)
+        # Join UserModel to get who submitted each job
+        query = select(TaskModel, UserModel.email, UserModel.name).outerjoin(
+            UserModel, TaskModel.user_id == UserModel.id
+        )
         count_query = select(func.count()).select_from(TaskModel)
         if needle:
-            filt = or_(TaskModel.task_id.ilike(f"%{needle}%"), TaskModel.url.ilike(f"%{needle}%"), TaskModel.status.ilike(f"%{needle}%"), TaskModel.error.ilike(f"%{needle}%"))
+            filt = or_(
+                TaskModel.task_id.ilike(f"%{needle}%"),
+                TaskModel.url.ilike(f"%{needle}%"),
+                TaskModel.status.ilike(f"%{needle}%"),
+                TaskModel.error.ilike(f"%{needle}%"),
+                UserModel.email.ilike(f"%{needle}%"),
+            )
             query, count_query = query.where(filt), count_query.where(filt)
         total = int((await session.execute(count_query)).scalar_one() or 0)
-        items = (await session.execute(query.order_by(TaskModel.created_at.desc()).offset(offset).limit(page_size))).scalars().all()
-        rows = [{"task_id": t.task_id, "source": t.url, "status": t.status, "progress": t.progress, "step": t.step_name or t.current_step, "created_at": _iso(t.created_at), "updated_at": _iso(t.updated_at), "error": t.error} for t in items]
+        # Fetch anon-sequence offset: how many anon tasks exist before this page
+        anon_offset_result = await session.execute(
+            select(func.count()).select_from(TaskModel).where(
+                TaskModel.user_id.is_(None)
+            ).where(TaskModel.created_at > (
+                # created_at of earliest task on this page — subquery to get the cutoff
+                select(TaskModel.created_at)
+                .order_by(TaskModel.created_at.desc())
+                .offset(offset)
+                .limit(1)
+                .scalar_subquery()
+            ))
+        )
+        anon_global_offset = int(anon_offset_result.scalar_one() or 0)
+
+        items = (await session.execute(
+            query.order_by(TaskModel.created_at.desc()).offset(offset).limit(page_size)
+        )).all()
+
+        # Build rows with user label and time-gap-to-previous-clip-by-same-user
+        # Track last seen created_at per user key to compute gap
+        last_seen: dict[str, datetime] = {}
+        anon_local_counter = 0
+        rows = []
+        for t, email, uname in items:
+            if email:
+                user_label = email
+                user_key = email
+            else:
+                anon_local_counter += 1
+                seq = anon_global_offset + anon_local_counter
+                # Derive a hint from the URL slug for the first clip label
+                url_hint = (t.url or "").rstrip("/").split("/")[-1][:12] or "clip"
+                user_label = f"NoLogin-{seq:02d}/{url_hint}"
+                user_key = f"__anon_{seq}"
+
+            # Time gap since previous clip by this user key (in minutes)
+            if t.created_at and user_key in last_seen:
+                gap_s = abs((last_seen[user_key] - t.created_at).total_seconds())
+                gap_label = f"{int(gap_s // 60)}m {int(gap_s % 60)}s"
+            else:
+                gap_label = "—"
+            if t.created_at:
+                last_seen[user_key] = t.created_at
+
+            rows.append({
+                "task_id": t.task_id[:8],
+                "user": user_label,
+                "source_url": (t.url or "")[:70],
+                "status": t.status,
+                "progress": f"{t.progress}%",
+                "step": t.step_name or t.current_step or "—",
+                "gap_since_prev_clip": gap_label,
+                "error": t.error or "—",
+                "started_at": _iso(t.created_at),
+                "updated_at": _iso(t.updated_at),
+            })
     elif collection == "clips":
         query = select(ClipModel)
         count_query = select(func.count()).select_from(ClipModel)
@@ -321,25 +385,33 @@ async def admin_records(
                 TaskModel.error.ilike(f"%{needle}%"),
                 TaskModel.step_name.ilike(f"%{needle}%"),
                 TaskModel.current_step.ilike(f"%{needle}%"),
+                UserModel.email.ilike(f"%{needle}%"),
             )
             query, count_query = query.where(filt), count_query.where(filt)
         total = int((await session.execute(count_query)).scalar_one() or 0)
         items = (await session.execute(
             query.order_by(TaskModel.updated_at.desc()).offset(offset).limit(page_size)
         )).all()
-        rows = [
-            {
+
+        anon_fail_counter = offset  # give anon users a global offset position
+        rows = []
+        for t, email in items:
+            if email:
+                user_label = email
+            else:
+                anon_fail_counter += 1
+                url_hint = (t.url or "").rstrip("/").split("/")[-1][:12] or "clip"
+                user_label = f"NoLogin-{anon_fail_counter:02d}/{url_hint}"
+            rows.append({
                 "task_id": t.task_id[:8],
-                "user_email": email or "—",
+                "user": user_label,
                 "source_url": (t.url or "")[:80],
                 "failed_at_step": t.step_name or t.current_step or "—",
-                "progress_pct": t.progress,
+                "progress_pct": f"{t.progress}%",
                 "failure_reason": t.error or "—",
                 "started_at": _iso(t.created_at),
                 "failed_at": _iso(t.updated_at),
-            }
-            for t, email in items
-        ]
+            })
     elif collection == "clip_ratings":
         # User quality feedback on generated clips
         query = select(ClipFeedbackEventModel, UserModel.email).outerjoin(
