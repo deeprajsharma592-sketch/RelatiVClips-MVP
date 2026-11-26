@@ -579,25 +579,66 @@ async def admin_passkey_register_options(
     existing_count = await _count(session, AdminPasskeyModel)
     user: Optional[UserModel] = None
 
-    # Allow already-authenticated admin (with valid 2FA/passkey cookie) OR first-time setup via credentials
+    # Allow already-authenticated admin (with valid 2FA/passkey cookie) OR first-time setup via credentials.
+    # Only treat missing-session 401 as unauthenticated; propagate 403/503 errors directly.
+    current: Optional[UserModel] = None
     try:
         current = await get_current_user(request, session=session)
+    except HTTPException as exc:
+        if exc.status_code != 401:
+            raise
+        current = None
+
+    if current is not None:
         _require_admin_identity(current)
         if existing_count == 0 or verify_admin_2fa_token(get_admin_2fa_cookie(request), user_id=current.id, email=current.email):
             user = current
-    except HTTPException:
-        user = None
 
     if user is None:
         if existing_count > 0:
             raise HTTPException(status_code=403, detail="Sign in with your existing passkey to register another one.")
         if not body or not body.email or not body.password:
             raise HTTPException(status_code=401, detail="Enter your @relativclips.com credentials once to bind your passkey.")
-        candidate = (
-            await session.execute(select(UserModel).where(UserModel.email == body.email.strip().lower()))
-        ).scalar_one_or_none()
-        if not candidate or not verify_password(body.password, candidate.hashed_password):
-            raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+        clean_email = body.email.strip().lower()
+        from ..services.supabase_auth import is_supabase_auth_configured, verify_supabase_password
+
+        if is_supabase_auth_configured():
+            identity = await verify_supabase_password(clean_email, body.password)
+            auth_user_id = str(identity["id"])
+            confirmed_at = identity.get("email_confirmed_at") or identity.get("confirmed_at")
+            candidate = (
+                await session.execute(select(UserModel).where(UserModel.auth_user_id == auth_user_id))
+            ).scalar_one_or_none()
+            if candidate is None:
+                candidate = (
+                    await session.execute(select(UserModel).where(func.lower(UserModel.email) == clean_email))
+                ).scalar_one_or_none()
+            if candidate is None:
+                candidate = UserModel(
+                    id=auth_user_id,
+                    auth_user_id=auth_user_id,
+                    email=clean_email,
+                    hashed_password=None,
+                    role="creator",
+                    name=str((identity.get("user_metadata") or {}).get("name") or clean_email.split("@")[0]),
+                    is_active=True,
+                    is_verified=bool(confirmed_at),
+                    is_admin=is_admin_email(clean_email),
+                    created_at=datetime.utcnow(),
+                    email_verified_at=datetime.utcnow() if confirmed_at else None,
+                )
+                session.add(candidate)
+                await session.flush()
+            elif not candidate.auth_user_id:
+                candidate.auth_user_id = auth_user_id
+        else:
+            candidate = (
+                await session.execute(select(UserModel).where(func.lower(UserModel.email) == clean_email))
+            ).scalar_one_or_none()
+            if not candidate or not candidate.hashed_password or not verify_password(body.password, candidate.hashed_password):
+                raise HTTPException(status_code=401, detail="Invalid email or password.")
+
         _require_admin_identity(candidate)
         user = candidate
 

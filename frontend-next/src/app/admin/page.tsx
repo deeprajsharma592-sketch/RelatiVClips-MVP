@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Fingerprint, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
-import { login } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminApiError, fetchAdminOverview, fetchAdminPasskeyStatus, fetchAdminRecords, loginWithAdminPasskey, registerAdminPasskey, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
 import styles from "./admin.module.css";
@@ -25,12 +24,15 @@ function SignIn({
   statusMessage?: string;
   initialNeeds2fa?: boolean;
 }) {
-  const { refresh: refreshAuth } = useAuth();
+  const { user: authUser, refresh: refreshAuth } = useAuth();
   const [hasPasskey, setHasPasskey] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const isSignedInAdmin = Boolean(
+    authUser?.email && authUser.email.toLowerCase().endsWith("@relativclips.com")
+  );
 
   useEffect(() => {
     let active = true;
@@ -58,14 +60,21 @@ function SignIn({
     }
   }
 
-  async function handlePasskeySetup(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handlePasskeySetup(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     setBusy(true);
     setError("");
     try {
-      await login({ email: email.trim().toLowerCase(), password });
+      await registerAdminPasskey(
+        isSignedInAdmin
+          ? { label: "Mac Touch ID" }
+          : {
+              email: email.trim().toLowerCase(),
+              password,
+              label: "Mac Touch ID",
+            }
+      );
       await refreshAuth();
-      await registerAdminPasskey({ label: "Mac Touch ID" });
       await onSignedIn();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not register passkey.");
@@ -107,6 +116,20 @@ function SignIn({
             >
               <Fingerprint size={17} />
               {busy ? "Waiting for Touch ID…" : "Sign in with Passkey"}
+            </button>
+          </div>
+        ) : hasPasskey === false && isSignedInAdmin ? (
+          <div className={styles.loginForm}>
+            {statusMessage && <p className={styles.formError} role="status">{statusMessage}</p>}
+            {error && <p className={styles.formError} role="alert">{error}</p>}
+            <button
+              className={styles.primaryButton}
+              disabled={busy}
+              type="button"
+              onClick={() => void handlePasskeySetup()}
+            >
+              <Fingerprint size={17} />
+              {busy ? "Touch sensor to register…" : "Set up Touch ID Passkey"}
             </button>
           </div>
         ) : hasPasskey === false ? (

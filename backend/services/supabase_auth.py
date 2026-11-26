@@ -51,3 +51,35 @@ async def get_verified_supabase_user(access_token: str) -> dict:
     if not isinstance(user, dict) or not user.get("id") or not user.get("email"):
         raise HTTPException(status_code=401, detail="Supabase returned an incomplete user identity")
     return user
+
+
+async def verify_supabase_password(email: str, password: str) -> dict:
+    """Verify email + password directly against Supabase Auth and return the user dict."""
+    if not is_supabase_auth_configured():
+        raise HTTPException(status_code=503, detail="Supabase Auth is not configured on the backend")
+
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            response = await client.post(
+                f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
+                headers={
+                    "apikey": SUPABASE_PUBLISHABLE_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={"email": email.strip().lower(), "password": password},
+            )
+    except httpx.HTTPError:
+        raise HTTPException(status_code=503, detail="Supabase Auth could not be reached")
+
+    if response.status_code in (400, 401, 403):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    if response.status_code >= 500:
+        raise HTTPException(status_code=503, detail="Supabase Auth is temporarily unavailable")
+    if response.status_code != 200:
+        raise HTTPException(status_code=401, detail="Could not verify credentials with Supabase Auth")
+
+    payload = response.json()
+    user = payload.get("user") if isinstance(payload, dict) else None
+    if not isinstance(user, dict) or not user.get("id") or not user.get("email"):
+        raise HTTPException(status_code=401, detail="Supabase returned an incomplete user identity")
+    return user

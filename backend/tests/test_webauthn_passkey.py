@@ -70,3 +70,38 @@ def test_webauthn_client_and_authenticator_data():
     auth_data = hashlib.sha256(b"relativclips.com").digest() + bytes([0x05]) + (7).to_bytes(4, "big")
     _, sign_count = parse_authenticator_data(b64url_encode(auth_data), "relativclips.com")
     assert sign_count == 7
+
+
+def test_verify_supabase_password_handles_401_and_200():
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from fastapi import HTTPException
+    from backend.services import supabase_auth
+
+    async def _run():
+        resp_401 = MagicMock(status_code=400)
+        resp_200 = MagicMock(status_code=200)
+        resp_200.json.return_value = {"user": {"id": "supa-1", "email": "deeprajsharma@relativclips.com"}}
+
+        client_401 = AsyncMock()
+        client_401.__aenter__.return_value.post = AsyncMock(return_value=resp_401)
+        with (
+            patch.object(supabase_auth, "is_supabase_auth_configured", return_value=True),
+            patch("httpx.AsyncClient", return_value=client_401),
+        ):
+            try:
+                await supabase_auth.verify_supabase_password("deeprajsharma@relativclips.com", "wrong")
+                assert False, "Expected HTTPException"
+            except HTTPException as exc:
+                assert exc.status_code == 401
+
+        client_200 = AsyncMock()
+        client_200.__aenter__.return_value.post = AsyncMock(return_value=resp_200)
+        with (
+            patch.object(supabase_auth, "is_supabase_auth_configured", return_value=True),
+            patch("httpx.AsyncClient", return_value=client_200),
+        ):
+            u = await supabase_auth.verify_supabase_password("deeprajsharma@relativclips.com", "correct")
+            assert u["id"] == "supa-1"
+
+    asyncio.run(_run())

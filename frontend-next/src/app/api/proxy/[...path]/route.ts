@@ -61,6 +61,18 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   headers.set("x-forwarded-proto", "https");
   headers.set("x-relativ-proxy", "vercel-edge-v2");
 
+  // Forward RelatiV's own session/passkey cookies to FastAPI (strip third-party/Supabase cookies).
+  const rawCookie = req.headers.get("cookie") || "";
+  if (rawCookie) {
+    const relativCookies = rawCookie
+      .split(";")
+      .map((c) => c.trim())
+      .filter((c) => c.startsWith("relativ_session=") || c.startsWith("relativ_admin_2fa="));
+    if (relativCookies.length > 0) {
+      headers.set("cookie", relativCookies.join("; "));
+    }
+  }
+
   let supabaseCookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
   const supabaseConfig = getSupabasePublicConfig();
   if (supabaseConfig) {
@@ -156,7 +168,6 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       "content-range",
       "accept-ranges",
       "content-disposition",
-      "set-cookie",
       "x-request-id",
       "x-rate-limit-limit",
       "x-rate-limit-remaining",
@@ -165,6 +176,15 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     for (const h of headersToForward) {
       const v = upstream.headers.get(h);
       if (v) responseHeaders.set(h, v);
+    }
+    const setCookies =
+      typeof upstream.headers.getSetCookie === "function"
+        ? upstream.headers.getSetCookie()
+        : upstream.headers.get("set-cookie")
+        ? [upstream.headers.get("set-cookie") as string]
+        : [];
+    for (const cookieVal of setCookies) {
+      responseHeaders.append("set-cookie", cookieVal);
     }
 
     return withSupabaseCookies(new NextResponse(upstream.body, {
