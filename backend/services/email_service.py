@@ -28,7 +28,12 @@ class OutgoingEmail:
     subject: str
     html: str
     text: str | None = None
-    from_addr: str = "RelatiV <hello@relativ.video>"
+    from_addr: str = "RelatiV <noreply@relativclips.com>"
+
+
+def _effective_from(msg: OutgoingEmail) -> str:
+    env_from = (os.getenv("EMAIL_FROM") or os.getenv("RESEND_FROM") or os.getenv("SMTP_FROM") or "").strip()
+    return env_from or msg.from_addr
 
 
 async def send(msg: OutgoingEmail) -> bool:
@@ -56,42 +61,52 @@ async def send(msg: OutgoingEmail) -> bool:
 
 
 async def send_with_status(msg: OutgoingEmail) -> tuple[bool, str, str]:
-    """Send an email and return (ok, backend_name, detail)."""
+    """Send an email and return (ok, backend_name, detail), falling through configured providers."""
     text_body = msg.text or _strip_html(msg.html)
+    errors: list[str] = []
 
     resend_key = (os.getenv("RESEND_API_KEY") or "").strip()
     if resend_key:
-        ok = await _send_resend(msg, resend_key)
-        return ok, "resend", "Sent via Resend" if ok else "Resend delivery failed (check server logs)"
+        ok, detail = await _send_resend_with_detail(msg, resend_key)
+        if ok:
+            return True, "resend", detail
+        errors.append(f"resend: {detail}")
 
     postmark = (os.getenv("POSTMARK_TOKEN") or "").strip()
     if postmark:
         ok = await _send_postmark(msg, postmark)
-        return ok, "postmark", "Sent via Postmark" if ok else "Postmark delivery failed (check server logs)"
+        if ok:
+            return True, "postmark", "Sent via Postmark"
+        errors.append("postmark: delivery failed")
 
     smtp_host = (os.getenv("SMTP_HOST") or "").strip()
     if smtp_host:
         ok, detail = await send_via_smtp(msg)
-        return ok, "smtp", detail
+        if ok:
+            return True, "smtp", detail
+        errors.append(f"smtp: {detail}")
+
+    if errors:
+        return False, "multi", "; ".join(errors)
 
     _send_console(msg, text_body)
     return False, "console", "No email provider configured (SMTP_HOST / RESEND_API_KEY / POSTMARK_TOKEN missing)"
 
 
-async def _send_resend(msg: OutgoingEmail, api_key: str) -> bool:
+async def _send_resend_with_detail(msg: OutgoingEmail, api_key: str) -> tuple[bool, str]:
     """Resend (https://resend.com/docs/api-reference/emails/send-email)."""
     try:
         import httpx
     except ImportError:
         log.error("RESEND_API_KEY set but httpx not installed")
-        return False
+        return False, "httpx not installed"
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "from": msg.from_addr,
+                    "from": _effective_from(msg),
                     "to": [msg.to],
                     "subject": msg.subject,
                     "html": msg.html,
@@ -99,12 +114,18 @@ async def _send_resend(msg: OutgoingEmail, api_key: str) -> bool:
                 },
             )
             if r.status_code >= 300:
-                log.error(f"Resend send failed: {r.status_code} {r.text[:200]}")
-                return False
-            return True
+                err_txt = r.text[:200]
+                log.error(f"Resend send failed: {r.status_code} {err_txt}")
+                return False, f"HTTP {r.status_code}: {err_txt}"
+            return True, "Sent via Resend"
     except Exception as e:
         log.error(f"Resend send error: {e}")
-        return False
+        return False, str(e)
+
+
+async def _send_resend(msg: OutgoingEmail, api_key: str) -> bool:
+    ok, _ = await _send_resend_with_detail(msg, api_key)
+    return ok
 
 
 async def _send_postmark(msg: OutgoingEmail, token: str) -> bool:

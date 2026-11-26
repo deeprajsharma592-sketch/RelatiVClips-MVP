@@ -101,8 +101,11 @@ export async function requestAdmin2faChallenge(): Promise<{ ok: boolean; challen
     credentials: "include",
   });
   if (!response.ok) {
-    let message = "Could not send 2FA verification code.";
-    try { message = (await response.json()).detail || message; } catch {}
+    let message = `Could not send 2FA verification code (HTTP ${response.status}).`;
+    try {
+      const body = await response.json();
+      message = body.detail || body.error || body.message || message;
+    } catch {}
     throw new AdminApiError(message, response.status);
   }
   return response.json();
