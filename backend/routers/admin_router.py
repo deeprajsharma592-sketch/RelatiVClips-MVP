@@ -30,6 +30,7 @@ from ..database.models import (
     AuditLogModel,
     CampaignClipModel,
     CampaignModel,
+    ClipFeedbackEventModel,
     ClipModel,
     SessionModel,
     TaskModel,
@@ -178,6 +179,7 @@ async def admin_records(
     allowed = {
         "users", "jobs", "clips", "campaigns", "submissions",
         "applications", "brand_contacts", "quotes", "system", "audit_logs",
+        "clip_failures", "clip_ratings",
     }
     if collection not in allowed:
         raise HTTPException(status_code=400, detail="Unknown admin collection")
@@ -306,6 +308,68 @@ async def admin_records(
             rows = [row for row in rows if needle.casefold() in str(row).casefold()]
         total = len(rows)
         rows = rows[offset:offset + page_size]
+    elif collection == "clip_failures":
+        # Failed pipeline jobs with full error detail and step info
+        query = select(TaskModel, UserModel.email).outerjoin(
+            UserModel, TaskModel.user_id == UserModel.id
+        ).where(TaskModel.status == "failed")
+        count_query = select(func.count()).select_from(TaskModel).where(TaskModel.status == "failed")
+        if needle:
+            filt = or_(
+                TaskModel.task_id.ilike(f"%{needle}%"),
+                TaskModel.url.ilike(f"%{needle}%"),
+                TaskModel.error.ilike(f"%{needle}%"),
+                TaskModel.step_name.ilike(f"%{needle}%"),
+                TaskModel.current_step.ilike(f"%{needle}%"),
+            )
+            query, count_query = query.where(filt), count_query.where(filt)
+        total = int((await session.execute(count_query)).scalar_one() or 0)
+        items = (await session.execute(
+            query.order_by(TaskModel.updated_at.desc()).offset(offset).limit(page_size)
+        )).all()
+        rows = [
+            {
+                "task_id": t.task_id[:8],
+                "user_email": email or "—",
+                "source_url": (t.url or "")[:80],
+                "failed_at_step": t.step_name or t.current_step or "—",
+                "progress_pct": t.progress,
+                "failure_reason": t.error or "—",
+                "started_at": _iso(t.created_at),
+                "failed_at": _iso(t.updated_at),
+            }
+            for t, email in items
+        ]
+    elif collection == "clip_ratings":
+        # User quality feedback on generated clips
+        query = select(ClipFeedbackEventModel, UserModel.email).outerjoin(
+            UserModel, ClipFeedbackEventModel.user_id == UserModel.id
+        )
+        count_query = select(func.count()).select_from(ClipFeedbackEventModel)
+        if needle:
+            filt = or_(
+                ClipFeedbackEventModel.clip_id.ilike(f"%{needle}%"),
+                ClipFeedbackEventModel.event_type.ilike(f"%{needle}%"),
+                ClipFeedbackEventModel.reason_other_text.ilike(f"%{needle}%"),
+            )
+            query, count_query = query.where(filt), count_query.where(filt)
+        total = int((await session.execute(count_query)).scalar_one() or 0)
+        items = (await session.execute(
+            query.order_by(ClipFeedbackEventModel.created_at.desc()).offset(offset).limit(page_size)
+        )).all()
+        rows = [
+            {
+                "clip_id": f.clip_id[:8],
+                "user_email": email or "—",
+                "rating": "👍 Good" if f.event_type == "like" else "👎 Bad" if f.event_type == "dislike" else f.event_type,
+                "points": f.points,
+                "reason_codes": ", ".join(f.reason_codes) if f.reason_codes else "—",
+                "user_comment": f.reason_other_text or "—",
+                "model_version": f.model_version,
+                "rated_at": _iso(f.created_at),
+            }
+            for f, email in items
+        ]
     else:
         source = {
             "applications": intake.list_clipper_applications(10000),

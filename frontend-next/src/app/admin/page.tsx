@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Fingerprint, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
+import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Fingerprint, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, ThumbsUp, Users, WalletCards, XCircle, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminApiError, fetchAdminOverview, fetchAdminPasskeyStatus, fetchAdminRecords, loginWithAdminPasskey, registerAdminPasskey, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
 import styles from "./admin.module.css";
@@ -214,7 +214,9 @@ const COLLECTIONS: Array<{ id: AdminCollection | "overview"; label: string; icon
   { id: "overview", label: "Overview", icon: Gauge },
   { id: "users", label: "Accounts", icon: Users },
   { id: "jobs", label: "Processing jobs", icon: Activity },
+  { id: "clip_failures", label: "Failure reasons", icon: AlertTriangle },
   { id: "clips", label: "Generated clips", icon: Film },
+  { id: "clip_ratings", label: "Clip ratings", icon: ThumbsUp },
   { id: "campaigns", label: "Campaigns", icon: Layers3 },
   { id: "submissions", label: "Clip submissions", icon: BriefcaseBusiness },
   { id: "applications", label: "Clipper applications", icon: FileText },

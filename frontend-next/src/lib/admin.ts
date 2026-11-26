@@ -31,7 +31,7 @@ export interface AdminOverview {
   refresh_interval_seconds: number;
 }
 
-export type AdminCollection = "users" | "jobs" | "clips" | "campaigns" | "submissions" | "applications" | "brand_contacts" | "quotes" | "system" | "audit_logs";
+export type AdminCollection = "users" | "jobs" | "clips" | "campaigns" | "submissions" | "applications" | "brand_contacts" | "quotes" | "system" | "audit_logs" | "clip_failures" | "clip_ratings";
 export interface AdminRecords {
   collection: AdminCollection;
   records: Array<Record<string, string | number | boolean | null>>;
