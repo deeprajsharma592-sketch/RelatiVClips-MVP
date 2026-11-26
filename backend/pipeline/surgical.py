@@ -122,12 +122,15 @@ def _ytdlp_video_section_url(
 
     cmd = [
         YTDLP_PATH,
-        # Native 1080p and 720p HD streams, with safe fallback to best available
+        # Native 1080p and 720p H.264 (avc1) HD streams first (avoids slow AV1 decode),
+        # with safe fallback to best available.
         "-f", (
-            "bv*[height>=1080]+ba/"
+            "bv*[height>=1080][vcodec^=avc1]+ba/"
             "137+140/"
-            "bv*[height>=720]+ba/"
+            "bv*[height>=720][vcodec^=avc1]+ba/"
             "136+140/"
+            "bv*[height>=1080]+ba/"
+            "bv*[height>=720]+ba/"
             "bv*+ba/"
             "bestvideo+bestaudio/"
             "b[height>=720]/"
@@ -135,9 +138,8 @@ def _ytdlp_video_section_url(
             "best/"
             "18"
         ),
-        "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
-        "--format-sort", "res:1080,fps,size,br",
+        "--format-sort", "res:1080,vcodec:h264,fps,size,br",
         "--download-sections", f"*{s_str}-{e_str}",
         *(["--js-runtimes", "node"] if ytdlp_supports_js_runtimes() else []),
         "--extractor-args", f"youtube:player_client={extractor_client}",
@@ -456,7 +458,7 @@ def _download_one_video_segment(
                 cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="ios")
             try:
                 result = subprocess.run(
-                    cmd, capture_output=True, timeout=60
+                    cmd, capture_output=True, timeout=120
                 )
                 if not video_path.exists():
                     for ext in (".mp4", ".mkv", ".webm", ".m4v", ".mov", ".ts"):
@@ -502,6 +504,50 @@ def _download_one_video_segment(
             _log(f"  [video seg {seg_idx + 1}/{total}] Using best-effort stream ({video_path.stat().st_size / 1024:.0f} KB)")
         else:
             fallback_path.unlink(missing_ok=True)
+
+    # 4. Last-resort full-video android_vr download + local FFmpeg trim
+    # (handles videos where YouTube rejects HTTP range requests for --download-sections)
+    if not final_ok:
+        full_path = video_path.with_suffix(".full.mp4")
+        try:
+            _log(f"  [video seg {seg_idx + 1}/{total}] Section download failed; trying full android_vr fallback + trim...")
+            full_cmd = [
+                YTDLP_PATH,
+                "-f", "bv*[height>=720][vcodec^=avc1]+ba/bv*[height>=720]+ba/b[height>=720]/b/18",
+                "--merge-output-format", "mp4",
+                "--extractor-args", "youtube:player_client=android_vr",
+                "-o", str(full_path.with_suffix(".%(ext)s")),
+                "--no-warnings",
+                "--no-check-certificates",
+            ]
+            if FFMPEG_PATH:
+                full_cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
+            _proxy = get_proxy()
+            if _proxy:
+                full_cmd.extend(["--proxy", _proxy])
+            full_cmd.extend(["--", url])
+            subprocess.run(full_cmd, capture_output=True, timeout=180)
+            if not full_path.exists():
+                for ext in (".mp4", ".mkv", ".webm", ".m4v"):
+                    cand = full_path.with_suffix(ext)
+                    if cand.exists() and cand.stat().st_size > 1024:
+                        full_path = cand
+                        break
+            if full_path.exists() and full_path.stat().st_size > 1024:
+                trim_cmd = [
+                    FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
+                    "-ss", f"{s:.3f}", "-i", str(full_path),
+                    "-t", f"{max(1.0, e - s):.3f}",
+                    "-c", "copy", str(video_path),
+                ]
+                subprocess.run(trim_cmd, capture_output=True, timeout=60)
+                if video_path.exists() and video_path.stat().st_size > 1024:
+                    final_ok = True
+                    _log(f"  [video seg {seg_idx + 1}/{total}] Trimmed from full android_vr source ({video_path.stat().st_size / (1024*1024):.1f} MB)")
+        except Exception as full_err:
+            _log(f"  [video seg {seg_idx + 1}/{total}] full fallback failed: {full_err}")
+        finally:
+            full_path.unlink(missing_ok=True)
 
     try:
         if on_segment_done is not None:

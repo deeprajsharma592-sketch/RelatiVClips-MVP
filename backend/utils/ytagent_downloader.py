@@ -150,7 +150,11 @@ def download_high_quality_source(url: str, log: Optional[Callable[[str], None]] 
             raise YtAgentError("ytagent has no approved direct download methods")
 
         if YTAGENT_SINGLE_ATTEMPT:
-            primary = "ytdlp_default" if "ytdlp_default" in safe_methods else next(iter(safe_methods))
+            primary = (
+                "ytdlp_jsless"
+                if "ytdlp_jsless" in safe_methods
+                else ("ytdlp_default" if "ytdlp_default" in safe_methods else next(iter(safe_methods)))
+            )
             safe_methods = {primary: safe_methods[primary]}
 
         bgutil_ready = ensure_bgutil_ready(auto_install=False, auto_start=True)
