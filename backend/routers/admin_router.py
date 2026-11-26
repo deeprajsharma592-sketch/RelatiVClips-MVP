@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import os
 import secrets
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
