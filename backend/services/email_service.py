@@ -55,6 +55,29 @@ async def send(msg: OutgoingEmail) -> bool:
     return True
 
 
+async def send_with_status(msg: OutgoingEmail) -> tuple[bool, str, str]:
+    """Send an email and return (ok, backend_name, detail)."""
+    text_body = msg.text or _strip_html(msg.html)
+
+    resend_key = (os.getenv("RESEND_API_KEY") or "").strip()
+    if resend_key:
+        ok = await _send_resend(msg, resend_key)
+        return ok, "resend", "Sent via Resend" if ok else "Resend delivery failed (check server logs)"
+
+    postmark = (os.getenv("POSTMARK_TOKEN") or "").strip()
+    if postmark:
+        ok = await _send_postmark(msg, postmark)
+        return ok, "postmark", "Sent via Postmark" if ok else "Postmark delivery failed (check server logs)"
+
+    smtp_host = (os.getenv("SMTP_HOST") or "").strip()
+    if smtp_host:
+        ok, detail = await send_via_smtp(msg)
+        return ok, "smtp", detail
+
+    _send_console(msg, text_body)
+    return False, "console", "No email provider configured (SMTP_HOST / RESEND_API_KEY / POSTMARK_TOKEN missing)"
+
+
 async def _send_resend(msg: OutgoingEmail, api_key: str) -> bool:
     """Resend (https://resend.com/docs/api-reference/emails/send-email)."""
     try:
@@ -126,9 +149,12 @@ async def send_via_smtp(msg: OutgoingEmail) -> tuple[bool, str]:
     import smtplib
 
     port = int(os.getenv("SMTP_PORT", "587"))
-    user = os.getenv("SMTP_USER")
+    user = (os.getenv("SMTP_USER") or "").strip() or None
     pw = os.getenv("SMTP_PASSWORD")
-    from_addr = (os.getenv("EMAIL_FROM") or "").strip() or msg.from_addr
+    from_addr = (
+        (os.getenv("EMAIL_FROM") or os.getenv("SMTP_FROM") or "").strip()
+        or (f"RelatiV <{user}>" if user and "@" in user else msg.from_addr)
+    )
     text_body = msg.text or _strip_html(msg.html)
 
     def _send_sync() -> None:

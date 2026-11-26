@@ -72,6 +72,25 @@ async def test_send_via_smtp_sends_with_starttls():
         mock_smtp.starttls.assert_called_once()
         mock_smtp.login.assert_called_once_with("mailer@relativclips.com", "secret")
         mock_smtp.send_message.assert_called_once()
+        sent_msg = mock_smtp.send_message.call_args.args[0]
+        assert sent_msg["From"] == "RelatiV <mailer@relativclips.com>"
+
+
+@pytest.mark.asyncio
+async def test_send_with_status_reports_missing_provider():
+    from backend.services.email_service import send_with_status
+
+    with patch.dict(
+        os.environ,
+        {"RESEND_API_KEY": "", "POSTMARK_TOKEN": "", "SMTP_HOST": ""},
+        clear=False,
+    ):
+        ok, backend_name, detail = await send_with_status(
+            OutgoingEmail(to="deepraj@relativclips.com", subject="Test", html="<p>Hi</p>")
+        )
+        assert ok is False
+        assert backend_name == "console"
+        assert "No email provider configured" in detail
 
 
 def test_admin_domain_lock_and_2fa_token():

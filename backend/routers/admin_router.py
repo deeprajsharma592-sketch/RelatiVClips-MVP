@@ -30,7 +30,7 @@ from ..database.models import (
 )
 from ..database.session import get_session
 from ..routers.auth_router import get_current_user
-from ..services.email_service import OutgoingEmail, send as send_email, send_via_smtp
+from ..services.email_service import OutgoingEmail, send_via_smtp, send_with_status
 from ..utils.admin_access import is_admin_email, is_allowed_admin_domain
 from ..utils.audit import record_audit_event
 from ..utils.task_store import task_store
@@ -369,7 +369,21 @@ async def request_admin_2fa_challenge(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Send a 6-digit 2FA token to the admin's @relativclips.com email."""
-    _require_admin_identity(user)
+    ip = request.client.host if request.client else None
+    try:
+        _require_admin_identity(user)
+    except HTTPException as exc:
+        await record_audit_event(
+            session,
+            action="admin.2fa_denied",
+            actor_user_id=user.id,
+            actor_email=user.email,
+            resource_type="admin_2fa",
+            status="failure",
+            ip_address=ip,
+            details={"reason": exc.detail},
+        )
+        raise
 
     challenge_id = secrets.token_urlsafe(24)
     code = f"{secrets.randbelow(1_000_000):06d}"
@@ -402,11 +416,7 @@ async def request_admin_2fa_challenge(
         ),
         text=f"Your RelatiV Control Room 2FA code is: {code} (expires in 10 minutes).",
     )
-    if (os.getenv("SMTP_HOST") or "").strip():
-        sent, detail = await send_via_smtp(email_msg)
-    else:
-        sent = await send_email(email_msg)
-        detail = "sent via email_service"
+    sent, backend_name, detail = await send_with_status(email_msg)
 
     await record_audit_event(
         session,
@@ -416,11 +426,14 @@ async def request_admin_2fa_challenge(
         resource_type="admin_2fa",
         resource_id=challenge_id,
         status="success" if sent else "failure",
-        ip_address=request.client.host if request.client else None,
-        details={"detail": detail},
+        ip_address=ip,
+        details={"backend": backend_name, "detail": detail},
     )
     if not sent:
-        raise HTTPException(status_code=502, detail="Could not deliver 2FA verification email")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not deliver 2FA verification email ({backend_name}): {detail}",
+        )
 
     return {"ok": True, "challenge_id": challenge_id, "expires_in_seconds": 600}
 
