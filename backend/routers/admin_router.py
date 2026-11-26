@@ -596,7 +596,7 @@ async def admin_passkey_register_options(
         candidate = (
             await session.execute(select(UserModel).where(UserModel.email == body.email.strip().lower()))
         ).scalar_one_or_none()
-        if not candidate or not await verify_password(body.password, candidate.hashed_password):
+        if not candidate or not verify_password(body.password, candidate.hashed_password):
             raise HTTPException(status_code=401, detail="Invalid email or password.")
         _require_admin_identity(candidate)
         user = candidate
