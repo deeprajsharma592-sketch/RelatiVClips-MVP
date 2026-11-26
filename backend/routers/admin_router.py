@@ -14,17 +14,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..auth_utils import (
+    create_access_token,
     create_admin_2fa_token,
     get_admin_2fa_cookie,
+    hash_ip,
     set_admin_2fa_cookie,
+    set_session_cookie,
     verify_admin_2fa_token,
+    verify_password,
 )
 from ..database.models import (
+    AdminPasskeyModel,
     AdminTwoFactorChallengeModel,
     AuditLogModel,
     CampaignClipModel,
     CampaignModel,
     ClipModel,
+    SessionModel,
     TaskModel,
     UserModel,
 )
@@ -516,3 +522,350 @@ async def verify_admin_2fa_challenge(
         ip_address=ip,
     )
     return {"ok": True}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admin Passkeys (WebAuthn / Touch ID) — Passwordless & Email-free Login
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _allowed_rp_ids(request: Request) -> list[str]:
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(":", 1)[0].strip().lower()
+    base = ["relativclips.com", "www.relativclips.com", "localhost", "127.0.0.1"]
+    if host and host not in base:
+        base.insert(0, host)
+    return base
+
+
+class PasskeyRegisterOptionsRequest(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+    label: Optional[str] = None
+
+
+class PasskeyRegisterVerifyRequest(BaseModel):
+    challenge_id: str
+    credential_id: str
+    public_key_spki: str
+    client_data_json: str
+    authenticator_data: str
+    label: Optional[str] = None
+
+
+class PasskeyLoginVerifyRequest(BaseModel):
+    challenge_id: str
+    credential_id: str
+    client_data_json: str
+    authenticator_data: str
+    signature: str
+
+
+@router.get("/passkey/status")
+async def admin_passkey_status(session: AsyncSession = Depends(get_session)) -> dict:
+    """Return whether at least one admin passkey is registered."""
+    count = await _count(session, AdminPasskeyModel)
+    return {"configured": count > 0, "count": count}
+
+
+@router.post("/passkey/register/options")
+async def admin_passkey_register_options(
+    request: Request,
+    body: Optional[PasskeyRegisterOptionsRequest] = None,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Issue a WebAuthn creation challenge to bind a Mac Touch ID / hardware passkey."""
+    from ..utils.webauthn import b64url_encode
+
+    existing_count = await _count(session, AdminPasskeyModel)
+    user: Optional[UserModel] = None
+
+    # Allow already-authenticated admin (with valid 2FA/passkey cookie) OR first-time setup via credentials
+    try:
+        current = await get_current_user(request, session=session)
+        _require_admin_identity(current)
+        if existing_count == 0 or verify_admin_2fa_token(get_admin_2fa_cookie(request), user_id=current.id, email=current.email):
+            user = current
+    except HTTPException:
+        user = None
+
+    if user is None:
+        if existing_count > 0:
+            raise HTTPException(status_code=403, detail="Sign in with your existing passkey to register another one.")
+        if not body or not body.email or not body.password:
+            raise HTTPException(status_code=401, detail="Enter your @relativclips.com credentials once to bind your passkey.")
+        candidate = (
+            await session.execute(select(UserModel).where(UserModel.email == body.email.strip().lower()))
+        ).scalar_one_or_none()
+        if not candidate or not await verify_password(body.password, candidate.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
+        _require_admin_identity(candidate)
+        user = candidate
+
+    challenge_bytes = secrets.token_bytes(32)
+    challenge_b64 = b64url_encode(challenge_bytes)
+    challenge_id = secrets.token_urlsafe(24)
+    now = datetime.utcnow()
+
+    session.add(
+        AdminTwoFactorChallengeModel(
+            id=challenge_id,
+            user_id=user.id,
+            email=user.email.lower(),
+            code_hash=hashlib.sha256(challenge_b64.encode("utf-8")).hexdigest(),
+            attempts=0,
+            expires_at=now + timedelta(minutes=10),
+            created_at=now,
+        )
+    )
+    await session.commit()
+
+    rp_ids = _allowed_rp_ids(request)
+    rp_id = "relativclips.com" if any("relativclips.com" in h for h in rp_ids) else rp_ids[0]
+    return {
+        "challenge_id": challenge_id,
+        "challenge": challenge_b64,
+        "rp": {"id": rp_id, "name": "RelatiV Control Room"},
+        "user": {
+            "id": b64url_encode(user.id.encode("utf-8")),
+            "name": user.email,
+            "displayName": user.name or user.email,
+        },
+        "pubKeyCredParams": [{"type": "public-key", "alg": -7}],
+        "authenticatorSelection": {
+            "authenticatorAttachment": "platform",
+            "userVerification": "required",
+            "residentKey": "preferred",
+        },
+        "timeout": 60000,
+    }
+
+
+@router.post("/passkey/register/verify")
+async def admin_passkey_register_verify(
+    body: PasskeyRegisterVerifyRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Verify and store a newly created WebAuthn passkey, then sign the admin in."""
+    from ..utils.webauthn import b64url_decode, b64url_encode, parse_authenticator_data, parse_spki_p256_point, verify_client_data
+
+    now = datetime.utcnow()
+    challenge = (
+        await session.execute(
+            select(AdminTwoFactorChallengeModel).where(AdminTwoFactorChallengeModel.id == body.challenge_id)
+        )
+    ).scalar_one_or_none()
+    if not challenge or challenge.consumed_at is not None or challenge.expires_at < now:
+        raise HTTPException(status_code=400, detail="Passkey setup challenge expired. Try again.")
+
+    user = (await session.execute(select(UserModel).where(UserModel.id == challenge.user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Admin user not found.")
+    _require_admin_identity(user)
+
+    # Reconstruct expected challenge check via clientDataJSON
+    try:
+        client_raw = b64url_decode(body.client_data_json)
+        import json as _json
+        client_obj = _json.loads(client_raw.decode("utf-8"))
+        challenge_str = str(client_obj.get("challenge") or "")
+        if not hmac.compare_digest(
+            hashlib.sha256(challenge_str.encode("utf-8")).hexdigest(),
+            challenge.code_hash,
+        ):
+            raise ValueError("Challenge mismatch")
+        _, rp_id = verify_client_data(
+            body.client_data_json,
+            expected_type="webauthn.create",
+            expected_challenge=challenge_str,
+            allowed_rp_ids=_allowed_rp_ids(request),
+        )
+        _, sign_count = parse_authenticator_data(body.authenticator_data, rp_id)
+        spki_bytes = b64url_decode(body.public_key_spki)
+        parse_spki_p256_point(spki_bytes)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid passkey registration: {exc}") from exc
+
+    challenge.consumed_at = now
+    session.add(
+        AdminPasskeyModel(
+            id=secrets.token_urlsafe(16),
+            user_id=user.id,
+            email=user.email.lower(),
+            credential_id=body.credential_id,
+            public_key_spki=b64url_encode(spki_bytes),
+            sign_count=sign_count,
+            label=(body.label or "Mac Touch ID")[:120],
+            created_at=now,
+            last_used_at=now,
+        )
+    )
+
+    # Issue both session cookie and admin 2FA cookie so the user enters immediately
+    session_ttl_days = 1
+    token, jti, expires = create_access_token(
+        user_id=user.id, role=user.role, email=user.email, ttl_days=session_ttl_days
+    )
+    session.add(
+        SessionModel(
+            id=secrets.token_urlsafe(32),
+            user_id=user.id,
+            jwt_jti=jti,
+            user_agent=request.headers.get("user-agent", "")[:500],
+            ip_hash=hash_ip(request.client.host if request.client else "unknown"),
+            created_at=now,
+            expires_at=expires,
+        )
+    )
+    user.last_login_at = now
+    await session.commit()
+
+    set_session_cookie(response, token, ttl_days=session_ttl_days)
+    set_admin_2fa_cookie(response, create_admin_2fa_token(user_id=user.id, email=user.email))
+    await record_audit_event(
+        session,
+        action="admin.passkey_registered",
+        actor_user_id=user.id,
+        actor_email=user.email,
+        resource_type="admin_passkey",
+        status="success",
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"ok": True}
+
+
+@router.post("/passkey/login/options")
+async def admin_passkey_login_options(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Issue a passwordless WebAuthn assertion challenge for registered admin passkeys."""
+    from ..utils.webauthn import b64url_encode
+
+    creds = (await session.execute(select(AdminPasskeyModel))).scalars().all()
+    if not creds:
+        raise HTTPException(status_code=404, detail="No admin passkey registered yet.")
+
+    challenge_b64 = b64url_encode(secrets.token_bytes(32))
+    challenge_id = secrets.token_urlsafe(24)
+    now = datetime.utcnow()
+    session.add(
+        AdminTwoFactorChallengeModel(
+            id=challenge_id,
+            user_id="passkey_login",
+            email="passkey@relativclips.com",
+            code_hash=hashlib.sha256(challenge_b64.encode("utf-8")).hexdigest(),
+            attempts=0,
+            expires_at=now + timedelta(minutes=5),
+            created_at=now,
+        )
+    )
+    await session.commit()
+
+    rp_ids = _allowed_rp_ids(request)
+    rp_id = "relativclips.com" if any("relativclips.com" in h for h in rp_ids) else rp_ids[0]
+    return {
+        "challenge_id": challenge_id,
+        "challenge": challenge_b64,
+        "rpId": rp_id,
+        "allowCredentials": [{"type": "public-key", "id": c.credential_id} for c in creds],
+        "userVerification": "required",
+        "timeout": 60000,
+    }
+
+
+@router.post("/passkey/login/verify")
+async def admin_passkey_login_verify(
+    body: PasskeyLoginVerifyRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Verify WebAuthn passkey signature and sign the admin straight into the Control Room."""
+    from ..utils.webauthn import b64url_decode, parse_authenticator_data, verify_client_data, verify_p256_der_signature
+
+    now = datetime.utcnow()
+    challenge = (
+        await session.execute(
+            select(AdminTwoFactorChallengeModel).where(AdminTwoFactorChallengeModel.id == body.challenge_id)
+        )
+    ).scalar_one_or_none()
+    if not challenge or challenge.consumed_at is not None or challenge.expires_at < now:
+        raise HTTPException(status_code=400, detail="Passkey challenge expired. Try again.")
+
+    passkey = (
+        await session.execute(
+            select(AdminPasskeyModel).where(AdminPasskeyModel.credential_id == body.credential_id)
+        )
+    ).scalar_one_or_none()
+    if not passkey:
+        raise HTTPException(status_code=401, detail="Unrecognized passkey.")
+
+    try:
+        import json as _json
+        client_raw = b64url_decode(body.client_data_json)
+        client_obj = _json.loads(client_raw.decode("utf-8"))
+        challenge_str = str(client_obj.get("challenge") or "")
+        if not hmac.compare_digest(
+            hashlib.sha256(challenge_str.encode("utf-8")).hexdigest(),
+            challenge.code_hash,
+        ):
+            raise ValueError("Challenge mismatch")
+        client_bytes, rp_id = verify_client_data(
+            body.client_data_json,
+            expected_type="webauthn.get",
+            expected_challenge=challenge_str,
+            allowed_rp_ids=_allowed_rp_ids(request),
+        )
+        auth_bytes, sign_count = parse_authenticator_data(body.authenticator_data, rp_id)
+        signed_payload = auth_bytes + hashlib.sha256(client_bytes).digest()
+        sig_ok = verify_p256_der_signature(
+            b64url_decode(passkey.public_key_spki),
+            signed_payload,
+            b64url_decode(body.signature),
+        )
+        if not sig_ok:
+            raise ValueError("Invalid ECDSA signature")
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"Passkey verification failed: {exc}") from exc
+
+    user = (await session.execute(select(UserModel).where(UserModel.id == passkey.user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Admin account not found.")
+    _require_admin_identity(user)
+
+    challenge.consumed_at = now
+    passkey.sign_count = max(passkey.sign_count, sign_count)
+    passkey.last_used_at = now
+
+    session_ttl_days = 1
+    token, jti, expires = create_access_token(
+        user_id=user.id, role=user.role, email=user.email, ttl_days=session_ttl_days
+    )
+    session.add(
+        SessionModel(
+            id=secrets.token_urlsafe(32),
+            user_id=user.id,
+            jwt_jti=jti,
+            user_agent=request.headers.get("user-agent", "")[:500],
+            ip_hash=hash_ip(request.client.host if request.client else "unknown"),
+            created_at=now,
+            expires_at=expires,
+        )
+    )
+    user.last_login_at = now
+    await session.commit()
+
+    set_session_cookie(response, token, ttl_days=session_ttl_days)
+    set_admin_2fa_cookie(response, create_admin_2fa_token(user_id=user.id, email=user.email))
+    await record_audit_event(
+        session,
+        action="admin.passkey_login",
+        actor_user_id=user.id,
+        actor_email=user.email,
+        resource_type="admin_passkey",
+        resource_id=passkey.id,
+        status="success",
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"ok": True, "email": user.email}

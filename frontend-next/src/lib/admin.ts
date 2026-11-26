@@ -125,3 +125,162 @@ export async function verifyAdmin2faChallenge(challengeId: string, code: string)
   }
   return response.json();
 }
+
+function b64urlToBuf(b64url: string): ArrayBuffer {
+  const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
+  const b64 = (b64url + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function bufToB64url(buf: ArrayBuffer | null | undefined): string {
+  if (!buf) return "";
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export async function fetchAdminPasskeyStatus(): Promise<{ configured: boolean; count: number }> {
+  const response = await fetch(apiPath("/api/v1/admin/passkey/status"), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    return { configured: false, count: 0 };
+  }
+  return response.json();
+}
+
+export async function registerAdminPasskey(payload?: {
+  email?: string;
+  password?: string;
+  label?: string;
+}): Promise<{ ok: boolean }> {
+  if (!window.PublicKeyCredential || !navigator.credentials) {
+    throw new AdminApiError("Passkeys (WebAuthn) are not supported in this browser.", 400);
+  }
+  const optRes = await fetch(apiPath("/api/v1/admin/passkey/register/options"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!optRes.ok) {
+    let msg = `Could not start passkey setup (HTTP ${optRes.status}).`;
+    try {
+      const b = await optRes.json();
+      msg = b.detail || b.error || msg;
+    } catch {}
+    throw new AdminApiError(msg, optRes.status);
+  }
+  const opts = await optRes.json();
+
+  const cred = (await navigator.credentials.create({
+    publicKey: {
+      challenge: b64urlToBuf(opts.challenge),
+      rp: opts.rp,
+      user: {
+        id: b64urlToBuf(opts.user.id),
+        name: opts.user.name,
+        displayName: opts.user.displayName,
+      },
+      pubKeyCredParams: opts.pubKeyCredParams,
+      authenticatorSelection: opts.authenticatorSelection,
+      timeout: opts.timeout || 60000,
+    },
+  })) as PublicKeyCredential | null;
+
+  if (!cred) {
+    throw new AdminApiError("Passkey registration was cancelled.", 400);
+  }
+  const res = cred.response as AuthenticatorAttestationResponse;
+  const spki = typeof res.getPublicKey === "function" ? res.getPublicKey() : null;
+  if (!spki) {
+    throw new AdminApiError("Browser did not return a passkey public key.", 400);
+  }
+
+  const verifyRes = await fetch(apiPath("/api/v1/admin/passkey/register/verify"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      challenge_id: opts.challenge_id,
+      credential_id: bufToB64url(cred.rawId),
+      public_key_spki: bufToB64url(spki),
+      client_data_json: bufToB64url(res.clientDataJSON),
+      authenticator_data: bufToB64url(res.getAuthenticatorData ? res.getAuthenticatorData() : null),
+      label: payload?.label || "Mac Touch ID",
+    }),
+  });
+  if (!verifyRes.ok) {
+    let msg = `Passkey registration failed (HTTP ${verifyRes.status}).`;
+    try {
+      const b = await verifyRes.json();
+      msg = b.detail || b.error || msg;
+    } catch {}
+    throw new AdminApiError(msg, verifyRes.status);
+  }
+  return verifyRes.json();
+}
+
+export async function loginWithAdminPasskey(): Promise<{ ok: boolean; email?: string }> {
+  if (!window.PublicKeyCredential || !navigator.credentials) {
+    throw new AdminApiError("Passkeys (WebAuthn) are not supported in this browser.", 400);
+  }
+  const optRes = await fetch(apiPath("/api/v1/admin/passkey/login/options"), {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!optRes.ok) {
+    let msg = `Could not start passkey sign-in (HTTP ${optRes.status}).`;
+    try {
+      const b = await optRes.json();
+      msg = b.detail || b.error || msg;
+    } catch {}
+    throw new AdminApiError(msg, optRes.status);
+  }
+  const opts = await optRes.json();
+
+  const assertion = (await navigator.credentials.get({
+    publicKey: {
+      challenge: b64urlToBuf(opts.challenge),
+      rpId: opts.rpId,
+      allowCredentials: (opts.allowCredentials || []).map((c: { id: string; type: PublicKeyCredentialType }) => ({
+        id: b64urlToBuf(c.id),
+        type: c.type,
+      })),
+      userVerification: "required",
+      timeout: opts.timeout || 60000,
+    },
+  })) as PublicKeyCredential | null;
+
+  if (!assertion) {
+    throw new AdminApiError("Passkey verification was cancelled.", 400);
+  }
+  const res = assertion.response as AuthenticatorAssertionResponse;
+
+  const verifyRes = await fetch(apiPath("/api/v1/admin/passkey/login/verify"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      challenge_id: opts.challenge_id,
+      credential_id: bufToB64url(assertion.rawId),
+      client_data_json: bufToB64url(res.clientDataJSON),
+      authenticator_data: bufToB64url(res.authenticatorData),
+      signature: bufToB64url(res.signature),
+    }),
+  });
+  if (!verifyRes.ok) {
+    let msg = `Passkey sign-in failed (HTTP ${verifyRes.status}).`;
+    try {
+      const b = await verifyRes.json();
+      msg = b.detail || b.error || msg;
+    } catch {}
+    throw new AdminApiError(msg, verifyRes.status);
+  }
+  return verifyRes.json();
+}

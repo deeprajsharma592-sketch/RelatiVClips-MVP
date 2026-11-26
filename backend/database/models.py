@@ -555,4 +555,20 @@ class AdminTwoFactorChallengeModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class AdminPasskeyModel(Base):
+    """WebAuthn / Touch ID passkey credentials for passwordless admin login."""
+
+    __tablename__ = "admin_passkeys"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    credential_id: Mapped[str] = mapped_column(String(512), unique=True, nullable=False, index=True)
+    public_key_spki: Mapped[str] = mapped_column(Text, nullable=False)
+    sign_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    label: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
 

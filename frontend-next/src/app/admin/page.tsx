@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
-import { login, logout } from "@/lib/auth";
+import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Fingerprint, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
+import { logout } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminApiError, fetchAdminOverview, fetchAdminRecords, requestAdmin2faChallenge, sendSmtpTest, verifyAdmin2faChallenge, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
+import { AdminApiError, fetchAdminOverview, fetchAdminPasskeyStatus, fetchAdminRecords, loginWithAdminPasskey, registerAdminPasskey, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
 import styles from "./admin.module.css";
 
 function number(value: number) {
@@ -20,148 +20,115 @@ function timeLabel(value: string | null) {
 function SignIn({
   onSignedIn,
   statusMessage,
-  initialNeeds2fa = false,
 }: {
   onSignedIn: () => Promise<void>;
   statusMessage?: string;
   initialNeeds2fa?: boolean;
 }) {
   const { refresh: refreshAuth } = useAuth();
+  const [hasPasskey, setHasPasskey] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!initialNeeds2fa || challengeId) return;
     let active = true;
-    setBusy(true);
-    void requestAdmin2faChallenge()
+    void fetchAdminPasskeyStatus()
       .then((res) => {
-        if (active) setChallengeId(res.challenge_id);
+        if (active) setHasPasskey(Boolean(res.configured));
       })
-      .catch((err) => {
-        if (active) setError(err instanceof Error ? err.message : "Could not send 2FA code.");
-      })
-      .finally(() => {
-        if (active) setBusy(false);
+      .catch(() => {
+        if (active) setHasPasskey(false);
       });
     return () => { active = false; };
-  }, [initialNeeds2fa, challengeId]);
+  }, []);
 
-  async function submitPassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handlePasskeySignIn() {
     setBusy(true);
     setError("");
     try {
-      await login({ email: email.trim().toLowerCase(), password });
+      await loginWithAdminPasskey();
       await refreshAuth();
-      const challenge = await requestAdmin2faChallenge();
-      setChallengeId(challenge.challenge_id);
-      setCode("");
-    } catch (err) {
-      try { await logout(); } catch {}
-      await refreshAuth();
-      setError(err instanceof Error ? err.message : "Sign in failed. Check your credentials and try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submit2fa(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!challengeId) return;
-    setBusy(true);
-    setError("");
-    try {
-      await verifyAdmin2faChallenge(challengeId, code);
       await onSignedIn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid verification code.");
+      setError(err instanceof Error ? err.message : "Passkey sign-in failed.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function resendCode() {
+  async function handlePasskeySetup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const challenge = await requestAdmin2faChallenge();
-      setChallengeId(challenge.challenge_id);
-      setCode("");
+      await registerAdminPasskey({
+        email: email.trim().toLowerCase(),
+        password,
+        label: "Mac Touch ID",
+      });
+      await refreshAuth();
+      await onSignedIn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend verification code.");
+      setError(err instanceof Error ? err.message : "Could not register passkey.");
     } finally {
       setBusy(false);
     }
-  }
-
-  async function resetToPassword() {
-    try { await logout(); } catch {}
-    await refreshAuth();
-    setChallengeId(null);
-    setCode("");
-    setError("");
   }
 
   return (
     <main className={styles.loginShell}>
       <section className={styles.loginCard} aria-labelledby="admin-login-heading">
         <div className={styles.loginBrand}><span className={styles.logoMark}>R</span><span>RelatiV <i>Control room</i></span></div>
-        <div className={styles.lockBadge}><LockKeyhole size={18} /></div>
-        <p className={styles.eyebrow}>{challengeId ? "Two-factor verification" : "Private workspace"}</p>
-        <h1 id="admin-login-heading">{challengeId ? "Check your email." : "Good to have you back."}</h1>
+        <div className={styles.lockBadge}>{hasPasskey ? <Fingerprint size={20} /> : <LockKeyhole size={18} />}</div>
+        <p className={styles.eyebrow}>{hasPasskey ? "Passkey authentication" : "One-time passkey setup"}</p>
+        <h1 id="admin-login-heading">
+          {hasPasskey === null
+            ? "Checking passkey…"
+            : hasPasskey
+            ? "Unlock with Touch ID."
+            : "Register your Mac passkey."}
+        </h1>
         <p className={styles.loginCopy}>
-          {challengeId
-            ? "Enter the 6-digit verification token sent to your email."
-            : "Sign in with your email and password to continue."}
+          {hasPasskey === null
+            ? "Connecting to RelatiV Control Room security."
+            : hasPasskey
+            ? "Use your Mac fingerprint or hardware passkey to enter — no email code needed."
+            : "Verify your founder credentials once to bind Touch ID. Future logins use passkey only."}
         </p>
 
-        {challengeId ? (
-          <form className={styles.loginForm} onSubmit={submit2fa}>
+        {hasPasskey ? (
+          <div className={styles.loginForm}>
             {statusMessage && <p className={styles.formError} role="status">{statusMessage}</p>}
-            <label htmlFor="admin-2fa-code">Verification token</label>
-            <input
-              id="admin-2fa-code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="000000"
-              maxLength={6}
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D+/g, "").slice(0, 6))}
-            />
             {error && <p className={styles.formError} role="alert">{error}</p>}
-            <button className={styles.primaryButton} disabled={busy || code.length < 6} type="submit">
-              {busy ? "Verifying…" : "Verify & enter"}<ArrowUpRight size={17} />
+            <button
+              className={styles.primaryButton}
+              disabled={busy}
+              type="button"
+              onClick={() => void handlePasskeySignIn()}
+            >
+              <Fingerprint size={17} />
+              {busy ? "Waiting for Touch ID…" : "Sign in with Passkey"}
             </button>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
-              <button type="button" className={styles.textButton} disabled={busy} onClick={() => void resendCode()}>
-                Resend token
-              </button>
-              <button type="button" className={styles.textButton} disabled={busy} onClick={() => void resetToPassword()}>
-                Use another account
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form className={styles.loginForm} onSubmit={submitPassword}>
+          </div>
+        ) : hasPasskey === false ? (
+          <form className={styles.loginForm} onSubmit={handlePasskeySetup}>
             {statusMessage && <p className={styles.formError} role="status">{statusMessage}</p>}
             <label htmlFor="admin-email">Email address</label>
-            <input id="admin-email" type="email" autoComplete="username" placeholder="you@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="admin-email" type="email" autoComplete="username" placeholder="deeprajsharma@relativclips.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             <label htmlFor="admin-password">Password</label>
             <input id="admin-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             {error && <p className={styles.formError} role="alert">{error}</p>}
-            <button className={styles.primaryButton} disabled={busy} type="submit">{busy ? "Checking access…" : "Continue"}<ArrowUpRight size={17} /></button>
+            <button className={styles.primaryButton} disabled={busy} type="submit">
+              <Fingerprint size={17} />
+              {busy ? "Touch sensor to register…" : "Set up Touch ID Passkey"}
+            </button>
           </form>
-        )}
+        ) : null}
 
         <p className={styles.setupLink}>First time here? <Link href="/admin/setup">Create your verified account</Link></p>
-        <div className={styles.loginFoot}><ShieldCheck size={15} /> Email 2FA and verified session required.</div>
+        <div className={styles.loginFoot}><ShieldCheck size={15} /> Hardware passkey (WebAuthn) protected.</div>
       </section>
       <div className={styles.loginAside} aria-hidden="true">
         <div className={styles.asideGrid} />
