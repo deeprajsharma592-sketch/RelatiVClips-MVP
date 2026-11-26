@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness, Clock3, Command, Cpu, FileText, Film, Fingerprint, Gauge, Layers3, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, Users, WalletCards, XCircle } from "lucide-react";
-import { logout } from "@/lib/auth";
+import { login } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminApiError, fetchAdminOverview, fetchAdminPasskeyStatus, fetchAdminRecords, loginWithAdminPasskey, registerAdminPasskey, type AdminCollection, type AdminOverview, type AdminRecords } from "@/lib/admin";
 import styles from "./admin.module.css";
@@ -63,12 +63,9 @@ function SignIn({
     setBusy(true);
     setError("");
     try {
-      await registerAdminPasskey({
-        email: email.trim().toLowerCase(),
-        password,
-        label: "Mac Touch ID",
-      });
+      await login({ email: email.trim().toLowerCase(), password });
       await refreshAuth();
+      await registerAdminPasskey({ label: "Mac Touch ID" });
       await onSignedIn();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not register passkey.");
