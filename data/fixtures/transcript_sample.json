@@ -1,0 +1,102 @@
+{
+  "clip_id": "demo_01",
+  "text": "okay so nobody told me this would work and then the whole room just lost it follow for more",
+  "words": [
+    {
+      "w": "okay",
+      "start": 0.1,
+      "end": 0.34
+    },
+    {
+      "w": "so",
+      "start": 0.36,
+      "end": 0.52
+    },
+    {
+      "w": "nobody",
+      "start": 0.56,
+      "end": 0.92
+    },
+    {
+      "w": "told",
+      "start": 0.94,
+      "end": 1.14
+    },
+    {
+      "w": "me",
+      "start": 1.16,
+      "end": 1.3
+    },
+    {
+      "w": "this",
+      "start": 1.34,
+      "end": 1.58
+    },
+    {
+      "w": "would",
+      "start": 1.6,
+      "end": 1.86
+    },
+    {
+      "w": "work",
+      "start": 1.88,
+      "end": 2.2
+    },
+    {
+      "w": "and",
+      "start": 2.3,
+      "end": 2.46
+    },
+    {
+      "w": "then",
+      "start": 2.48,
+      "end": 2.66
+    },
+    {
+      "w": "the",
+      "start": 2.7,
+      "end": 2.82
+    },
+    {
+      "w": "whole",
+      "start": 2.84,
+      "end": 3.1
+    },
+    {
+      "w": "room",
+      "start": 3.12,
+      "end": 3.38
+    },
+    {
+      "w": "just",
+      "start": 3.4,
+      "end": 3.58
+    },
+    {
+      "w": "lost",
+      "start": 3.6,
+      "end": 3.86
+    },
+    {
+      "w": "it",
+      "start": 3.88,
+      "end": 4.02
+    },
+    {
+      "w": "follow",
+      "start": 4.1,
+      "end": 4.4
+    },
+    {
+      "w": "for",
+      "start": 4.42,
+      "end": 4.56
+    },
+    {
+      "w": "more",
+      "start": 4.58,
+      "end": 4.9
+    }
+  ],
+  "source": "hand-aligned fixture"
+}

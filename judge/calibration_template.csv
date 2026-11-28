@@ -1,0 +1,2 @@
+clip_id,mp4,edl,transcript,human_hook,human_arc,human_readability,human_overload,human_audio,notes
+demo_01,data/renders/demo_01/winner.mp4,data/renders/demo_01/winner.edl.json,data/fixtures/transcript_sample.json,8,7,8,6,7,hook landed; popup at 2.1s felt late

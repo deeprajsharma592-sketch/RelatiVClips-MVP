@@ -1,0 +1,20 @@
+{
+  "demo_01": {
+    "source": "sample_5s.mp4",
+    "story_plan": "story_plan_demo_01.json",
+    "transcript": "transcript_sample.json",
+    "niche": "livestream_comedy"
+  },
+  "demo_02": {
+    "source": "sample_b.mp4",
+    "story_plan": "story_plan_demo_02.json",
+    "transcript": "transcript_sample.json",
+    "niche": "livestream_comedy"
+  },
+  "demo_03": {
+    "source": "sample_c.mp4",
+    "story_plan": "story_plan_demo_03.json",
+    "transcript": "transcript_sample.json",
+    "niche": "livestream_comedy"
+  }
+}

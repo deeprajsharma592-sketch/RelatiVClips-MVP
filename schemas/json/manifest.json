@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "contracts": {
+    "StoryPlan": "story_plan.schema.json",
+    "EDL": "edl.schema.json",
+    "JudgeReport": "judge_report.schema.json"
+  }
+}

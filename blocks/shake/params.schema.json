@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "shake",
+  "description": "Screen shake on the source footage, with an optional motion-blur smear ramp.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "intensity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.5,
+      "description": "Shake amplitude. 0.3 is a nudge, 0.8 is a full hit."
+    },
+    "frequency": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 12,
+      "default": 6,
+      "description": "Oscillations per second."
+    },
+    "decay": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.6,
+      "description": "How fast the shake dies. 0 keeps shaking, 1 is a snap."
+    },
+    "motion_blur": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Smear strength from a lagged ghost layer. 0 disables the extra layer."
+    },
+    "rotation": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 3,
+      "default": 0.6,
+      "description": "Degrees of rotation kick at full intensity."
+    }
+  }
+}

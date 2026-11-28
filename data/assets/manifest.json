@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "notes": "Synthesised placeholders. Swap for licensed assets; keep the ids stable.",
+  "assets": [
+    {
+      "id": "whoosh_soft",
+      "type": "sfx",
+      "file": "sfx/whoosh_soft.wav",
+      "tags": [
+        "transition",
+        "hook"
+      ],
+      "license": "synthesised placeholder (CC0-equivalent)",
+      "description": "Soft noise sweep, good under a whip or a cut."
+    },
+    {
+      "id": "impact_boom",
+      "type": "sfx",
+      "file": "sfx/impact_boom.wav",
+      "tags": [
+        "impact",
+        "hook"
+      ],
+      "license": "synthesised placeholder (CC0-equivalent)",
+      "description": "Low thump for a punchline hit."
+    },
+    {
+      "id": "pop_tick",
+      "type": "sfx",
+      "file": "sfx/pop_tick.wav",
+      "tags": [
+        "popup",
+        "ui"
+      ],
+      "license": "synthesised placeholder (CC0-equivalent)",
+      "description": "Short tick for a popup."
+    },
+    {
+      "id": "reaction_box",
+      "type": "popup",
+      "file": "popups/reaction_box.png",
+      "tags": [
+        "reaction",
+        "meme"
+      ],
+      "license": "synthesised placeholder (CC0-equivalent)",
+      "description": "Neutral reaction box placeholder."
+    },
+    {
+      "id": "meme_frame",
+      "type": "popup",
+      "file": "popups/meme_frame.png",
+      "tags": [
+        "meme",
+        "frame"
+      ],
+      "license": "synthesised placeholder (CC0-equivalent)",
+      "description": "Framed meme placeholder."
+    }
+  ]
+}

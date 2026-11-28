@@ -1,0 +1,38 @@
+{
+  "clip_id": "demo_02",
+  "schema_version": "1.0.0",
+  "duration_s": 5.0,
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 1.2,
+      "role": "hook",
+      "text": "He says the thing nobody expects."
+    },
+    {
+      "start": 1.2,
+      "end": 2.8,
+      "role": "info",
+      "text": "Setup: the bet, the crowd, the silence."
+    },
+    {
+      "start": 2.8,
+      "end": 4.2,
+      "role": "rehook",
+      "text": "Payoff lands and the streamer breaks."
+    },
+    {
+      "start": 4.2,
+      "end": 5.0,
+      "role": "cta",
+      "text": "Save this one."
+    }
+  ],
+  "callbacks": [
+    {
+      "from_ts": 0.4,
+      "to_ts": 3.2,
+      "note": "cold open repeated at the payoff"
+    }
+  ]
+}

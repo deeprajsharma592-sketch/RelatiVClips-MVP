@@ -24,3 +24,15 @@ demo_test/
 e2e_youtube_run/
 cloudflared.exe
 cache/
+
+# Edit engine (generated / local)
+.venv_edit/
+data/edit_engine.db
+data/edit_engine.db-journal
+data/renders/
+data/calibration/
+data/dataset.jsonl
+data/regression/last_run.json
+blocks/*/assets/
+.agents/skills/
+skills-lock.json

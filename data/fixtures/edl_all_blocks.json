@@ -1,0 +1,47 @@
+{
+  "clip_id": "demo_01",
+  "niche": "livestream_comedy",
+  "schema_version": "1.0.0",
+  "effects": [
+    {
+      "id": "zoom_hook",
+      "type": "zoom",
+      "start": 0.15,
+      "end": 1.1,
+      "params": {"scale": 1.14, "origin": "center", "hold": 0.5},
+      "rationale": "Punch in on 'nobody told me' so the cold open reads instantly."
+    },
+    {
+      "id": "pop_reaction",
+      "type": "popup",
+      "start": 1.6,
+      "end": 2.9,
+      "params": {"asset_id": "reaction_box", "position": "top-right", "scale": 0.45, "enter": "pop", "exit": "fade"},
+      "rationale": "Popup lands on 'whole room' as the crowd starts reacting."
+    },
+    {
+      "id": "shake_lost",
+      "type": "shake",
+      "start": 3.2,
+      "end": 4.0,
+      "params": {"intensity": 0.55, "frequency": 7, "decay": 0.7, "motion_blur": 0.3},
+      "rationale": "Shake hits on 'lost it' - the punchline impact."
+    },
+    {
+      "id": "cap_all",
+      "type": "caption_style",
+      "start": 0.0,
+      "end": 5.0,
+      "params": {"style": "irl_stream", "max_words_per_group": 2, "highlight_color": "#FFE45E"},
+      "rationale": "Word-level captions for the whole clip."
+    },
+    {
+      "id": "sfx_whoosh",
+      "type": "sfx",
+      "start": 0.15,
+      "end": 0.85,
+      "params": {"asset_id": "whoosh_soft", "gain": 0.7, "loudness_lufs": -16},
+      "rationale": "Whoosh under the hook punch-in."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "zoom",
+  "description": "Punch-in on the footage, holding then easing back out.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "scale": {
+      "type": "number",
+      "minimum": 1.0,
+      "maximum": 2.0,
+      "default": 1.12
+    },
+    "easing": {
+      "type": "string",
+      "enum": [
+        "power2.out",
+        "power3.out",
+        "power4.out",
+        "expo.out",
+        "back.out(1.7)"
+      ],
+      "default": "power2.out"
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "center",
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
+      "default": "center"
+    },
+    "hold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 0.6,
+      "description": "Seconds held at full scale before easing back."
+    }
+  }
+}

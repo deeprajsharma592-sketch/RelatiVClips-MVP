@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "Scores": {
+      "additionalProperties": false,
+      "description": "1-10, higher is always better (``overload`` 10 means no overload).",
+      "properties": {
+        "hook": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Hook",
+          "type": "integer"
+        },
+        "arc": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Arc",
+          "type": "integer"
+        },
+        "readability": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Readability",
+          "type": "integer"
+        },
+        "overload": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Overload",
+          "type": "integer"
+        },
+        "audio": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Audio",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "hook",
+        "arc",
+        "readability",
+        "overload",
+        "audio"
+      ],
+      "title": "Scores",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "clip_id": {
+      "minLength": 1,
+      "title": "Clip Id",
+      "type": "string"
+    },
+    "scores": {
+      "$ref": "#/$defs/Scores"
+    },
+    "critique": {
+      "description": "Specific timestamps plus a concrete fix.",
+      "minLength": 20,
+      "title": "Critique",
+      "type": "string"
+    },
+    "production_ready": {
+      "title": "Production Ready",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Contract version. Must be '1.0.0'."
+    }
+  },
+  "required": [
+    "clip_id",
+    "scores",
+    "critique",
+    "production_ready",
+    "schema_version"
+  ],
+  "title": "JudgeReport",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": ""
+}

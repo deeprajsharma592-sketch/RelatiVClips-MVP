@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "Effect": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "shake",
+            "motion_blur",
+            "caption_style",
+            "popup",
+            "sfx",
+            "zoom"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "start": {
+          "description": "Effect start in seconds, clip-relative.",
+          "minimum": 0,
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "description": "Effect end in seconds, clip-relative.",
+          "exclusiveMinimum": 0,
+          "title": "End",
+          "type": "number"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        },
+        "rationale": {
+          "description": "Why this effect lands here, naming the word or moment it hits.",
+          "minLength": 5,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "start",
+        "end",
+        "rationale"
+      ],
+      "title": "Effect",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "clip_id": {
+      "minLength": 1,
+      "title": "Clip Id",
+      "type": "string"
+    },
+    "niche": {
+      "minLength": 1,
+      "title": "Niche",
+      "type": "string"
+    },
+    "effects": {
+      "items": {
+        "$ref": "#/$defs/Effect"
+      },
+      "title": "Effects",
+      "type": "array"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Contract version. Must be '1.0.0'."
+    }
+  },
+  "required": [
+    "clip_id",
+    "niche",
+    "schema_version"
+  ],
+  "title": "EDL",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": ""
+}

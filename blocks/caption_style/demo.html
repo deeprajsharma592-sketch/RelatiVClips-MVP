@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>caption_style block demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #a-roll { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="demo_caption_style"
+      data-start="0"
+      data-duration="5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <video
+        id="a-roll"
+        class="clip"
+        src="../_sandbox/sample_5s.mp4"
+        playsinline
+        data-start="0"
+        data-duration="5"
+        data-has-audio="true"
+      ></video>
+      <style>
+        .hf-cap {
+          position: absolute;
+          left: 0;
+          right: 0;
+          z-index: 30;
+          display: flex;
+          justify-content: center;
+          pointer-events: none;
+          padding: 0 48px;
+        }
+        .hf-cap[data-pos="bottom"] { bottom: 250px; }
+        .hf-cap[data-pos="top"] { top: 220px; }
+        .hf-cap[data-pos="center"] { top: 50%; transform: translateY(-50%); }
+        .hf-cap-inner {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          justify-content: center;
+          align-items: baseline;
+          font-family: Inter, sans-serif;
+          font-weight: 900;
+          line-height: 1.05;
+          letter-spacing: -0.01em;
+          text-align: center;
+          transform-origin: 50% 100%;
+          max-width: 980px;
+        }
+        .hf-cap-inner[data-style="irl_stream"] .hf-cap-w {
+          text-shadow: 0 6px 0 rgba(0, 0, 0, 0.55), 0 14px 30px rgba(0, 0, 0, 0.65);
+        }
+        .hf-cap-inner[data-style="podcast"] .hf-cap-w {
+          background: rgba(12, 12, 14, 0.82);
+          padding: 6px 18px;
+          border-radius: 14px;
+          text-shadow: none;
+        }
+        .hf-cap-w { display: inline-block; color: #F5F5F5; }
+      </style>
+      <div
+        id="demo_caption_style-g0"
+        class="clip hf-cap"
+        data-start="0.38"
+        data-duration="0.66"
+        data-pos="bottom"
+      >
+        <div
+          id="demo_caption_style-g0-in"
+          class="hf-cap-inner"
+          data-style="irl_stream"
+          style="font-size: 72px; text-transform: uppercase;"
+        ><span class="hf-cap-w" id="demo_caption_style-g0-w0">this</span><span class="hf-cap-w" id="demo_caption_style-g0-w1">is</span></div>
+      </div>
+
+      <div
+        id="demo_caption_style-g1"
+        class="clip hf-cap"
+        data-start="0.98"
+        data-duration="0.78"
+        data-pos="bottom"
+      >
+        <div
+          id="demo_caption_style-g1-in"
+          class="hf-cap-inner"
+          data-style="irl_stream"
+          style="font-size: 72px; text-transform: uppercase;"
+        ><span class="hf-cap-w" id="demo_caption_style-g1-w0">the</span><span class="hf-cap-w" id="demo_caption_style-g1-w1">moment</span></div>
+      </div>
+
+      <div
+        id="demo_caption_style-g2"
+        class="clip hf-cap"
+        data-start="1.7"
+        data-duration="0.76"
+        data-pos="bottom"
+      >
+        <div
+          id="demo_caption_style-g2-in"
+          class="hf-cap-inner"
+          data-style="irl_stream"
+          style="font-size: 72px; text-transform: uppercase;"
+        ><span class="hf-cap-w" id="demo_caption_style-g2-w0">it</span><span class="hf-cap-w" id="demo_caption_style-g2-w1">lands</span></div>
+      </div>
+    </div>
+    <script>
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      // caption_style — word-level captions from transcript timings.
+      // Every group is a timed .clip; only its inner wrapper is tweened (contract rule 5).
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      window.HF_BLOCKS.caption_style = function (tl, id, p, meta) {
+        var groups = meta.groups || [];
+        var base = "#F5F5F5";
+        var hot = p.highlight_color || "#FFE45E";
+        var inDur = 0.16;
+        var outDur = 0.1;
+
+        groups.forEach(function (g) {
+          var inner = "#" + g.id + "-in";
+          var start = g.start;
+          var end = g.start + g.duration;
+          var slide = p.style === "podcast" ? 10 : 22;
+
+          tl.fromTo(
+            inner,
+            { opacity: 0, y: slide, scale: p.style === "podcast" ? 1 : 0.92 },
+            { opacity: 1, y: 0, scale: 1, duration: inDur, ease: "back.out(1.7)" },
+            start
+          );
+          tl.to(inner, { opacity: 0, duration: outDur, ease: "none" }, Math.max(start + inDur, end - outDur));
+
+          (g.words || []).forEach(function (w) {
+            var sel = "#" + w.id;
+            tl.fromTo(sel, { color: base }, { color: hot, duration: 0.06, ease: "none" }, w.start);
+            tl.to(sel, { color: base, duration: 0.06, ease: "none" }, Math.max(w.start + 0.06, w.end - 0.06));
+          });
+        });
+      };
+      const tl = gsap.timeline({ paused: true });
+      HF_BLOCKS["caption_style"](tl, "demo_caption_style", {"highlight_color": "#FFE45E", "max_words_per_group": 2, "style": "irl_stream"}, {"groups": [{"duration": 0.66, "id": "demo_caption_style-g0", "start": 0.38, "words": [{"end": 0.8, "id": "demo_caption_style-g0-w0", "start": 0.4}, {"end": 0.98, "id": "demo_caption_style-g0-w1", "start": 0.82}]}, {"duration": 0.78, "id": "demo_caption_style-g1", "start": 0.98, "words": [{"end": 1.14, "id": "demo_caption_style-g1-w0", "start": 1.0}, {"end": 1.7, "id": "demo_caption_style-g1-w1", "start": 1.16}]}, {"duration": 0.76, "id": "demo_caption_style-g2", "start": 1.7, "words": [{"end": 1.86, "id": "demo_caption_style-g2-w0", "start": 1.72}, {"end": 2.4, "id": "demo_caption_style-g2-w1", "start": 1.88}]}], "source": "#a-roll", "start": 0.3});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["demo_caption_style"] = tl;
+    </script>
+  </body>
+</html>

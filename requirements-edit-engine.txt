@@ -1,0 +1,5 @@
+# Edit engine only. The product keeps its own requirements in backend/.
+pydantic>=2.11
+SQLAlchemy>=2.0
+pytest>=8.0
+requests>=2.31

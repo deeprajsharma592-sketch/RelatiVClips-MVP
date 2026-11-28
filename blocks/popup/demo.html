@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>popup block demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #a-roll { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="demo_popup"
+      data-start="0"
+      data-duration="5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <video
+        id="a-roll"
+        class="clip"
+        src="../_sandbox/sample_5s.mp4"
+        playsinline
+        data-start="0"
+        data-duration="5"
+        data-has-audio="true"
+      ></video>
+      <style>
+        .hf-popup {
+          position: absolute;
+          z-index: 40;
+          display: flex;
+          pointer-events: none;
+        }
+        .hf-popup[data-pos="top-left"] { top: 140px; left: 70px; }
+        .hf-popup[data-pos="top-right"] { top: 140px; right: 70px; }
+        .hf-popup[data-pos="bottom-left"] { bottom: 360px; left: 70px; }
+        .hf-popup[data-pos="bottom-right"] { bottom: 360px; right: 70px; }
+        .hf-popup[data-pos="center"] { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .hf-popup-img {
+          display: block;
+          height: auto;
+          filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.45));
+        }
+      </style>
+      <div
+        id="demo_popup"
+        class="clip hf-popup"
+        data-start="1"
+        data-duration="1.6"
+        data-pos="top-right"
+        style="margin-left: 0px; margin-top: 0px"
+      >
+        <img id="demo_popup-in" class="hf-popup-img" src="assets/popup/reaction_box.png" alt="" style="width: 486px" />
+      </div>
+    </div>
+    <script>
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      // popup — image/meme popup with enter and exit motion.
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      window.HF_BLOCKS.popup = function (tl, id, p, meta) {
+        var inner = "#" + id + "-in";
+        var start = meta.start;
+        var end = meta.start + Math.max(0.2, meta.duration);
+        var enter = p.enter || "pop";
+        var exit = p.exit || "fade";
+        var inDur = Math.min(0.28, (end - start) * 0.35);
+        var outDur = Math.min(0.22, (end - start) * 0.3);
+
+        if (enter === "pop") {
+          tl.fromTo(
+            inner,
+            { scale: 0.25, opacity: 0, rotation: -7 },
+            { scale: 1, opacity: 1, rotation: 0, duration: inDur, ease: "back.out(2.4)" },
+            start
+          );
+        } else if (enter === "slide") {
+          tl.fromTo(
+            inner,
+            { y: 110, opacity: 0 },
+            { y: 0, opacity: 1, duration: inDur, ease: "power3.out" },
+            start
+          );
+        } else {
+          tl.fromTo(inner, { opacity: 0 }, { opacity: 1, duration: inDur, ease: "power1.out" }, start);
+        }
+
+        var outAt = Math.max(start + inDur, end - outDur);
+        if (exit === "pop") {
+          tl.to(inner, { scale: 0.4, opacity: 0, duration: outDur, ease: "back.in(1.7)" }, outAt);
+        } else if (exit === "slide") {
+          tl.to(inner, { y: 90, opacity: 0, duration: outDur, ease: "power2.in" }, outAt);
+        } else {
+          tl.to(inner, { opacity: 0, duration: outDur, ease: "none" }, outAt);
+        }
+      };
+      const tl = gsap.timeline({ paused: true });
+      HF_BLOCKS["popup"](tl, "demo_popup", {"asset_id": "reaction_box", "position": "top-right", "scale": 0.45}, {"start": 1.0});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["demo_popup"] = tl;
+    </script>
+  </body>
+</html>

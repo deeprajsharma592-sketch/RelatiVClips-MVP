@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>zoom block demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #a-roll { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="demo_zoom"
+      data-start="0"
+      data-duration="5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <video
+        id="a-roll"
+        class="clip"
+        src="../_sandbox/sample_5s.mp4"
+        playsinline
+        data-start="0"
+        data-duration="5"
+        data-has-audio="true"
+      ></video>
+      <!-- zoom: paints nothing itself; the block transforms the source video in the root timeline. -->
+    </div>
+    <script>
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      // zoom — punch-in on the source footage.
+      // Quick push, hold, ease back so the effect lands on the word and releases.
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      window.HF_BLOCKS.zoom = function (tl, id, p, meta) {
+        var target = meta.source;
+        var start = meta.start;
+        var end = meta.start + Math.max(0.2, meta.duration);
+        var scale = p.scale == null ? 1.12 : p.scale;
+        var ease = p.easing || "power2.out";
+        var hold = p.hold == null ? 0.6 : p.hold;
+        var origins = {
+          center: "50% 50%",
+          top: "50% 18%",
+          bottom: "50% 82%",
+          left: "18% 50%",
+          right: "82% 50%"
+        };
+        var inDur = Math.min(0.34, Math.max(0.12, (end - start) * 0.45));
+        var outDur = Math.min(0.32, Math.max(0.1, (end - start) * 0.35));
+        var outStart = Math.min(end - outDur, Math.max(start + inDur, start + hold));
+
+        tl.set(target, { transformOrigin: origins[p.origin] || origins.center }, 0);
+        tl.fromTo(target, { scale: 1 }, { scale: scale, duration: inDur, ease: ease }, start);
+        tl.to(target, { scale: 1, duration: outDur, ease: "power2.inOut" }, Math.max(outStart, start + inDur));
+      };
+      const tl = gsap.timeline({ paused: true });
+      HF_BLOCKS["zoom"](tl, "demo_zoom", {"hold": 0.8, "origin": "center", "scale": 1.18}, {"source": "#a-roll", "start": 1.0});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["demo_zoom"] = tl;
+    </script>
+  </body>
+</html>

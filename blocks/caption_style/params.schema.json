@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "caption_style",
+  "description": "Word-level captions driven by transcript word timestamps.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "style"
+  ],
+  "properties": {
+    "style": {
+      "type": "string",
+      "enum": [
+        "irl_stream",
+        "podcast"
+      ],
+      "default": "irl_stream",
+      "description": "irl_stream: 1-2 huge words at a time. podcast: clean multi-word lines."
+    },
+    "highlight_color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "default": "#FFE45E",
+      "description": "Colour of the spoken word."
+    },
+    "max_words_per_group": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6,
+      "default": 2,
+      "description": "Words shown at once. irl_stream uses 1-2, podcast 3-5."
+    },
+    "position": {
+      "type": "string",
+      "enum": [
+        "bottom",
+        "top",
+        "center"
+      ],
+      "default": "bottom"
+    },
+    "font_size": {
+      "type": "number",
+      "minimum": 28,
+      "maximum": 130,
+      "default": 72,
+      "description": "Pixels on a 1080x1920 canvas."
+    },
+    "uppercase": {
+      "type": "boolean",
+      "default": true
+    },
+    "words": {
+      "type": "array",
+      "description": "Filled by the composer from the transcript; never authored by the LLM.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "w",
+          "start",
+          "end"
+        ],
+        "properties": {
+          "w": {
+            "type": "string"
+          },
+          "start": {
+            "type": "number"
+          },
+          "end": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+<style>
+  .hf-cap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    padding: 0 48px;
+  }
+  .hf-cap[data-pos="bottom"] { bottom: 250px; }
+  .hf-cap[data-pos="top"] { top: 220px; }
+  .hf-cap[data-pos="center"] { top: 50%; transform: translateY(-50%); }
+  .hf-cap-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    align-items: baseline;
+    font-family: Inter, sans-serif;
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    text-align: center;
+    transform-origin: 50% 100%;
+    max-width: 980px;
+  }
+  .hf-cap-inner[data-style="irl_stream"] .hf-cap-w {
+    text-shadow: 0 6px 0 rgba(0, 0, 0, 0.55), 0 14px 30px rgba(0, 0, 0, 0.65);
+  }
+  .hf-cap-inner[data-style="podcast"] .hf-cap-w {
+    background: rgba(12, 12, 14, 0.82);
+    padding: 6px 18px;
+    border-radius: 14px;
+    text-shadow: none;
+  }
+  .hf-cap-w { display: inline-block; color: #F5F5F5; }
+</style>
+<div
+  id="%%ID%%"
+  class="clip hf-cap"
+  data-start="%%START%%"
+  data-duration="%%DURATION%%"
+  data-pos="%%POSITION%%"
+>
+  <div
+    id="%%ID%%-in"
+    class="hf-cap-inner"
+    data-style="%%STYLE%%"
+    style="font-size: %%FONT%%px; %%TEXT_TRANSFORM%%"
+  >%%WORDS%%</div>
+</div>

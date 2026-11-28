@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>shake block demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #a-roll { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="demo_shake"
+      data-start="0"
+      data-duration="5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <video
+        id="a-roll"
+        class="clip"
+        src="../_sandbox/sample_5s.mp4"
+        playsinline
+        data-start="0"
+        data-duration="5"
+        data-has-audio="true"
+      ></video>
+      <!-- shake: paints nothing itself; the block transforms the source video in the root timeline.
+           Motion blur is the framework's data-motion-blur shutter pass plus a scale-smear ramp. -->
+    </div>
+    <script>
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      // shake — screen shake on the source footage, with a motion-blur smear ramp.
+      // Deterministic: the jitter is a seeded LCG, never Math.random().
+      // The smear is two things working together: the framework's shutter pass
+      // (root data-motion-blur, set by compose.py from the same param) and a small
+      // scale squash that ramps with the shake intensity.
+      window.HF_BLOCKS = window.HF_BLOCKS || {};
+      window.HF_BLOCKS.shake = function (tl, id, p, meta) {
+        var target = meta.source;
+        var dur = Math.max(0.08, meta.duration);
+        var intensity = p.intensity == null ? 0.5 : p.intensity;
+        var freq = p.frequency == null ? 6 : p.frequency;
+        var decay = p.decay == null ? 0.6 : p.decay;
+        var rot = p.rotation == null ? 0.6 : p.rotation;
+        var smear = p.motion_blur == null ? 0 : p.motion_blur;
+
+        // Seeded LCG so two renders of the same EDL jitter identically.
+        var seed = 2166136261;
+        for (var c = 0; c < id.length; c++) seed = (seed ^ id.charCodeAt(c)) * 16777619 >>> 0;
+        function rnd() {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967295;
+        }
+
+        var steps = Math.max(2, Math.round(dur * freq * 2));
+        var keyframes = [];
+        for (var i = 0; i < steps; i++) {
+          var t = i / steps;
+          var falloff = Math.pow(1 - t, Math.max(0.05, decay * 2));
+          var ampX = intensity * 34 * falloff;
+          var ampY = intensity * 26 * falloff;
+          keyframes.push({
+            x: (rnd() * 2 - 1) * ampX,
+            y: (rnd() * 2 - 1) * ampY,
+            rotation: (rnd() * 2 - 1) * rot * intensity * falloff,
+            scaleX: 1 + smear * 0.05 * falloff,
+            scaleY: 1 - smear * 0.012 * falloff,
+            duration: dur / steps,
+            ease: "none"
+          });
+        }
+        keyframes.push({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, duration: 0.001, ease: "none" });
+
+        tl.set(target, { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, transformOrigin: "50% 50%" }, 0);
+        tl.to(target, { keyframes: keyframes }, meta.start);
+      };
+      const tl = gsap.timeline({ paused: true });
+      HF_BLOCKS["shake"](tl, "demo_shake", {"decay": 0.6, "frequency": 7, "intensity": 0.7, "motion_blur": 0.4}, {"source": "#a-roll", "start": 1.2});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["demo_shake"] = tl;
+    </script>
+  </body>
+</html>

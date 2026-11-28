@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sfx",
+  "description": "One audio hit, loudness-normalised before it reaches the mix.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset_id"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "id from data/assets/manifest.json (type=sfx)."
+    },
+    "gain": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.8,
+      "description": "Linear gain on top of the normalised file."
+    },
+    "loudness_lufs": {
+      "type": "number",
+      "minimum": -24,
+      "maximum": -8,
+      "default": -16,
+      "description": "Integrated loudness target. Hook SFX sit near -16 LUFS."
+    }
+  }
+}

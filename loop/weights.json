@@ -1,0 +1,10 @@
+{
+  "weights": {
+    "hook": 0.30,
+    "arc": 0.25,
+    "readability": 0.20,
+    "overload": 0.15,
+    "audio": 0.10
+  },
+  "notes": "Weights are suggestions to start from. feedback.py proposes changes; nothing is auto-applied."
+}

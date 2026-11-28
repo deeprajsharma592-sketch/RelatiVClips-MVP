@@ -1,0 +1,38 @@
+{
+  "clip_id": "demo_01",
+  "schema_version": "1.0.0",
+  "duration_s": 5.0,
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 1.4,
+      "role": "hook",
+      "text": "I found the one clip everyone reposts."
+    },
+    {
+      "start": 1.4,
+      "end": 3.1,
+      "role": "info",
+      "text": "He explains why the joke lands, then the room loses it."
+    },
+    {
+      "start": 3.1,
+      "end": 4.1,
+      "role": "rehook",
+      "text": "But the second punchline is the real one."
+    },
+    {
+      "start": 4.1,
+      "end": 5.0,
+      "role": "cta",
+      "text": "Follow for the next one."
+    }
+  ],
+  "callbacks": [
+    {
+      "from_ts": 1.6,
+      "to_ts": 3.9,
+      "note": "the earlier setup pays off here"
+    }
+  ]
+}

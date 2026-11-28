@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "popup",
+  "description": "Image or meme popup over the footage.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset_id"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "id from data/assets/manifest.json (type=popup)."
+    },
+    "position": {
+      "type": "string",
+      "enum": [
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+        "center"
+      ],
+      "default": "top-right"
+    },
+    "scale": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 1.5,
+      "default": 0.55,
+      "description": "Fraction of canvas width."
+    },
+    "enter": {
+      "type": "string",
+      "enum": [
+        "pop",
+        "slide",
+        "fade"
+      ],
+      "default": "pop"
+    },
+    "exit": {
+      "type": "string",
+      "enum": [
+        "pop",
+        "slide",
+        "fade"
+      ],
+      "default": "fade"
+    },
+    "offset_x": {
+      "type": "number",
+      "minimum": -0.4,
+      "maximum": 0.4,
+      "default": 0.0,
+      "description": "Extra x offset as a fraction of canvas width."
+    },
+    "offset_y": {
+      "type": "number",
+      "minimum": -0.4,
+      "maximum": 0.4,
+      "default": 0.0
+    }
+  }
+}

@@ -1,0 +1,28 @@
+<style>
+  .hf-popup {
+    position: absolute;
+    z-index: 40;
+    display: flex;
+    pointer-events: none;
+  }
+  .hf-popup[data-pos="top-left"] { top: 140px; left: 70px; }
+  .hf-popup[data-pos="top-right"] { top: 140px; right: 70px; }
+  .hf-popup[data-pos="bottom-left"] { bottom: 360px; left: 70px; }
+  .hf-popup[data-pos="bottom-right"] { bottom: 360px; right: 70px; }
+  .hf-popup[data-pos="center"] { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .hf-popup-img {
+    display: block;
+    height: auto;
+    filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.45));
+  }
+</style>
+<div
+  id="%%ID%%"
+  class="clip hf-popup"
+  data-start="%%START%%"
+  data-duration="%%DURATION%%"
+  data-pos="%%POSITION%%"
+  style="margin-left: %%OFFSET_X%%px; margin-top: %%OFFSET_Y%%px"
+>
+  <img id="%%ID%%-in" class="hf-popup-img" src="%%ASSET%%" alt="" style="width: %%WIDTH%%px" />
+</div>

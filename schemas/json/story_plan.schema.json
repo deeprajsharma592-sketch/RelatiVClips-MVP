@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "Callback": {
+      "additionalProperties": false,
+      "properties": {
+        "from_ts": {
+          "minimum": 0,
+          "title": "From Ts",
+          "type": "number"
+        },
+        "to_ts": {
+          "exclusiveMinimum": 0,
+          "title": "To Ts",
+          "type": "number"
+        },
+        "note": {
+          "description": "What pays off or is called back here.",
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_ts",
+        "to_ts",
+        "note"
+      ],
+      "title": "Callback",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "description": "Segment start in seconds, clip-relative.",
+          "minimum": 0,
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "description": "Segment end in seconds, clip-relative.",
+          "exclusiveMinimum": 0,
+          "title": "End",
+          "type": "number"
+        },
+        "role": {
+          "enum": [
+            "hook",
+            "info",
+            "rehook",
+            "cta"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "text": {
+          "description": "What happens / what is said in this segment.",
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "role",
+        "text"
+      ],
+      "title": "Segment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "clip_id": {
+      "minLength": 1,
+      "title": "Clip Id",
+      "type": "string"
+    },
+    "duration_s": {
+      "exclusiveMinimum": 0,
+      "title": "Duration S",
+      "type": "number"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "minItems": 1,
+      "title": "Segments",
+      "type": "array"
+    },
+    "callbacks": {
+      "items": {
+        "$ref": "#/$defs/Callback"
+      },
+      "title": "Callbacks",
+      "type": "array"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Contract version. Must be '1.0.0'."
+    }
+  },
+  "required": [
+    "clip_id",
+    "duration_s",
+    "segments",
+    "schema_version"
+  ],
+  "title": "StoryPlan",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": ""
+}
