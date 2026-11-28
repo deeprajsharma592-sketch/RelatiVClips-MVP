@@ -64,9 +64,12 @@ def select(variants: Sequence[Any]) -> Selection:
             "selected the highest weighted score anyway - treat as draft"
         )
     elif len(pool) > 1 and winner.weighted == pool[1].weighted:
+        same_effects = effect_count(winner.edl) == effect_count(pool[1].edl)
         reason = (
-            f"tie at weighted {winner.weighted} broken by fewer effects "
-            f"({effect_count(winner.edl)} vs {effect_count(pool[1].edl)})"
+            f"tie at weighted {winner.weighted}; "
+            + ("identical effect count - kept the earlier variant"
+               if same_effects
+               else f"fewer effects wins ({effect_count(winner.edl)} vs {effect_count(pool[1].edl)})")
         )
     else:
         reason = f"highest weighted judge score ({winner.weighted}) among {len(pool)} candidates"

@@ -118,10 +118,11 @@ def llm_config(stage: str = "editor") -> LLMConfig:
         temperature = env_float("EDIT_JUDGE_TEMPERATURE", 0.0)
     else:
         base = env_first(
-            "EDIT_LLM_BASE_URL", "DEEPSEEK_BASE_URL", default="https://api.deepseek.com/v1"
+            "EDIT_LLM_BASE_URL", "DEEPSEEK_BASE_URL", default="https://api.deepseek.com"
         )
         key = env_first("EDIT_LLM_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY")
-        model = env_first("EDIT_LLM_MODEL", "DEEPSEEK_MODEL", default="deepseek-chat")
+        # deepseek-flash is DeepSeek-V4.1-Flash; deepseek-chat/reasoner retired 2026-07-24.
+        model = env_first("EDIT_LLM_MODEL", "DEEPSEEK_MODEL", default="deepseek-flash")
         timeout = env_float("EDIT_LLM_TIMEOUT_S", 120.0)
         max_tokens = env_int("EDIT_LLM_MAX_TOKENS", 4096)
         temperature = env_float("EDIT_LLM_TEMPERATURE", 0.7)

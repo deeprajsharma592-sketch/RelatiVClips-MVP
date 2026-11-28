@@ -31,6 +31,11 @@ else
   echo "   reusing $PROJECT"
 fi
 
+if [ -f "$PROJECT/sample_5s.mp4" ] && ! cmp -s "$SAMPLE" "$PROJECT/sample_5s.mp4"; then
+  cp "$SAMPLE" "$PROJECT/sample_5s.mp4"
+  echo "   refreshed the sandbox sample clip"
+fi
+
 echo "== 2. preview (background studio)"
 "${HF[@]}" preview "$PROJECT" --background --no-open >/dev/null 2>&1 || true
 "${HF[@]}" preview "$PROJECT" --status || true

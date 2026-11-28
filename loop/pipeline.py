@@ -242,6 +242,7 @@ def run(
         session.commit()
 
     # Phase B - compose + render in parallel, capped.
+    render_started = time.monotonic()
     renderable = [v for v in results if v.ok and v.edl]
     cap = max(1, min(workers or settings.max_render_workers, len(renderable) or 1))
     if renderable:
@@ -325,9 +326,9 @@ def run(
         session.commit()
 
     result.variants = results
-    result.render_seconds = sum(
-        v.render.render_seconds for v in results if v.render and v.render.ok
-    )
+    # Wall time of the render phase, not the sum of per-variant times: parallel
+    # renders queue on the Hyperframes render lock, so summing double-counts.
+    result.render_seconds = time.monotonic() - render_started
 
     picked = selection.select(results)
     result.winner, result.worst, result.reason = picked.winner, picked.worst, picked.reason

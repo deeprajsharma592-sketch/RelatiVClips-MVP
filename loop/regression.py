@@ -142,6 +142,12 @@ def run_regression(
         delta = round(now - before, 3)
         deltas[dim] = delta
         print(f"{dim:14s} {before:9.2f} {now:9.2f} {delta:+8.2f}")
+    baseline_clips = baseline.get("clips")
+    if baseline_clips is not None and baseline_clips != current["clips"]:
+        print(
+            f"\n  note: baseline was measured on {baseline_clips} clips, this run on "
+            f"{current['clips']}; compare like-for-like before trusting deltas"
+        )
     before_weighted = baseline.get("weighted")
     if before_weighted is not None and current["clips"]:
         print(
@@ -168,6 +174,7 @@ def run_regression(
                     "dimensions": current["dimensions"],
                     "weighted": current["weighted"],
                     "ready": current["ready"],
+                    "clips": current["clips"],
                 },
                 indent=2,
             )

@@ -145,6 +145,27 @@ def estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
+def _message_tokens(messages) -> int:
+    """Estimate prompt tokens without counting base64 image bytes as text.
+
+    Vision models bill images as tiles, not characters; ~260 tokens per 512px
+    frame is close enough for mock accounting and keeps reports readable.
+    """
+    total = 0
+    for message in messages:
+        content = message.get("content")
+        if isinstance(content, str):
+            total += estimate_tokens(content)
+        elif isinstance(content, list):
+            for part in content:
+                kind = part.get("type")
+                if kind == "text":
+                    total += estimate_tokens(part.get("text", ""))
+                elif kind == "image_url":
+                    total += 260
+    return total
+
+
 class ScriptedClient:
     """A client that returns canned text in order; used by the repair-loop tests."""
 
@@ -161,7 +182,7 @@ class ScriptedClient:
         text = self._texts.pop(0) if self._texts else ""
         return LLMResponse(
             text=text,
-            prompt_tokens=estimate_tokens(json.dumps(messages)),
+            prompt_tokens=_message_tokens(messages),
             completion_tokens=estimate_tokens(text),
             model=self.model,
         )

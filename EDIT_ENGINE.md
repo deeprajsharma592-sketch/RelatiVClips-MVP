@@ -67,9 +67,9 @@ Everything model-related is env-driven; nothing is hard-coded to a provider.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `EDIT_LLM_BASE_URL` | `https://api.deepseek.com/v1` | OpenAI-compatible base URL for the editor |
+| `EDIT_LLM_BASE_URL` | `https://models.jarvislabs.net/v1` | OpenAI-compatible base URL for the editor (Token Factory; DeepSeek native and OpenRouter also work) |
 | `EDIT_LLM_API_KEY` | falls back to `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY` | editor key |
-| `EDIT_LLM_MODEL` | `deepseek-chat` | editor model name |
+| `EDIT_LLM_MODEL` | `glm-5.3-flash` | editor model; also hosted: `deepseek-v4.1-flash-1017` |
 | `EDIT_JUDGE_BASE_URL` | `https://openrouter.ai/api/v1` | vision endpoint for the judge |
 | `EDIT_JUDGE_API_KEY` | falls back to `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` | judge key |
 | `EDIT_JUDGE_MODEL` | `anthropic/claude-haiku-5.5` | vision model name |
@@ -84,6 +84,7 @@ Everything model-related is env-driven; nothing is hard-coded to a provider.
 | `EDIT_PROMPT_VERSION` | `v1` | editor prompt folder |
 | `EDIT_JUDGE_PROMPT_VERSION` | `v1` | rubric folder |
 | `EDIT_LLM_TEMPERATURE` | per style | 0.45 minimal / 0.7 punchy / 0.95 chaotic |
+| `EDIT_LLM_MAX_TOKENS` | `8192` | completion headroom; reasoning tokens count against it |
 | `EDIT_JUDGE_TEMPERATURE` | `0.0` | judge sampling |
 | `EDIT_WEIGHTS_PATH` | `loop/weights.json` | selection weights |
 | `EDIT_REQUIRE_PRODUCTION_READY` | `1` | only pick production-ready winners when any exist |
@@ -177,7 +178,8 @@ judge/      frame sampling, rubric v1, vision call, calibration, consistency
 loop/       pipeline, selection, refine, memory, feedback, regression, export, CLI
 niches/     livestream_comedy.md + the examples memory file
 data/       fixtures, assets (manifest), renders, sqlite db, regression set
-tests/      fast unit tests + slow render/determinism tests
+tests/edit_engine/  fast unit tests + slow render/determinism tests
+                       (pytest.ini points here; the product suite stays in tests/unit)
 scripts/    hello_render.sh, fixtures, token report, block demos
 ```
 

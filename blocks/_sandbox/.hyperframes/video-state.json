@@ -1,7 +1,7 @@
 {
   "version": 1,
   "historyId": "e10af231-7b0a-4e12-9c72-51de31568ae1",
-  "currentRevision": null,
+  "currentRevision": "d9ccf94b-38a6-4406-af9d-c6ef78a45acb",
   "pendingChanges": false,
   "files": {
     "AGENTS.md": {
@@ -29,11 +29,27 @@
       "content": "/Users/deeprajsharma/.cache/hyperframes/history/e10af231-7b0a-4e12-9c72-51de31568ae1/blobs/82/829a3a05537f3aef791d1d0b269c7c92f10418956b1f39e246de8481b95df4f8"
     },
     "sample_5s.mp4": {
-      "hash": "4195a72c4269e66a6bd7e5d3038afdb2a0d166c847176670d48aea95dddf6672",
-      "content": "/Users/deeprajsharma/.cache/hyperframes/history/e10af231-7b0a-4e12-9c72-51de31568ae1/blobs/41/4195a72c4269e66a6bd7e5d3038afdb2a0d166c847176670d48aea95dddf6672"
+      "hash": "17475a922e258d856686056de5d1bae992272bf400de4bbf8d01739cb2d221e9",
+      "content": "/Users/deeprajsharma/.cache/hyperframes/history/e10af231-7b0a-4e12-9c72-51de31568ae1/blobs/17/17475a922e258d856686056de5d1bae992272bf400de4bbf8d01739cb2d221e9"
     }
   },
-  "revisions": {},
+  "revisions": {
+    "d9ccf94b-38a6-4406-af9d-c6ef78a45acb": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1795862230941,
+      "endedAt": 1795862230941,
+      "files": {
+        "sample_5s.mp4": {
+          "before": "/Users/deeprajsharma/.cache/hyperframes/history/e10af231-7b0a-4e12-9c72-51de31568ae1/blobs/41/4195a72c4269e66a6bd7e5d3038afdb2a0d166c847176670d48aea95dddf6672",
+          "after": "/Users/deeprajsharma/.cache/hyperframes/history/e10af231-7b0a-4e12-9c72-51de31568ae1/blobs/17/17475a922e258d856686056de5d1bae992272bf400de4bbf8d01739cb2d221e9"
+        }
+      }
+    }
+  },
   "checks": {
     "latest": null,
     "revisions": {},
@@ -46,13 +62,15 @@
   },
   "renders": {
     "latest": {
-      "id": "a43c71c4-ed3d-4297-b037-f05f80de0e96",
-      "completedAt": 1795859989038,
+      "id": "b5bd860a-79f9-41cc-9f71-224921e72232",
+      "completedAt": 1795862236023,
       "output": "/Users/deeprajsharma/Downloads/RelatiVClips/data/renders/sandbox_hello.mp4",
       "status": "completed",
-      "revision": null
+      "revision": "d9ccf94b-38a6-4406-af9d-c6ef78a45acb"
     },
-    "retainedRevisions": []
+    "retainedRevisions": [
+      "d9ccf94b-38a6-4406-af9d-c6ef78a45acb"
+    ]
   },
   "pendingArtifactCleanup": []
 }

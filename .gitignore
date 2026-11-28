@@ -36,3 +36,9 @@ data/regression/last_run.json
 blocks/*/assets/
 .agents/skills/
 skills-lock.json
+data/assets/sfx/
+data/assets/popups/
+niches/*.examples.json
+
+# Hyperframes per-project state
+.hyperframes/

@@ -40,7 +40,8 @@ def canned_edl(
     clip_id = str(story_plan.get("clip_id") or "clip")
 
     seed = int(hashlib.sha1(f"{clip_id}:{style}:{variant_index}".encode()).hexdigest()[:8], 16)
-    rotate = seed % 2
+    rotate = (seed + variant_index) % 2
+    jitter = (variant_index % 3) * 0.12
 
     caption_end = min(duration, (words[-1]["end"] + 0.25) if words else duration)
     effects: list[dict[str, Any]] = [
@@ -66,7 +67,11 @@ def canned_edl(
                 "type": "zoom",
                 "start": 0.18,
                 "end": round(hook_end, 2),
-                "params": {"scale": 1.14 if style != "chaotic" else 1.22, "origin": "center", "hold": 0.45},
+                "params": {
+                    "scale": (1.14 if style != "chaotic" else 1.22) + 0.02 * (variant_index % 3),
+                    "origin": "center",
+                    "hold": 0.45,
+                },
                 "rationale": "Punch-in on the first line of the hook so a cold viewer stops.",
             }
         )
@@ -97,11 +102,11 @@ def canned_edl(
             {
                 "id": "payoff_pop",
                 "type": "popup",
-                "start": round(_clamp(duration * 0.55, 2.4, duration - 1.4), 2),
-                "end": round(_clamp(duration * 0.55 + 1.1, 3.5, duration - 0.2), 2),
+                "start": round(_clamp(duration * 0.55 + jitter, 2.4, duration - 1.4), 2),
+                "end": round(_clamp(duration * 0.55 + 1.1 + jitter, 3.5, duration - 0.2), 2),
                 "params": {
                     "asset_id": "reaction_box",
-                    "position": "top-right" if rotate == 0 else "top-left",
+                    "position": ["top-right", "top-left", "top-right"][variant_index % 3],
                     "scale": 0.42,
                     "enter": "pop",
                     "exit": "fade",

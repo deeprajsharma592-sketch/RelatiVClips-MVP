@@ -126,3 +126,9 @@ def cleanup_frames(frame_set: FrameSet) -> None:
             frame.path.unlink()
         except OSError:
             pass
+    # Leave no empty *_frames directories behind.
+    for frame in frame_set.frames:
+        try:
+            frame.path.parent.rmdir()
+        except OSError:
+            break

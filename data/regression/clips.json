@@ -1,0 +1,20 @@
+{
+  "notes": "Fixed regression set. Point these at real clips as they land.",
+  "clips": [
+    {
+      "label": "reg_01",
+      "clip_id": "demo_01",
+      "style": "punchy"
+    },
+    {
+      "label": "reg_02",
+      "clip_id": "demo_02",
+      "style": "minimal"
+    },
+    {
+      "label": "reg_03",
+      "clip_id": "demo_03",
+      "style": "chaotic"
+    }
+  ]
+}
