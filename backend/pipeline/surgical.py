@@ -76,6 +76,9 @@ def _ytdlp_section_url(
         "--download-sections", f"*{s_str}-{e_str}",
         *(["--js-runtimes", "node"] if ytdlp_supports_js_runtimes() else []),
         "--extractor-args", f"youtube:player_client={extractor_client}",
+        "--retries", "3",
+        "--fragment-retries", "3",
+        "--socket-timeout", "20",
         "-o", out_template,
         "--no-warnings",
     ]
@@ -446,16 +449,21 @@ def _download_one_video_segment(
     if not final_ok:
         _log(f"  Downloading section [{s:.1f}s - {e:.1f}s] via surgical yt-dlp + PO token...")
         fallback_path = video_path.with_suffix(".fallback.mp4")
-        for seg_attempt in range(1, 4):
-            # Attempt 1: android_vr client without cookies (fastest & provides native 1080p/720p without PO-token block)
-            # Attempt 2: web_embedded with Node JS solver & cookies
-            # Attempt 3: ios client fallback
-            if seg_attempt == 1:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="android_vr")
-            elif seg_attempt == 2:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=True, extractor_client="web_embedded")
-            else:
-                cmd = _ytdlp_video_section_url(url, start, end, dest_path=str(video_path), use_cookies=False, extractor_client="ios")
+        # android_vr first (no PO token needed, but often 403s from datacenter IPs);
+        # web_embedded and tv need a working PO-token provider/cookies; ios last.
+        client_ladder = (
+            ("android_vr", False),
+            ("web_embedded", True),
+            ("tv", True),
+            ("ios", True),
+        )
+        for seg_attempt, (client_name, use_cookies) in enumerate(client_ladder, start=1):
+            cmd = _ytdlp_video_section_url(
+                url, start, end,
+                dest_path=str(video_path),
+                use_cookies=use_cookies,
+                extractor_client=client_name,
+            )
             try:
                 result = subprocess.run(
                     cmd, capture_output=True, timeout=120
@@ -489,13 +497,24 @@ def _download_one_video_segment(
                             shutil.copy2(video_path, fallback_path)
                     except Exception:
                         pass
-                err_snippet = (result.stderr or b"")[:200].decode("utf-8", errors="replace").replace("\n", " ")
-                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 failed (rc={result.returncode}): {err_snippet[:100]}")
+                stderr_text = (result.stderr or b"").decode("utf-8", errors="replace")
+                err_snippet = stderr_text[:200].replace("\n", " ")
+                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/{len(client_ladder)} ({client_name}) failed (rc={result.returncode}): {err_snippet[:100]}")
+                if "Requested format is not available" in stderr_text:
+                    _log(
+                        f"  [video seg {seg_idx + 1}/{total}] '{client_name}' returned no usable formats "
+                        "(PO-token or cookie gating); next client may help"
+                    )
+                if "HTTP error 403" in stderr_text or "403 Forbidden" in stderr_text:
+                    _log(
+                        "  [video seg] 403 on stream URL: the egress IP is likely blocked by YouTube; "
+                        "set the residential proxy (get_proxy) for stream downloads"
+                    )
             except subprocess.TimeoutExpired:
-                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 timed out")
+                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/{len(client_ladder)} ({client_name}) timed out")
             except Exception as e:
-                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/3 crashed: {e}")
-            if seg_attempt < 3:
+                _log(f"  [video seg {seg_idx + 1}/{total}] attempt {seg_attempt}/{len(client_ladder)} ({client_name}) crashed: {e}")
+            if seg_attempt < len(client_ladder):
                 time.sleep(2 * seg_attempt)
 
         if not final_ok and fallback_path.exists() and fallback_path.stat().st_size > 1024:
@@ -511,22 +530,39 @@ def _download_one_video_segment(
         full_path = video_path.with_suffix(".full.mp4")
         try:
             _log(f"  [video seg {seg_idx + 1}/{total}] Section download failed; trying full android_vr fallback + trim...")
-            full_cmd = [
-                YTDLP_PATH,
-                "-f", "bv*[height>=720][vcodec^=avc1]+ba/bv*[height>=720]+ba/b[height>=720]/b/18",
-                "--merge-output-format", "mp4",
-                "--extractor-args", "youtube:player_client=android_vr",
-                "-o", str(full_path.with_suffix(".%(ext)s")),
-                "--no-warnings",
-                "--no-check-certificates",
-            ]
-            if FFMPEG_PATH:
-                full_cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
-            _proxy = get_proxy()
-            if _proxy:
-                full_cmd.extend(["--proxy", _proxy])
-            full_cmd.extend(["--", url])
-            subprocess.run(full_cmd, capture_output=True, timeout=180)
+            # yt-dlp does not fall through to the next -f alternative when a
+            # selected stream 403s mid-download, so walk tiers explicitly:
+            # 1080p avc1 -> 720p -> progressive 360p (no DASH, no merge).
+            format_tiers = (
+                "bv*[height>=1080][vcodec^=avc1]+ba/bv*[height>=720][vcodec^=avc1]+ba/bv*[height>=720]+ba/b[height>=720]/b",
+                "136+140/b[height>=480]/b",
+                "18/b",
+            )
+            for tier_idx, tier_format in enumerate(format_tiers, start=1):
+                full_cmd = [
+                    YTDLP_PATH,
+                    "-f", tier_format,
+                    "--merge-output-format", "mp4",
+                    "--extractor-args", "youtube:player_client=android_vr",
+                    "--retries", "3",
+                    "--fragment-retries", "3",
+                    "--socket-timeout", "20",
+                    "-o", str(full_path.with_suffix(".%(ext)s")),
+                    "--no-warnings",
+                    "--no-check-certificates",
+                ]
+                if FFMPEG_PATH:
+                    full_cmd.extend(["--ffmpeg-location", str(FFMPEG_PATH)])
+                _proxy = get_proxy()
+                if _proxy:
+                    full_cmd.extend(["--proxy", _proxy])
+                full_cmd.extend(["--", url])
+                tier_res = subprocess.run(full_cmd, capture_output=True, timeout=240)
+                if full_path.exists() and full_path.stat().st_size > 1024:
+                    break
+                # A 403 on one tier is expected on blocked IPs; say which tier died.
+                tier_err = (tier_res.stderr or b"").decode("utf-8", errors="replace").replace("\n", " ")
+                _log(f"  [video seg {seg_idx + 1}/{total}] full-fallback tier {tier_idx}/{len(format_tiers)} failed: {tier_err[:120]}")
             if not full_path.exists():
                 for ext in (".mp4", ".mkv", ".webm", ".m4v"):
                     cand = full_path.with_suffix(ext)

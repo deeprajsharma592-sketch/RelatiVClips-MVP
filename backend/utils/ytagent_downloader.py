@@ -22,8 +22,8 @@ YTAGENT_BGUTIL_HOME = Path(
 ).expanduser()
 os.environ.setdefault("YTAGENT_BGUTIL_HOME", str(YTAGENT_BGUTIL_HOME))
 YTAGENT_ENABLED = os.getenv("YTAGENT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
-YTAGENT_SINGLE_ATTEMPT = os.getenv("YTAGENT_SINGLE_ATTEMPT", "1").strip().lower() in {"1", "true", "yes", "on"}
-YTAGENT_TIMEOUT_SECONDS = int(os.getenv("YTAGENT_TIMEOUT_SECONDS", "60"))
+YTAGENT_SINGLE_ATTEMPT = os.getenv("YTAGENT_SINGLE_ATTEMPT", "0").strip().lower() in {"1", "true", "yes", "on"}
+YTAGENT_TIMEOUT_SECONDS = int(os.getenv("YTAGENT_TIMEOUT_SECONDS", "240"))
 YTAGENT_CAPTION_TIMEOUT = int(os.getenv("YTAGENT_CAPTION_TIMEOUT", "20"))
 YTAGENT_MAX_HEIGHT = int(os.getenv("YTAGENT_MAX_HEIGHT", "1080"))
 YTAGENT_MIN_HEIGHT = int(os.getenv("YTAGENT_MIN_HEIGHT", "720"))

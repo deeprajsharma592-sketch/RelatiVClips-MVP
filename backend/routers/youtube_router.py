@@ -1364,12 +1364,14 @@ def _run_moment_pipeline(
     _vid_done = {"n": 0}
 
     def _on_vid_done(idx: int, total: int, ok: bool) -> None:
-        _vid_done["n"] += 1
+        if ok:
+            _vid_done["n"] += 1
         # The video download happens after step 4 is done; we just push
         # the message and let the bar hover near 70% until we move to step 5.
+        # Count only successes so the log can't claim 2/1 downloads.
         _bridge(
             "video_dl",
-            f"Downloaded {_vid_done['n']}/{total} video segments",
+            f"Video segment {'downloaded' if ok else 'FAILED'} ({_vid_done['n']}/{total} ok)",
             step=4,
             sub_progress=0.99,
         )
